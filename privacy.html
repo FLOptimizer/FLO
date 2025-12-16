@@ -5,7 +5,311 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy - FlowLedger</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Include the same <style> block here as in index.html (copy-paste the entire <style> tag) -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --primary: #14B8A6;
+            --primary-dark: #0D9488;
+            --secondary: #10B981;
+            --dark: #1F2937;
+            --light: #F9FAFB;
+            --border: #E5E7EB;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+        }
+        /* Navigation */
+        nav {
+            background: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .logo-icon {
+            height: 40px;
+            margin-right: 0.5rem;
+            border-radius: 8px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+        .nav-links a {
+            color: var(--dark);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 6rem 2rem;
+            text-align: center;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .hero p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+        .btn-primary {
+            background: white;
+            color: var(--primary);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+        .btn-secondary:hover {
+            background: white;
+            color: var(--primary);
+        }
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+        }
+        section {
+            padding: 4rem 0;
+        }
+        section h2 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 3rem;
+            color: var(--dark);
+        }
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        .feature-card {
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+        .feature-icon {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+        .feature-card p {
+            color: #6B7280;
+        }
+        /* Integration Section */
+        .integration {
+            background: var(--light);
+        }
+        .integration-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+        .integration-text h3 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        .integration-text ul {
+            list-style: none;
+            margin: 1.5rem 0;
+        }
+        .integration-text li {
+            padding: 0.5rem 0;
+            padding-left: 2rem;
+            position: relative;
+        }
+        .integration-text li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--secondary);
+            font-weight: bold;
+        }
+        .integration-image {
+            text-align: center;
+        }
+        .plaid-badge {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        /* Tech Stack */
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+        .tech-badge {
+            padding: 0.5rem 1rem;
+            background: var(--light);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        /* Security Section */
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .security-item {
+            padding: 1.5rem;
+            background: white;
+            border-left: 4px solid var(--secondary);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .security-item i {
+            color: var(--secondary);
+            margin-right: 0.5rem;
+        }
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        .cta-section h2 {
+            color: white;
+            margin-bottom: 1rem;
+        }
+        .cta-section p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        /* Footer */
+        footer {
+            background: var(--dark);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+        .social-links {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+        .social-links a {
+            color: white;
+            font-size: 1.5rem;
+            transition: color 0.3s;
+        }
+        .social-links a:hover {
+            color: var(--primary);
+        }
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+            .integration-content {
+                grid-template-columns: 1fr;
+            }
+            .nav-links {
+                display: none;
+            }
+            section h2 {
+                font-size: 2rem;
+            }
+        }
+        /* Smooth Scroll */
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -18,55 +322,197 @@
                 <li><a href="index.html#security">Security</a></li>
                 <li><a href="contact.html">Contact</a></li>
                 <li><a href="privacy.html">Privacy</a></li>
+                <li><a href="terms.html">Terms</a></li>
+                <li><a href="legal.html">Disclaimer</a></li>
                 <li><a href="https://github.com/flowledgerco/flowledger" target="_blank">GitHub</a></li>
             </ul>
         </div>
     </nav>
-
     <main>
         <section class="privacy">
             <h1>Privacy Policy</h1>
-            <p>Last updated: December 15, 2025</p>
-            
+            <p><strong>Last updated: December 15, 2025</strong></p>
+           
             <p>Finch & Poppy LLC ("us", "we", or "our") operates the FlowLedger mobile application (the "Service"). This page informs you of our policies regarding the collection, use, and disclosure of personal data when you use our Service and the choices you have associated with that data.</p>
-            
+           
+            <div style="background: #FFF3CD; border-left: 4px solid #FFA500; padding: 15px; margin: 20px 0;">
+                <strong>Privacy First:</strong> FlowLedger is designed with privacy as a core principle. Your financial data stays on YOUR device. We don't have servers collecting your transactions, and we can't see your financial information.
+            </div>
+           
             <h2>Information Collection and Use</h2>
             <p>We collect several different types of information for various purposes to provide and improve our Service to you. FlowLedger is designed to keep your data local on your device. We do not collect or transmit your financial data to our servers unless explicitly shared by you (e.g., via exports).</p>
-            
+           
             <h3>Types of Data Collected</h3>
             <ul>
-                <li><strong>Personal Data:</strong> While using our Service, we may ask you to provide us with certain personally identifiable information that can be used to contact or identify you ("Personal Data"). This may include email addresses for invoicing or contact purposes.</li>
-                <li><strong>Financial Data:</strong> The app stores transaction details, budgets, invoices, receipts, mileage logs, and tax estimates locally on your device. This includes amounts, dates, merchants, categories, and notes. Data is secured with biometric/passcode protection.</li>
-                <li><strong>Usage Data:</strong> We may collect information on how the Service is accessed and used, such as app version and device type, for diagnostics.</li>
-                <li><strong>Location Data:</strong> For mileage tracking, we collect location data (with permission) to calculate distances and deductions. This is stored locally and not shared.</li>
-                <li><strong>Camera/Photos Data:</strong> For receipt scanning, we access your camera or photo library (with permission) to process images via on-device OCR. Images are stored locally.</li>
+                <li><strong>Personal Data:</strong> While using our Service, we may ask you to provide us with certain personally identifiable information that can be used to contact or identify you ("Personal Data"). This may include:
+                    <ul>
+                        <li>Email addresses for invoicing or contact purposes (optional)</li>
+                        <li>Client information you enter for invoice generation</li>
+                        <li>Business name and tax information you provide in settings</li>
+                    </ul>
+                </li>
+                <li><strong>Financial Data:</strong> The app stores transaction details, budgets, invoices, receipts, mileage logs, and tax estimates <strong>locally on your device only</strong>. This includes:
+                    <ul>
+                        <li>Amounts, dates, merchants, categories, and notes</li>
+                        <li>Budget allocations and spending limits</li>
+                        <li>Invoice details and payment tracking</li>
+                        <li>Tax estimate calculations and quarterly reminders</li>
+                        <li>Receipt images and extracted data</li>
+                    </ul>
+                    All financial data is secured with optional biometric (Face ID/Touch ID) or passcode protection.
+                </li>
+                <li><strong>Location Data:</strong> For mileage tracking features, we collect location data (with your explicit permission) to:
+                    <ul>
+                        <li>Calculate distances traveled for business purposes</li>
+                        <li>Track GPS coordinates during trips</li>
+                        <li>Calculate IRS-compliant mileage deductions</li>
+                    </ul>
+                    Location data is stored <strong>locally on your device only</strong> and is never transmitted to our servers. Background location is only used when you actively enable mileage tracking.
+                </li>
+                <li><strong>Camera/Photos Data:</strong> For receipt scanning features, we access your camera or photo library (with your permission) to:
+                    <ul>
+                        <li>Capture receipt images</li>
+                        <li>Extract transaction data via on-device OCR (Optical Character Recognition)</li>
+                    </ul>
+                    Images are stored locally in the app's secure container and are not uploaded to any server.
+                </li>
+                <li><strong>Notification Data:</strong> If you enable notifications, we use Apple's local notification system to send:
+                    <ul>
+                        <li>Quarterly tax deadline reminders</li>
+                        <li>Invoice payment due alerts</li>
+                        <li>Budget threshold warnings</li>
+                        <li>Mileage tracking status updates</li>
+                    </ul>
+                    These notifications are generated locally on your device.
+                </li>
+                <li><strong>Usage Data:</strong> We may collect non-identifiable information on how the Service is accessed and used, such as:
+                    <ul>
+                        <li>App version and build number</li>
+                        <li>Device type and iOS version</li>
+                        <li>Crash logs (anonymized) for diagnostics</li>
+                    </ul>
+                    This helps us improve app performance and fix bugs.
+                </li>
             </ul>
-            
+           
             <h3>Use of Data</h3>
             <p>FlowLedger uses the collected data for:</p>
             <ul>
-                <li>Providing financial tracking features (e.g., budgets, reports, tax estimates).</li>
-                <li>Automating tasks like recurring transactions and notifications.</li>
-                <li>Improving app performance and security.</li>
+                <li>Providing core financial tracking features (transactions, budgets, reports, tax estimates)</li>
+                <li>Automating tasks like recurring transactions and notifications</li>
+                <li>Calculating tax estimates based on IRS guidelines</li>
+                <li>Generating invoices and tracking payments</li>
+                <li>Recording business mileage for tax deductions</li>
+                <li>Improving app performance, security, and user experience</li>
             </ul>
-            <p>We do not share your data with third parties except as required by law or with your explicit consent (e.g., exports).</p>
-            
+            <p><strong>We do not share your data with third parties</strong> except as required by law or with your explicit consent (e.g., when you export reports or share invoices).</p>
+           
+            <h2>Data Storage and Sync</h2>
+            <h3>Local Storage</h3>
+            <p>All your data is stored locally on your device using Apple's SwiftData framework. This means:</p>
+            <ul>
+                <li>Your financial information never leaves your device unless you explicitly export it</li>
+                <li>We cannot access your data - we don't have the keys or infrastructure to do so</li>
+                <li>Data is isolated within the app's secure container</li>
+                <li>If you delete the app, all data is permanently removed from your device</li>
+            </ul>
+           
+            <h3>iCloud Sync (Optional - Future Feature)</h3>
+            <p>If you enable iCloud sync in a future version, your data will be stored in your personal iCloud account. This means:</p>
+            <ul>
+                <li>Data is synced across your devices signed in with the same Apple ID</li>
+                <li>Data is encrypted by Apple in transit and at rest</li>
+                <li>We still cannot access your data - it's stored in YOUR iCloud, not ours</li>
+                <li>You can disable iCloud sync at any time in Settings</li>
+            </ul>
+           
+            <h2>Bank Account Linking (Future Feature)</h2>
+            <p><em>Note: This feature is planned for version 2.0 and is not currently available.</em></p>
+            <p>When you choose to link bank accounts in a future version, we will use Plaid Inc.'s secure platform to access your transaction data with your explicit permission. This will involve:</p>
+            <ul>
+                <li><strong>Data Retrieved:</strong> Account balances, transaction history (typically last 90 days), account holder information</li>
+                <li><strong>Security:</strong> Your bank credentials are NEVER stored by FlowLedger - they remain securely with Plaid using bank-level encryption</li>
+                <li><strong>Control:</strong> You can disconnect linked accounts at any time in Settings</li>
+                <li><strong>Third Party:</strong> Review Plaid's privacy policy at <a href="https://plaid.com/legal" target="_blank">plaid.com/legal</a></li>
+            </ul>
+            <p>We will update this privacy policy before launching bank linking features.</p>
+           
             <h2>Security</h2>
-            <p>We value your trust in providing us your Personal Data, thus we are striving to use commercially acceptable means of protecting it. Data is stored securely on your device using Apple's SwiftData framework, with optional biometric encryption.</p>
-            
+            <p>We value your trust in providing us your Personal Data, thus we are striving to use commercially acceptable means of protecting it:</p>
+            <ul>
+                <li><strong>Local Storage:</strong> Data is stored securely on your device using Apple's SwiftData framework with iOS sandboxing</li>
+                <li><strong>Encryption:</strong> Optional biometric (Face ID/Touch ID) or passcode protection adds an additional layer of security</li>
+                <li><strong>No Cloud Storage:</strong> By default, we don't transmit your financial data to any servers</li>
+                <li><strong>App Lock:</strong> Require Face ID, Touch ID, or passcode to access the app</li>
+                <li><strong>Secure Exports:</strong> When you export data, files are encrypted and shared only via iOS secure sharing methods</li>
+            </ul>
+            <p>However, remember that no method of transmission over the internet, or method of electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your Personal Data, we cannot guarantee its absolute security.</p>
+           
+            <h2>Your Rights and Choices</h2>
+            <p>You have control over your data:</p>
+            <ul>
+                <li><strong>Access:</strong> View all your data within the app at any time</li>
+                <li><strong>Export:</strong> Export your data as CSV or PDF from Settings > Export Data</li>
+                <li><strong>Delete:</strong> Delete individual transactions or all data from Settings > Data Management</li>
+                <li><strong>Permissions:</strong> Manage location, camera, and notification permissions in iOS Settings > FlowLedger</li>
+                <li><strong>App Deletion:</strong> Deleting the app permanently removes all data from your device</li>
+            </ul>
+           
+            <h2>Children's Privacy</h2>
+            <p>Our Service does not address anyone under the age of 13. We do not knowingly collect personally identifiable information from children under 13. If you are a parent or guardian and you are aware that your child has provided us with Personal Data, please contact us.</p>
+           
+            <h2>California Privacy Rights (CCPA)</h2>
+            <p>If you are a California resident, you have the right to:</p>
+            <ul>
+                <li>Know what personal information we collect and how we use it</li>
+                <li>Request deletion of your personal information</li>
+                <li>Opt-out of the sale of personal information (we don't sell your data)</li>
+            </ul>
+            <p>To exercise these rights, contact us at flowledgerco@gmail.com.</p>
+           
+            <h2>European Privacy Rights (GDPR)</h2>
+            <p>If you are in the European Economic Area (EEA), you have rights including:</p>
+            <ul>
+                <li>Access to your personal data</li>
+                <li>Rectification of inaccurate data</li>
+                <li>Erasure ("right to be forgotten")</li>
+                <li>Data portability (via our export features)</li>
+            </ul>
+           
+            <h2>Tax Estimates Disclaimer</h2>
+            <p><strong>Important:</strong> FlowLedger provides tax estimation features for informational purposes only. These are NOT official tax advice. See our <a href="legal.html">Legal Disclaimer</a> for full details. Always consult a qualified tax professional before filing taxes or making financial decisions.</p>
+           
             <h2>Changes to This Privacy Policy</h2>
-            <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page.</p>
-            
+            <p>We may update our Privacy Policy from time to time. We will notify you of any changes by:</p>
+            <ul>
+                <li>Posting the new Privacy Policy on this page</li>
+                <li>Updating the "Last updated" date at the top</li>
+                <li>Notifying you via in-app alert for significant changes</li>
+            </ul>
+            <p>You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.</p>
+           
             <h2>Contact Us</h2>
-            <p>If you have any questions about this Privacy Policy, please contact us at <a href="mailto:flowledgerco@gmail.com">flowledgerco@gmail.com</a>.</p>
+            <p>If you have any questions about this Privacy Policy, please contact us:</p>
+            <ul>
+                <li>By email: <a href="mailto:flowledgerco@gmail.com">flowledgerco@gmail.com</a></li>
+                <li>Via our website: <a href="https://flowledgerco.github.io">flowledgerco.github.io</a></li>
+                <li>By visiting this page: <a href="contact.html">Contact Us</a></li>
+            </ul>
+           
+            <h2>Related Documents</h2>
+            <ul>
+                <li><a href="terms.html">Terms of Service</a></li>
+                <li><a href="legal.html">Tax & Legal Disclaimer</a></li>
+            </ul>
         </section>
     </main>
-
     <footer>
         <div class="footer-links">
             <a href="https://github.com/flowledgerco/flowledger">GitHub</a>
             <a href="contact.html">Contact</a>
             <a href="privacy.html">Privacy Policy</a>
+            <a href="terms.html">Terms of Service</a>
+            <a href="legal.html">Legal Disclaimer</a>
         </div>
        
         <div class="social-links">
