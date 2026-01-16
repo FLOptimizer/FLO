@@ -1,7 +1,7 @@
 //  ContentView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.3.1 - Fixed scope issues with private members
+//  Version 3.4 - Completed HapticService migration
 //  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
 //
 //  TAB ORDER:
@@ -11,6 +11,11 @@
 //  4. Invoices (weekly check)
 //  5. More (Clients, Mileage, Settings)
 //
+//  CHANGES v3.4:
+//  ✅ Migrated to centralized HapticService
+//  ✅ Removed manual UISelectionFeedbackGenerator
+//  ✅ Removed manual .prepare() calls (HapticService handles automatically)
+//
 //  CHANGES v3.3.1:
 //  ✅ FIXED: Moved private members outside of body (scope error)
 //  ✅ FIXED: ZStack brace placement
@@ -19,7 +24,6 @@
 //  ✅ Haptic feedback on tab switches (selection feedback)
 //  ✅ Smooth spring animation for unlock transition
 //  ✅ Tab selection state tracking
-//  ✅ Prepared haptics on appear for responsiveness
 
 import SwiftUI
 import SwiftData
@@ -36,8 +40,6 @@ struct ContentView: View {
     // Tab selection for haptic feedback
     @State private var selectedTab: Tab = .dashboard
     
-    // Haptic generator
-        
     // Tab enum for type safety
     enum Tab: Int, CaseIterable {
         case dashboard = 0
@@ -167,7 +169,6 @@ struct ContentView: View {
         case .active:
             // Refresh biometric status when becoming active
             authService.refreshBiometricStatus()
-            // Prepare haptics when app becomes active
         case .inactive:
             break
         @unknown default:

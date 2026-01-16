@@ -1,7 +1,7 @@
 //  FLOApp.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.7 - Added Onboarding + Fixed Property Order
+//  Version 2.8 - Removed duplicate LockView (ContentView handles security)
 //  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
 //
 // VERSION HISTORY:
@@ -11,12 +11,14 @@
 // v2.5: Added legacy Core Data store purge
 // v2.6: FORCED custom SwiftData store URL (FLOSwiftData.store)
 // v2.7: Added onboarding flow + fixed property declaration order
+// v2.8: Removed duplicate LockView - ContentView handles all security UI
 //
-// CRITICAL FIX IN v2.7:
-// ✅ All @StateObject and @AppStorage properties declared BEFORE init()
-// ✅ Added onboarding fullScreenCover
-// ✅ Added subscriptionManager environment object
-// ✅ Fixed task to use @StateObject property instead of .shared
+// SECURITY NOTE:
+// ContentView handles all authentication UI including:
+// - LockView display when not authenticated
+// - Biometric and passcode checks
+// - Smooth unlock transitions
+// FLOApp should NOT duplicate this logic.
 
 import SwiftUI
 import SwiftData
@@ -97,43 +99,33 @@ struct FLOApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ZStack {
-                ContentView()
-                    .modelContainer(container)
-                    .environmentObject(authService)
-                    .environmentObject(subscriptionManager)
-                    .fullScreenCover(isPresented: Binding(
-                        get: { !hasCompletedOnboarding },
-                        set: { hasCompletedOnboarding = !$0 }
-                    )) {
-                        OnboardingView()
-                    }
-                    .task {
-                        await subscriptionManager.initialize()
-                    }
-                    .onAppear {
-                        setupApp()
-                        
-                        // Inject ModelContext into MileageTrackingService
-                        MileageTrackingService.shared.inject(
-                            modelContext: container.mainContext
-                        )
-                        print("✅ ModelContext injected into MileageTrackingService")
-                    }
-                    .onChange(of: authService.isAuthenticated) { oldValue, newValue in
-                        if newValue {
-                            updateWidgetData()
-                        }
-                    }
-                    .blur(radius: authService.isAuthenticated ? 0 : 10)
-                
-                if !authService.isAuthenticated {
-                    LockView()
-                        .transition(.opacity)
-                        .environmentObject(authService)
+            ContentView()
+                .modelContainer(container)
+                .environmentObject(authService)
+                .environmentObject(subscriptionManager)
+                .fullScreenCover(isPresented: Binding(
+                    get: { !hasCompletedOnboarding },
+                    set: { hasCompletedOnboarding = !$0 }
+                )) {
+                    OnboardingView()
                 }
-            }
-            .animation(.easeInOut, value: authService.isAuthenticated)
+                .task {
+                    await subscriptionManager.initialize()
+                }
+                .onAppear {
+                    setupApp()
+                    
+                    // Inject ModelContext into MileageTrackingService
+                    MileageTrackingService.shared.inject(
+                        modelContext: container.mainContext
+                    )
+                    print("✅ ModelContext injected into MileageTrackingService")
+                }
+                .onChange(of: authService.isAuthenticated) { oldValue, newValue in
+                    if newValue {
+                        updateWidgetData()
+                    }
+                }
         }
     }
 

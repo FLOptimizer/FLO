@@ -1,8 +1,15 @@
 // MoreView.swift
 // FLO - Finance Ledger Optimizer
 //
-// Version 3.5.1 - Added stagger animations to Financial Tools for uniformity
+// Version 3.6 - Completed HapticService migration
 // Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//
+// CHANGES FROM v3.6:
+// ✅ Completed migration to centralized HapticService
+// ✅ Removed leftover haptic generator comments
+//
+// CHANGES FROM v3.5.1:
+// ✅ Added stagger animations to Financial Tools section for uniformity
 //
 // CHANGES FROM v3.5:
 // ✅ Added stagger animations to Financial Tools section for uniformity
@@ -21,9 +28,6 @@
 // - MenuRow (reusable component with haptics)
 // - FeatureBullet (reusable component)
 // - Bundle extension for version info
-//
-// PREVIOUS (v3.3):
-// - Added Accounts section
 
 import SwiftUI
 import SwiftData
@@ -38,8 +42,6 @@ struct MoreView: View {
     
     @State private var viewAppeared = false
     
-    // Haptic Generators
-        
     // Calculate this month's mileage for subtitle
     private var thisMonthMiles: Double {
         let calendar = Calendar.current
@@ -51,6 +53,7 @@ struct MoreView: View {
             .filter { $0.isInMonth(month, year: year) && $0.isBusinessTrip }
             .reduce(0) { $0 + $1.distanceMiles }
     }
+    
     // Calculate this month's totals for Reports subtitle
     private var thisMonthSummary: String {
         let calendar = Calendar.current
@@ -76,6 +79,7 @@ struct MoreView: View {
        
         return "\(incomeStr) in · \(expenseStr) out this month"
     }
+    
     // Active recurring count
     private var activeRecurringCount: Int {
         recurringTransactions.filter { $0.isActive }.count
@@ -84,7 +88,7 @@ struct MoreView: View {
     var body: some View {
         NavigationStack {
             List {
-                // MARK: - Financial Tools Section (NEW)
+                // MARK: - Financial Tools Section
                 Section {
                     NavigationLink(destination: ReportsView()) {
                         MenuRow(
@@ -118,6 +122,7 @@ struct MoreView: View {
                 } footer: {
                     Text("Track your financial health and automate regular transactions")
                 }
+                
                 // MARK: - Business Tools Section
                 Section {
                     NavigationLink(destination: ClientListView()) {
