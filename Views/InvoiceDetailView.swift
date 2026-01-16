@@ -41,11 +41,7 @@ struct InvoiceDetailView: View {
     @State private var actionsAppeared = false
     
     // MARK: - Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                    
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -134,21 +130,21 @@ struct InvoiceDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         showingEditSheet = true
                     } label: {
                         Label("Edit", systemImage: "pencil")
                     }
                     
                     Button {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         showingShareSheet = true
                     } label: {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }
                     
                     Button {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         duplicateInvoice()
                     } label: {
                         Label("Duplicate", systemImage: "doc.on.doc")
@@ -157,7 +153,7 @@ struct InvoiceDetailView: View {
                     Divider()
                     
                     Button(role: .destructive) {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         showingDeleteAlert = true
                     } label: {
                         Label("Delete", systemImage: "trash")
@@ -214,8 +210,7 @@ struct InvoiceDetailView: View {
             Text("A copy of this invoice has been created as a new draft.")
         }
         .onAppear {
-            prepareHaptics()
-            
+                        
             // Trigger entrance animations
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                 contentAppeared = true
@@ -232,13 +227,7 @@ struct InvoiceDetailView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        impactLight.prepare()
-        impactMedium.prepare()
-        selectionFeedback.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - View Components
     
     private var statusHeader: some View {
@@ -369,7 +358,7 @@ struct InvoiceDetailView: View {
                     .padding(.vertical, 4)
                     .opacity(contentAppeared ? 1 : 0)
                     .offset(x: contentAppeared ? 0 : -20)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(Double(index) * 0.05), value: contentAppeared)
+                    .animation(FLOAnimation.standard.delay(Double(index) * 0.05), value: contentAppeared)
                     
                     if payment != invoice.payments.last {
                         Divider()
@@ -480,7 +469,7 @@ struct InvoiceDetailView: View {
                     LineItemRow(item: item)
                         .opacity(contentAppeared ? 1 : 0)
                         .offset(x: contentAppeared ? 0 : -15)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(Double(index) * 0.03), value: contentAppeared)
+                        .animation(FLOAnimation.standard.delay(Double(index) * 0.03), value: contentAppeared)
                     
                     if item != invoice.items.last {
                         Divider()
@@ -607,7 +596,7 @@ struct InvoiceDetailView: View {
             // Mark as Paid button (only if not fully paid)
             if !invoice.isFullyPaid && invoice.status != InvoiceStatus.cancelled {
                 Button {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     showingMarkPaidSheet = true
                 } label: {
                     Label(
@@ -622,7 +611,7 @@ struct InvoiceDetailView: View {
             // Ready to Send button (only if draft)
             if invoice.status == InvoiceStatus.draft {
                 Button {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     showingMarkSentSheet = true
                 } label: {
                     Label("Ready to Send", systemImage: "paperplane.fill")
@@ -634,7 +623,7 @@ struct InvoiceDetailView: View {
             // Send Reminder button (if overdue and not paid)
             if invoice.isOverdue && invoice.status != InvoiceStatus.paid {
                 Button {
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                     sendReminder()
                 } label: {
                     Label("Send Reminder", systemImage: "bell.fill")
@@ -666,7 +655,7 @@ struct InvoiceDetailView: View {
                     }
                     .opacity(contentAppeared ? 1 : 0)
                     .offset(x: contentAppeared ? 0 : -20)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(Double(index) * 0.05), value: contentAppeared)
+                    .animation(FLOAnimation.standard.delay(Double(index) * 0.05), value: contentAppeared)
                 }
             }
         }
@@ -729,7 +718,7 @@ struct InvoiceDetailView: View {
     // MARK: - Actions
     
     private func sendReminder() {
-        notificationFeedback.notificationOccurred(.success)
+        HapticService.play(.success)
         Task {
             await InvoiceReminderService.shared.scheduleReminder(for: invoice, immediately: true)
         }
@@ -739,16 +728,16 @@ struct InvoiceDetailView: View {
     private func duplicateInvoice() {
         do {
             _ = try InvoiceService.shared.duplicateInvoice(invoice, context: modelContext)
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             showingDuplicateSuccess = true
         } catch {
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
             print("❌ Failed to duplicate invoice: \(error)")
         }
     }
     
     private func deleteInvoice() {
-        notificationFeedback.notificationOccurred(.warning)
+        HapticService.play(.warning)
         modelContext.delete(invoice)
         try? modelContext.save()
         dismiss()
@@ -783,8 +772,7 @@ struct AnimatedActionButtonStyle: ButtonStyle {
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
             .onChange(of: configuration.isPressed) { oldValue, newValue in
                 if newValue {
-                    let impact = UIImpactFeedbackGenerator(style: .light)
-                    impact.impactOccurred()
+                    HapticService.play(.light)
                 }
             }
     }
@@ -808,8 +796,7 @@ struct AnimatedSecondaryButtonStyle: ButtonStyle {
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
             .onChange(of: configuration.isPressed) { oldValue, newValue in
                 if newValue {
-                    let impact = UIImpactFeedbackGenerator(style: .light)
-                    impact.impactOccurred()
+                    HapticService.play(.light)
                 }
             }
     }

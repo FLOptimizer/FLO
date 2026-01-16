@@ -151,7 +151,7 @@ struct AddTransactionView: View {
             .disabled(isProcessingReceipt)
             .accessibilityLabel("Transaction classification")
             .onChange(of: financeType) { _, _ in
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticService.play(.light)
             }
         } header: {
             Text("Classification")
@@ -203,10 +203,10 @@ struct AddTransactionView: View {
                     Spacer()
                     if selectedAccount != nil {
                         Button("Clear") {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            withAnimation(FLOAnimation.quick) {
                                 selectedAccount = nil
                             }
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            HapticService.play(.light)
                         }
                         .font(.caption)
                         .foregroundStyle(Color.brandPrimary)
@@ -228,14 +228,14 @@ struct AddTransactionView: View {
                         isSelected: selectedAccount?.id == account.id,
                         showBalance: subscriptionManager.currentTier.hasBalanceTracking
                     ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        withAnimation(FLOAnimation.quick) {
                             if selectedAccount?.id == account.id {
                                 selectedAccount = nil
                             } else {
                                 selectedAccount = account
                             }
                         }
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        HapticService.play(.medium)
                     }
                 }
             }
@@ -589,11 +589,11 @@ struct AddTransactionView: View {
             let active = accounts.filter { $0.isActive }
             
             if let matching = active.first(where: { $0.financeType == newType && $0.isPrimary }) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(FLOAnimation.quick) {
                     selectedAccount = matching
                 }
             } else if let matching = active.first(where: { $0.financeType == newType }) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(FLOAnimation.quick) {
                     selectedAccount = matching
                 }
             }
@@ -658,13 +658,13 @@ struct AddTransactionView: View {
             try context.save()
             print("Transaction saved: \(transaction.displayName) - \(financeType.displayName) - Account: \(selectedAccount?.name ?? "None")")
             
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            HapticService.play(.success)
             
             dismiss()
         } catch {
             print("Failed to save transaction: \(error)")
             
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            HapticService.play(.error)
             
             isSaving = false
             validationMessage = "Failed to save transaction. Please try again."
@@ -748,7 +748,7 @@ struct AccountChipView: View {
         }
         .buttonStyle(PlainButtonStyle())
         .scaleEffect(isSelected ? 1.02 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        .animation(FLOAnimation.quick, value: isSelected)
     }
     
     private func formatCurrency(_ value: Double) -> String {

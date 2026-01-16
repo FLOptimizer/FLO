@@ -38,11 +38,7 @@ struct BudgetListView: View {
     @AppStorage("lastWrapUpBannerDismissedMonth") private var lastDismissedMonth: String = ""
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                    
     private let calendar = Calendar.current
     
     enum FinanceMode: String, CaseIterable {
@@ -204,14 +200,13 @@ struct BudgetListView: View {
                 BudgetHistoryView(allBudgets: allBudgets, allTransactions: allTransactions)
             }
             .onChange(of: financeMode) { oldValue, newValue in
-                selectionFeedback.selectionChanged()
+                HapticService.play(.selection)
             }
             .onChange(of: selectedTab) { oldValue, newValue in
-                selectionFeedback.selectionChanged()
+                HapticService.play(.selection)
             }
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
@@ -220,13 +215,7 @@ struct BudgetListView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - View Components
     
     private var financeModeSegment: some View {
@@ -267,7 +256,7 @@ struct BudgetListView: View {
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Button {
-                impactMedium.impactOccurred()
+                HapticService.play(.medium)
                 if selectedTab == .budgets {
                     showingCreateBudget = true
                 } else {
@@ -333,7 +322,7 @@ struct BudgetListView: View {
             Text(emptyBudgetsDescription)
         } actions: {
             Button {
-                impactMedium.impactOccurred()
+                HapticService.play(.medium)
                 showingCreateBudget = true
             } label: {
                 Text("Create Budget")
@@ -343,7 +332,7 @@ struct BudgetListView: View {
         }
         .opacity(viewAppeared ? 1 : 0)
         .scaleEffect(viewAppeared ? 1 : 0.95)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: viewAppeared)
+        .animation(FLOAnimation.standard, value: viewAppeared)
     }
     
     private var budgetsList: some View {
@@ -365,7 +354,7 @@ struct BudgetListView: View {
                         .padding(.horizontal)
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 20)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 }
                 
                 // Month header
@@ -373,7 +362,7 @@ struct BudgetListView: View {
                     .padding(.horizontal)
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
                 // Current month budgets
                 if currentMonthBudgets.isEmpty {
@@ -381,7 +370,7 @@ struct BudgetListView: View {
                         .padding(.horizontal)
                         .opacity(viewAppeared ? 1 : 0)
                         .scaleEffect(viewAppeared ? 1 : 0.95)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 } else {
                     ForEach(Array(currentMonthBudgets.enumerated()), id: \.element.id) { index, budget in
                         NavigationLink(destination: EditBudgetView(budget: budget)) {
@@ -399,7 +388,7 @@ struct BudgetListView: View {
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 20)
                         .animation(
-                            .spring(response: 0.5, dampingFraction: 0.8)
+                            FLOAnimation.standard
                             .delay(0.2 + Double(index) * 0.05),
                             value: viewAppeared
                         )
@@ -411,7 +400,7 @@ struct BudgetListView: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
                     .opacity(viewAppeared ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
                 
                 Spacer(minLength: 20)
             }
@@ -462,7 +451,7 @@ struct BudgetListView: View {
             }
             
             Button {
-                impactLight.impactOccurred()
+                HapticService.play(.light)
                 showingBudgetHistory = true
             } label: {
                 HStack {
@@ -482,9 +471,9 @@ struct BudgetListView: View {
     }
     
     private func dismissWrapUpBanner() {
-        impactLight.impactOccurred()
+        HapticService.play(.light)
         
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+        withAnimation(FLOAnimation.quick) {
             lastDismissedMonth = formatMonthKey(currentMonthStart)
         }
     }
@@ -564,7 +553,7 @@ struct BudgetListView: View {
     }
     
     private func copyPreviousMonthBudgets() {
-        impactMedium.impactOccurred()
+        HapticService.play(.medium)
         
         for previousBudget in previousMonthBudgets {
             let carryOver = previousBudget.budgetType == .envelope ?
@@ -584,10 +573,10 @@ struct BudgetListView: View {
         
         do {
             try modelContext.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
         } catch {
             print("❌ Failed to copy budgets: \(error)")
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
         }
     }
     
@@ -601,7 +590,7 @@ struct BudgetListView: View {
     
     private var viewHistoryButton: some View {
         Button {
-            impactLight.impactOccurred()
+            HapticService.play(.light)
             showingBudgetHistory = true
         } label: {
             HStack {
@@ -639,7 +628,7 @@ struct BudgetListView: View {
             Text(emptyRecurringDescription)
         } actions: {
             Button {
-                impactMedium.impactOccurred()
+                HapticService.play(.medium)
                 showingAddRecurring = true
             } label: {
                 Text("Add Recurring")
@@ -649,7 +638,7 @@ struct BudgetListView: View {
         }
         .opacity(viewAppeared ? 1 : 0)
         .scaleEffect(viewAppeared ? 1 : 0.95)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: viewAppeared)
+        .animation(FLOAnimation.standard, value: viewAppeared)
     }
     
     private var recurringList: some View {
@@ -701,16 +690,16 @@ struct BudgetListView: View {
     // MARK: - Actions
     
     private func deleteRecurring(at offsets: IndexSet) {
-        impactMedium.impactOccurred()
+        HapticService.play(.medium)
         
         let recurringToDelete = offsets.map { filteredRecurring[$0] }
         recurringToDelete.forEach { modelContext.delete($0) }
         
         do {
             try modelContext.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
         } catch {
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
         }
     }
 }

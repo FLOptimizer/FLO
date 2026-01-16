@@ -31,12 +31,7 @@ struct EditCategoryView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                        
     init(category: Category) {
         self.category = category
         _name = State(initialValue: category.name)
@@ -65,30 +60,30 @@ struct EditCategoryView: View {
                 nameSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 defaultCategoryWarning
                 
                 iconSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 colorSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
                 taxDeductibleSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
                 if !category.isDefault {
                     deleteSection
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 10)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 }
             }
             .navigationTitle("Edit Category")
@@ -96,13 +91,13 @@ struct EditCategoryView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         save()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -117,8 +112,7 @@ struct EditCategoryView: View {
                 Text("Are you sure you want to delete this category? This action cannot be undone.")
             }
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
@@ -127,14 +121,7 @@ struct EditCategoryView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        impactHeavy.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Sections
     
     private var nameSection: some View {
@@ -183,8 +170,8 @@ struct EditCategoryView: View {
                     isSelected: selectedIcon == icon,
                     color: Color(flowHex: selectedColor)
                 ) {
-                    selectionFeedback.selectionChanged()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    HapticService.play(.selection)
+                    withAnimation(FLOAnimation.quick) {
                         selectedIcon = icon
                     }
                 }
@@ -214,8 +201,8 @@ struct EditCategoryView: View {
                     color: color,
                     isSelected: selectedColor == color
                 ) {
-                    selectionFeedback.selectionChanged()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    HapticService.play(.selection)
+                    withAnimation(FLOAnimation.quick) {
                         selectedColor = color
                     }
                 }
@@ -228,7 +215,7 @@ struct EditCategoryView: View {
         Section {
             Toggle("Tax Deductible", isOn: $isTaxDeductible)
                 .onChange(of: isTaxDeductible) { _, _ in
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                 }
         } footer: {
             Text("Tax deductible categories help you track business expenses for tax reporting")
@@ -239,7 +226,7 @@ struct EditCategoryView: View {
     private var deleteSection: some View {
         Section {
             Button(role: .destructive) {
-                impactHeavy.impactOccurred()
+                HapticService.play(.heavy)
                 showingDeleteAlert = true
             } label: {
                 HStack {
@@ -266,10 +253,10 @@ struct EditCategoryView: View {
         
         do {
             try context.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             dismiss()
         } catch {
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
             print("❌ Failed to save category: \(error)")
         }
     }
@@ -279,10 +266,10 @@ struct EditCategoryView: View {
         
         do {
             try context.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             dismiss()
         } catch {
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
             print("❌ Failed to delete category: \(error)")
         }
     }

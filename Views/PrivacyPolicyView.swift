@@ -20,8 +20,7 @@ struct PrivacyPolicyView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    
+        
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -54,7 +53,7 @@ struct PrivacyPolicyView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 // Key Privacy Principles
                 VStack(alignment: .leading, spacing: 12) {
@@ -90,7 +89,7 @@ struct PrivacyPolicyView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 // What We Collect
                 PrivacySection(
@@ -112,7 +111,7 @@ struct PrivacyPolicyView: View {
                 )
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
                 // Automatic Collection
                 PrivacySection(
@@ -133,7 +132,7 @@ struct PrivacyPolicyView: View {
                 )
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
                 // How We Use Data
                 PrivacySection(
@@ -156,7 +155,7 @@ struct PrivacyPolicyView: View {
                 )
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 
                 // Data Storage
                 PrivacySection(
@@ -179,7 +178,7 @@ struct PrivacyPolicyView: View {
                 )
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                 
                 // Your Rights
                 VStack(alignment: .leading, spacing: 12) {
@@ -200,7 +199,7 @@ struct PrivacyPolicyView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                 
                 // Contact Information
                 VStack(alignment: .leading, spacing: 8) {
@@ -220,7 +219,7 @@ struct PrivacyPolicyView: View {
                         .foregroundStyle(.blue)
                     }
                     .simultaneousGesture(TapGesture().onEnded {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                     })
                     
                     Text("Finch & Poppy Co LLC")
@@ -232,7 +231,7 @@ struct PrivacyPolicyView: View {
                 .cornerRadius(8)
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
                 
                 // Online Privacy Policy Link
                 Link(destination: AppConstants.privacyPolicyURL) {
@@ -249,11 +248,11 @@ struct PrivacyPolicyView: View {
                     .cornerRadius(10)
                 }
                 .simultaneousGesture(TapGesture().onEnded {
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                 })
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.45), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
                 
                 // Version Info
                 Text("Last Updated: January 1, 2025 • FLO v\(AppConstants.appVersion)")
@@ -267,8 +266,7 @@ struct PrivacyPolicyView: View {
         .navigationTitle("Privacy Policy")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            impactLight.prepare()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }

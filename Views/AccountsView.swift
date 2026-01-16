@@ -140,7 +140,7 @@ struct AccountsView: View {
         }
         .alert("Delete Account", isPresented: $showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticService.play(.light)
             }
             Button("Delete", role: .destructive) {
                 if let account = accountToDelete {
@@ -249,7 +249,7 @@ struct AccountsView: View {
             }
             .pickerStyle(.segmented)
             .onChange(of: selectedSegment) { _, _ in
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticService.play(.light)
             }
         }
         .listRowBackground(Color.clear)
@@ -264,20 +264,20 @@ struct AccountsView: View {
                 AccountRowEnhanced(account: account)
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        HapticService.play(.light)
                         accountToEdit = account
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
                             accountToDelete = account
                             showingDeleteConfirmation = true
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            HapticService.play(.medium)
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
                         
                         Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            HapticService.play(.light)
                             accountToEdit = account
                         } label: {
                             Label("Edit", systemImage: "pencil")
@@ -322,7 +322,7 @@ struct AccountsView: View {
                     .opacity(0.6)
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        HapticService.play(.light)
                         accountToEdit = account
                     }
                     .swipeActions(edge: .trailing) {
@@ -363,7 +363,7 @@ struct AccountsView: View {
                     .multilineTextAlignment(.center)
                 
                 Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    HapticService.play(.medium)
                     showingAddAccount = true
                 } label: {
                     Label("Add Your First Account", systemImage: "plus.circle.fill")
@@ -383,7 +383,7 @@ struct AccountsView: View {
         Section("Quick Add") {
             ForEach(suggestedAccounts, id: \.name) { suggestion in
                 Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticService.play(.light)
                     createAccount(name: suggestion.name, type: suggestion.type, financeType: suggestion.financeType)
                 } label: {
                     HStack(spacing: 12) {
@@ -439,7 +439,7 @@ struct AccountsView: View {
                     
                     if accounts.count >= limit {
                         Button("Upgrade") {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            HapticService.play(.medium)
                             showingUpgradePrompt = true
                         }
                         .font(.subheadline)
@@ -461,7 +461,7 @@ struct AccountsView: View {
             // Plaid integration teaser for non-Pro users
             if !subscriptionManager.currentTier.hasPlaidIntegration {
                 Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticService.play(.light)
                     showingUpgradePrompt = true
                 } label: {
                     HStack(spacing: 12) {
@@ -512,16 +512,16 @@ struct AccountsView: View {
     
     private func handleAddAccount() {
         if canAddMoreAccounts {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            HapticService.play(.medium)
             showingAddAccount = true
         } else {
-            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            HapticService.play(.warning)
             showingUpgradePrompt = true
         }
     }
     
     private func setPrimaryAccount(_ account: Account) {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticService.play(.medium)
         
         // Remove primary from all others
         for acc in accounts where acc.isPrimary {
@@ -534,42 +534,42 @@ struct AccountsView: View {
         
         do {
             try modelContext.save()
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            HapticService.play(.success)
         } catch {
             print("❌ Failed to set primary account: \(error)")
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            HapticService.play(.error)
         }
     }
     
     private func reactivateAccount(_ account: Account) {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticService.play(.medium)
         
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(FLOAnimation.quick) {
             account.isActive = true
             account.touch()
         }
         
         do {
             try modelContext.save()
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            HapticService.play(.success)
         } catch {
             print("❌ Failed to reactivate account: \(error)")
         }
     }
     
     private func deleteAccount(_ account: Account) {
-        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        HapticService.play(.heavy)
         
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(FLOAnimation.quick) {
             modelContext.delete(account)
         }
         
         do {
             try modelContext.save()
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            HapticService.play(.success)
         } catch {
             print("❌ Failed to delete account: \(error)")
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            HapticService.play(.error)
         }
         
         accountToDelete = nil
@@ -577,7 +577,7 @@ struct AccountsView: View {
     
     private func createAccount(name: String, type: AccountType, financeType: Transaction.FinanceType) {
         guard canAddMoreAccounts else {
-            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            HapticService.play(.warning)
             showingUpgradePrompt = true
             return
         }
@@ -589,16 +589,16 @@ struct AccountsView: View {
             financeType: financeType
         )
         
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(FLOAnimation.quick) {
             modelContext.insert(account)
         }
         
         do {
             try modelContext.save()
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            HapticService.play(.success)
         } catch {
             print("❌ Failed to create account: \(error)")
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            HapticService.play(.error)
         }
     }
     
@@ -803,7 +803,7 @@ struct AddAccountView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
@@ -820,7 +820,7 @@ struct AddAccountView: View {
     }
     
     private func saveAccount() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticService.play(.medium)
         
         // If setting as primary, remove primary from others
         if isPrimary {
@@ -847,11 +847,11 @@ struct AddAccountView: View {
         
         do {
             try modelContext.save()
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            HapticService.play(.success)
             dismiss()
         } catch {
             print("❌ Failed to save account: \(error)")
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            HapticService.play(.error)
         }
     }
 }
@@ -1074,7 +1074,7 @@ struct EditAccountView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
@@ -1091,7 +1091,7 @@ struct EditAccountView: View {
     }
     
     private func saveChanges() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticService.play(.medium)
         
         // If setting as primary, remove primary from others
         if isPrimary && !account.isPrimary {
@@ -1114,21 +1114,21 @@ struct EditAccountView: View {
         
         do {
             try modelContext.save()
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            HapticService.play(.success)
             dismiss()
         } catch {
             print("❌ Failed to save account changes: \(error)")
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            HapticService.play(.error)
         }
     }
     
     private func disconnectPlaid() {
-        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        HapticService.play(.heavy)
         account.disconnectPlaid()
         
         do {
             try modelContext.save()
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            HapticService.play(.success)
         } catch {
             print("❌ Failed to disconnect Plaid: \(error)")
         }

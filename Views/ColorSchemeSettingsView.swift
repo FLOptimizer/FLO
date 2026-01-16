@@ -24,11 +24,7 @@ struct ColorSchemeSettingsView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                    
     init() {
         _selectedScheme = State(initialValue: ColorSchemeManager.shared.currentScheme)
     }
@@ -51,7 +47,7 @@ struct ColorSchemeSettingsView: View {
                             .fontWeight(.bold)
                             .foregroundStyle(.white)
                             .opacity(viewAppeared ? 1 : 0)
-                            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                            .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                         
                         Text("Pick a color scheme that matches your personality and makes managing money feel great")
                             .font(.subheadline)
@@ -59,7 +55,7 @@ struct ColorSchemeSettingsView: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
                             .opacity(viewAppeared ? 1 : 0)
-                            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                            .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                     }
                     .padding(.vertical)
                     
@@ -71,8 +67,8 @@ struct ColorSchemeSettingsView: View {
                                 isSelected: selectedScheme.id == scheme.id
                             )
                             .onTapGesture {
-                                impactMedium.impactOccurred()
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                HapticService.play(.medium)
+                                withAnimation(FLOAnimation.quick) {
                                     selectedScheme = scheme
                                     applyScheme(scheme)
                                 }
@@ -80,7 +76,7 @@ struct ColorSchemeSettingsView: View {
                             .opacity(viewAppeared ? 1 : 0)
                             .offset(y: viewAppeared ? 0 : 30)
                             .animation(
-                                .spring(response: 0.5, dampingFraction: 0.8)
+                                FLOAnimation.standard
                                 .delay(0.2 + Double(index) * 0.08),
                                 value: viewAppeared
                             )
@@ -96,7 +92,7 @@ struct ColorSchemeSettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                     .fontWeight(.semibold)
@@ -108,8 +104,7 @@ struct ColorSchemeSettingsView: View {
                 }
             }
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
@@ -118,13 +113,7 @@ struct ColorSchemeSettingsView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     private var confirmationToast: some View {
         HStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
@@ -149,7 +138,7 @@ struct ColorSchemeSettingsView: View {
     
     private func applyScheme(_ scheme: FLOColorScheme) {
         colorSchemeManager.selectScheme(scheme)
-        notificationFeedback.notificationOccurred(.success)
+        HapticService.play(.success)
         
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
             showConfirmation = true
@@ -243,7 +232,7 @@ struct ColorSchemeCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: isSelected ? Color.flow(scheme.primary).opacity(0.3) : .clear, radius: 8)
         .scaleEffect(isSelected ? 1.02 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        .animation(FLOAnimation.quick, value: isSelected)
     }
     
     private func colorBlock(_ color: Color) -> some View {

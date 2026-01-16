@@ -195,8 +195,7 @@ struct AgingReportView: View {
     // MARK: - Animations
     
     private func animateEntrance() {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+        HapticService.play(.medium)
         
         withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
             headerVisible = true
@@ -304,10 +303,9 @@ struct AnimatedAgingBucketRow: View {
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .opacity(isVisible ? 1 : 0)
         .offset(x: isVisible ? 0 : -20)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7).delay(delay), value: isVisible)
+        .animation(FLOAnimation.quick.delay(delay), value: isVisible)
         .onTapGesture {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
+            HapticService.play(.medium)
             
             withAnimation(.spring(response: 0.15, dampingFraction: 0.6)) {
                 isPressed = true
@@ -428,7 +426,7 @@ struct AnimatedInsightRow: View {
     
     private func startPulse() {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay + 0.3) {
-            withAnimation(.easeInOut(duration: 0.5).repeatCount(2, autoreverses: true)) {
+            withAnimation(FLOAnimation.slowEase.repeatCount(2, autoreverses: true)) {
                 lightbulbPulse = true
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {

@@ -39,8 +39,7 @@ struct MoreView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    
+        
     // Calculate this month's mileage for subtitle
     private var thisMonthMiles: Double {
         let calendar = Calendar.current
@@ -98,7 +97,7 @@ struct MoreView: View {
                     }
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(x: viewAppeared ? 0 : 20)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.0), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.0), value: viewAppeared)
                    
                     NavigationLink(destination: RecurringListView()) {
                         MenuRow(
@@ -113,7 +112,7 @@ struct MoreView: View {
                     }
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(x: viewAppeared ? 0 : 20)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 } header: {
                     Text("Financial Tools")
                 } footer: {
@@ -132,7 +131,7 @@ struct MoreView: View {
                     }
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(x: viewAppeared ? 0 : 20)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                     
                     NavigationLink(destination: MileageTrackingMainView()) {
                         MenuRow(
@@ -147,7 +146,7 @@ struct MoreView: View {
                     }
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(x: viewAppeared ? 0 : 20)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                     
                     NavigationLink(destination: AccountsView()) {
                         MenuRow(
@@ -162,7 +161,7 @@ struct MoreView: View {
                     }
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(x: viewAppeared ? 0 : 20)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 } header: {
                     Text("Business Tools")
                 } footer: {
@@ -182,7 +181,7 @@ struct MoreView: View {
                     }
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(x: viewAppeared ? 0 : 20)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 } header: {
                     Text("App")
                 }
@@ -200,7 +199,7 @@ struct MoreView: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("App version \(Bundle.main.appVersionLong)")
                     .opacity(viewAppeared ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                     
                     HStack {
                         Text("Mileage Service")
@@ -211,20 +210,19 @@ struct MoreView: View {
                     }
                     .font(.subheadline)
                     .opacity(viewAppeared ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                 } header: {
                     Text("About")
                 } footer: {
                     Text("© 2025 Finch & Poppy Co LLC")
                         .opacity(viewAppeared ? 1 : 0)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
                 }
             }
             .navigationTitle("More")
             .navigationBarTitleDisplayMode(.large)
             .onAppear {
-                impactLight.prepare()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
                 print("📱 MoreView appeared")

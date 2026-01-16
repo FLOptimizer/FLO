@@ -257,8 +257,8 @@ struct ManualTripEntryView: View {
                 Toggle("Business Trip", isOn: $isBusinessTrip)
                     .tint(AppConstants.primaryColor)
                     .onChange(of: isBusinessTrip) { _, newValue in
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+
+                        HapticService.play(.medium)
                         
                         if !newValue {
                             purpose = .personal
@@ -337,8 +337,8 @@ struct ManualTripEntryView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
+
+                    HapticService.play(.medium)
                     dismiss()
                 }
                 .disabled(isSaving)
@@ -397,8 +397,8 @@ struct ManualTripEntryView: View {
     // MARK: - Address Selection
     
     private func selectStartAddress(_ completion: MKLocalSearchCompletion) {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+
+        HapticService.play(.medium)
         
         startAddress = "\(completion.title), \(completion.subtitle)"
         showStartSuggestions = false
@@ -411,8 +411,7 @@ struct ManualTripEntryView: View {
     }
     
     private func selectEndAddress(_ completion: MKLocalSearchCompletion) {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+        HapticService.play(.medium)
         
         endAddress = "\(completion.title), \(completion.subtitle)"
         showEndSuggestions = false
@@ -550,8 +549,8 @@ struct ManualTripEntryView: View {
             return
         }
         
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+
+        HapticService.play(.medium)
         
         let start = startAddress.trimmingCharacters(in: .whitespacesAndNewlines)
         let end = endAddress.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -681,7 +680,7 @@ struct AddressAutocompleteField: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: showSuggestions)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: coordinate != nil)
+        .animation(FLOAnimation.quick, value: coordinate != nil)
     }
 }
 

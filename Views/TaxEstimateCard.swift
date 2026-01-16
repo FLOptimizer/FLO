@@ -109,8 +109,8 @@ struct TaxEstimateCard: View {
                 Spacer()
                 
                 Button {
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
+
+                    HapticService.play(.medium)
                     
                     if subscriptionManager.currentTier.hasTaxEstimates {
                         showTaxDetails = true
@@ -258,8 +258,8 @@ struct TaxEstimateCard: View {
             }
             
             Button {
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.impactOccurred()
+
+                HapticService.play(.medium)
                 
                 withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                     upgradeButtonScale = 0.95
@@ -591,8 +591,8 @@ struct TaxDetailsView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+
+                        HapticService.play(.medium)
                         dismiss()
                     }
                 }

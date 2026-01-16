@@ -122,8 +122,7 @@ struct BusinessProfileDiagnosticView: View {
     // MARK: - Animated Actions
     
     private func runDiagnosticsAnimated() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        HapticService.play(.medium)
         
         withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
             runButtonScale = 0.95
@@ -148,8 +147,7 @@ struct BusinessProfileDiagnosticView: View {
     }
     
     private func createTestProfileAnimated() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        HapticService.play(.medium)
         
         withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
             createButtonScale = 0.95
@@ -306,13 +304,11 @@ struct BusinessProfileDiagnosticView: View {
             
             // Extra celebration haptic
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                let celebrationGenerator = UIImpactFeedbackGenerator(style: .heavy)
-                celebrationGenerator.impactOccurred()
+                HapticService.play(.heavy)
             }
         } else {
             // Failure haptic
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.error)
+            HapticService.play(.error)
         }
     }
     
@@ -321,8 +317,8 @@ struct BusinessProfileDiagnosticView: View {
         
         let profile = BusinessProfile(
             businessName: "Urban Cowboy",
-            email: "ttcn@example.com",
-            phone: "9519727164",
+            email: "UCad@example.com",
+            phone: "2153626754",
             website: "www.yourbusiness.com",
             taxId: "12-3456789"
         )
@@ -413,7 +409,7 @@ struct AnimatedDiagnosticRow: View {
         }
         .opacity(isVisible ? 1 : 0)
         .offset(x: isVisible ? 0 : -10)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7).delay(delay), value: isVisible)
+        .animation(FLOAnimation.quick.delay(delay), value: isVisible)
         .onChange(of: isVisible) { _, newValue in
             if newValue && (result.type == .success || result.type == .celebration) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay + 0.2) {

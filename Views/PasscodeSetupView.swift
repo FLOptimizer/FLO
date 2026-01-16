@@ -90,7 +90,7 @@ struct PasscodeSetupView: View {
                                     .symbolEffect(.bounce, value: step)
                             }
                         }
-                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: showSuccessCheck)
+                        .animation(FLOAnimation.quick, value: showSuccessCheck)
                         
                         Text(headerText)
                             .font(.title2)
@@ -120,7 +120,7 @@ struct PasscodeSetupView: View {
                     .accessibilityLabel("\(currentPasscodeInput.count) of \(passcodeLength) digits entered")
                     .offset(x: shakeOffset)
                     .opacity(dotsOpacity)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: passcodeLength)
+                    .animation(FLOAnimation.quick, value: passcodeLength)
                     
                     Spacer()
                     
@@ -174,8 +174,7 @@ struct PasscodeSetupView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+                        HapticService.play(.heavy)
                         handleCancel()
                     }
                 }
@@ -227,7 +226,7 @@ struct PasscodeSetupView: View {
                 Capsule()
                     .fill(stepIndex >= index ? AppConstants.primaryColor : Color.gray.opacity(0.3))
                     .frame(width: stepIndex == index ? 24 : 12, height: 6)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: stepIndex)
+                    .animation(FLOAnimation.quick, value: stepIndex)
             }
         }
     }
@@ -258,7 +257,7 @@ struct PasscodeSetupView: View {
     }
     
     private func animateStepTransition() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(FLOAnimation.quick) {
             stepTransition = true
         }
         
@@ -320,8 +319,7 @@ struct PasscodeSetupView: View {
             pressedButton = nil
         }
         
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+        HapticService.play(.heavy)
         
         switch step {
         case .enterCurrent:
@@ -348,8 +346,8 @@ struct PasscodeSetupView: View {
     }
     
     private func deleteLastDigit() {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+
+        HapticService.play(.medium)
         
         switch step {
         case .enterCurrent:
@@ -375,7 +373,7 @@ struct PasscodeSetupView: View {
             
             animateStepTransition()
             
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(FLOAnimation.quick) {
                 step = .enterNew
                 currentPasscode = ""
             }
@@ -393,7 +391,7 @@ struct PasscodeSetupView: View {
         
         animateStepTransition()
         
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(FLOAnimation.quick) {
             step = .confirmNew
         }
     }
@@ -406,14 +404,13 @@ struct PasscodeSetupView: View {
                 generator.notificationOccurred(.success)
                 
                 // Show success checkmark
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(FLOAnimation.quick) {
                     showSuccessCheck = true
                 }
                 
                 // Celebration haptic
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    let celebrationGenerator = UIImpactFeedbackGenerator(style: .heavy)
-                    celebrationGenerator.impactOccurred()
+                    HapticService.play(.heavy)
                 }
                 
                 // Clear passcodes from memory
@@ -445,7 +442,7 @@ struct PasscodeSetupView: View {
         triggerShake()
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(FLOAnimation.quick) {
                 passcode = ""
                 confirmPasscode = ""
                 step = .enterNew

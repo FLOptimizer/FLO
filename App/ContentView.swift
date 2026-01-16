@@ -37,8 +37,7 @@ struct ContentView: View {
     @State private var selectedTab: Tab = .dashboard
     
     // Haptic generator
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    
+        
     // Tab enum for type safety
     enum Tab: Int, CaseIterable {
         case dashboard = 0
@@ -106,11 +105,7 @@ struct ContentView: View {
         }
         .onChange(of: selectedTab) { oldValue, newValue in
             // Haptic feedback on tab change
-            selectionFeedback.selectionChanged()
-        }
-        .onAppear {
-            // Prepare haptics for responsiveness
-            selectionFeedback.prepare()
+            HapticService.play(.selection)
         }
         .preferredColorScheme(colorScheme)
     }
@@ -173,7 +168,6 @@ struct ContentView: View {
             // Refresh biometric status when becoming active
             authService.refreshBiometricStatus()
             // Prepare haptics when app becomes active
-            selectionFeedback.prepare()
         case .inactive:
             break
         @unknown default:

@@ -39,12 +39,7 @@ struct EditRecurringView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                        
     init(recurringTransaction: RecurringTransaction) {
         self.recurringTransaction = recurringTransaction
         _amount = State(initialValue: String(format: "%.2f", recurringTransaction.amount))
@@ -76,13 +71,13 @@ struct EditRecurringView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         save()
                     }
                     .disabled(!isValid)
@@ -90,7 +85,7 @@ struct EditRecurringView: View {
             }
             .alert("Delete Recurring Transaction", isPresented: $showingDeleteAlert) {
                 Button("Cancel", role: .cancel) {
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                 }
                 Button("Delete", role: .destructive) {
                     deleteRecurring()
@@ -99,8 +94,7 @@ struct EditRecurringView: View {
                 Text("Are you sure you want to delete this recurring transaction? This will not affect any transactions already created.")
             }
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
@@ -109,14 +103,7 @@ struct EditRecurringView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        impactHeavy.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Sections
     
     private var typeSection: some View {
@@ -129,12 +116,12 @@ struct EditRecurringView: View {
             }
             .pickerStyle(.segmented)
             .onChange(of: isIncome) { _, _ in
-                selectionFeedback.selectionChanged()
+                HapticService.play(.selection)
             }
         }
         .opacity(viewAppeared ? 1 : 0)
         .offset(y: viewAppeared ? 0 : 10)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
     }
     
     private var detailsSection: some View {
@@ -149,7 +136,7 @@ struct EditRecurringView: View {
         }
         .opacity(viewAppeared ? 1 : 0)
         .offset(y: viewAppeared ? 0 : 10)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
     }
     
     private var frequencySection: some View {
@@ -160,12 +147,12 @@ struct EditRecurringView: View {
                 }
             }
             .onChange(of: frequency) { _, _ in
-                selectionFeedback.selectionChanged()
+                HapticService.play(.selection)
             }
         }
         .opacity(viewAppeared ? 1 : 0)
         .offset(y: viewAppeared ? 0 : 10)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
     }
     
     private var startDateSection: some View {
@@ -174,14 +161,14 @@ struct EditRecurringView: View {
         }
         .opacity(viewAppeared ? 1 : 0)
         .offset(y: viewAppeared ? 0 : 10)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
     }
     
     private var endDateSection: some View {
         Section {
             Toggle("Set End Date", isOn: $hasEndDate)
                 .onChange(of: hasEndDate) { _, _ in
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                 }
             
             if hasEndDate {
@@ -195,7 +182,7 @@ struct EditRecurringView: View {
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: hasEndDate)
         .opacity(viewAppeared ? 1 : 0)
         .offset(y: viewAppeared ? 0 : 10)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
     }
     
     private var categorySection: some View {
@@ -222,12 +209,12 @@ struct EditRecurringView: View {
                 }
             }
             .onChange(of: selectedCategory) { _, _ in
-                selectionFeedback.selectionChanged()
+                HapticService.play(.selection)
             }
         }
         .opacity(viewAppeared ? 1 : 0)
         .offset(y: viewAppeared ? 0 : 10)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
     }
     
     private func categoryLabel(for category: Category) -> some View {
@@ -244,20 +231,20 @@ struct EditRecurringView: View {
         Section {
             Toggle("Active", isOn: $isActive)
                 .onChange(of: isActive) { _, _ in
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                 }
         } footer: {
             Text("Inactive recurring transactions will not generate new transactions")
         }
         .opacity(viewAppeared ? 1 : 0)
         .offset(y: viewAppeared ? 0 : 10)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
     }
     
     private var deleteSection: some View {
         Section {
             Button(role: .destructive) {
-                impactHeavy.impactOccurred()
+                HapticService.play(.heavy)
                 showingDeleteAlert = true
             } label: {
                 HStack {
@@ -269,7 +256,7 @@ struct EditRecurringView: View {
         }
         .opacity(viewAppeared ? 1 : 0)
         .offset(y: viewAppeared ? 0 : 10)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
     }
     
     // MARK: - Computed Properties
@@ -328,11 +315,11 @@ struct EditRecurringView: View {
         
         do {
             try context.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             dismiss()
         } catch {
             print("❌ Failed to save recurring transaction: \(error)")
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
         }
     }
     
@@ -341,11 +328,11 @@ struct EditRecurringView: View {
         
         do {
             try context.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             dismiss()
         } catch {
             print("❌ Failed to delete recurring transaction: \(error)")
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
         }
     }
 }

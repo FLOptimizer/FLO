@@ -217,8 +217,7 @@ struct MarkAsSentView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+                        HapticService.play(.medium)
                         dismiss()
                     }
                 }
@@ -277,8 +276,7 @@ struct MarkAsSentView: View {
     
     private func markAsSent() {
         // Button press haptic and animation
-        let impactGenerator = UIImpactFeedbackGenerator(style: .medium)
-        impactGenerator.impactOccurred()
+        HapticService.play(.heavy)
         
         withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
             markButtonPressed = true
@@ -309,8 +307,7 @@ struct MarkAsSentView: View {
             
             // Secondary celebratory haptic
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                let celebrationGenerator = UIImpactFeedbackGenerator(style: .heavy)
-                celebrationGenerator.impactOccurred()
+                HapticService.play(.heavy)
             }
             
             showingSuccess = true
@@ -328,7 +325,7 @@ struct MarkAsSentView: View {
             isMarking = false
             
             // Reset fly away animation on error
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(FLOAnimation.quick) {
                 flyAway = false
             }
         }
@@ -337,8 +334,7 @@ struct MarkAsSentView: View {
     /// Generate and share invoice as PDF
     private func shareInvoicePDF() {
         // Button press haptic and animation
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+        HapticService.play(.medium)
         
         withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
             shareButtonPressed = true

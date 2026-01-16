@@ -54,10 +54,7 @@ struct ComprehensiveReportView: View {
     @State private var viewAppeared = false
     
     // Haptics
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                
     private var taxSettings: TaxSettings? { taxSettingsQuery.first }
     private var businessProfile: BusinessProfile? { businessProfiles.first }
     
@@ -129,43 +126,43 @@ struct ComprehensiveReportView: View {
                     headerSection
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 20)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                     
                     // Report Type Selection
                     reportTypeSection
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 20)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                     
                     // Date Selection
                     dateSelectionSection
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 20)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                     
                     // Report Sections
                     sectionsToggleSection
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 20)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                     
                     // Data Preview
                     dataPreviewSection
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 20)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                     
                     // Generate Button
                     generateButton
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 20)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                     
                     // CPA Tips
                     cpaTipsSection
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 20)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
                 }
                 .padding()
             }
@@ -175,7 +172,7 @@ struct ComprehensiveReportView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
@@ -191,10 +188,6 @@ struct ComprehensiveReportView: View {
                 Text(errorMessage)
             }
             .onAppear {
-                impactLight.prepare()
-                impactMedium.prepare()
-                notificationFeedback.prepare()
-                
                 // Set default quarter based on current date
                 let month = Calendar.current.component(.month, from: Date())
                 selectedQuarter = (month - 1) / 3 + 1
@@ -247,8 +240,8 @@ struct ComprehensiveReportView: View {
             HStack(spacing: 12) {
                 ForEach(ReportType.allCases, id: \.self) { type in
                     Button {
-                        impactLight.impactOccurred()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        HapticService.play(.light)
+                        withAnimation(FLOAnimation.quick) {
                             reportType = type
                         }
                     } label: {
@@ -292,7 +285,7 @@ struct ComprehensiveReportView: View {
                 }
                 .pickerStyle(.menu)
                 .onChange(of: selectedYear) { _, _ in
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                 }
                 
             case .quarterly:
@@ -313,7 +306,7 @@ struct ComprehensiveReportView: View {
                     .pickerStyle(.menu)
                 }
                 .onChange(of: selectedQuarter) { _, _ in
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                 }
                 
             case .custom:
@@ -412,7 +405,7 @@ struct ComprehensiveReportView: View {
                 .labelsHidden()
                 .tint(Color.businessColor)
                 .onChange(of: isOn.wrappedValue) { _, _ in
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                 }
         }
         .padding(.vertical, 10)
@@ -488,7 +481,7 @@ struct ComprehensiveReportView: View {
     
     private var generateButton: some View {
         Button {
-            impactMedium.impactOccurred()
+            HapticService.play(.medium)
             generateReport()
         } label: {
             HStack(spacing: 12) {
@@ -599,12 +592,12 @@ struct ComprehensiveReportView: View {
             switch result {
             case .success(let data):
                 generatedPDF = data
-                notificationFeedback.notificationOccurred(.success)
+                HapticService.play(.success)
                 showingShareSheet = true
                 
             case .failure(let error):
                 errorMessage = error.localizedDescription
-                notificationFeedback.notificationOccurred(.error)
+                HapticService.play(.error)
                 showingError = true
             }
         }

@@ -410,8 +410,7 @@ struct BusinessProfileSettingsView: View {
         isSaving = true
         
         // Processing haptic
-        let impactGenerator = UIImpactFeedbackGenerator(style: .medium)
-        impactGenerator.impactOccurred()
+        HapticService.play(.heavy)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
@@ -492,7 +491,7 @@ struct BusinessProfileSettingsView: View {
             generator.notificationOccurred(.success)
             
             // Show saved check animation
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(FLOAnimation.quick) {
                 showSavedCheck = true
             }
             
@@ -501,7 +500,7 @@ struct BusinessProfileSettingsView: View {
             
             // Dismiss after brief delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                withAnimation(.easeOut(duration: 0.2)) {
+                withAnimation(FLOAnimation.quickEase) {
                     showSavedCheck = false
                 }
                 

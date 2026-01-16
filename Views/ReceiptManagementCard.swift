@@ -86,8 +86,8 @@ struct ReceiptManagementCard: View {
                 Spacer()
                 
                 Button {
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                    generator.impactOccurred()
+                   
+                    HapticService.play(.medium)
                     
                     withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                         scanButtonPressed = true
@@ -176,8 +176,8 @@ struct ReceiptManagementCard: View {
                 .foregroundStyle(.secondary)
             
             Button {
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.impactOccurred()
+             
+                HapticService.play(.medium)
                 
                 showingReceiptScanner = true
             } label: {
@@ -270,8 +270,8 @@ struct ReceiptManagementCard: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(stats.needsAttention) receipts need attention")
                     .onTapGesture {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+                     
+                        HapticService.play(.medium)
                         showingReceiptList = true
                     }
                 }
@@ -282,8 +282,8 @@ struct ReceiptManagementCard: View {
             
             // View All Button
             Button {
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred()
+            
+                HapticService.play(.medium)
                 
                 withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                     viewAllPressed = true
@@ -355,8 +355,8 @@ private struct AnimatedStatPill: View {
             }
         }
         .onTapGesture {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
+        
+            HapticService.play(.medium)
             
             withAnimation(.spring(response: 0.15, dampingFraction: 0.5)) {
                 isPressed = true
@@ -489,8 +489,8 @@ struct ReceiptListView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+  
+                        HapticService.play(.medium)
                         dismiss()
                     }
                 }
@@ -506,8 +506,8 @@ struct ReceiptListView: View {
     }
     
     private func deleteReceipts(at offsets: IndexSet) {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+    
+        HapticService.play(.medium)
         
         let receiptsToDelete = offsets.map { filteredReceipts[$0] }
         
@@ -609,8 +609,8 @@ struct ReceiptListRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityDescription)
         .onTapGesture {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
+ 
+            HapticService.play(.medium)
             
             withAnimation(.spring(response: 0.15, dampingFraction: 0.5)) {
                 isPressed = true

@@ -110,8 +110,8 @@ struct MileageDashboardCard: View {
                 }
                 
                 Button {
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
+
+                    HapticService.play(.medium)
                     
                     withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                         chevronHover = true
@@ -266,7 +266,7 @@ struct MileageDashboardCard: View {
         
         // Empty state car bounce
         if totalTrips == 0 {
-            withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true).delay(0.5)) {
+            withAnimation(FLOAnimation.slowEase.repeatForever(autoreverses: true).delay(0.5)) {
                 emptyCarBounce = true
             }
         }
@@ -286,8 +286,8 @@ struct MileageDashboardCard: View {
     // MARK: - Actions
     
     private func enableTracking() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+
+        HapticService.play(.medium)
         
         withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
             enableButtonScale = 0.95

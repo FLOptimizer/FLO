@@ -55,12 +55,7 @@ struct EditTransactionView: View {
     }
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                        
     private let largeAmountThreshold: Double = 10_000
     
     // Static formatters for consistency and performance
@@ -141,22 +136,22 @@ struct EditTransactionView: View {
                 }
             }
             .onChange(of: isIncome) { oldValue, newValue in
-                selectionFeedback.selectionChanged()
+                HapticService.play(.selection)
             }
             .onChange(of: financeType) { oldValue, newValue in
-                selectionFeedback.selectionChanged()
+                HapticService.play(.selection)
             }
             .onChange(of: selectedCategory) { oldValue, newValue in
                 if newValue != nil {
-                    selectionFeedback.selectionChanged()
+                    HapticService.play(.selection)
                 }
             }
             .onChange(of: date) { oldValue, newValue in
-                impactLight.impactOccurred()
+                HapticService.play(.light)
             }
             .alert("Validation Error", isPresented: $showingValidationAlert) {
                 Button("OK", role: .cancel) {
-                    notificationFeedback.notificationOccurred(.warning)
+                    HapticService.play(.warning)
                 }
             } message: {
                 Text(validationMessage)
@@ -178,8 +173,7 @@ struct EditTransactionView: View {
                 Text("Are you sure you want to delete this transaction? This cannot be undone.")
             }
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     formAppeared = true
                 }
             }
@@ -188,14 +182,7 @@ struct EditTransactionView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        impactHeavy.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Sections
     
     @ViewBuilder
@@ -211,7 +198,7 @@ struct EditTransactionView: View {
            let image = PhotoStorageManager.shared.loadReceiptSync(filename: receiptPath) {
             Section {
                 Button {
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                     showingReceiptImage = true
                 } label: {
                     HStack {
@@ -330,7 +317,7 @@ struct EditTransactionView: View {
                     .transition(.opacity.combined(with: .scale))
             }
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isFutureDate)
+        .animation(FLOAnimation.quick, value: isFutureDate)
     }
     
     private var detailsSection: some View {
@@ -355,7 +342,7 @@ struct EditTransactionView: View {
     private var deleteSection: some View {
         Section {
             Button(role: .destructive) {
-                impactHeavy.impactOccurred()
+                HapticService.play(.heavy)
                 showingDeleteConfirmation = true
             } label: {
                 HStack {
@@ -424,7 +411,7 @@ struct EditTransactionView: View {
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
             Button("Cancel") {
-                impactLight.impactOccurred()
+                HapticService.play(.light)
                 dismiss()
             }
             .disabled(isSaving)
@@ -436,7 +423,7 @@ struct EditTransactionView: View {
                 ProgressView()
             } else {
                 Button("Save") {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     validateAndSave()
                 }
                 .disabled(!canSave || !hasChanges)
@@ -448,7 +435,7 @@ struct EditTransactionView: View {
         ToolbarItemGroup(placement: .keyboard) {
             Spacer()
             Button("Done") {
-                impactLight.impactOccurred()
+                HapticService.play(.light)
                 focusedField = nil
             }
         }
@@ -496,14 +483,14 @@ struct EditTransactionView: View {
         guard let amt = parsedAmount else {
             validationMessage = "Please enter a valid amount"
             showingValidationAlert = true
-            notificationFeedback.notificationOccurred(.warning)
+            HapticService.play(.warning)
             return
         }
         
         if amt <= 0 {
             validationMessage = "Amount must be greater than zero"
             showingValidationAlert = true
-            notificationFeedback.notificationOccurred(.warning)
+            HapticService.play(.warning)
             return
         }
         
@@ -542,7 +529,7 @@ struct EditTransactionView: View {
             try context.save()
             print("✅ Transaction updated: \(transaction.displayName) - \(financeType.displayName)")
             
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 dismiss()
@@ -550,7 +537,7 @@ struct EditTransactionView: View {
         } catch {
             print("❌ Failed to update transaction: \(error)")
             
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
             
             isSaving = false
             validationMessage = "Failed to update transaction. Please try again."
@@ -566,11 +553,11 @@ struct EditTransactionView: View {
         do {
             try context.save()
             print("✅ Transaction deleted: \(transactionName)")
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             dismiss()
         } catch {
             print("❌ Failed to delete transaction: \(error)")
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
             validationMessage = "Failed to delete transaction. Please try again."
             showingValidationAlert = true
         }

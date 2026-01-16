@@ -29,10 +29,7 @@ struct InvoiceSettingsView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    
+                
     var body: some View {
         List {
             Section {
@@ -45,7 +42,7 @@ struct InvoiceSettingsView: View {
                 }
                 .listRowBackground(defaultPaymentTerms == 30 ? Color(.secondarySystemBackground) : nil)
                 .onChange(of: defaultPaymentTerms) { _, _ in
-                    selectionFeedback.selectionChanged()
+                    HapticService.play(.selection)
                 }
                 
                 Picker("Currency", selection: $defaultCurrency) {
@@ -55,24 +52,24 @@ struct InvoiceSettingsView: View {
                     Text("CAD (C$)").tag("CAD")
                 }
                 .onChange(of: defaultCurrency) { _, _ in
-                    selectionFeedback.selectionChanged()
+                    HapticService.play(.selection)
                 }
             } header: {
                 Text("Invoice Defaults")
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
             
             Section {
                 Toggle("Enable Payment Reminders", isOn: Binding(
                     get: { enableReminders },
                     set: { newValue in
                         if newValue {
-                            impactMedium.impactOccurred()
+                            HapticService.play(.medium)
                             requestNotificationPermission()
                         } else {
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                             enableReminders = false
                         }
                     }
@@ -89,7 +86,7 @@ struct InvoiceSettingsView: View {
                                 .foregroundStyle(.secondary)
                             Spacer()
                             Button("Fix") {
-                                impactMedium.impactOccurred()
+                                HapticService.play(.medium)
                                 openNotificationSettings()
                             }
                             .font(.caption)
@@ -103,12 +100,12 @@ struct InvoiceSettingsView: View {
                     
                     Stepper("Remind \(reminderDaysBeforeDue) days before due", value: $reminderDaysBeforeDue, in: 1...14)
                         .onChange(of: reminderDaysBeforeDue) { _, _ in
-                            selectionFeedback.selectionChanged()
+                            HapticService.play(.selection)
                         }
                     
                     Stepper("Follow up \(reminderDaysAfterDue) days after due", value: $reminderDaysAfterDue, in: 1...30)
                         .onChange(of: reminderDaysAfterDue) { _, _ in
-                            selectionFeedback.selectionChanged()
+                            HapticService.play(.selection)
                         }
                 }
             } header: {
@@ -120,7 +117,7 @@ struct InvoiceSettingsView: View {
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: notificationsAuthorized)
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
             
             Section {
                 NavigationLink {
@@ -139,24 +136,23 @@ struct InvoiceSettingsView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
         }
         .navigationTitle("Invoice Settings")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            prepareHaptics()
-            checkNotificationStatus()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        checkNotificationStatus()
+            withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }
         .alert("Notifications Required", isPresented: $showingNotificationDeniedAlert) {
             Button("Open Settings") {
-                impactMedium.impactOccurred()
+                HapticService.play(.medium)
                 openNotificationSettings()
             }
             Button("Cancel", role: .cancel) {
-                impactLight.impactOccurred()
+                HapticService.play(.light)
                 enableReminders = false
             }
         } message: {
@@ -166,12 +162,7 @@ struct InvoiceSettingsView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-    }
-    
+        
     // MARK: - Notification Helpers
     
     private func requestNotificationPermission() {
@@ -246,9 +237,7 @@ struct BusinessInfoEditor: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+            
     var body: some View {
         Form {
             Section {
@@ -270,22 +259,22 @@ struct BusinessInfoEditor: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
         }
         .navigationTitle("Business Info")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Done") {
-                    impactLight.impactOccurred()
-                    notificationFeedback.notificationOccurred(.success)
+                    HapticService.play(.light)
+                    HapticService.play(.success)
                     dismiss()
                 }
                 .fontWeight(.semibold)
             }
         }
         .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }

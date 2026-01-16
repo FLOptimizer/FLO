@@ -20,8 +20,7 @@ struct TermsOfServiceView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    
+        
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -54,7 +53,7 @@ struct TermsOfServiceView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 // Acceptance of Terms
                 TermsSection(
@@ -69,7 +68,7 @@ struct TermsOfServiceView: View {
                 )
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 // License to Use
                 TermsSection(
@@ -92,7 +91,7 @@ struct TermsOfServiceView: View {
                 )
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
                 // Subscription Terms
                 TermsSection(
@@ -126,7 +125,7 @@ struct TermsOfServiceView: View {
                 )
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
                 // Free Trial
                 VStack(alignment: .leading, spacing: 8) {
@@ -146,7 +145,7 @@ struct TermsOfServiceView: View {
                 .cornerRadius(8)
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 
                 // User Responsibilities
                 TermsSection(
@@ -172,7 +171,7 @@ struct TermsOfServiceView: View {
                 )
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                 
                 // Data Accuracy
                 TermsSection(
@@ -193,7 +192,7 @@ struct TermsOfServiceView: View {
                 )
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                 
                 // Intellectual Property
                 TermsSection(
@@ -208,7 +207,7 @@ struct TermsOfServiceView: View {
                 )
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
                 
                 // Contact Information
                 VStack(alignment: .leading, spacing: 8) {
@@ -228,7 +227,7 @@ struct TermsOfServiceView: View {
                         .foregroundStyle(.blue)
                     }
                     .simultaneousGesture(TapGesture().onEnded {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                     })
                     
                     Text("Finch & Poppy Co LLC")
@@ -240,7 +239,7 @@ struct TermsOfServiceView: View {
                 .cornerRadius(8)
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.45), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
                 
                 // Online Terms Link
                 Link(destination: AppConstants.termsOfServiceURL) {
@@ -257,11 +256,11 @@ struct TermsOfServiceView: View {
                     .cornerRadius(10)
                 }
                 .simultaneousGesture(TapGesture().onEnded {
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                 })
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.5), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.5), value: viewAppeared)
                 
                 // Acknowledgment
                 VStack(alignment: .leading, spacing: 8) {
@@ -275,7 +274,7 @@ struct TermsOfServiceView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.55), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.55), value: viewAppeared)
                 
                 // Version Info
                 Text("Last Updated: January 1, 2025 • FLO v\(AppConstants.appVersion)")
@@ -289,8 +288,7 @@ struct TermsOfServiceView: View {
         .navigationTitle("Terms of Service")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            impactLight.prepare()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }

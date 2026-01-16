@@ -31,11 +31,7 @@ struct AddCategoryView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                    
     private let commonIcons = [
         "cart.fill", "fork.knife", "car.fill", "house.fill", "bolt.fill",
         "gamecontroller.fill", "cross.case.fill", "bag.fill", "briefcase.fill",
@@ -56,45 +52,45 @@ struct AddCategoryView: View {
                 nameSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 typeSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 iconSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
                 colorSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
                 taxDeductibleSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 
                 previewSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
             }
             .navigationTitle("New Category")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         save()
                         dismiss()
                     }
@@ -102,8 +98,7 @@ struct AddCategoryView: View {
                 }
             }
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
@@ -112,13 +107,7 @@ struct AddCategoryView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Sections
     
     private var nameSection: some View {
@@ -135,7 +124,7 @@ struct AddCategoryView: View {
             }
             .pickerStyle(.segmented)
             .onChange(of: isIncome) { _, _ in
-                selectionFeedback.selectionChanged()
+                HapticService.play(.selection)
             }
         }
     }
@@ -163,8 +152,8 @@ struct AddCategoryView: View {
                     isSelected: selectedIcon == icon,
                     color: Color(flowHex: selectedColor)
                 ) {
-                    selectionFeedback.selectionChanged()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    HapticService.play(.selection)
+                    withAnimation(FLOAnimation.quick) {
                         selectedIcon = icon
                     }
                 }
@@ -194,8 +183,8 @@ struct AddCategoryView: View {
                     color: color,
                     isSelected: selectedColor == color
                 ) {
-                    selectionFeedback.selectionChanged()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    HapticService.play(.selection)
+                    withAnimation(FLOAnimation.quick) {
                         selectedColor = color
                     }
                 }
@@ -208,7 +197,7 @@ struct AddCategoryView: View {
         Section {
             Toggle("Tax Deductible", isOn: $isTaxDeductible)
                 .onChange(of: isTaxDeductible) { _, _ in
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                 }
         }
     }
@@ -251,7 +240,7 @@ struct AddCategoryView: View {
                     }
                 }
             }
-            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isTaxDeductible)
+            .animation(FLOAnimation.quick, value: isTaxDeductible)
         }
     }
     
@@ -270,9 +259,9 @@ struct AddCategoryView: View {
         
         do {
             try context.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
         } catch {
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
             print("❌ Failed to save category: \(error)")
         }
     }
@@ -298,7 +287,7 @@ struct IconButton: View {
                     .stroke(isSelected ? color : Color.clear, lineWidth: 2)
             )
             .scaleEffect(isSelected ? 1.05 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+            .animation(FLOAnimation.quick, value: isSelected)
             .onTapGesture {
                 action()
             }
@@ -328,7 +317,7 @@ struct ColorButton: View {
                     .padding(1.5)
             )
             .scaleEffect(isSelected ? 1.1 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+            .animation(FLOAnimation.quick, value: isSelected)
             .onTapGesture {
                 action()
             }

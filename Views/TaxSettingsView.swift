@@ -39,11 +39,7 @@ struct TaxSettingsView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                    
     private var currentSettings: TaxSettings? {
         taxSettings.first
     }
@@ -75,7 +71,7 @@ struct TaxSettingsView: View {
                     }
                 }
                 .onChange(of: selectedState) { _, _ in
-                    selectionFeedback.selectionChanged()
+                    HapticService.play(.selection)
                 }
                 
                 Picker("Filing Status", selection: $filingStatus) {
@@ -84,7 +80,7 @@ struct TaxSettingsView: View {
                     }
                 }
                 .onChange(of: filingStatus) { _, _ in
-                    selectionFeedback.selectionChanged()
+                    HapticService.play(.selection)
                 }
             } header: {
                 Text("Basic Information")
@@ -93,7 +89,7 @@ struct TaxSettingsView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
             
             // IRS Mileage Rates Section
             Section {
@@ -126,7 +122,7 @@ struct TaxSettingsView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
             
             // Income Information Section
             Section {
@@ -142,7 +138,7 @@ struct TaxSettingsView: View {
                 if let priorYearValue = Double(priorYearTax), priorYearValue > 0 {
                     Toggle("High Earner (AGI >$150K)", isOn: $isHighEarner)
                         .onChange(of: isHighEarner) { _, _ in
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                         }
                         .transition(.asymmetric(
                             insertion: .move(edge: .top).combined(with: .opacity),
@@ -163,13 +159,13 @@ struct TaxSettingsView: View {
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: priorYearTax)
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
             
             // Tax Components Section
             Section {
                 Toggle("Include Self-Employment Tax", isOn: $includeSelfEmployment)
                     .onChange(of: includeSelfEmployment) { _, _ in
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                     }
                 
                 if includeSelfEmployment {
@@ -194,13 +190,13 @@ struct TaxSettingsView: View {
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: includeSelfEmployment)
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
             
             // Reminders Section
             Section {
                 Toggle("Quarterly Reminders", isOn: $enableReminders)
                     .onChange(of: enableReminders) { _, _ in
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                     }
                 
                 if enableReminders {
@@ -215,7 +211,7 @@ struct TaxSettingsView: View {
                         
                         Slider(value: $reminderDays, in: 3...30, step: 1)
                             .onChange(of: reminderDays) { _, _ in
-                                selectionFeedback.selectionChanged()
+                                HapticService.play(.selection)
                             }
                     }
                     .transition(.asymmetric(
@@ -233,12 +229,12 @@ struct TaxSettingsView: View {
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: enableReminders)
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
             
             // Advanced Settings
             Section {
                 Button {
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                         showAdvanced.toggle()
                     }
@@ -304,12 +300,12 @@ struct TaxSettingsView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
             
             // Help Section
             Section {
                 Button {
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                     showHelp = true
                 } label: {
                     HStack {
@@ -320,12 +316,12 @@ struct TaxSettingsView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
             
             // Save/Cancel Buttons
             Section {
                 Button {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     saveSettings()
                 } label: {
                     Text("Save Settings")
@@ -334,7 +330,7 @@ struct TaxSettingsView: View {
                 }
                 
                 Button(role: .cancel) {
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                     dismiss()
                 } label: {
                     Text("Cancel")
@@ -343,7 +339,7 @@ struct TaxSettingsView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
         }
         .navigationTitle("Tax Settings")
         .navigationBarTitleDisplayMode(.inline)
@@ -351,8 +347,7 @@ struct TaxSettingsView: View {
             TaxHelpView()
         }
         .onAppear {
-            prepareHaptics()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }
@@ -360,13 +355,7 @@ struct TaxSettingsView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Save Settings
     
     private func saveSettings() {
@@ -402,7 +391,7 @@ struct TaxSettingsView: View {
         
         do {
             try modelContext.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             
             if enableReminders {
                 scheduleQuarterlyNotifications()
@@ -410,7 +399,7 @@ struct TaxSettingsView: View {
             
             dismiss()
         } catch {
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
             print("❌ Failed to save tax settings: \(error)")
         }
     }
@@ -446,8 +435,7 @@ struct TaxSettingsView: View {
         @Environment(\.dismiss) private var dismiss
         @State private var viewAppeared = false
         
-        private let impactLight = UIImpactFeedbackGenerator(style: .light)
-        
+                
         var body: some View {
             NavigationStack {
                 ScrollView {
@@ -494,7 +482,7 @@ struct TaxSettingsView: View {
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Done") {
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                             dismiss()
                         }
                     }
@@ -525,7 +513,7 @@ struct TaxSettingsView: View {
             .cornerRadius(8)
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(delay), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(delay), value: viewAppeared)
         }
     }
 }

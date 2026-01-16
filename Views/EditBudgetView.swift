@@ -27,11 +27,7 @@ struct EditBudgetView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-     
+                     
     init(budget: Budget) {
         self.budget = budget
         _amount = State(initialValue: String(format: "%.2f", budget.planned))
@@ -44,48 +40,47 @@ struct EditBudgetView: View {
                 categorySection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 monthSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 amountSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
                 carryOverSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
                 summarySection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
             }
             .navigationTitle("Edit Budget")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         save()
                     }
                     .disabled(!isValid)
                 }
             }
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
@@ -94,13 +89,7 @@ struct EditBudgetView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Sections
     
     private var categorySection: some View {
@@ -205,10 +194,10 @@ struct EditBudgetView: View {
         
         do {
             try context.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             dismiss()
         } catch {
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
             print("❌ Failed to save budget: \(error)")
         }
     }

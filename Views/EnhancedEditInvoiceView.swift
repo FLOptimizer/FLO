@@ -56,11 +56,7 @@ struct EnhancedEditInvoiceView: View {
     @State private var lineItemToDelete: EditableLineItem?
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                    
     // MARK: - Validation
     
     var isValid: Bool {
@@ -133,7 +129,7 @@ struct EnhancedEditInvoiceView: View {
                     }
                 }
                 .opacity(viewAppeared ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 // Client section
                 Section("Client") {
@@ -155,7 +151,7 @@ struct EnhancedEditInvoiceView: View {
                             }
                             Spacer()
                             Button("Change") {
-                                impactLight.impactOccurred()
+                                HapticService.play(.light)
                                 showingClientPicker = true
                             }
                             .foregroundStyle(Color.businessColor)
@@ -163,7 +159,7 @@ struct EnhancedEditInvoiceView: View {
                         .transition(.scale.combined(with: .opacity))
                     } else {
                         Button {
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                             showingClientPicker = true
                         } label: {
                             HStack {
@@ -177,7 +173,7 @@ struct EnhancedEditInvoiceView: View {
                 }
                 .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedClient != nil)
                 .opacity(viewAppeared ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 // Status section
                 Section("Status") {
@@ -193,22 +189,22 @@ struct EnhancedEditInvoiceView: View {
                         }
                     }
                     .onChange(of: status) { _, _ in
-                        selectionFeedback.selectionChanged()
+                        HapticService.play(.selection)
                     }
                 }
                 .opacity(viewAppeared ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
                 // Invoice details
                 Section("Invoice Details") {
                     DatePicker("Issue Date", selection: $issueDate, displayedComponents: .date)
                         .onChange(of: issueDate) { _, _ in
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                         }
                     
                     DatePicker("Due Date", selection: $dueDate, displayedComponents: .date)
                         .onChange(of: dueDate) { _, _ in
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                         }
                     
                     Picker("Payment Terms", selection: $paymentTerms) {
@@ -219,7 +215,7 @@ struct EnhancedEditInvoiceView: View {
                         Text("Custom").tag("Custom")
                     }
                     .onChange(of: paymentTerms) { oldValue, newValue in
-                        selectionFeedback.selectionChanged()
+                        HapticService.play(.selection)
                         // Auto-update due date based on payment terms
                         if newValue != oldValue {
                             updateDueDateFromTerms(newValue)
@@ -227,7 +223,7 @@ struct EnhancedEditInvoiceView: View {
                     }
                 }
                 .opacity(viewAppeared ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
                 // Line items
                 Section {
@@ -239,14 +235,14 @@ struct EnhancedEditInvoiceView: View {
                             ))
                     }
                     .onDelete { indexSet in
-                        impactMedium.impactOccurred()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        HapticService.play(.medium)
+                        withAnimation(FLOAnimation.quick) {
                             lineItems.remove(atOffsets: indexSet)
                         }
                     }
                     
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                             lineItems.append(EditableLineItem())
                         }
@@ -265,7 +261,7 @@ struct EnhancedEditInvoiceView: View {
                     }
                 }
                 .opacity(viewAppeared ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 
                 // Totals
                 Section("Totals") {
@@ -317,7 +313,7 @@ struct EnhancedEditInvoiceView: View {
                 }
                 .animation(.spring(response: 0.4, dampingFraction: 0.8), value: taxRate > 0)
                 .opacity(viewAppeared ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                 
                 // Payment options
                 Section("Payment Options") {
@@ -340,7 +336,7 @@ struct EnhancedEditInvoiceView: View {
                         .autocapitalization(.none)
                 }
                 .opacity(viewAppeared ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                 
                 // Notes
                 Section("Notes & Instructions") {
@@ -351,21 +347,21 @@ struct EnhancedEditInvoiceView: View {
                         .lineLimit(3...6)
                 }
                 .opacity(viewAppeared ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
             }
             .navigationTitle("Edit Invoice")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         saveChanges()
                     }
                     .disabled(!isValid)
@@ -381,8 +377,7 @@ struct EnhancedEditInvoiceView: View {
                 Text(saveError?.localizedDescription ?? "An unknown error occurred. Please try again.")
             }
             .onAppear {
-                prepareHaptics()
-                loadInvoiceData()
+                                loadInvoiceData()
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     withAnimation {
@@ -395,13 +390,7 @@ struct EnhancedEditInvoiceView: View {
     
     // MARK: - Helper Methods
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     private func loadInvoiceData() {
         // Load all data from the invoice
         selectedClient = invoice.client
@@ -510,12 +499,12 @@ struct EnhancedEditInvoiceView: View {
         
         do {
             try modelContext.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             dismiss()
         } catch {
             saveError = error
             showingSaveError = true
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
             print("❌ Failed to save invoice changes: \(error)")
         }
     }
@@ -596,9 +585,7 @@ struct EditInvoiceClientPicker: View {
     @Binding var selectedClient: Client?
     let clients: [Client]
     
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    
+            
     var body: some View {
         NavigationStack {
             Group {
@@ -611,7 +598,7 @@ struct EditInvoiceClientPicker: View {
                 } else {
                     List(clients) { client in
                         Button {
-                            selectionFeedback.selectionChanged()
+                            HapticService.play(.selection)
                             selectedClient = client
                             dismiss()
                         } label: {
@@ -647,14 +634,10 @@ struct EditInvoiceClientPicker: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
-            }
-            .onAppear {
-                impactLight.prepare()
-                selectionFeedback.prepare()
             }
         }
     }

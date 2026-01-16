@@ -26,12 +26,7 @@ struct CategoryManagementView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                        
     var expenseCategories: [Category] {
         categories.filter { !$0.isIncome }
     }
@@ -47,13 +42,13 @@ struct CategoryManagementView: View {
                     CategoryRow(category: category)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                             categoryToEdit = category
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             if !category.isDefault {
                                 Button(role: .destructive) {
-                                    impactHeavy.impactOccurred()
+                                    HapticService.play(.heavy)
                                     deleteCategory(category)
                                 } label: {
                                     Label("Delete", systemImage: "trash")
@@ -62,7 +57,7 @@ struct CategoryManagementView: View {
                         }
                         .swipeActions(edge: .leading) {
                             Button {
-                                impactMedium.impactOccurred()
+                                HapticService.play(.medium)
                                 categoryToEdit = category
                             } label: {
                                 Label("Edit", systemImage: "pencil")
@@ -84,13 +79,13 @@ struct CategoryManagementView: View {
                     CategoryRow(category: category)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                             categoryToEdit = category
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             if !category.isDefault {
                                 Button(role: .destructive) {
-                                    impactHeavy.impactOccurred()
+                                    HapticService.play(.heavy)
                                     deleteCategory(category)
                                 } label: {
                                     Label("Delete", systemImage: "trash")
@@ -99,7 +94,7 @@ struct CategoryManagementView: View {
                         }
                         .swipeActions(edge: .leading) {
                             Button {
-                                impactMedium.impactOccurred()
+                                HapticService.play(.medium)
                                 categoryToEdit = category
                             } label: {
                                 Label("Edit", systemImage: "pencil")
@@ -121,7 +116,7 @@ struct CategoryManagementView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     showingAddCategory = true
                 } label: {
                     Image(systemName: "plus")
@@ -136,8 +131,7 @@ struct CategoryManagementView: View {
             EditCategoryView(category: category)
         }
         .onAppear {
-            prepareHaptics()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }
@@ -145,24 +139,17 @@ struct CategoryManagementView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        impactHeavy.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     private func deleteCategory(_ category: Category) {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+        withAnimation(FLOAnimation.quick) {
             context.delete(category)
         }
         
         do {
             try context.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
         } catch {
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
         }
     }
 }

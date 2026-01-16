@@ -56,12 +56,7 @@ struct DashboardView: View {
     @State private var previousNetIncome: Double = 0
     
     // MARK: - Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                        
     // MARK: - Finance Mode (THE DIFFERENTIATOR)
     
     enum FinanceMode: String, CaseIterable {
@@ -197,7 +192,7 @@ struct DashboardView: View {
                         showingAddTransaction: $showingAddTransaction,
                         financeMode: financeMode,
                         onAddTapped: {
-                            impactMedium.impactOccurred()
+                            HapticService.play(.medium)
                         }
                     )
                     .padding(.horizontal)
@@ -274,8 +269,7 @@ struct DashboardView: View {
             .onAppear {
                 setupTripSaving()
                 refreshWidgets()
-                prepareHaptics()
-                
+                                
                 // Trigger entrance animations
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                     cardsAppeared = true
@@ -289,7 +283,7 @@ struct DashboardView: View {
                 }
             }
             .onChange(of: financeMode) { oldValue, newValue in
-                selectionFeedback.selectionChanged()
+                HapticService.play(.selection)
                 
                 // Re-trigger card animations on mode change
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
@@ -302,7 +296,7 @@ struct DashboardView: View {
                 }
             }
             .onChange(of: selectedTimeframe) { oldValue, newValue in
-                selectionFeedback.selectionChanged()
+                HapticService.play(.selection)
             }
             .id(refreshID)
         }
@@ -381,17 +375,11 @@ struct DashboardView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        impactLight.prepare()
-        impactMedium.prepare()
-        selectionFeedback.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Helper Functions
     
     private func refreshDashboard() {
-        impactMedium.impactOccurred()
+        HapticService.play(.medium)
         isRefreshing = true
         refreshID = UUID()
         
@@ -400,7 +388,7 @@ struct DashboardView: View {
             await MainActor.run {
                 refreshWidgets()
                 isRefreshing = false
-                notificationFeedback.notificationOccurred(.success)
+                HapticService.play(.success)
             }
         }
         
@@ -408,7 +396,7 @@ struct DashboardView: View {
     }
     
     private func refreshAsync() async {
-        impactLight.impactOccurred()
+        HapticService.play(.light)
         isRefreshing = true
         
         // Update widget data
@@ -421,7 +409,7 @@ struct DashboardView: View {
         await MainActor.run {
             refreshID = UUID()
             isRefreshing = false
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
         }
     }
     
@@ -448,10 +436,10 @@ struct DashboardView: View {
                 modelContext.insert(trip)
                 do {
                     try modelContext.save()
-                    notificationFeedback.notificationOccurred(.success)
+                    HapticService.play(.success)
                     print("Trip saved from Dashboard: \(trip.distanceMiles) miles")
                 } catch {
-                    notificationFeedback.notificationOccurred(.error)
+                    HapticService.play(.error)
                     print("Error saving trip: \(error.localizedDescription)")
                 }
             }
@@ -711,8 +699,8 @@ struct ScaleButtonStyle: ButtonStyle {
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
             .onChange(of: configuration.isPressed) { oldValue, newValue in
                 if newValue {
-                    let impact = UIImpactFeedbackGenerator(style: .light)
-                    impact.impactOccurred()
+
+                    HapticService.play(.light)
                 }
             }
     }

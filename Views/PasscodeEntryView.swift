@@ -137,8 +137,7 @@ struct PasscodeEntryView: View {
                                 icon: biometricIcon,
                                 isDisabled: isLocked
                             ) {
-                                let generator = UIImpactFeedbackGenerator(style: .light)
-                                generator.impactOccurred()
+                                HapticService.play(.medium)
                                 onDismiss?()
                             }
                             .accessibilityLabel(authService.biometricType == .faceID ? "Use Face ID" : "Use Touch ID")
@@ -222,8 +221,7 @@ struct PasscodeEntryView: View {
             pressedButton = nil
         }
         
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+        HapticService.play(.medium)
         
         passcode += "\(digit)"
         
@@ -235,8 +233,7 @@ struct PasscodeEntryView: View {
     private func deleteLastDigit() {
         guard !passcode.isEmpty else { return }
         
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+        HapticService.play(.medium)
         
         passcode.removeLast()
     }
@@ -258,8 +255,7 @@ struct PasscodeEntryView: View {
                 }
                 
                 // Celebration haptic
-                let celebrationGenerator = UIImpactFeedbackGenerator(style: .heavy)
-                celebrationGenerator.impactOccurred()
+                HapticService.play(.heavy)
             }
             
             // Reset attempts

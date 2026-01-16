@@ -30,9 +30,7 @@ struct MileageSetupPromptView: View {
     @State private var hasRequestedPermission = false
     @State private var hasRequestedAlways = false
     
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+            
     var body: some View {
         VStack(spacing: 24) {
             // Header
@@ -128,7 +126,7 @@ struct MileageSetupPromptView: View {
             // Buttons
             VStack(spacing: 12) {
                 Button {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     requestLocationPermission()
                 } label: {
                     HStack {
@@ -210,7 +208,7 @@ struct MileageSetupPromptView: View {
             openSettings()
             
         case .authorizedAlways:
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             onSetupComplete()
             
         case .denied, .restricted:
@@ -232,7 +230,7 @@ struct MileageSetupPromptView: View {
         
         switch newValue {
         case .authorizedAlways:
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 onSetupComplete()
             }

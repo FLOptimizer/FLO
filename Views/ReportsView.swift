@@ -142,11 +142,7 @@ struct ReportsView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                    
     private var taxSettings: TaxSettings? {
         taxSettingsQuery.first
     }
@@ -341,7 +337,7 @@ struct ReportsView: View {
                     HStack(spacing: 12) {
                         // CPA Report Button
                         Button {
-                            impactMedium.impactOccurred()
+                            HapticService.play(.medium)
                             showComprehensiveReport = true
                         } label: {
                             Image(systemName: "doc.text.fill.viewfinder")
@@ -350,7 +346,7 @@ struct ReportsView: View {
                         
                         // Export Button
                         Button {
-                            impactMedium.impactOccurred()
+                            HapticService.play(.medium)
                             showExportSheet = true
                         } label: {
                             Image(systemName: "square.and.arrow.up")
@@ -361,7 +357,7 @@ struct ReportsView: View {
                         Menu {
                             ForEach(ChartType.allCases) { chartType in
                                 Button {
-                                    selectionFeedback.selectionChanged()
+                                    HapticService.play(.selection)
                                     withAnimation(.spring(response: 0.3)) {
                                         selectedChartType = chartType
                                     }
@@ -396,8 +392,7 @@ struct ReportsView: View {
                 }
             }
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
@@ -406,13 +401,7 @@ struct ReportsView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Main Content
     
     private var content: some View {
@@ -421,83 +410,83 @@ struct ReportsView: View {
             TaxDeadlineCountdownCard()
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
             
             // Tax Disclaimer
             taxDisclaimerSection
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
             
             // Chart Type Header
             chartTypeHeader
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
             
             // Period Selector
             periodSelector
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
             
             // Date Navigation
             dateNavigation
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
             
             // Summary Cards with Trends
             summaryCards
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
             
             // Chart Section
             chartSection
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
             
             // Business vs Personal
             if totalExpense > 0 {
                 businessPersonalSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 15)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
             }
             
             // Monthly Comparison
             monthlyComparisonSection
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.45), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
             
             // Category Breakdown (for pie chart)
             if selectedChartType == .pie && !categoryChartData.isEmpty {
                 categoryBreakdownSection
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 15)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.5), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.5), value: viewAppeared)
             }
             
             // Tax Deductible Summary
             TaxDeductibleSummary(transactions: filteredTransactions)
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.55), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.55), value: viewAppeared)
             
             // Smart Insights
             insightsCard
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.6), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.6), value: viewAppeared)
             
             // CPA Report CTA
             cpaReportCTA
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.65), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.65), value: viewAppeared)
         }
         .padding(.vertical)
     }
@@ -522,7 +511,7 @@ struct ReportsView: View {
         }
         .transition(.move(edge: .bottom).combined(with: .opacity))
         .onAppear {
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 withAnimation { showExportSuccess = false }
             }
@@ -586,7 +575,7 @@ struct ReportsView: View {
         .pickerStyle(.segmented)
         .padding(.horizontal)
         .onChange(of: selectedPeriod) { _, _ in
-            selectionFeedback.selectionChanged()
+            HapticService.play(.selection)
         }
     }
     
@@ -595,7 +584,7 @@ struct ReportsView: View {
     private var dateNavigation: some View {
         HStack {
             Button {
-                impactLight.impactOccurred()
+                HapticService.play(.light)
                 withAnimation(.easeInOut(duration: 0.2)) { adjustDate(by: -1) }
             } label: {
                 Image(systemName: "chevron.left.circle.fill")
@@ -613,7 +602,7 @@ struct ReportsView: View {
             Spacer()
             
             Button {
-                impactLight.impactOccurred()
+                HapticService.play(.light)
                 withAnimation(.easeInOut(duration: 0.2)) { adjustDate(by: 1) }
             } label: {
                 Image(systemName: "chevron.right.circle.fill")
@@ -1067,7 +1056,7 @@ struct ReportsView: View {
                             .opacity(viewAppeared ? 1 : 0)
                             .offset(x: viewAppeared ? 0 : 20)
                             .animation(
-                                .spring(response: 0.5, dampingFraction: 0.8)
+                                FLOAnimation.standard
                                     .delay(0.5 + Double(index) * 0.05),
                                 value: viewAppeared
                             )
@@ -1109,7 +1098,7 @@ struct ReportsView: View {
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(x: viewAppeared ? 0 : 15)
                 .animation(
-                    .spring(response: 0.5, dampingFraction: 0.8)
+                    FLOAnimation.standard
                         .delay(0.55 + Double(index) * 0.03),
                     value: viewAppeared
                 )
@@ -1175,7 +1164,7 @@ struct ReportsView: View {
     
     private var cpaReportCTA: some View {
         Button {
-            impactMedium.impactOccurred()
+            HapticService.play(.medium)
             showComprehensiveReport = true
         } label: {
             HStack(spacing: 12) {
@@ -1672,10 +1661,7 @@ struct ReportExportSheet: View {
     let businessExpenses: Double
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    
+                
     enum ExportFormat: String, CaseIterable {
         case pdf = "PDF"
         case csv = "CSV"
@@ -1712,7 +1698,7 @@ struct ReportExportSheet: View {
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: exportFormat) { _, _ in
-                        selectionFeedback.selectionChanged()
+                        HapticService.play(.selection)
                     }
                 } header: {
                     Text("Export Format")
@@ -1721,12 +1707,12 @@ struct ReportExportSheet: View {
                 Section {
                     Toggle("Include All Transactions", isOn: $includeAllTransactions)
                         .onChange(of: includeAllTransactions) { _, _ in
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                         }
                     if exportFormat == .csv {
                         Toggle("Include Totals Row", isOn: $includeTotals)
                             .onChange(of: includeTotals) { _, _ in
-                                impactLight.impactOccurred()
+                                HapticService.play(.light)
                             }
                     }
                 } header: {
@@ -1794,7 +1780,7 @@ struct ReportExportSheet: View {
                 
                 Section {
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         performExport()
                     } label: {
                         HStack {
@@ -1817,7 +1803,7 @@ struct ReportExportSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }

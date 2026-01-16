@@ -104,8 +104,8 @@ struct ReceiptImageView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+                  
+                        HapticService.play(.medium)
                         
                         withAnimation(.easeOut(duration: 0.25)) {
                             viewOpacity = 0
@@ -138,8 +138,8 @@ struct ReceiptImageView: View {
             .animation(.easeInOut(duration: 0.2), value: zoomState.scale > 1.0)
             .alert("Unable to Load Receipt", isPresented: $showLoadError) {
                 Button("OK", role: .cancel) {
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
+                
+                    HapticService.play(.medium)
                 }
             } message: {
                 Text("The receipt image could not be loaded. It may have been deleted or corrupted.")
@@ -218,14 +218,14 @@ struct ReceiptImageView: View {
         
         // Boundary haptic
         if hitBoundary {
-            let generator = UIImpactFeedbackGenerator(style: .rigid)
-            generator.impactOccurred()
+          
+            HapticService.play(.medium)
         }
     }
     
     private func resetZoom() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+     
+        HapticService.play(.medium)
         
         withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
             zoomState.reset()
@@ -289,8 +289,8 @@ private struct ZoomableImageView: View {
                         let newScale = min(zoomState.scale * 1.5, maxScale)
                         let hitBoundary = newScale == maxScale
                         
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+                      
+                        HapticService.play(.medium)
                         
                         withAnimation {
                             zoomState.scale = newScale
@@ -303,8 +303,8 @@ private struct ZoomableImageView: View {
                         let newScale = max(zoomState.scale / 1.5, minScale)
                         let hitBoundary = newScale == minScale
                         
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+                   
+                        HapticService.play(.medium)
                         
                         withAnimation {
                             zoomState.scale = newScale
@@ -344,10 +344,10 @@ private struct ZoomableImageView: View {
                 let hitBoundary = clampedScale == minScale || clampedScale == maxScale
                 
                 // Haptic feedback
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred()
+              
+                HapticService.play(.medium)
                 
-                withAnimation(.easeOut(duration: 0.2)) {
+                withAnimation(FLOAnimation.quickEase) {
                     zoomState.scale = clampedScale
                     clampOffset(in: size)
                 }
@@ -363,7 +363,7 @@ private struct ZoomableImageView: View {
                 state = value.translation
             }
             .onEnded { value in
-                withAnimation(.easeOut(duration: 0.2)) {
+                withAnimation(FLOAnimation.quickEase) {
                     zoomState.offset.width += value.translation.width
                     zoomState.offset.height += value.translation.height
                     clampOffset(in: size)
@@ -376,8 +376,8 @@ private struct ZoomableImageView: View {
         TapGesture(count: 2)
             .onEnded {
                 // Haptic feedback for double-tap zoom
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.impactOccurred()
+          
+                HapticService.play(.medium)
                 
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
                     if zoomState.scale > minScale {
@@ -424,8 +424,8 @@ private struct ZoomableImageView: View {
         // Haptic if hit boundary
         if previousOffset != zoomState.offset &&
            (abs(zoomState.offset.width) == maxOffsetX || abs(zoomState.offset.height) == maxOffsetY) {
-            let generator = UIImpactFeedbackGenerator(style: .soft)
-            generator.impactOccurred()
+            
+            HapticService.play(.medium)
         }
         
         zoomState.lastOffset = zoomState.offset

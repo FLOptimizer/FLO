@@ -28,10 +28,7 @@ struct BudgetSettingsView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-
+            
     var body: some View {
         List {
             Section {
@@ -43,7 +40,7 @@ struct BudgetSettingsView: View {
                 }
                 .pickerStyle(.navigationLink)
                 .onChange(of: defaultBudgetType) { _, _ in
-                    selectionFeedback.selectionChanged()
+                    HapticService.play(.selection)
                 }
             } header: {
                 Text("Defaults")
@@ -56,12 +53,12 @@ struct BudgetSettingsView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
 
             Section {
                 Toggle("Enable Monthly Rollover", isOn: $enableRollover)
                     .onChange(of: enableRollover) { _, _ in
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                     }
             } header: {
                 Text("Envelope Budgeting")
@@ -70,17 +67,17 @@ struct BudgetSettingsView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
 
             Section {
                 Toggle("Show Budget Warnings", isOn: Binding(
                     get: { showWarnings },
                     set: { newValue in
                         if newValue {
-                            impactMedium.impactOccurred()
+                            HapticService.play(.medium)
                             requestNotificationPermission()
                         } else {
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                             showWarnings = false
                         }
                     }
@@ -97,7 +94,7 @@ struct BudgetSettingsView: View {
                                 .foregroundStyle(.secondary)
                             Spacer()
                             Button("Fix") {
-                                impactMedium.impactOccurred()
+                                HapticService.play(.medium)
                                 openNotificationSettings()
                             }
                             .font(.caption)
@@ -118,7 +115,7 @@ struct BudgetSettingsView: View {
                             Slider(value: $warningThreshold, in: 50...100, step: 5)
                                 .tint(.orange)
                                 .onChange(of: warningThreshold) { _, _ in
-                                    selectionFeedback.selectionChanged()
+                                    HapticService.play(.selection)
                                 }
 
                             Text("\(Int(warningThreshold))%")
@@ -145,7 +142,7 @@ struct BudgetSettingsView: View {
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: notificationsAuthorized)
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
 
             Section {
                 NavigationLink {
@@ -158,24 +155,23 @@ struct BudgetSettingsView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
         }
         .navigationTitle("Budget Preferences")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            prepareHaptics()
-            checkNotificationStatus()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        checkNotificationStatus()
+            withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }
         .alert("Notifications Required", isPresented: $showingNotificationDeniedAlert) {
             Button("Open Settings") {
-                impactMedium.impactOccurred()
+                HapticService.play(.medium)
                 openNotificationSettings()
             }
             Button("Cancel", role: .cancel) {
-                impactLight.impactOccurred()
+                HapticService.play(.light)
                 showWarnings = false
             }
         } message: {
@@ -185,12 +181,7 @@ struct BudgetSettingsView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-    }
-    
+        
     // MARK: - Notification Helpers
     
     private func requestNotificationPermission() {

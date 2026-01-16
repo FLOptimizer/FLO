@@ -111,7 +111,7 @@ struct LockView: View {
         }
         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: showContent)
         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: authMode)
-        .animation(.easeInOut(duration: 0.3), value: showSuccessAnimation)
+        .animation(FLOAnimation.ease, value: showSuccessAnimation)
         .onAppear(perform: handleOnAppear)
         .onDisappear {
             timerCancellable?.cancel()
@@ -336,7 +336,7 @@ struct LockView: View {
             // Passcode Option (Secondary - text link style)
             if passcodeService.hasPasscode() {
                 Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticService.play(.light)
                     withAnimation {
                         authMode = .passcode
                     }
@@ -426,7 +426,7 @@ struct LockView: View {
                     // Biometric shortcut or Cancel
                     if authService.isBiometricAvailable && authService.biometricEnabled {
                         Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            HapticService.play(.light)
                             passcode = ""
                             withAnimation {
                                 authMode = .biometric
@@ -440,7 +440,7 @@ struct LockView: View {
                         .disabled(isLockedOut)
                     } else {
                         Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            HapticService.play(.light)
                             passcode = ""
                             withAnimation {
                                 authMode = .biometric
@@ -459,7 +459,7 @@ struct LockView: View {
                     // Delete
                     Button {
                         guard !passcode.isEmpty else { return }
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        HapticService.play(.light)
                         passcode.removeLast()
                     } label: {
                         Image(systemName: "delete.left.fill")
@@ -641,7 +641,7 @@ struct LockView: View {
         guard !isAuthenticating else { return }
         
         isAuthenticating = true
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticService.play(.medium)
         
         authService.authenticateWithBiometrics { success in
             isAuthenticating = false
@@ -653,7 +653,7 @@ struct LockView: View {
     }
     
     private func showSuccess() {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        HapticService.play(.success)
         
         withAnimation {
             showSuccessAnimation = true
@@ -669,7 +669,7 @@ struct LockView: View {
         guard !isLockedOut else { return }
         guard passcode.count < passcodeLength else { return }
         
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        HapticService.play(.light)
         passcode += "\(digit)"
         
         if passcode.count == passcodeLength {
@@ -688,7 +688,7 @@ struct LockView: View {
             #endif
         } else {
             failedAttempts += 1
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            HapticService.play(.error)
             
             withAnimation {
                 isPasscodeError = true

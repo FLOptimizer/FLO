@@ -96,8 +96,8 @@ struct AnimatedLockedClientView: View {
                 .padding(.horizontal, 32)
                 
                 Button {
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                    generator.impactOccurred()
+
+                    HapticService.play(.medium)
                     
                     withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                         upgradeButtonScale = 0.95
@@ -232,8 +232,8 @@ struct ClientListContentView: View {
                     Text("Add clients to track invoices and manage business relationships")
                 } actions: {
                     Button {
-                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                        generator.impactOccurred()
+
+                        HapticService.play(.medium)
                         showingCreateClient = true
                     } label: {
                         Text("Add Your First Client")
@@ -249,8 +249,8 @@ struct ClientListContentView: View {
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
-                                let generator = UIImpactFeedbackGenerator(style: .medium)
-                                generator.impactOccurred()
+
+                                HapticService.play(.medium)
                                 clientToDelete = client
                                 showingDeleteAlert = true
                             } label: {
@@ -272,8 +272,8 @@ struct ClientListContentView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
+
+                    HapticService.play(.medium)
                     showingCreateClient = true
                 } label: {
                     Image(systemName: "plus")
@@ -303,8 +303,8 @@ struct ClientListContentView: View {
                 }
             }
             Button("Cancel", role: .cancel) {
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred()
+
+                HapticService.play(.medium)
             }
         } message: { client in
             Text("Are you sure you want to delete \(client.name)? This action cannot be undone.")
@@ -507,8 +507,8 @@ struct CreateClientView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+   
+                        HapticService.play(.medium)
                         dismiss()
                     }
                 }
@@ -528,8 +528,8 @@ struct CreateClientView: View {
     }
     
     private func saveClient() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+
+        HapticService.play(.medium)
         
         withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
             saveButtonScale = 0.9
@@ -658,8 +658,8 @@ struct EditClientView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                        generator.impactOccurred()
+  
+                        HapticService.play(.medium)
                         
                         withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                             saveButtonScale = 0.9

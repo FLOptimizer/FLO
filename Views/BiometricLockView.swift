@@ -47,7 +47,7 @@ struct BiometricLockView: View {
             if showPasscodeEntry {
                 // Show passcode entry view
                 PasscodeEntryView(onDismiss: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    withAnimation(FLOAnimation.quick) {
                         showPasscodeEntry = false
                     }
                 })
@@ -124,9 +124,8 @@ struct BiometricLockView: View {
                     
                     // Passcode Option (always show if passcode is set)
                     if passcodeService.hasPasscode() {
-                        Button {
-                            let generator = UIImpactFeedbackGenerator(style: .light)
-                            generator.impactOccurred()
+                                            Button {
+                            HapticService.play(.medium)
                             
                             withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                                 passcodeButtonScale = 0.95
@@ -154,8 +153,7 @@ struct BiometricLockView: View {
                     // If security is disabled, show unlock button
                     if !authService.biometricEnabled && !passcodeService.hasPasscode() {
                         Button {
-                            let generator = UIImpactFeedbackGenerator(style: .medium)
-                            generator.impactOccurred()
+                            HapticService.play(.medium)
                             
                             withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                                 unlockButtonScale = 0.95
@@ -249,8 +247,7 @@ struct BiometricLockView: View {
     }
     
     private func triggerBiometricAuth() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        HapticService.play(.medium)
         
         withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
             biometricButtonScale = 0.95
@@ -301,8 +298,7 @@ struct BiometricLockView: View {
                 
                 // Secondary celebration haptic
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    let celebrationGenerator = UIImpactFeedbackGenerator(style: .heavy)
-                    celebrationGenerator.impactOccurred()
+                    HapticService.play(.heavy)
                 }
                 
                 biometricFailed = false

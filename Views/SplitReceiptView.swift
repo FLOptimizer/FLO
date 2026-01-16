@@ -133,8 +133,8 @@ struct SplitReceiptView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+  
+                        HapticService.play(.medium)
                         dismiss()
                     }
                 }
@@ -252,12 +252,12 @@ struct SplitReceiptView: View {
     }
     
     private func setQuickPercentage(_ value: Int) {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+
+        HapticService.play(.medium)
         
         quickButtonPressed = value
         
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(FLOAnimation.quick) {
             businessPercentage = Double(value)
         }
         
@@ -289,8 +289,8 @@ struct SplitReceiptView: View {
                         .italic()
                     
                     Button {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+
+                        HapticService.play(.medium)
                         print("📝 Add line items manually")
                     } label: {
                         Label("Add Line Items Manually", systemImage: "plus.circle.fill")
@@ -489,8 +489,8 @@ struct SplitReceiptView: View {
     // MARK: - Actions
     
     private func toggleLineItem(_ id: UUID) {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+
+        HapticService.play(.medium)
         
         if selectedLineItems.contains(id) {
             selectedLineItems.remove(id)
@@ -515,8 +515,8 @@ struct SplitReceiptView: View {
             saveButtonScale = 0.9
         }
         
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+
+        HapticService.play(.medium)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {

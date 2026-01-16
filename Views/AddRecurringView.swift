@@ -61,7 +61,7 @@ struct AddRecurringView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
@@ -97,7 +97,7 @@ struct AddRecurringView: View {
             }
             .pickerStyle(.segmented)
             .onChange(of: isIncome) { _, _ in
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticService.play(.light)
             }
         }
     }
@@ -132,7 +132,7 @@ struct AddRecurringView: View {
             }
             .pickerStyle(.segmented)
             .onChange(of: financeType) { _, _ in
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticService.play(.light)
             }
         }
     }
@@ -176,10 +176,10 @@ struct AddRecurringView: View {
                     Spacer()
                     if selectedAccount != nil {
                         Button("Clear") {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            withAnimation(FLOAnimation.quick) {
                                 selectedAccount = nil
                             }
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            HapticService.play(.light)
                         }
                         .font(.caption)
                         .foregroundStyle(Color.brandPrimary)
@@ -201,14 +201,14 @@ struct AddRecurringView: View {
                         isSelected: selectedAccount?.id == account.id,
                         showBalance: subscriptionManager.currentTier.hasBalanceTracking
                     ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        withAnimation(FLOAnimation.quick) {
                             if selectedAccount?.id == account.id {
                                 selectedAccount = nil
                             } else {
                                 selectedAccount = account
                             }
                         }
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        HapticService.play(.medium)
                     }
                 }
             }
@@ -261,7 +261,7 @@ struct AddRecurringView: View {
             
             Toggle("Set End Date", isOn: $hasEndDate)
                 .onChange(of: hasEndDate) { _, _ in
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticService.play(.light)
                 }
             
             if hasEndDate {
@@ -359,11 +359,11 @@ struct AddRecurringView: View {
             let active = accounts.filter { $0.isActive }
             
             if let matching = active.first(where: { $0.financeType == newType && $0.isPrimary }) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(FLOAnimation.quick) {
                     selectedAccount = matching
                 }
             } else if let matching = active.first(where: { $0.financeType == newType }) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(FLOAnimation.quick) {
                     selectedAccount = matching
                 }
             }
@@ -378,7 +378,7 @@ struct AddRecurringView: View {
         let trimmedMerchant = merchantName.trimmingCharacters(in: .whitespaces)
         guard !trimmedMerchant.isEmpty else { return }
         
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticService.play(.medium)
         
         let recurring = RecurringTransaction(
             amount: amt,
@@ -399,14 +399,14 @@ struct AddRecurringView: View {
         do {
             try context.save()
             
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            HapticService.play(.success)
             print("✅ Recurring saved: \(trimmedMerchant) - Account: \(selectedAccount?.name ?? "None")")
             
             dismiss()
         } catch {
             print("❌ Failed to save recurring transaction: \(error)")
             
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            HapticService.play(.error)
         }
     }
 }
@@ -469,7 +469,7 @@ struct RecurringAccountChip: View {
         }
         .buttonStyle(PlainButtonStyle())
         .scaleEffect(isSelected ? 1.02 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        .animation(FLOAnimation.quick, value: isSelected)
     }
 }
 

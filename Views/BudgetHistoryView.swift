@@ -30,10 +30,7 @@ struct BudgetHistoryView: View {
     @State private var cardsAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    
+                
     private let calendar = Calendar.current
     
     enum FinanceMode: String, CaseIterable {
@@ -95,7 +92,7 @@ struct BudgetHistoryView: View {
         guard let currentIndex = availableMonths.firstIndex(of: selectedMonth),
               currentIndex < availableMonths.count - 1 else { return }
         
-        impactLight.impactOccurred()
+        HapticService.play(.light)
         
         // Reset card animations for new month
         cardsAppeared = false
@@ -106,7 +103,7 @@ struct BudgetHistoryView: View {
         
         // Trigger card animations after month change
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            withAnimation(FLOAnimation.standard) {
                 cardsAppeared = true
             }
         }
@@ -116,7 +113,7 @@ struct BudgetHistoryView: View {
         guard let currentIndex = availableMonths.firstIndex(of: selectedMonth),
               currentIndex > 0 else { return }
         
-        impactLight.impactOccurred()
+        HapticService.play(.light)
         
         // Reset card animations for new month
         cardsAppeared = false
@@ -127,7 +124,7 @@ struct BudgetHistoryView: View {
         
         // Trigger card animations after month change
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            withAnimation(FLOAnimation.standard) {
                 cardsAppeared = true
             }
         }
@@ -193,12 +190,12 @@ struct BudgetHistoryView: View {
                 .pickerStyle(.segmented)
                 .padding()
                 .onChange(of: financeMode) { _, _ in
-                    selectionFeedback.selectionChanged()
+                    HapticService.play(.selection)
                     
                     // Re-trigger card animations
                     cardsAppeared = false
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        withAnimation(FLOAnimation.standard) {
                             cardsAppeared = true
                         }
                     }
@@ -212,7 +209,7 @@ struct BudgetHistoryView: View {
                         .padding(.horizontal)
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : -10)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                     
                     // Content
                     ScrollView {
@@ -222,14 +219,14 @@ struct BudgetHistoryView: View {
                                 .padding(.horizontal)
                                 .opacity(cardsAppeared ? 1 : 0)
                                 .offset(y: cardsAppeared ? 0 : 20)
-                                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: cardsAppeared)
+                                .animation(FLOAnimation.standard.delay(0.15), value: cardsAppeared)
                             
                             // Budget cards
                             if budgetsForSelectedMonth.isEmpty {
                                 noBudgetsForMonth
                                     .padding(.horizontal)
                                     .opacity(cardsAppeared ? 1 : 0)
-                                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: cardsAppeared)
+                                    .animation(FLOAnimation.standard.delay(0.2), value: cardsAppeared)
                             } else {
                                 ForEach(Array(budgetsForSelectedMonth.enumerated()), id: \.element.id) { index, budget in
                                     HistoryBudgetCard(
@@ -241,7 +238,7 @@ struct BudgetHistoryView: View {
                                     .opacity(cardsAppeared ? 1 : 0)
                                     .offset(x: cardsAppeared ? 0 : 30)
                                     .animation(
-                                        .spring(response: 0.5, dampingFraction: 0.8)
+                                        FLOAnimation.standard
                                         .delay(0.2 + Double(index) * 0.05),
                                         value: cardsAppeared
                                     )
@@ -259,18 +256,17 @@ struct BudgetHistoryView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
             }
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                    withAnimation(FLOAnimation.standard) {
                         cardsAppeared = true
                     }
                 }
@@ -280,12 +276,7 @@ struct BudgetHistoryView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-    }
-    
+        
     // MARK: - Month Navigator
     
     private var monthNavigator: some View {

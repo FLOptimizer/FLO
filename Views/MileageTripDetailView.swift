@@ -60,8 +60,8 @@ struct MileageTripDetailView: View {
                     Toggle("Business Trip", isOn: $trip.isBusinessTrip)
                         .tint(.teal)
                         .onChange(of: trip.isBusinessTrip) { oldValue, newValue in
-                            let generator = UIImpactFeedbackGenerator(style: newValue ? .medium : .light)
-                            generator.impactOccurred()
+
+                            HapticService.play(.medium)
                             
                             // Celebration animation when marking as business
                             if newValue {
@@ -183,8 +183,8 @@ struct MileageTripDetailView: View {
             // Delete Button
             Section {
                 Button(role: .destructive) {
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                    generator.impactOccurred()
+       
+                    HapticService.play(.medium)
                     
                     withAnimation(.easeInOut(duration: 0.05).repeatCount(5, autoreverses: true)) {
                         deleteButtonShake = true
@@ -231,8 +231,8 @@ struct MileageTripDetailView: View {
                 deleteTrip()
             }
             Button("Cancel", role: .cancel) {
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred()
+
+                HapticService.play(.medium)
             }
         } message: {
             Text("This action cannot be undone.")
@@ -313,12 +313,12 @@ struct MileageTripDetailView: View {
             generator.notificationOccurred(.success)
             
             // Show confirmation banner briefly
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(FLOAnimation.quick) {
                 showSavedConfirmation = true
             }
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                withAnimation(.easeOut(duration: 0.2)) {
+                withAnimation(FLOAnimation.quickEase) {
                     showSavedConfirmation = false
                 }
                 
@@ -343,8 +343,8 @@ struct MileageTripDetailView: View {
     
     private func deleteTrip() {
         // Heavy haptic for delete
-        let generator = UIImpactFeedbackGenerator(style: .heavy)
-        generator.impactOccurred()
+
+        HapticService.play(.medium)
         
         modelContext.delete(trip)
         
@@ -436,8 +436,8 @@ struct AddressRow: View {
             }
         }
         .onTapGesture {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
+
+            HapticService.play(.medium)
             
             withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
                 isHovered = true

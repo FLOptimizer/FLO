@@ -42,11 +42,7 @@ struct SubscriptionView: View {
     @State private var selectedPeriod: SubscriptionPeriod = .monthly
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                    
     // Check if yearly products are available
     private var yearlyProductsAvailable: Bool {
         manager.product(for: .premium, period: .yearly) != nil ||
@@ -89,20 +85,20 @@ struct SubscriptionView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
                 
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         Task {
                             isRestoring = true
                             await manager.restorePurchases()
                             isRestoring = false
                             if manager.currentTier != .free {
-                                notificationFeedback.notificationOccurred(.success)
+                                HapticService.play(.success)
                             }
                         }
                     } label: {
@@ -129,18 +125,17 @@ struct SubscriptionView: View {
         .onChange(of: manager.purchaseError) { oldValue, newValue in
             showingError = newValue != nil
             if newValue != nil {
-                notificationFeedback.notificationOccurred(.error)
+                HapticService.play(.error)
             }
         }
         .onChange(of: manager.currentTier) { oldValue, newValue in
             if newValue != .free {
-                notificationFeedback.notificationOccurred(.success)
+                HapticService.play(.success)
                 dismiss()
             }
         }
         .onAppear {
-            prepareHaptics()
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                 viewAppeared = true
             }
         }
@@ -148,13 +143,7 @@ struct SubscriptionView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Hero Section
     
     private var heroSection: some View {
@@ -201,8 +190,8 @@ struct SubscriptionView: View {
             Toggle(isOn: Binding(
                 get: { selectedPeriod == .yearly },
                 set: { newValue in
-                    impactLight.impactOccurred()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    HapticService.play(.light)
+                    withAnimation(FLOAnimation.quick) {
                         selectedPeriod = newValue ? .yearly : .monthly
                         // Clear selection when switching periods
                         selectedProduct = nil
@@ -220,7 +209,7 @@ struct SubscriptionView: View {
             Spacer()
         }
         .opacity(viewAppeared ? 1 : 0)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.18), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.18), value: viewAppeared)
     }
     
     // MARK: - Subscription Options
@@ -237,14 +226,14 @@ struct SubscriptionView: View {
                     isCurrentTier: manager.currentTier == .premium,
                     isYearly: selectedPeriod == .yearly
                 ) {
-                    selectionFeedback.selectionChanged()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    HapticService.play(.selection)
+                    withAnimation(FLOAnimation.quick) {
                         selectedProduct = premiumProduct
                     }
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 30)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
             }
             
             // Pro Option (Recommended)
@@ -258,14 +247,14 @@ struct SubscriptionView: View {
                     isYearly: selectedPeriod == .yearly,
                     isRecommended: true
                 ) {
-                    selectionFeedback.selectionChanged()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    HapticService.play(.selection)
+                    withAnimation(FLOAnimation.quick) {
                         selectedProduct = proProduct
                     }
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 30)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
             }
             
             // No products loaded state
@@ -282,7 +271,7 @@ struct SubscriptionView: View {
                         .multilineTextAlignment(.center)
                     
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         Task {
                             await manager.loadProducts()
                         }
@@ -298,13 +287,13 @@ struct SubscriptionView: View {
             // Subscribe Button
             if let product = selectedProduct {
                 Button {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     Task {
                         do {
                             try await manager.purchase(product)
-                            notificationFeedback.notificationOccurred(.success)
+                            HapticService.play(.success)
                         } catch {
-                            notificationFeedback.notificationOccurred(.error)
+                            HapticService.play(.error)
                         }
                     }
                 } label: {
@@ -325,7 +314,7 @@ struct SubscriptionView: View {
                 .disabled(manager.isLoading)
                 .padding(.top, 8)
                 .opacity(viewAppeared ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
             }
         }
     }
@@ -338,7 +327,7 @@ struct SubscriptionView: View {
                 .font(.headline)
                 .padding(.bottom, 4)
                 .opacity(viewAppeared ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
             
             // Header Row
             HStack {
@@ -359,7 +348,7 @@ struct SubscriptionView: View {
                 }
             }
             .opacity(viewAppeared ? 1 : 0)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.38), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.38), value: viewAppeared)
             
             Divider()
             
@@ -397,7 +386,7 @@ struct SubscriptionView: View {
             .font(.caption2)
         }
         .opacity(viewAppeared ? 1 : 0)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.6), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.6), value: viewAppeared)
     }
 }
 

@@ -101,7 +101,7 @@ struct SmartReceiptScanningView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        HapticService.play(.light)
                         resetState()
                         dismiss()
                     }
@@ -173,15 +173,15 @@ struct SmartReceiptScanningView: View {
             let active = accounts.filter { $0.isActive }
             
             if let matching = active.first(where: { $0.financeType == newType && $0.isPrimary }) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(FLOAnimation.quick) {
                     selectedAccount = matching
                 }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticService.play(.light)
             } else if let matching = active.first(where: { $0.financeType == newType }) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(FLOAnimation.quick) {
                     selectedAccount = matching
                 }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticService.play(.light)
             }
         }
     }
@@ -216,7 +216,7 @@ struct SmartReceiptScanningView: View {
             processedReceipt = receipt
             isProcessing = false
             
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            HapticService.play(.success)
             
             #if DEBUG
             print("✅ Receipt processed: \(receipt.merchantName) - \(receipt.totalAmount.asCurrency)")
@@ -226,7 +226,7 @@ struct SmartReceiptScanningView: View {
             errorMessage = "Failed to process receipt: \(error.localizedDescription)"
             isProcessing = false
             
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            HapticService.play(.error)
             
             #if DEBUG
             print("❌ Receipt processing error: \(error)")
@@ -239,7 +239,7 @@ struct SmartReceiptScanningView: View {
     private func linkReceiptToTransaction(_ transaction: Transaction, score: Double) {
         guard let receipt = processedReceipt else { return }
         
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticService.play(.medium)
         
         Task {
             let imagePath = await saveReceiptImage(receipt)
@@ -253,7 +253,7 @@ struct SmartReceiptScanningView: View {
             do {
                 try modelContext.save()
                 showingMatchConfirmation = false
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                HapticService.play(.success)
                 dismiss()
                 
                 #if DEBUG
@@ -261,7 +261,7 @@ struct SmartReceiptScanningView: View {
                 #endif
             } catch {
                 errorMessage = "Failed to save: \(error.localizedDescription)"
-                UINotificationFeedbackGenerator().notificationOccurred(.error)
+                HapticService.play(.error)
             }
         }
     }
@@ -269,7 +269,7 @@ struct SmartReceiptScanningView: View {
     private func markAsCashPurchase() {
         guard let receipt = processedReceipt else { return }
         
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticService.play(.medium)
         
         Task {
             let imagePath = await saveReceiptImage(receipt)
@@ -283,7 +283,7 @@ struct SmartReceiptScanningView: View {
             do {
                 try modelContext.save()
                 showingMatchConfirmation = false
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                HapticService.play(.success)
                 dismiss()
                 
                 #if DEBUG
@@ -291,7 +291,7 @@ struct SmartReceiptScanningView: View {
                 #endif
             } catch {
                 errorMessage = "Failed to save: \(error.localizedDescription)"
-                UINotificationFeedbackGenerator().notificationOccurred(.error)
+                HapticService.play(.error)
             }
         }
     }
@@ -299,7 +299,7 @@ struct SmartReceiptScanningView: View {
     private func saveAndCreateTransaction() {
         guard let receipt = processedReceipt else { return }
         
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticService.play(.medium)
         
         let finalAmount = Double(editedAmount) ?? receipt.totalAmount
         let finalMerchant = editedMerchant.isEmpty ? receipt.merchantName : editedMerchant
@@ -353,7 +353,7 @@ struct SmartReceiptScanningView: View {
                     }
                     
                     try modelContext.save()
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    HapticService.play(.success)
                     
                     #if DEBUG
                     print("💾 Created transaction from receipt: \(finalMerchant) - Account: \(selectedAccount?.name ?? "None")")
@@ -364,7 +364,7 @@ struct SmartReceiptScanningView: View {
                 
             } catch {
                 errorMessage = "Failed to save: \(error.localizedDescription)"
-                UINotificationFeedbackGenerator().notificationOccurred(.error)
+                HapticService.play(.error)
                 
                 #if DEBUG
                 print("❌ Save error: \(error)")
@@ -531,10 +531,10 @@ struct EditableReceiptReviewViewWithAccount: View {
                                 
                                 if selectedAccount != nil {
                                     Button("Clear") {
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        withAnimation(FLOAnimation.quick) {
                                             selectedAccount = nil
                                         }
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        HapticService.play(.light)
                                     }
                                     .font(.caption)
                                     .foregroundStyle(Color.brandPrimary)
@@ -549,14 +549,14 @@ struct EditableReceiptReviewViewWithAccount: View {
                                             isSelected: selectedAccount?.id == account.id,
                                             showBalance: subscriptionTier.hasBalanceTracking
                                         ) {
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            withAnimation(FLOAnimation.quick) {
                                                 if selectedAccount?.id == account.id {
                                                     selectedAccount = nil
                                                 } else {
                                                     selectedAccount = account
                                                 }
                                             }
-                                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                            HapticService.play(.medium)
                                         }
                                     }
                                 }
@@ -585,7 +585,7 @@ struct EditableReceiptReviewViewWithAccount: View {
                         }
                         .pickerStyle(.segmented)
                         .onChange(of: editedFinanceType) { _, _ in
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            HapticService.play(.light)
                         }
                     }
                     
@@ -698,7 +698,7 @@ struct ReceiptAccountChip: View {
         }
         .buttonStyle(PlainButtonStyle())
         .scaleEffect(isSelected ? 1.02 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        .animation(FLOAnimation.quick, value: isSelected)
     }
 }
 
@@ -743,7 +743,7 @@ struct CaptureOptionsView: View {
             
             VStack(spacing: 16) {
                 Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    HapticService.play(.medium)
                     onCameraSelected()
                 } label: {
                     Label("Take Photo", systemImage: "camera.fill")
@@ -754,7 +754,7 @@ struct CaptureOptionsView: View {
                 .tint(Color.brandPrimary)
                 
                 Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticService.play(.light)
                     onPhotoSelected()
                 } label: {
                     Label("Choose from Library", systemImage: "photo.on.rectangle")

@@ -28,12 +28,7 @@ struct SecuritySettingsView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                        
     var body: some View {
         NavigationStack {
             List {
@@ -44,15 +39,15 @@ struct SecuritySettingsView: View {
                             get: { authService.biometricEnabled },
                             set: { newValue in
                                 if newValue {
-                                    impactMedium.impactOccurred()
+                                    HapticService.play(.medium)
                                     authService.setBiometricEnabled(true)
-                                    notificationFeedback.notificationOccurred(.success)
+                                    HapticService.play(.success)
                                 } else {
                                     if passcodeService.hasPasscode() {
-                                        impactLight.impactOccurred()
+                                        HapticService.play(.light)
                                         authService.setBiometricEnabled(false)
                                     } else {
-                                        impactHeavy.impactOccurred()
+                                        HapticService.play(.heavy)
                                         showingDisableBiometricAlert = true
                                     }
                                 }
@@ -77,7 +72,7 @@ struct SecuritySettingsView: View {
                     }
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 }
                 
                 // Passcode Section
@@ -104,21 +99,21 @@ struct SecuritySettingsView: View {
                         }
                         
                         Button {
-                            impactMedium.impactOccurred()
+                            HapticService.play(.medium)
                             showingChangePasscode = true
                         } label: {
                             Label("Change Passcode", systemImage: "pencil")
                         }
                         
                         Button(role: .destructive) {
-                            impactHeavy.impactOccurred()
+                            HapticService.play(.heavy)
                             showingRemovePasscodeAlert = true
                         } label: {
                             Label("Remove Passcode", systemImage: "trash")
                         }
                     } else {
                         Button {
-                            impactMedium.impactOccurred()
+                            HapticService.play(.medium)
                             showingPasscodeSetup = true
                         } label: {
                             Label {
@@ -145,7 +140,7 @@ struct SecuritySettingsView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 // Security Status Section
                 Section {
@@ -180,14 +175,14 @@ struct SecuritySettingsView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
             }
             .navigationTitle("Security")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
@@ -195,22 +190,22 @@ struct SecuritySettingsView: View {
             .sheet(isPresented: $showingPasscodeSetup) {
                 PasscodeSetupView(isChanging: false) {
                     showingPasscodeSetup = false
-                    notificationFeedback.notificationOccurred(.success)
+                    HapticService.play(.success)
                 }
             }
             .sheet(isPresented: $showingChangePasscode) {
                 PasscodeSetupView(isChanging: true) {
                     showingChangePasscode = false
-                    notificationFeedback.notificationOccurred(.success)
+                    HapticService.play(.success)
                 }
             }
             .alert("Remove Passcode?", isPresented: $showingRemovePasscodeAlert) {
                 Button("Cancel", role: .cancel) {
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                 }
                 Button("Remove", role: .destructive) {
                     passcodeService.removePasscode()
-                    notificationFeedback.notificationOccurred(.success)
+                    HapticService.play(.success)
                 }
             } message: {
                 if authService.biometricEnabled {
@@ -221,22 +216,21 @@ struct SecuritySettingsView: View {
             }
             .alert("Disable \(authService.biometricTypeString)?", isPresented: $showingDisableBiometricAlert) {
                 Button("Cancel", role: .cancel) {
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                 }
                 Button("Set Up Passcode") {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     showingPasscodeSetup = true
                 }
                 Button("Disable Anyway", role: .destructive) {
                     authService.setBiometricEnabled(false)
-                    notificationFeedback.notificationOccurred(.warning)
+                    HapticService.play(.warning)
                 }
             } message: {
                 Text("Without \(authService.biometricTypeString) or a passcode, anyone with access to your device can open FLO. Consider setting up a passcode first.")
             }
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
@@ -245,14 +239,7 @@ struct SecuritySettingsView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        impactHeavy.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Computed Properties
     
     private var biometricIcon: String {

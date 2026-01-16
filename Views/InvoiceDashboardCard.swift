@@ -119,8 +119,7 @@ struct InvoiceDashboardCard: View {
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("Done") {
-                                let generator = UIImpactFeedbackGenerator(style: .light)
-                                generator.impactOccurred()
+                                HapticService.play(.medium)
                                 showingInvoiceList = false
                             }
                         }
@@ -293,15 +292,13 @@ struct InvoiceDashboardCard: View {
     // MARK: - Helper Functions
     
     private func handleTap() {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+        HapticService.play(.medium)
         
         showingInvoiceList = true
     }
     
     private func createNewInvoice() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        HapticService.play(.medium)
         
         withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
             createButtonScale = 0.95

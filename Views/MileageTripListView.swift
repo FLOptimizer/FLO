@@ -35,12 +35,7 @@ struct MileageTripListView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                        
     // Filtered trips based on selected period
     private var filteredTrips: [MileageTrip] {
         let calendar = Calendar.current
@@ -92,7 +87,7 @@ struct MileageTripListView: View {
             .padding(.horizontal)
             .padding(.vertical, 12)
             .opacity(viewAppeared ? 1 : 0)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: viewAppeared)
+            .animation(FLOAnimation.standard, value: viewAppeared)
             
             // Statistics Card (if there are trips)
             if !filteredTrips.isEmpty {
@@ -114,7 +109,7 @@ struct MileageTripListView: View {
                     Text("No trips recorded for \(selectedPeriod.displayName.lowercased())")
                 } actions: {
                     Button("Add Manual Trip") {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         showingManualEntry = true
                     }
                     .buttonStyle(.borderedProminent)
@@ -122,7 +117,7 @@ struct MileageTripListView: View {
                 }
                 .frame(maxHeight: .infinity)
                 .opacity(viewAppeared ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
             } else {
                 List {
                     ForEach(Array(filteredTrips.enumerated()), id: \.element.id) { index, trip in
@@ -151,7 +146,7 @@ struct MileageTripListView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         showingManualEntry = true
                     } label: {
                         Label("Add Manual Trip", systemImage: "plus.circle")
@@ -160,7 +155,7 @@ struct MileageTripListView: View {
                     Divider()
                     
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         exportToCSV()
                     } label: {
                         Label("Export to CSV", systemImage: "square.and.arrow.up")
@@ -196,18 +191,17 @@ struct MileageTripListView: View {
             }
         }
         .onChange(of: selectedPeriod) { oldValue, newValue in
-            selectionFeedback.selectionChanged()
+            HapticService.play(.selection)
             // Reset animation state briefly for re-animation effect
             viewAppeared = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
         }
         .onAppear {
-            prepareHaptics()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }
@@ -215,33 +209,26 @@ struct MileageTripListView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        impactHeavy.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Actions
     
     private func confirmDelete(at offsets: IndexSet) {
         guard let index = offsets.first else { return }
-        impactHeavy.impactOccurred()
+        HapticService.play(.heavy)
         tripToDelete = filteredTrips[index]
         showingDeleteConfirmation = true
     }
     
     private func deleteTrip(_ trip: MileageTrip) {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+        withAnimation(FLOAnimation.quick) {
             modelContext.delete(trip)
         }
         
         do {
             try modelContext.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
         } catch {
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
         }
         
         tripToDelete = nil
@@ -276,9 +263,9 @@ struct MileageTripListView: View {
             try csv.write(to: tempURL, atomically: true, encoding: .utf8)
             exportURL = tempURL
             showingExportSheet = true
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
         } catch {
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
             print("❌ Failed to export CSV: \(error)")
         }
     }
@@ -397,7 +384,7 @@ struct StatisticsCard: View {
         .cornerRadius(12)
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 10)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: appeared)
+        .animation(FLOAnimation.standard.delay(0.1), value: appeared)
     }
 }
 
@@ -427,7 +414,7 @@ struct StatColumn: View {
         .frame(maxWidth: .infinity)
         .opacity(appeared ? 1 : 0)
         .scaleEffect(appeared ? 1 : 0.9)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(delay), value: appeared)
+        .animation(FLOAnimation.standard.delay(delay), value: appeared)
     }
 }
 

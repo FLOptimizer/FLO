@@ -288,8 +288,8 @@ struct MileageTrackingDiagnosticView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+
+                        HapticService.play(.medium)
                         dismiss()
                     }
                 }
@@ -329,8 +329,8 @@ struct MileageTrackingDiagnosticView: View {
     }
     
     private func openSettingsAnimated() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+
+        HapticService.play(.medium)
         
         withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
             settingsButtonScale = 0.95

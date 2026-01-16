@@ -46,8 +46,7 @@ struct DocumentCameraView: UIViewControllerRepresentable {
                 #endif
                 
                 // Light haptic for empty scan
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred()
+                HapticService.play(.medium)
                 
                 parent.dismiss()
                 return
@@ -59,8 +58,7 @@ struct DocumentCameraView: UIViewControllerRepresentable {
             
             // Secondary celebration haptic
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                let celebrationGenerator = UIImpactFeedbackGenerator(style: .medium)
-                celebrationGenerator.impactOccurred()
+                HapticService.play(.medium)
             }
             
             // Get the first scanned page
@@ -77,8 +75,7 @@ struct DocumentCameraView: UIViewControllerRepresentable {
         
         func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
             // Light haptic for cancel
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
+            HapticService.play(.medium)
             
             #if DEBUG
             print("📷 Document scan cancelled by user")

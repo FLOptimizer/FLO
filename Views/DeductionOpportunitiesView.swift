@@ -28,10 +28,7 @@ struct DeductionOpportunitiesView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    
+                
     enum OpportunityFilter: String, CaseIterable {
         case all = "All"
         case highSavings = "High Savings"
@@ -81,7 +78,7 @@ struct DeductionOpportunitiesView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Done") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
@@ -102,11 +99,10 @@ struct DeductionOpportunitiesView: View {
             }
             .searchable(text: $searchText, prompt: "Search opportunities")
             .onChange(of: sortOrder) { _, _ in
-                selectionFeedback.selectionChanged()
+                HapticService.play(.selection)
             }
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
@@ -115,12 +111,7 @@ struct DeductionOpportunitiesView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-    }
-    
+        
     // MARK: - Summary Header
     
     private var summaryHeader: some View {
@@ -159,7 +150,7 @@ struct DeductionOpportunitiesView: View {
         }
         .opacity(viewAppeared ? 1 : 0)
         .offset(y: viewAppeared ? 0 : 15)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
     }
     
     // MARK: - Filter Chips
@@ -172,8 +163,8 @@ struct DeductionOpportunitiesView: View {
                         filter: filter,
                         isSelected: selectedFilter == filter
                     ) {
-                        selectionFeedback.selectionChanged()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        HapticService.play(.selection)
+                        withAnimation(FLOAnimation.quick) {
                             selectedFilter = filter
                         }
                     }
@@ -185,7 +176,7 @@ struct DeductionOpportunitiesView: View {
         .background(Color(.systemGroupedBackground))
         .opacity(viewAppeared ? 1 : 0)
         .offset(y: viewAppeared ? 0 : 10)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
     }
     
     struct FilterChip: View {
@@ -210,7 +201,7 @@ struct DeductionOpportunitiesView: View {
                 .cornerRadius(20)
                 .scaleEffect(isSelected ? 1.02 : 1.0)
             }
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+            .animation(FLOAnimation.quick, value: isSelected)
         }
     }
     
@@ -224,7 +215,7 @@ struct DeductionOpportunitiesView: View {
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 20)
                         .animation(
-                            .spring(response: 0.5, dampingFraction: 0.8)
+                            FLOAnimation.standard
                             .delay(0.15 + Double(index) * 0.05),
                             value: viewAppeared
                         )
@@ -240,11 +231,10 @@ struct DeductionOpportunitiesView: View {
         @State private var showDetail = false
         @State private var isPressed = false
         
-        private let impactLight = UIImpactFeedbackGenerator(style: .light)
-        
+                
         var body: some View {
             Button {
-                impactLight.impactOccurred()
+                HapticService.play(.light)
                 showDetail = true
             } label: {
                 VStack(alignment: .leading, spacing: 12) {
@@ -357,7 +347,7 @@ struct DeductionOpportunitiesView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
         .opacity(viewAppeared ? 1 : 0)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
     }
     
     // MARK: - Computed Properties

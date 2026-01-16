@@ -32,10 +32,7 @@ struct SettingsView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    
+                
     private var colorScheme: ColorScheme? {
         switch preferredColorScheme {
         case "light": return .light
@@ -105,12 +102,12 @@ struct SettingsView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 // Security Section
                 Section {
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         showingBiometricSetup = true
                     } label: {
                         HStack {
@@ -142,7 +139,7 @@ struct SettingsView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 // Categories Section
                 Section("Categories") {
@@ -160,7 +157,7 @@ struct SettingsView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
                 // Financial Features Section
                 Section {
@@ -189,7 +186,7 @@ struct SettingsView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
                 // Premium Features Section
                 Section {
@@ -214,7 +211,7 @@ struct SettingsView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 
                 // Preferences Section
                 Section {
@@ -262,12 +259,12 @@ struct SettingsView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                 
                 // Export & Backup Section
                 Section {
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         showingExportOptions = true
                     } label: {
                         Label {
@@ -296,7 +293,7 @@ struct SettingsView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                 
                 // Support Section
                 Section {
@@ -363,12 +360,12 @@ struct SettingsView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
                 
                 // About Section
                 Section {
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         showingAbout = true
                     } label: {
                         HStack {
@@ -401,7 +398,7 @@ struct SettingsView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.45), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
             }
             .navigationTitle("Settings")
             .sheet(isPresented: $showingBiometricSetup) {
@@ -414,8 +411,7 @@ struct SettingsView: View {
                 ExportOptionsView()
             }
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
@@ -425,12 +421,7 @@ struct SettingsView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-    }
-    
+        
     private var appVersion: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
@@ -450,10 +441,7 @@ struct ProfileEditView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                
     init(userName: Binding<String>, userEmail: Binding<String>) {
         self._userName = userName
         self._userEmail = userEmail
@@ -474,7 +462,7 @@ struct ProfileEditView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
             
             Section {
                 Text("Your profile information is stored locally on your device and is never shared.")
@@ -483,27 +471,27 @@ struct ProfileEditView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
         }
         .navigationTitle("Edit Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Cancel") {
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                     dismiss()
                 }
             }
             
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Save") {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     saveProfile()
                 }
             }
         }
         .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }
@@ -512,7 +500,7 @@ struct ProfileEditView: View {
     private func saveProfile() {
         userName = editedName
         userEmail = editedEmail
-        notificationFeedback.notificationOccurred(.success)
+        HapticService.play(.success)
         dismiss()
     }
 }
@@ -528,39 +516,38 @@ struct NotificationSettingsView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    
+        
     var body: some View {
         Form {
             Section {
                 Toggle("Enable Notifications", isOn: $notificationsEnabled)
                     .tint(Color.brandPrimary)
                     .onChange(of: notificationsEnabled) { _, _ in
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                     }
             } footer: {
                 Text("Allow FLO to send you important reminders and updates")
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
             
             if notificationsEnabled {
                 Section("Reminders") {
                     Toggle("Quarterly Tax Deadlines", isOn: $taxReminderEnabled)
                         .tint(Color.brandPrimary)
                         .onChange(of: taxReminderEnabled) { _, _ in
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                         }
                     Toggle("Budget Alerts", isOn: $budgetAlertEnabled)
                         .tint(Color.brandPrimary)
                         .onChange(of: budgetAlertEnabled) { _, _ in
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                         }
                     Toggle("Weekly Summary", isOn: $weeklyReportEnabled)
                         .tint(Color.brandPrimary)
                         .onChange(of: weeklyReportEnabled) { _, _ in
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                         }
                 }
                 .transition(.asymmetric(
@@ -573,7 +560,7 @@ struct NotificationSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: notificationsEnabled)
         .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }
@@ -591,10 +578,7 @@ struct DataManagementView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                
     var body: some View {
         Form {
             Section("Storage") {
@@ -618,11 +602,11 @@ struct DataManagementView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
             
             Section {
                 Button(role: .destructive) {
-                    impactHeavy.impactOccurred()
+                    HapticService.play(.heavy)
                     showingClearDataAlert = true
                 } label: {
                     Label {
@@ -638,13 +622,13 @@ struct DataManagementView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
         }
         .navigationTitle("Data & Storage")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Clear All Data?", isPresented: $showingClearDataAlert) {
             Button("Cancel", role: .cancel) {
-                impactLight.impactOccurred()
+                HapticService.play(.light)
             }
             Button("Delete Everything", role: .destructive) {
                 clearAllData()
@@ -653,7 +637,7 @@ struct DataManagementView: View {
             Text("This will permanently delete all your data. This action cannot be undone.")
         }
         .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }
@@ -670,9 +654,9 @@ struct DataManagementView: View {
         
         do {
             try modelContext.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
         } catch {
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
         }
     }
 }
@@ -721,16 +705,13 @@ struct ExportOptionsView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                
     var body: some View {
         NavigationStack {
             Form {
                 Section("Transactions") {
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         exportTransactionsCSV()
                     } label: {
                         Label {
@@ -744,11 +725,11 @@ struct ExportOptionsView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 Section("Mileage") {
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         exportMileageCSV()
                     } label: {
                         Label {
@@ -762,20 +743,20 @@ struct ExportOptionsView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
             }
             .navigationTitle("Export Data")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
             }
             .onAppear {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
@@ -783,12 +764,12 @@ struct ExportOptionsView: View {
     }
     
     private func exportTransactionsCSV() {
-        notificationFeedback.notificationOccurred(.success)
+        HapticService.play(.success)
         // Export logic here
     }
     
     private func exportMileageCSV() {
-        notificationFeedback.notificationOccurred(.success)
+        HapticService.play(.success)
         // Export logic here
     }
 }
@@ -800,8 +781,7 @@ struct AboutView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    
+        
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -831,7 +811,7 @@ struct AboutView: View {
                     }
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 20)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                     
                     // Description
                     Text("Financial management designed for freelancers, gig workers, and small business owners")
@@ -840,7 +820,7 @@ struct AboutView: View {
                         .foregroundStyle(.secondary)
                         .padding(.horizontal)
                         .opacity(viewAppeared ? 1 : 0)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                     
                     // Features
                     VStack(alignment: .leading, spacing: 16) {
@@ -849,7 +829,7 @@ struct AboutView: View {
                                 .opacity(viewAppeared ? 1 : 0)
                                 .offset(x: viewAppeared ? 0 : 20)
                                 .animation(
-                                    .spring(response: 0.5, dampingFraction: 0.8)
+                                    FLOAnimation.standard
                                     .delay(0.2 + Double(index) * 0.05),
                                     value: viewAppeared
                                 )
@@ -872,7 +852,7 @@ struct AboutView: View {
                     }
                     .padding(.bottom, 40)
                     .opacity(viewAppeared ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
                 }
             }
             .navigationTitle("About")
@@ -880,13 +860,13 @@ struct AboutView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
             }
             .onAppear {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
@@ -961,7 +941,7 @@ struct HelpCenterView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(x: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 NavigationLink("Setting Up Tax Estimates") {
                     HelpArticleView(
@@ -993,7 +973,7 @@ struct HelpCenterView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(x: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 NavigationLink("Tracking Mileage") {
                     HelpArticleView(
@@ -1025,7 +1005,7 @@ struct HelpCenterView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(x: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
             }
             
             Section("Features") {
@@ -1055,7 +1035,7 @@ struct HelpCenterView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(x: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
                 NavigationLink("Receipt Scanning") {
                     HelpArticleView(
@@ -1083,7 +1063,7 @@ struct HelpCenterView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(x: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 
                 NavigationLink("Invoicing") {
                     HelpArticleView(
@@ -1111,7 +1091,7 @@ struct HelpCenterView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(x: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
             }
             
             Section("Security & Privacy") {
@@ -1141,7 +1121,7 @@ struct HelpCenterView: View {
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(x: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
             }
             
             Section("Need More Help?") {
@@ -1157,7 +1137,7 @@ struct HelpCenterView: View {
                 .buttonStyle(.plain)
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(x: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
                 
                 Link(destination: URL(string: "https://floptimizer.github.io/FLO/index.htm")!) {
                     Label {
@@ -1171,12 +1151,12 @@ struct HelpCenterView: View {
                 .buttonStyle(.plain)
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(x: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.45), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
             }
         }
         .navigationTitle("Help Center")
         .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }
@@ -1215,7 +1195,7 @@ struct HelpArticleView: View {
                 .padding(.bottom, 8)
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 // Sections
                 ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
@@ -1236,7 +1216,7 @@ struct HelpArticleView: View {
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 15)
                     .animation(
-                        .spring(response: 0.5, dampingFraction: 0.8)
+                        FLOAnimation.standard
                         .delay(0.1 + Double(index) * 0.05),
                         value: viewAppeared
                     )
@@ -1247,7 +1227,7 @@ struct HelpArticleView: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }

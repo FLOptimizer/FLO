@@ -48,12 +48,7 @@ struct MileageTrackingMainView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                        
     // Computed properties
     private var recentTrips: [MileageTrip] {
         Array(allTrips.prefix(5))
@@ -100,13 +95,13 @@ struct MileageTrackingMainView: View {
                     LimitedModeBanner(
                         hasNoPermission: hasNoPermission,
                         onFix: {
-                            impactMedium.impactOccurred()
+                            HapticService.play(.medium)
                             if let url = URL(string: UIApplication.openSettingsURLString) {
                                 UIApplication.shared.open(url)
                             }
                         },
                         onDismiss: {
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                             withAnimation {
                                 limitedModeBannerDismissed = true
                             }
@@ -121,7 +116,7 @@ struct MileageTrackingMainView: View {
                     CompactLimitedModeIndicator(
                         hasNoPermission: hasNoPermission,
                         onTap: {
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                             if let url = URL(string: UIApplication.openSettingsURLString) {
                                 UIApplication.shared.open(url)
                             }
@@ -136,12 +131,12 @@ struct MileageTrackingMainView: View {
                     RecoveryBanner(
                         tripInfo: recovered,
                         onSave: {
-                            impactMedium.impactOccurred()
+                            HapticService.play(.medium)
                             trackingService.saveRecoveredTrip()
-                            notificationFeedback.notificationOccurred(.success)
+                            HapticService.play(.success)
                         },
                         onDiscard: {
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                             trackingService.discardRecoveredTrip()
                         }
                     )
@@ -158,14 +153,14 @@ struct MileageTrackingMainView: View {
                     trackingService: trackingService,
                     onToggle: toggleTracking,
                     onForceEnd: {
-                        impactHeavy.impactOccurred()
+                        HapticService.play(.heavy)
                         showingForceEndConfirmation = true
                     }
                 )
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 20)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
             
             // MARK: - Error Display
             if let error = trackingService.trackingError {
@@ -218,7 +213,7 @@ struct MileageTrackingMainView: View {
                     }
                     .frame(height: 150)
                     .opacity(viewAppeared ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                 } else {
                     ForEach(Array(recentTrips.enumerated()), id: \.element.id) { index, trip in
                         TripRowCompact(trip: trip)
@@ -232,7 +227,7 @@ struct MileageTrackingMainView: View {
                     }
                     
                     Button {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         showingAllTrips = true
                     } label: {
                         HStack {
@@ -244,7 +239,7 @@ struct MileageTrackingMainView: View {
                         }
                     }
                     .opacity(viewAppeared ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.5), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.5), value: viewAppeared)
                 }
             } header: {
                 Text("Recent Trips")
@@ -253,7 +248,7 @@ struct MileageTrackingMainView: View {
             // MARK: - Quick Actions
             Section("Actions") {
                 Button {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     showingManualEntry = true
                 } label: {
                     Label("Add Manual Trip", systemImage: "plus.circle.fill")
@@ -261,7 +256,7 @@ struct MileageTrackingMainView: View {
                 }
                 
                 Button {
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                     showingDiagnostics = true
                 } label: {
                     Label("Diagnostics", systemImage: "wrench.and.screwdriver.fill")
@@ -269,13 +264,13 @@ struct MileageTrackingMainView: View {
                 }
             }
             .opacity(viewAppeared ? 1 : 0)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.55), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.55), value: viewAppeared)
             
             // MARK: - Preferences
             Section("Preferences") {
                 Toggle("Trip Notifications", isOn: $tripNotifications)
                     .onChange(of: tripNotifications) { _, _ in
-                        selectionFeedback.selectionChanged()
+                        HapticService.play(.selection)
                     }
                 
                 HStack {
@@ -293,7 +288,7 @@ struct MileageTrackingMainView: View {
                 }
             }
             .opacity(viewAppeared ? 1 : 0)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.6), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.6), value: viewAppeared)
             
             // MARK: - IRS Rates Info
             Section {
@@ -324,13 +319,12 @@ struct MileageTrackingMainView: View {
                 Text("Business mileage is tax deductible. Keep records for at least 3 years.")
             }
             .opacity(viewAppeared ? 1 : 0)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.65), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.65), value: viewAppeared)
         }
         .navigationTitle("Mileage Tracking")
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
-            prepareHaptics()
-            
+                        
             // Inject ModelContext
             trackingService.inject(modelContext: modelContext)
             
@@ -355,7 +349,7 @@ struct MileageTrackingMainView: View {
                 showingRecoveryAlert = true
             }
             
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }
@@ -436,7 +430,7 @@ struct MileageTrackingMainView: View {
             Button("Cancel", role: .cancel) { }
             Button("End Trip", role: .destructive) {
                 trackingService.forceEndCurrentTrip()
-                notificationFeedback.notificationOccurred(.success)
+                HapticService.play(.success)
             }
         } message: {
             if let trip = trackingService.currentTrip {
@@ -449,14 +443,7 @@ struct MileageTrackingMainView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        impactHeavy.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Actions
     
     private func toggleTracking() {
@@ -464,26 +451,26 @@ struct MileageTrackingMainView: View {
         
         if status == .notDetermined {
             // Show setup prompt instead
-            impactMedium.impactOccurred()
+            HapticService.play(.medium)
             showingSetupPrompt = true
         } else if status == .denied || status == .restricted {
             // Direct to settings
-            impactMedium.impactOccurred()
+            HapticService.play(.medium)
             if let url = URL(string: UIApplication.openSettingsURLString) {
                 UIApplication.shared.open(url)
             }
         } else {
             // Has permission - toggle tracking
             if trackingService.isTracking {
-                impactHeavy.impactOccurred()
+                HapticService.play(.heavy)
                 trackingService.stopTracking()
                 trackingEnabled = false // Persist OFF state
-                notificationFeedback.notificationOccurred(.warning)
+                HapticService.play(.warning)
             } else {
-                impactMedium.impactOccurred()
+                HapticService.play(.medium)
                 trackingService.startTracking()
                 trackingEnabled = true // Persist ON state
-                notificationFeedback.notificationOccurred(.success)
+                HapticService.play(.success)
             }
         }
     }
@@ -929,7 +916,7 @@ struct StatBox: View {
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 10)
         .scaleEffect(appeared ? 1 : 0.95)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(delay), value: appeared)
+        .animation(FLOAnimation.standard.delay(delay), value: appeared)
     }
 }
 

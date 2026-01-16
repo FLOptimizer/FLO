@@ -37,12 +37,7 @@ struct TransactionListView: View {
     @State private var listAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                        
     var body: some View {
         NavigationStack {
             Group {
@@ -57,7 +52,7 @@ struct TransactionListView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         showingAddTransaction = true
                     } label: {
                         Image(systemName: "plus")
@@ -80,14 +75,13 @@ struct TransactionListView: View {
                 EditTransactionView(transaction: transaction)
             }
             .onChange(of: selectedCategory) { oldValue, newValue in
-                selectionFeedback.selectionChanged()
+                HapticService.play(.selection)
             }
             .onChange(of: selectedFinanceType) { oldValue, newValue in
-                selectionFeedback.selectionChanged()
+                HapticService.play(.selection)
             }
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     listAppeared = true
                 }
             }
@@ -96,14 +90,7 @@ struct TransactionListView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        impactHeavy.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Transaction List
 
     @ViewBuilder
@@ -125,15 +112,15 @@ struct TransactionListView: View {
                             rowIndex: rowIndex,
                             listAppeared: listAppeared,
                             onTap: { transaction in
-                                impactLight.impactOccurred()
+                                HapticService.play(.light)
                                 transactionToEdit = transaction
                             },
                             onDelete: { transaction in
-                                impactHeavy.impactOccurred()
+                                HapticService.play(.heavy)
                                 deleteTransaction(transaction)
                             },
                             onEdit: { transaction in
-                                impactLight.impactOccurred()
+                                HapticService.play(.light)
                                 transactionToEdit = transaction
                             }
                         )
@@ -148,18 +135,18 @@ struct TransactionListView: View {
             await refresh()
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: filteredTransactions.count)
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: hasActiveFilters)
+        .animation(FLOAnimation.quick, value: hasActiveFilters)
     }
 
     private func refresh() async {
-        impactLight.impactOccurred()
+        HapticService.play(.light)
         isRefreshing = true
         
         // Small delay for visual feedback
         try? await Task.sleep(nanoseconds: 300_000_000)
         
         isRefreshing = false
-        notificationFeedback.notificationOccurred(.success)
+        HapticService.play(.success)
     }
 
     private func sectionHeader(for date: Date) -> some View {
@@ -236,7 +223,7 @@ struct TransactionListView: View {
         if hasActiveFilters {
             Section {
                 Button(role: .destructive) {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     clearFilters()
                 } label: {
                     Label("Clear All Filters", systemImage: "xmark.circle")
@@ -321,7 +308,7 @@ struct TransactionListView: View {
                         icon: financeType.icon,
                         color: financeType == .business ? .businessColor : .personalColor
                     ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        withAnimation(FLOAnimation.quick) {
                             selectedFinanceType = nil
                         }
                     }
@@ -334,7 +321,7 @@ struct TransactionListView: View {
                         icon: category.icon,
                         color: Color(flowHex: category.colorHex)
                     ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        withAnimation(FLOAnimation.quick) {
                             selectedCategory = nil
                         }
                     }
@@ -342,7 +329,7 @@ struct TransactionListView: View {
                 }
                 
                 Button {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     clearFilters()
                 } label: {
                     Text("Clear All")
@@ -357,8 +344,8 @@ struct TransactionListView: View {
             }
             .padding(.horizontal, 4)
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: selectedFinanceType)
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: selectedCategory?.id)
+        .animation(FLOAnimation.quick, value: selectedFinanceType)
+        .animation(FLOAnimation.quick, value: selectedCategory?.id)
     }
     
     private func filterBadge(text: String, icon: String, color: Color, onRemove: @escaping () -> Void) -> some View {
@@ -369,7 +356,7 @@ struct TransactionListView: View {
                 .font(.caption)
                 .fontWeight(.medium)
             Button {
-                impactLight.impactOccurred()
+                HapticService.play(.light)
                 onRemove()
             } label: {
                 Image(systemName: "xmark.circle.fill")
@@ -399,7 +386,7 @@ struct TransactionListView: View {
         }
         .opacity(listAppeared ? 1 : 0)
         .scaleEffect(listAppeared ? 1 : 0.95)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: listAppeared)
+        .animation(FLOAnimation.standard, value: listAppeared)
     }
     
     private var emptyStateDescription: some View {
@@ -418,7 +405,7 @@ struct TransactionListView: View {
         Group {
             if hasActiveFilters {
                 Button("Clear Filters") {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     clearFilters()
                 }
                 .buttonStyle(.bordered)
@@ -426,7 +413,7 @@ struct TransactionListView: View {
             }
             
             Button("Add Transaction") {
-                impactMedium.impactOccurred()
+                HapticService.play(.medium)
                 showingAddTransaction = true
             }
             .buttonStyle(.borderedProminent)
@@ -471,7 +458,7 @@ struct TransactionListView: View {
     // MARK: - Actions
     
     private func clearFilters() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+        withAnimation(FLOAnimation.quick) {
             selectedCategory = nil
             selectedFinanceType = nil
         }
@@ -480,16 +467,16 @@ struct TransactionListView: View {
     private func deleteTransaction(_ transaction: Transaction) {
         let transactionName = transaction.displayName
         
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+        withAnimation(FLOAnimation.quick) {
             context.delete(transaction)
         }
         
         do {
             try context.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             print("✅ Transaction deleted: \(transactionName)")
         } catch {
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
             print("❌ Failed to delete transaction: \(error)")
         }
     }

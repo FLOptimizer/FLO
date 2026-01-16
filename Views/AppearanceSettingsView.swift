@@ -23,9 +23,7 @@ struct AppearanceSettingsView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    
+            
     private var colorScheme: ColorScheme? {
         switch preferredColorScheme {
         case "light": return .light
@@ -63,7 +61,7 @@ struct AppearanceSettingsView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
             
             // Theme Section
             Section {
@@ -97,7 +95,7 @@ struct AppearanceSettingsView: View {
                 }
                 .pickerStyle(.inline)
                 .onChange(of: preferredColorScheme) { _, _ in
-                    selectionFeedback.selectionChanged()
+                    HapticService.play(.selection)
                 }
             } header: {
                 Text("Light/Dark Mode")
@@ -106,7 +104,7 @@ struct AppearanceSettingsView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
             
             // Display Options Section
             Section {
@@ -121,7 +119,7 @@ struct AppearanceSettingsView: View {
                 }
                 .tint(Color.brandPrimary)
                 .onChange(of: showCentsInList) { _, _ in
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                 }
                 
                 Toggle(isOn: $compactListView) {
@@ -135,7 +133,7 @@ struct AppearanceSettingsView: View {
                 }
                 .tint(Color.brandPrimary)
                 .onChange(of: compactListView) { _, _ in
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                 }
             } header: {
                 Text("Display Options")
@@ -144,14 +142,13 @@ struct AppearanceSettingsView: View {
             }
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
         }
         .navigationTitle("Appearance")
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(colorScheme)
         .onAppear {
-            prepareHaptics()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }
@@ -159,11 +156,7 @@ struct AppearanceSettingsView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
     }
-}
 
 // MARK: - Preview
 

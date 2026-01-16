@@ -26,11 +26,7 @@ struct RecurringListView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                    
     var body: some View {
         NavigationStack {
             List {
@@ -41,7 +37,7 @@ struct RecurringListView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         showingAddRecurring = true
                     } label: {
                         Image(systemName: "plus")
@@ -68,8 +64,7 @@ struct RecurringListView: View {
                 EditRecurringView(recurringTransaction: recur)
             }
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
@@ -78,13 +73,7 @@ struct RecurringListView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        impactLight.prepare()
-        impactMedium.prepare()
-        impactHeavy.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Sections
     
     @ViewBuilder
@@ -95,19 +84,19 @@ struct RecurringListView: View {
                     RecurringRow(recurring: recur)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                             recurringToEdit = recur
                         }
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
-                                impactHeavy.impactOccurred()
+                                HapticService.play(.heavy)
                                 deleteRecurring(recur)
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
                             
                             Button {
-                                impactMedium.impactOccurred()
+                                HapticService.play(.medium)
                                 toggleActive(recur)
                             } label: {
                                 Label("Pause", systemImage: "pause.fill")
@@ -117,7 +106,7 @@ struct RecurringListView: View {
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(x: viewAppeared ? 0 : 20)
                         .animation(
-                            .spring(response: 0.5, dampingFraction: 0.8)
+                            FLOAnimation.standard
                             .delay(Double(index) * 0.05),
                             value: viewAppeared
                         )
@@ -135,7 +124,7 @@ struct RecurringListView: View {
                         .opacity(0.6)
                         .swipeActions(edge: .leading) {
                             Button {
-                                impactMedium.impactOccurred()
+                                HapticService.play(.medium)
                                 toggleActive(recur)
                             } label: {
                                 Label("Resume", systemImage: "play.fill")
@@ -144,7 +133,7 @@ struct RecurringListView: View {
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
-                                impactHeavy.impactOccurred()
+                                HapticService.play(.heavy)
                                 deleteRecurring(recur)
                             } label: {
                                 Label("Delete", systemImage: "trash")
@@ -153,7 +142,7 @@ struct RecurringListView: View {
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(x: viewAppeared ? 0 : 20)
                         .animation(
-                            .spring(response: 0.5, dampingFraction: 0.8)
+                            FLOAnimation.standard
                             .delay(0.2 + Double(index) * 0.05),
                             value: viewAppeared
                         )
@@ -180,9 +169,9 @@ struct RecurringListView: View {
             
             do {
                 try context.save()
-                notificationFeedback.notificationOccurred(.success)
+                HapticService.play(.success)
             } catch {
-                notificationFeedback.notificationOccurred(.error)
+                HapticService.play(.error)
                 print("❌ Failed to toggle recurring: \(error)")
             }
         }
@@ -194,9 +183,9 @@ struct RecurringListView: View {
             
             do {
                 try context.save()
-                notificationFeedback.notificationOccurred(.success)
+                HapticService.play(.success)
             } catch {
-                notificationFeedback.notificationOccurred(.error)
+                HapticService.play(.error)
                 print("❌ Failed to delete recurring: \(error)")
             }
         }

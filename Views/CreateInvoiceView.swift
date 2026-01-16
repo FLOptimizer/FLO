@@ -48,11 +48,7 @@ struct CreateInvoiceView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                    
     var isValid: Bool {
         selectedClient != nil && !lineItems.filter { $0.isValid }.isEmpty
     }
@@ -75,14 +71,14 @@ struct CreateInvoiceView: View {
                             }
                             Spacer()
                             Button("Change") {
-                                impactLight.impactOccurred()
+                                HapticService.play(.light)
                                 showingClientPicker = true
                             }
                         }
                         .transition(.scale.combined(with: .opacity))
                     } else {
                         Button("Select Client") {
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                             showingClientPicker = true
                         }
                     }
@@ -93,11 +89,11 @@ struct CreateInvoiceView: View {
                 Section("Invoice Details") {
                     DatePicker("Issue Date", selection: $issueDate, displayedComponents: .date)
                         .onChange(of: issueDate) { _, _ in
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                         }
                     DatePicker("Due Date", selection: $dueDate, displayedComponents: .date)
                         .onChange(of: dueDate) { _, _ in
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                         }
                     
                     Picker("Payment Terms", selection: $paymentTerms) {
@@ -107,7 +103,7 @@ struct CreateInvoiceView: View {
                         Text("Net 60").tag("Net 60")
                     }
                     .onChange(of: paymentTerms) { _, _ in
-                        selectionFeedback.selectionChanged()
+                        HapticService.play(.selection)
                     }
                 }
                 
@@ -117,14 +113,14 @@ struct CreateInvoiceView: View {
                         LineItemEditor(item: $item)
                     }
                     .onDelete { indexSet in
-                        impactMedium.impactOccurred()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        HapticService.play(.medium)
+                        withAnimation(FLOAnimation.quick) {
                             lineItems.remove(atOffsets: indexSet)
                         }
                     }
                     
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                             lineItems.append(InvoiceItemData())
                         }
@@ -222,14 +218,14 @@ struct CreateInvoiceView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         createInvoice()
                     }
                     .disabled(!isValid)
@@ -244,11 +240,10 @@ struct CreateInvoiceView: View {
                 Text(saveError?.localizedDescription ?? "An unknown error occurred. Please try again.")
             }
             .onAppear {
-                prepareHaptics()
-            }
+                            }
             .onChange(of: selectedClient) { oldValue, newValue in
                 if newValue != nil {
-                    notificationFeedback.notificationOccurred(.success)
+                    HapticService.play(.success)
                 }
             }
         }
@@ -256,13 +251,7 @@ struct CreateInvoiceView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Computed Properties
     
     private var subtotal: Double {
@@ -317,12 +306,12 @@ struct CreateInvoiceView: View {
         
         do {
             try modelContext.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             dismiss()
         } catch {
             saveError = error
             showingSaveError = true
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
             print("❌ Failed to save invoice: \(error)")
         }
     }
@@ -355,11 +344,7 @@ struct EditInvoiceView: View {
     @State private var showingSaveError = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                    
     init(invoice: Invoice) {
         self.invoice = invoice
         _selectedClient = State(initialValue: invoice.client)
@@ -411,13 +396,13 @@ struct EditInvoiceView: View {
                             }
                             Spacer()
                             Button("Change") {
-                                impactLight.impactOccurred()
+                                HapticService.play(.light)
                                 showingClientPicker = true
                             }
                         }
                     } else {
                         Button("Select Client") {
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                             showingClientPicker = true
                         }
                     }
@@ -426,11 +411,11 @@ struct EditInvoiceView: View {
                 Section("Invoice Details") {
                     DatePicker("Issue Date", selection: $issueDate, displayedComponents: .date)
                         .onChange(of: issueDate) { _, _ in
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                         }
                     DatePicker("Due Date", selection: $dueDate, displayedComponents: .date)
                         .onChange(of: dueDate) { _, _ in
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                         }
                     
                     Picker("Payment Terms", selection: $paymentTerms) {
@@ -440,7 +425,7 @@ struct EditInvoiceView: View {
                         Text("Net 60").tag("Net 60")
                     }
                     .onChange(of: paymentTerms) { _, _ in
-                        selectionFeedback.selectionChanged()
+                        HapticService.play(.selection)
                     }
                 }
                 
@@ -449,14 +434,14 @@ struct EditInvoiceView: View {
                         LineItemEditor(item: $item)
                     }
                     .onDelete { indexSet in
-                        impactMedium.impactOccurred()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        HapticService.play(.medium)
+                        withAnimation(FLOAnimation.quick) {
                             lineItems.remove(atOffsets: indexSet)
                         }
                     }
                     
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                             lineItems.append(InvoiceItemData())
                         }
@@ -547,14 +532,14 @@ struct EditInvoiceView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         saveChanges()
                     }
                     .disabled(!isValid)
@@ -569,20 +554,13 @@ struct EditInvoiceView: View {
                 Text(saveError?.localizedDescription ?? "An unknown error occurred. Please try again.")
             }
             .onAppear {
-                prepareHaptics()
-            }
+                            }
         }
     }
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     private var subtotal: Double {
         lineItems
             .filter { $0.isValid }
@@ -628,12 +606,12 @@ struct EditInvoiceView: View {
         
         do {
             try modelContext.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             dismiss()
         } catch {
             saveError = error
             showingSaveError = true
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
             print("❌ Failed to save changes: \(error)")
         }
     }
@@ -676,14 +654,12 @@ struct ClientPickerView: View {
     @Binding var selectedClient: Client?
     let clients: [Client]
     
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    
+            
     var body: some View {
         NavigationStack {
             List(clients) { client in
                 Button {
-                    selectionFeedback.selectionChanged()
+                    HapticService.play(.selection)
                     selectedClient = client
                     dismiss()
                 } label: {
@@ -711,14 +687,10 @@ struct ClientPickerView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
-            }
-            .onAppear {
-                impactLight.prepare()
-                selectionFeedback.prepare()
             }
         }
     }

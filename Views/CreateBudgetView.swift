@@ -47,7 +47,7 @@ struct CreateBudgetView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
@@ -92,7 +92,7 @@ struct CreateBudgetView: View {
             }
             .pickerStyle(.segmented)
             .onChange(of: financeType) { _, _ in
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticService.play(.light)
             }
         }
     }
@@ -122,10 +122,10 @@ struct CreateBudgetView: View {
                     Spacer()
                     if selectedAccount != nil {
                         Button("All Accounts") {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            withAnimation(FLOAnimation.quick) {
                                 selectedAccount = nil
                             }
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            HapticService.play(.light)
                         }
                         .font(.caption)
                         .foregroundStyle(Color.brandPrimary)
@@ -150,10 +150,10 @@ struct CreateBudgetView: View {
                     isSelected: selectedAccount == nil,
                     financeType: financeType
                 ) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    withAnimation(FLOAnimation.quick) {
                         selectedAccount = nil
                     }
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    HapticService.play(.medium)
                 }
                 
                 ForEach(sortedAccounts) { account in
@@ -162,10 +162,10 @@ struct CreateBudgetView: View {
                         isSelected: selectedAccount?.id == account.id,
                         showBalance: subscriptionManager.currentTier.hasBalanceTracking
                     ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        withAnimation(FLOAnimation.quick) {
                             selectedAccount = account
                         }
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        HapticService.play(.medium)
                     }
                 }
             }
@@ -236,7 +236,7 @@ struct CreateBudgetView: View {
         
         // If current account doesn't match new financeType, reset to "All Accounts"
         if let current = selectedAccount, current.financeType != newType {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(FLOAnimation.quick) {
                 selectedAccount = nil
             }
         }
@@ -247,7 +247,7 @@ struct CreateBudgetView: View {
     private func save() {
         guard let amt = Double(amount), let category = selectedCategory else { return }
         
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticService.play(.medium)
         
         let budget = Budget(
             month: month,
@@ -261,11 +261,11 @@ struct CreateBudgetView: View {
         
         do {
             try context.save()
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            HapticService.play(.success)
             dismiss()
         } catch {
             print("❌ Failed to save budget: \(error)")
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            HapticService.play(.error)
         }
     }
 }
@@ -320,7 +320,7 @@ struct AllAccountsChip: View {
         }
         .buttonStyle(PlainButtonStyle())
         .scaleEffect(isSelected ? 1.02 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        .animation(FLOAnimation.quick, value: isSelected)
     }
 }
 
@@ -382,7 +382,7 @@ struct BudgetAccountChip: View {
         }
         .buttonStyle(PlainButtonStyle())
         .scaleEffect(isSelected ? 1.02 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        .animation(FLOAnimation.quick, value: isSelected)
     }
 }
 

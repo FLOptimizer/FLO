@@ -446,9 +446,7 @@ struct MileageSetupPageView: View {
     @State private var hasRequestedAlways = false // Track if we've already asked for Always
     @State private var isWaitingForAlwaysResponse = false
     
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+            
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
@@ -515,7 +513,7 @@ struct MileageSetupPageView: View {
             // Buttons - added extra bottom padding to clear page dots
             VStack(spacing: 12) {
                 Button {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     requestLocationPermission()
                 } label: {
                     HStack {
@@ -610,7 +608,7 @@ struct MileageSetupPageView: View {
             
         case .authorizedAlways:
             // Already have Always - complete setup
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             onSetupComplete()
             
         case .denied, .restricted:
@@ -635,7 +633,7 @@ struct MileageSetupPageView: View {
         case .authorizedAlways:
             // Perfect! User chose Always Allow
             isWaitingForAlwaysResponse = false
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
             onSetupComplete()
             
         case .authorizedWhenInUse:
@@ -688,8 +686,7 @@ struct LimitedModeExplanationView: View {
     let onOpenSettings: () -> Void
     let onContinue: () -> Void
     
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    
+        
     var body: some View {
         VStack(spacing: 24) {
             // Header
@@ -747,7 +744,7 @@ struct LimitedModeExplanationView: View {
             // Buttons
             VStack(spacing: 12) {
                 Button {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     onOpenSettings()
                 } label: {
                     HStack {

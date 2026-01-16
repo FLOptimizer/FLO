@@ -105,9 +105,7 @@ struct MarkAsPaidView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
-                        dismiss()
+                        HapticService.play(.heavy)
                     }
                 }
                 
@@ -302,8 +300,7 @@ struct MarkAsPaidView: View {
                 Text("Payment History")
                 Spacer()
                 Button {
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
+                    HapticService.play(.medium)
                     showingPartialPaymentInfo = true
                 } label: {
                     Image(systemName: "info.circle")
@@ -427,8 +424,7 @@ struct MarkAsPaidView: View {
             Toggle("Create Income Transaction", isOn: $createTransaction)
                 .tint(Color.brandPrimary)
                 .onChange(of: createTransaction) { _, newValue in
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
+                    HapticService.play(.medium)
                 }
             
             if createTransaction {
@@ -501,8 +497,7 @@ struct MarkAsPaidView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+                        HapticService.play(.medium)
                         showingPartialPaymentInfo = false
                     }
                 }
@@ -552,9 +547,7 @@ struct MarkAsPaidView: View {
         isProcessing = true
         
         // Processing haptic
-        let impactGenerator = UIImpactFeedbackGenerator(style: .medium)
-        impactGenerator.impactOccurred()
-        
+        HapticService.play(.heavy)
         // Create income transaction if requested
         var linkedTransaction: Transaction? = nil
         
@@ -593,8 +586,7 @@ struct MarkAsPaidView: View {
             
             // Additional impact for "celebration"
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                let celebrationGenerator = UIImpactFeedbackGenerator(style: .heavy)
-                celebrationGenerator.impactOccurred()
+                HapticService.play(.heavy)
             }
             
             showingSuccess = true
@@ -625,8 +617,7 @@ private struct QuickAmountButton: View {
     
     var body: some View {
         Button {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
+            HapticService.play(.medium)
             
             withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                 isPressed = true

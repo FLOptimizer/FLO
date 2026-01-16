@@ -34,9 +34,7 @@ struct DeductionOpportunityCard: View {
     @State private var headerIconBounce = false
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    
+            
     private var settings: TaxSettings {
         taxSettings.first ?? TaxSettings()
     }
@@ -61,8 +59,7 @@ struct DeductionOpportunityCard: View {
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
         .onAppear {
-            prepareHaptics()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
             Task {
@@ -76,11 +73,7 @@ struct DeductionOpportunityCard: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        impactLight.prepare()
-        impactMedium.prepare()
-    }
-    
+        
     // MARK: - Header
     
     private var cardHeader: some View {
@@ -113,7 +106,7 @@ struct DeductionOpportunityCard: View {
             
             if !opportunities.isEmpty {
                 Button {
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                     showAllOpportunities = true
                 } label: {
                     Image(systemName: "chevron.right")
@@ -125,7 +118,7 @@ struct DeductionOpportunityCard: View {
         .padding()
         .opacity(viewAppeared ? 1 : 0)
         .offset(y: viewAppeared ? 0 : 10)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
     }
     
     // MARK: - Loading State
@@ -141,7 +134,7 @@ struct DeductionOpportunityCard: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
         .opacity(viewAppeared ? 1 : 0)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
     }
     
     // MARK: - No Opportunities
@@ -165,7 +158,7 @@ struct DeductionOpportunityCard: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
         .opacity(viewAppeared ? 1 : 0)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
     }
     
     // MARK: - Opportunities List
@@ -177,7 +170,7 @@ struct DeductionOpportunityCard: View {
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(x: viewAppeared ? 0 : 20)
                     .animation(
-                        .spring(response: 0.5, dampingFraction: 0.8)
+                        FLOAnimation.standard
                         .delay(0.1 + Double(index) * 0.05),
                         value: viewAppeared
                     )
@@ -185,7 +178,7 @@ struct DeductionOpportunityCard: View {
             
             if opportunities.count > 3 {
                 Button {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     showAllOpportunities = true
                 } label: {
                     HStack {
@@ -198,7 +191,7 @@ struct DeductionOpportunityCard: View {
                 }
                 .padding(.top, 4)
                 .opacity(viewAppeared ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
             }
         }
         .padding()
@@ -211,11 +204,10 @@ struct DeductionOpportunityCard: View {
         @State private var showDetail = false
         @State private var isPressed = false
         
-        private let impactLight = UIImpactFeedbackGenerator(style: .light)
-        
+                
         var body: some View {
             Button {
-                impactLight.impactOccurred()
+                HapticService.play(.light)
                 showDetail = true
             } label: {
                 HStack(alignment: .top, spacing: 12) {
@@ -353,9 +345,7 @@ struct DeductionDetailView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    
+            
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -377,13 +367,13 @@ struct DeductionDetailView: View {
                     .padding(.top)
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 15)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                     
                     // Savings estimate
                     savingsCard
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 15)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                     
                     // Description
                     VStack(alignment: .leading, spacing: 8) {
@@ -399,7 +389,7 @@ struct DeductionDetailView: View {
                     .cornerRadius(12)
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 15)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                     
                     // Action items
                     if !opportunity.actionItems.isEmpty {
@@ -427,14 +417,14 @@ struct DeductionDetailView: View {
                         .cornerRadius(12)
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 15)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                     }
                     
                     // Risk assessment
                     riskCard
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 15)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                     
                     // IRS citation
                     if let citation = opportunity.irsCitation {
@@ -451,14 +441,14 @@ struct DeductionDetailView: View {
                         .cornerRadius(12)
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 15)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                     }
                     
                     // Disclaimer
                     disclaimerView
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 15)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                 }
                 .padding()
             }
@@ -466,15 +456,13 @@ struct DeductionDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
             }
             .onAppear {
-                impactLight.prepare()
-                impactMedium.prepare()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
@@ -513,7 +501,7 @@ struct DeductionDetailView: View {
             
             if opportunity.requiresProTier && subscriptionManager.currentTier != .pro {
                 Button {
-                    impactMedium.impactOccurred()
+                    HapticService.play(.medium)
                     showingPaywall = true
                 } label: {
                     HStack {

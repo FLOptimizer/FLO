@@ -32,10 +32,7 @@ struct YearEndChecklistView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                
     private var settings: TaxSettings {
         taxSettings.first ?? TaxSettings()
     }
@@ -58,8 +55,7 @@ struct YearEndChecklistView: View {
             .navigationTitle("Year-End Tax Planning")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
-                prepareHaptics()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
                 Task {
@@ -71,12 +67,7 @@ struct YearEndChecklistView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        impactLight.prepare()
-        impactMedium.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Loading State
     
     private var loadingView: some View {
@@ -90,7 +81,7 @@ struct YearEndChecklistView: View {
                 .foregroundStyle(.secondary)
         }
         .opacity(viewAppeared ? 1 : 0)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+        .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
     }
     
     // MARK: - Inactive State (Not November-December)
@@ -103,12 +94,12 @@ struct YearEndChecklistView: View {
                     .foregroundStyle(.secondary)
                     .symbolEffect(.pulse, options: .repeating.speed(0.5))
                     .opacity(viewAppeared ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 Text("Year-End Planning Inactive")
                     .font(.title2.bold())
                     .opacity(viewAppeared ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
                 Text("This feature activates in November and December to help you maximize tax deductions before year-end.")
                     .font(.body)
@@ -116,7 +107,7 @@ struct YearEndChecklistView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
                     .opacity(viewAppeared ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("What to expect:")
@@ -145,7 +136,7 @@ struct YearEndChecklistView: View {
                 .padding(.horizontal)
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(y: viewAppeared ? 0 : 15)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
             }
             .padding(.vertical, 40)
         }
@@ -183,19 +174,19 @@ struct YearEndChecklistView: View {
                 progressHeader(checklist)
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 15)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 savingsSummary(checklist)
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 15)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 checklistSections(checklist)
                 
                 disclaimerView
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 15)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
             }
             .padding()
         }
@@ -327,7 +318,7 @@ struct YearEndChecklistView: View {
             )
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 15)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
         }
         
         if !mediumPriorityItems(checklist).isEmpty {
@@ -339,7 +330,7 @@ struct YearEndChecklistView: View {
             )
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 15)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
         }
         
         if !lowPriorityItems(checklist).isEmpty {
@@ -351,7 +342,7 @@ struct YearEndChecklistView: View {
             )
             .opacity(viewAppeared ? 1 : 0)
             .offset(y: viewAppeared ? 0 : 15)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
         }
     }
     
@@ -366,13 +357,13 @@ struct YearEndChecklistView: View {
             
             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                 ChecklistItemRow(item: item) {
-                    impactLight.impactOccurred()
+                    HapticService.play(.light)
                     selectedItem = item
                 }
                 .opacity(viewAppeared ? 1 : 0)
                 .offset(x: viewAppeared ? 0 : 20)
                 .animation(
-                    .spring(response: 0.5, dampingFraction: 0.8)
+                    FLOAnimation.standard
                     .delay(0.2 + Double(index) * 0.05),
                     value: viewAppeared
                 )
@@ -516,10 +507,7 @@ struct ChecklistItemDetailView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -549,7 +537,7 @@ struct ChecklistItemDetailView: View {
                     }
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                     
                     // Description
                     VStack(alignment: .leading, spacing: 8) {
@@ -565,7 +553,7 @@ struct ChecklistItemDetailView: View {
                     .cornerRadius(12)
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                     
                     // Potential savings
                     if item.potentialSavings > 0 {
@@ -590,7 +578,7 @@ struct ChecklistItemDetailView: View {
                         .cornerRadius(12)
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 10)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                     }
                     
                     // Action steps
@@ -619,7 +607,7 @@ struct ChecklistItemDetailView: View {
                         .cornerRadius(12)
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(y: viewAppeared ? 0 : 10)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                     }
                     
                     // Deadline warning
@@ -644,16 +632,16 @@ struct ChecklistItemDetailView: View {
                     .cornerRadius(12)
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                     
                     // Mark complete button
                     Button {
-                        impactMedium.impactOccurred()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        HapticService.play(.medium)
+                        withAnimation(FLOAnimation.quick) {
                             item.isCompleted.toggle()
                         }
                         if item.isCompleted {
-                            notificationFeedback.notificationOccurred(.success)
+                            HapticService.play(.success)
                         }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             dismiss()
@@ -673,7 +661,7 @@ struct ChecklistItemDetailView: View {
                     }
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                 }
                 .padding()
             }
@@ -682,16 +670,14 @@ struct ChecklistItemDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
-                        impactLight.impactOccurred()
+                        HapticService.play(.light)
                         dismiss()
                     }
                 }
             }
             .onAppear {
-                impactLight.prepare()
-                impactMedium.prepare()
-                notificationFeedback.prepare()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+
+                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }

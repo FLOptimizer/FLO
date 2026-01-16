@@ -33,11 +33,7 @@ struct InvoiceListView: View {
     @State private var viewAppeared = false
     
     // Haptic Generators
-    private let selectionFeedback = UISelectionFeedbackGenerator()
-    private let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-    
+                    
     var filteredInvoices: [Invoice] {
         var invoices = allInvoices
         
@@ -96,11 +92,10 @@ struct InvoiceListView: View {
             Text("You've reached the 25 invoice limit for Premium. Upgrade to Pro for unlimited invoices.")
         }
         .onChange(of: filterStatus) { oldValue, newValue in
-            selectionFeedback.selectionChanged()
+            HapticService.play(.selection)
         }
         .onAppear {
-            prepareHaptics()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }
@@ -108,13 +103,7 @@ struct InvoiceListView: View {
     
     // MARK: - Haptic Preparation
     
-    private func prepareHaptics() {
-        selectionFeedback.prepare()
-        impactLight.prepare()
-        impactMedium.prepare()
-        notificationFeedback.prepare()
-    }
-    
+        
     // MARK: - Invoice List Content
     
     private var invoiceListContent: some View {
@@ -130,12 +119,12 @@ struct InvoiceListView: View {
                         )
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                             filterStatus = .unpaid
                         }
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(x: viewAppeared ? 0 : -20)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                         
                         SummaryCard(
                             title: "Overdue",
@@ -144,15 +133,15 @@ struct InvoiceListView: View {
                         )
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            impactLight.impactOccurred()
+                            HapticService.play(.light)
                             filterStatus = .overdue
                         }
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(x: viewAppeared ? 0 : -20)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                         
                         Button {
-                            impactMedium.impactOccurred()
+                            HapticService.play(.medium)
                             showingAgingReport = true
                         } label: {
                             HStack {
@@ -168,7 +157,7 @@ struct InvoiceListView: View {
                         }
                         .opacity(viewAppeared ? 1 : 0)
                         .offset(x: viewAppeared ? 0 : -20)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.2), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                     }
                     .padding(.horizontal)
                     .padding(.vertical, 8)
@@ -183,7 +172,7 @@ struct InvoiceListView: View {
                 .pickerStyle(.segmented)
                 .padding()
                 .opacity(viewAppeared ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.25), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 
                 // Invoice list
                 if filteredInvoices.isEmpty {
@@ -194,7 +183,7 @@ struct InvoiceListView: View {
                         Text(emptyStateMessage)
                     }
                     .opacity(viewAppeared ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                 } else {
                     List {
                         ForEach(Array(filteredInvoices.enumerated()), id: \.element.id) { index, invoice in
@@ -222,7 +211,7 @@ struct InvoiceListView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         handleCreateInvoice()
                     } label: {
                         Image(systemName: "plus.circle.fill")
@@ -271,7 +260,7 @@ struct InvoiceListView: View {
                     }
                     .opacity(viewAppeared ? 1 : 0)
                     .offset(y: viewAppeared ? 0 : 20)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                     
                     VStack(alignment: .leading, spacing: 16) {
                         FeatureCheckmarkRow(icon: "doc.richtext.fill", text: "Professional PDF invoices", delay: 0.15, appeared: viewAppeared)
@@ -288,7 +277,7 @@ struct InvoiceListView: View {
                     .padding(.horizontal, 32)
                     
                     Button {
-                        impactMedium.impactOccurred()
+                        HapticService.play(.medium)
                         showingPaywall = true
                     } label: {
                         HStack(spacing: 8) {
@@ -305,7 +294,7 @@ struct InvoiceListView: View {
                     .padding(.horizontal, 32)
                     .opacity(viewAppeared ? 1 : 0)
                     .scaleEffect(viewAppeared ? 1 : 0.9)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.45), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
                     
                     Spacer()
                 }
@@ -352,15 +341,15 @@ struct InvoiceListView: View {
     }
     
     private func deleteInvoices(at offsets: IndexSet) {
-        impactMedium.impactOccurred()
+        HapticService.play(.medium)
         let invoicesToDelete = offsets.map { filteredInvoices[$0] }
         invoicesToDelete.forEach { modelContext.delete($0) }
         
         do {
             try modelContext.save()
-            notificationFeedback.notificationOccurred(.success)
+            HapticService.play(.success)
         } catch {
-            notificationFeedback.notificationOccurred(.error)
+            HapticService.play(.error)
         }
     }
 }
@@ -507,7 +496,7 @@ struct FeatureCheckmarkRow: View {
         }
         .opacity(appeared ? 1 : 0)
         .offset(x: appeared ? 0 : -10)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(delay), value: appeared)
+        .animation(FLOAnimation.standard.delay(delay), value: appeared)
     }
 }
 
@@ -549,7 +538,7 @@ struct TierComparisonRow: View {
         .cornerRadius(12)
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 10)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(delay), value: appeared)
+        .animation(FLOAnimation.standard.delay(delay), value: appeared)
     }
 }
 
