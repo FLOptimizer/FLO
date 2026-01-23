@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "D9HZRHZ736.finchandpoppy.flo",
+        "paths": ["/FLO/plaid-oauth"]
+      }
+    ]
+  }
+}
