@@ -1,8 +1,32 @@
 //  ReportsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.4 - Complete merge of v3.2 features + v3.3 color palette
+//  Version 3.6 - File split + UTF-8 cleanup (Sprint 5a)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.6:
+//  ✅ Split into 3 files for maintainability:
+//     - ReportsView.swift (this file) - Core view, state, body, helpers
+//     - ReportsChartSections.swift - All chart/section views as extension
+//     - ReportsSupportingViews.swift - Standalone child structs
+//  ✅ Fixed garbled UTF-8 characters throughout
+//  ✅ Removed empty Color extension wrapper around previews
+//  ✅ Changed cross-file properties from private to internal
+//
+//  CHANGES v3.5:
+//  ✅ Full VoiceOver accessibility coverage
+//  ✅ All charts accessible with spoken summaries
+//  ✅ EnhancedStatCard, MonthComparisonCard, InsightRow combined elements
+//  ✅ TaxDeadlineCountdownCard combined with urgency context
+//  ✅ TaxDeductibleSummary combined with spoken currency
+//  ✅ All toolbar buttons labeled with hints
+//  ✅ Date navigation buttons labeled with period context
+//  ✅ Category legend/breakdown rows combined elements
+//  ✅ Business vs Personal cards combined with spoken amounts
+//  ✅ ReportExportSheet fully accessible with spoken currency previews
+//  ✅ Empty state and export success overlay accessible
+//  ✅ Screen change announcements on appear
+//  ✅ All section headers marked with .isHeader trait
 //
 //  CHANGES v3.4:
 //  ✅ MERGED: Multi-color chart palette from v3.3 (12 distinct colors)
@@ -21,6 +45,7 @@
 import SwiftUI
 import SwiftData
 import Charts
+
 
 // MARK: - Chart Color Palette
 
@@ -132,14 +157,14 @@ struct ReportsView: View {
     @State private var selectedDate = Date()
     @State private var selectedChartType: ChartType = .pie
     @State private var showExportSheet = false
-    @State private var showComprehensiveReport = false
+    @State var showComprehensiveReport = false
     @State private var showShareSheet = false
     @State private var exportData: Data?
     @State private var exportURL: URL?
     @State private var exportError: String?
     @State private var showExportSuccess = false
     @State private var isExporting = false
-    @State private var viewAppeared = false
+    @State var viewAppeared = false
     
     // Haptic Generators
                     
@@ -156,7 +181,7 @@ struct ReportsView: View {
     
     private var calendar: Calendar { .current }
     
-    private var currencyCode: String {
+    var currencyCode: String {
         Locale.current.currency?.identifier ?? "USD"
     }
     
@@ -341,8 +366,10 @@ struct ReportsView: View {
                             showComprehensiveReport = true
                         } label: {
                             Image(systemName: "doc.text.fill.viewfinder")
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
+                        .accessibilityLabel("Generate CPA report")
+                        .accessibilityHint("Opens comprehensive report generator for tax preparation")
                         
                         // Export Button
                         Button {
@@ -350,8 +377,10 @@ struct ReportsView: View {
                             showExportSheet = true
                         } label: {
                             Image(systemName: "square.and.arrow.up")
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
+                        .accessibilityLabel("Export report")
+                        .accessibilityHint("Opens export options for PDF or CSV")
                         
                         // Chart Type Menu
                         Menu {
@@ -367,8 +396,11 @@ struct ReportsView: View {
                             }
                         } label: {
                             Image(systemName: selectedChartType.icon)
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
+                        .accessibilityLabel("Chart type")
+                        .accessibilityValue(selectedChartType.rawValue)
+                        .accessibilityHint("Select between category breakdown, monthly trend, income vs expense, or cash flow projection")
                     }
                 }
             }
@@ -395,6 +427,7 @@ struct ReportsView: View {
                                 withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
+                AccessibilityAnnouncement.screenChanged("Reports, \(selectedChartType.rawValue)")
             }
         }
     }
@@ -408,83 +441,83 @@ struct ReportsView: View {
         VStack(spacing: 24) {
             // Tax Deadline Countdown
             TaxDeadlineCountdownCard()
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
             
             // Tax Disclaimer
             taxDisclaimerSection
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
             
             // Chart Type Header
             chartTypeHeader
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
             
             // Period Selector
             periodSelector
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
             
             // Date Navigation
             dateNavigation
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
             
             // Summary Cards with Trends
             summaryCards
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
             
             // Chart Section
             chartSection
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
             
             // Business vs Personal
             if totalExpense > 0 {
                 businessPersonalSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 15)
                     .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
             }
             
             // Monthly Comparison
             monthlyComparisonSection
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
             
             // Category Breakdown (for pie chart)
             if selectedChartType == .pie && !categoryChartData.isEmpty {
                 categoryBreakdownSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 15)
                     .animation(FLOAnimation.standard.delay(0.5), value: viewAppeared)
             }
             
             // Tax Deductible Summary
             TaxDeductibleSummary(transactions: filteredTransactions)
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.55), value: viewAppeared)
             
             // Smart Insights
             insightsCard
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.6), value: viewAppeared)
             
             // CPA Report CTA
             cpaReportCTA
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.65), value: viewAppeared)
         }
@@ -499,6 +532,7 @@ struct ReportsView: View {
             HStack {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.white)
+                    .accessibilityHidden(true)
                 Text("Report exported successfully!")
                     .foregroundStyle(.white)
                     .fontWeight(.medium)
@@ -508,6 +542,8 @@ struct ReportsView: View {
             .cornerRadius(12)
             .shadow(radius: 8)
             .padding(.bottom, 40)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.updatesFrequently)
         }
         .transition(.move(edge: .bottom).combined(with: .opacity))
         .onAppear {
@@ -527,6 +563,7 @@ struct ReportsView: View {
                     .foregroundStyle(.orange)
                     .font(.title3)
                     .symbolEffect(.pulse, options: .repeating.speed(0.5))
+                    .accessibilityHidden(true)
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Tax Information Disclaimer")
@@ -540,6 +577,7 @@ struct ReportsView: View {
             .padding()
             .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
+            .accessibilityElement(children: .combine)
         }
         .padding(.horizontal)
     }
@@ -552,6 +590,7 @@ struct ReportsView: View {
                 Image(systemName: selectedChartType.icon)
                     .foregroundStyle(Color.brandPrimary)
                     .symbolEffect(.bounce, value: selectedChartType)
+                    .accessibilityHidden(true)
                 Text(selectedChartType.rawValue)
                     .font(.title2)
                     .fontWeight(.bold)
@@ -562,6 +601,8 @@ struct ReportsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
     
     // MARK: - Period Selector
@@ -589,8 +630,9 @@ struct ReportsView: View {
             } label: {
                 Image(systemName: "chevron.left.circle.fill")
                     .font(.title2)
-                    .foregroundStyle(Color.brandPrimary)
+                     .foregroundStyle(Color.brandPrimaryText)
             }
+            .accessibilityLabel("Previous \(selectedPeriod.rawValue.lowercased())")
             
             Spacer()
             
@@ -598,6 +640,7 @@ struct ReportsView: View {
                 .font(.headline)
                 .contentTransition(.numericText())
                 .animation(.spring(response: 0.3), value: selectedDate)
+                .accessibilityAddTraits(.isHeader)
             
             Spacer()
             
@@ -607,8 +650,9 @@ struct ReportsView: View {
             } label: {
                 Image(systemName: "chevron.right.circle.fill")
                     .font(.title2)
-                    .foregroundStyle(Color.brandPrimary)
+                     .foregroundStyle(Color.brandPrimaryText)
             }
+            .accessibilityLabel("Next \(selectedPeriod.rawValue.lowercased())")
         }
         .padding(.horizontal)
     }
@@ -658,549 +702,9 @@ struct ReportsView: View {
         }
     }
     
-    // MARK: - Pie Chart with Multi-Color Palette
-    
-    private var pieChartSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Spending by Category")
-                .font(.headline)
-                .padding(.horizontal)
-            
-            Chart(categoryChartData) { item in
-                SectorMark(
-                    angle: .value("Amount", max(item.amount, 0)),
-                    innerRadius: .ratio(0.6),
-                    angularInset: 1.5
-                )
-                .foregroundStyle(item.color)
-                .annotation(position: .overlay) {
-                    if item.percentage > 8 {
-                        Text("\(Int(item.percentage))%")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundStyle(.white)
-                    }
-                }
-            }
-            .frame(height: 280)
-            .padding(.horizontal)
-            
-            // Category Legend with colors
-            categoryLegend
-        }
-        .padding(.vertical)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
-        .padding(.horizontal)
-    }
-    
-    // MARK: - Category Legend
-    
-    private var categoryLegend: some View {
-        VStack(spacing: 8) {
-            ForEach(categoryChartData.prefix(8)) { item in
-                HStack(spacing: 12) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(item.color)
-                        .frame(width: 16, height: 16)
-                    
-                    Text(item.category)
-                        .font(.subheadline)
-                        .lineLimit(1)
-                    
-                    Spacer()
-                    
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(item.amount, format: .currency(code: currencyCode))
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .contentTransition(.numericText())
-                        Text("\(Int(item.percentage))%")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            
-            if categoryChartData.count > 8 {
-                Text("and \(categoryChartData.count - 8) more categories...")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 4)
-            }
-        }
-        .padding(.horizontal)
-        .padding(.bottom, 8)
-    }
-    
-    // MARK: - Bar Trend Chart
-    
-    private var barTrendChartSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("6-Month Trend")
-                    .font(.headline)
-                Spacer()
-                legendView
-            }
-            .padding(.horizontal)
-            
-            Chart(monthlyTrendData) { data in
-                BarMark(
-                    x: .value("Month", data.label),
-                    y: .value("Amount", data.expense)
-                )
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color.expenseRed.opacity(0.8), Color.expenseRed],
-                        startPoint: .bottom,
-                        endPoint: .top
-                    )
-                )
-                .cornerRadius(4)
-                .position(by: .value("Type", "Expense"))
-                
-                BarMark(
-                    x: .value("Month", data.label),
-                    y: .value("Amount", data.income)
-                )
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color.incomeGreen.opacity(0.8), Color.incomeGreen],
-                        startPoint: .bottom,
-                        endPoint: .top
-                    )
-                )
-                .cornerRadius(4)
-                .position(by: .value("Type", "Income"))
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading) { value in
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [5]))
-                    AxisValueLabel {
-                        if let amount = value.as(Double.self) {
-                            Text(formatCompactCurrency(amount))
-                                .font(.caption2)
-                        }
-                    }
-                }
-            }
-            .frame(height: 280)
-            .padding(.horizontal)
-            
-            monthlyNetSummary
-        }
-        .padding(.vertical)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
-        .padding(.horizontal)
-    }
-    
-    // MARK: - Line Comparison Chart with Area Marks
-    
-    private var lineComparisonChartSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Income vs Expense")
-                    .font(.headline)
-                Spacer()
-                legendView
-            }
-            .padding(.horizontal)
-            
-            Chart {
-                ForEach(monthlyTrendData) { data in
-                    // Income Line
-                    LineMark(
-                        x: .value("Month", data.label),
-                        y: .value("Income", data.income)
-                    )
-                    .foregroundStyle(Color.incomeGreen)
-                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
-                    .symbol {
-                        Circle()
-                            .fill(Color.incomeGreen)
-                            .frame(width: 10, height: 10)
-                    }
-                    .interpolationMethod(.catmullRom)
-                    
-                    // Income Area
-                    AreaMark(
-                        x: .value("Month", data.label),
-                        y: .value("Income", data.income)
-                    )
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color.incomeGreen.opacity(0.3), Color.incomeGreen.opacity(0.05)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .interpolationMethod(.catmullRom)
-                    
-                    // Expense Line
-                    LineMark(
-                        x: .value("Month", data.label),
-                        y: .value("Expense", data.expense)
-                    )
-                    .foregroundStyle(Color.expenseRed)
-                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
-                    .symbol {
-                        Circle()
-                            .fill(Color.expenseRed)
-                            .frame(width: 10, height: 10)
-                    }
-                    .interpolationMethod(.catmullRom)
-                    
-                    // Expense Area
-                    AreaMark(
-                        x: .value("Month", data.label),
-                        y: .value("Expense", data.expense)
-                    )
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color.expenseRed.opacity(0.3), Color.expenseRed.opacity(0.05)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .interpolationMethod(.catmullRom)
-                }
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading) { value in
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [5]))
-                    AxisValueLabel {
-                        if let amount = value.as(Double.self) {
-                            Text(formatCompactCurrency(amount))
-                                .font(.caption2)
-                        }
-                    }
-                }
-            }
-            .frame(height: 280)
-            .padding(.horizontal)
-            
-            trendInsightView
-        }
-        .padding(.vertical)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
-        .padding(.horizontal)
-    }
-    
-    // MARK: - Cash Flow Projection Chart
-    
-    private var cashFlowChartSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Cash Flow Projection")
-                    .font(.headline)
-                Spacer()
-                Text("* = Projected")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal)
-            
-            Chart(cashFlowProjection) { data in
-                BarMark(
-                    x: .value("Month", data.label),
-                    y: .value("Net", data.netCashFlow)
-                )
-                .foregroundStyle(
-                    data.netCashFlow >= 0 ?
-                    LinearGradient(
-                        colors: [Color.incomeGreen.opacity(0.7), Color.incomeGreen],
-                        startPoint: .bottom,
-                        endPoint: .top
-                    ) :
-                    LinearGradient(
-                        colors: [Color.expenseRed.opacity(0.7), Color.expenseRed],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .cornerRadius(4)
-                
-                RuleMark(y: .value("Zero", 0))
-                    .foregroundStyle(Color.secondary.opacity(0.5))
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [5]))
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading) { value in
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [5]))
-                    AxisValueLabel {
-                        if let amount = value.as(Double.self) {
-                            Text(formatCompactCurrency(amount))
-                                .font(.caption2)
-                        }
-                    }
-                }
-            }
-            .frame(height: 280)
-            .padding(.horizontal)
-            
-            projectionSummaryView
-        }
-        .padding(.vertical)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
-        .padding(.horizontal)
-    }
-    
-    // MARK: - Business vs Personal Section
-    
-    private var businessPersonalSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Business vs Personal")
-                .font(.headline)
-                .padding(.horizontal)
-            
-            HStack(spacing: 16) {
-                // Business Card
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: "briefcase.fill")
-                            .foregroundStyle(Color.businessColor)
-                        Text("Business")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                    }
-                    Text(businessExpenses, format: .currency(code: currencyCode))
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundStyle(Color.businessColor)
-                        .contentTransition(.numericText())
-                    let businessPercent = totalExpense > 0 ? Int((businessExpenses / totalExpense) * 100) : 0
-                    ProgressView(value: Double(businessPercent), total: 100)
-                        .tint(Color.businessColor)
-                    Text("\(businessPercent)% of expenses")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color.businessColor.opacity(0.1))
-                .cornerRadius(12)
-                
-                // Personal Card
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: "person.fill")
-                            .foregroundStyle(Color.personalColor)
-                        Text("Personal")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                    }
-                    Text(personalExpenses, format: .currency(code: currencyCode))
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundStyle(Color.personalColor)
-                        .contentTransition(.numericText())
-                    let personalPercent = totalExpense > 0 ? Int((personalExpenses / totalExpense) * 100) : 0
-                    ProgressView(value: Double(personalPercent), total: 100)
-                        .tint(Color.personalColor)
-                    Text("\(personalPercent)% of expenses")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color.personalColor.opacity(0.1))
-                .cornerRadius(12)
-            }
-            .padding(.horizontal)
-            
-            // Horizontal Bar Chart
-            Chart {
-                BarMark(x: .value("Amount", businessExpenses), y: .value("Type", "Business"))
-                    .foregroundStyle(Color.businessColor)
-                    .cornerRadius(6)
-                BarMark(x: .value("Amount", personalExpenses), y: .value("Type", "Personal"))
-                    .foregroundStyle(Color.personalColor)
-                    .cornerRadius(6)
-            }
-            .chartXAxis {
-                AxisMarks { value in
-                    AxisGridLine()
-                    AxisValueLabel {
-                        if let amount = value.as(Double.self) {
-                            Text(formatCompactCurrency(amount))
-                                .font(.caption2)
-                        }
-                    }
-                }
-            }
-            .frame(height: 100)
-            .padding(.horizontal)
-        }
-        .padding(.vertical)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
-        .padding(.horizontal)
-    }
-    
-    // MARK: - Monthly Comparison Section
-    
-    private var monthlyComparisonSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Monthly Comparison")
-                .font(.headline)
-                .padding(.horizontal)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(Array(monthlyTrendData.enumerated()), id: \.element.id) { index, data in
-                        MonthComparisonCard(data: data, currencyCode: currencyCode)
-                            .opacity(viewAppeared ? 1 : 0)
-                            .offset(x: viewAppeared ? 0 : 20)
-                            .animation(
-                                FLOAnimation.standard
-                                    .delay(0.5 + Double(index) * 0.05),
-                                value: viewAppeared
-                            )
-                    }
-                }
-                .padding(.horizontal)
-            }
-        }
-        .padding(.vertical)
-    }
-    
-    // MARK: - Category Breakdown Section
-    
-    private var categoryBreakdownSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Category Details")
-                .font(.headline)
-                .padding(.horizontal)
-            
-            ForEach(Array(categoryChartData.enumerated()), id: \.element.id) { index, item in
-                HStack {
-                    Circle()
-                        .fill(item.color)
-                        .frame(width: 12, height: 12)
-                    Text(item.category)
-                        .font(.subheadline)
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(item.amount, format: .currency(code: currencyCode))
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .contentTransition(.numericText())
-                        Text("\(Int(item.percentage))%")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding(.horizontal)
-                .opacity(viewAppeared ? 1 : 0)
-                .offset(x: viewAppeared ? 0 : 15)
-                .animation(
-                    FLOAnimation.standard
-                        .delay(0.55 + Double(index) * 0.03),
-                    value: viewAppeared
-                )
-            }
-        }
-        .padding(.vertical)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
-        .padding(.horizontal)
-    }
-    
-    // MARK: - Insights Card
-    
-    private var insightsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "lightbulb.fill")
-                    .foregroundStyle(Color.brandPrimary)
-                    .symbolEffect(.bounce, options: .speed(0.5))
-                Text("Smart Insights")
-                    .font(.headline)
-            }
-            
-            VStack(alignment: .leading, spacing: 8) {
-                if netCashFlow > 0 {
-                    InsightRow(
-                        icon: "checkmark.circle.fill",
-                        color: .incomeGreen,
-                        text: "You're in positive cash flow this period. Great job!"
-                    )
-                } else if netCashFlow < 0 {
-                    InsightRow(
-                        icon: "exclamationmark.triangle.fill",
-                        color: .orange,
-                        text: "Expenses exceeded income by \(formatCurrency(abs(netCashFlow)))"
-                    )
-                }
-                
-                if businessExpenses > 0 {
-                    InsightRow(
-                        icon: "building.2.fill",
-                        color: Color.businessColor,
-                        text: "Business expenses: \(formatCurrency(businessExpenses)) (potential deductions)"
-                    )
-                }
-                
-                if let topCategory = categoryChartData.first {
-                    InsightRow(
-                        icon: "chart.pie.fill",
-                        color: topCategory.color,
-                        text: "\(topCategory.category) is your top spending category at \(Int(topCategory.percentage))%"
-                    )
-                }
-            }
-        }
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
-        .padding(.horizontal)
-    }
-    
-    // MARK: - CPA Report CTA
-    
-    private var cpaReportCTA: some View {
-        Button {
-            HapticService.play(.medium)
-            showComprehensiveReport = true
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "doc.text.fill.viewfinder")
-                    .font(.title2)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Generate CPA-Ready Report")
-                        .font(.headline)
-                    Text("Comprehensive PDF for tax preparation")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.8))
-                }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.body)
-            }
-            .foregroundStyle(.white)
-            .padding()
-            .background(
-                LinearGradient(
-                    colors: [Color.brandPrimary, Color.primaryDark],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .cornerRadius(16)
-        }
-        .padding(.horizontal)
-    }
-    
     // MARK: - Supporting Views
     
-    private var legendView: some View {
+    var legendView: some View {
         HStack(spacing: 12) {
             HStack(spacing: 4) {
                 Circle().fill(Color.incomeGreen).frame(width: 8, height: 8)
@@ -1211,9 +715,11 @@ struct ReportsView: View {
                 Text("Expense").font(.caption).foregroundStyle(.secondary)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Legend: green is income, red is expense")
     }
     
-    private var monthlyNetSummary: some View {
+    var monthlyNetSummary: some View {
         HStack {
             ForEach(monthlyTrendData.suffix(3)) { data in
                 VStack(spacing: 4) {
@@ -1227,30 +733,35 @@ struct ReportsView: View {
                         .contentTransition(.numericText())
                 }
                 .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(data.label) net: \(data.netCashFlow >= 0 ? "positive" : "negative") \(AccessibilityFormatters.spokenCurrency(abs(data.netCashFlow)))")
             }
         }
         .padding(.horizontal)
     }
     
-    private var trendInsightView: some View {
+    var trendInsightView: some View {
         let trend = calculateOverallTrend()
         return HStack {
             Image(systemName: trend >= 0 ? "arrow.up.right.circle.fill" : "arrow.down.right.circle.fill")
                 .foregroundStyle(trend >= 0 ? Color.incomeGreen : Color.expenseRed)
+                .accessibilityHidden(true)
             Text(trend >= 0 ? "Positive trend: Net income improving" : "Watch spending: Expenses trending higher")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal)
+        .accessibilityElement(children: .combine)
     }
     
-    private var projectionSummaryView: some View {
+    var projectionSummaryView: some View {
         let futureData = cashFlowProjection.suffix(3)
         let projectedNet = futureData.reduce(0) { $0 + $1.netCashFlow }
         
         return HStack {
             Image(systemName: projectedNet >= 0 ? "chart.line.uptrend.xyaxis" : "chart.line.downtrend.xyaxis")
                 .foregroundStyle(projectedNet >= 0 ? Color.incomeGreen : Color.orange)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("3-Month Projection")
                     .font(.caption)
@@ -1270,6 +781,8 @@ struct ReportsView: View {
         .background(Color(.tertiarySystemBackground))
         .cornerRadius(8)
         .padding(.horizontal)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("3-month projection: \(projectedNet >= 0 ? "positive" : "negative") \(AccessibilityFormatters.spokenCurrency(abs(projectedNet))), based on recent averages")
     }
     
     private var emptyState: some View {
@@ -1278,6 +791,7 @@ struct ReportsView: View {
                 .font(.system(size: 60))
                 .foregroundStyle(.secondary)
                 .symbolEffect(.pulse, options: .repeating.speed(0.5))
+                .accessibilityHidden(true)
             Text("No transactions in this period")
                 .font(.title3)
                 .foregroundStyle(.secondary)
@@ -1287,6 +801,7 @@ struct ReportsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
+        .accessibilityElement(children: .combine)
     }
     
     // MARK: - Helper Methods
@@ -1344,7 +859,7 @@ struct ReportsView: View {
         return (curr.income - curr.expense) - (prev.income - prev.expense)
     }
     
-    private func formatCompactCurrency(_ value: Double) -> String {
+    func formatCompactCurrency(_ value: Double) -> String {
         let absValue = abs(value)
         let sign = value < 0 ? "-" : ""
         if absValue >= 1000000 {
@@ -1356,7 +871,7 @@ struct ReportsView: View {
         }
     }
     
-    private func formatCurrency(_ value: Double) -> String {
+    func formatCurrency(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = currencyCode
@@ -1364,514 +879,9 @@ struct ReportsView: View {
     }
 }
 
-// MARK: - Tax Deadline Countdown Card
 
-struct TaxDeadlineCountdownCard: View {
-    @State private var iconAppeared = false
-    
-    private var nextDeadline: Date? { TaxSettings.nextQuarterlyDeadline() }
-    private var daysUntilDeadline: Int? {
-        guard let deadline = nextDeadline else { return nil }
-        return Calendar.current.dateComponents([.day], from: Date(), to: deadline).day
-    }
-    
-    private var urgencyLevel: UrgencyLevel {
-        guard let days = daysUntilDeadline else { return .none }
-        if days <= 7 { return .urgent }
-        if days <= 14 { return .warning }
-        if days <= 30 { return .upcoming }
-        return .relaxed
-    }
-    
-    enum UrgencyLevel {
-        case urgent, warning, upcoming, relaxed, none
-        
-        var color: Color {
-            switch self {
-            case .urgent: return .red
-            case .warning: return .orange
-            case .upcoming: return Color.brandPrimary
-            case .relaxed: return .incomeGreen
-            case .none: return .secondary
-            }
-        }
-        
-        var icon: String {
-            switch self {
-            case .urgent: return "exclamationmark.triangle.fill"
-            case .warning: return "clock.badge.exclamationmark.fill"
-            case .upcoming: return "calendar.badge.clock"
-            case .relaxed: return "checkmark.circle.fill"
-            case .none: return "calendar"
-            }
-        }
-    }
-    
-    var body: some View {
-        if let days = daysUntilDeadline, let deadline = nextDeadline {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: urgencyLevel.icon)
-                        .font(.title2)
-                        .foregroundStyle(urgencyLevel.color)
-                        .symbolEffect(.bounce, value: iconAppeared)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Next Tax Deadline")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text(deadline, style: .date)
-                            .font(.headline)
-                    }
-                    
-                    Spacer()
-                    
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("\(days)")
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundStyle(urgencyLevel.color)
-                            .contentTransition(.numericText())
-                        Text("days left")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                
-                if urgencyLevel == .urgent || urgencyLevel == .warning {
-                    Text(urgencyLevel == .urgent ?
-                         "Payment due soon! Make sure to submit your estimated taxes." :
-                         "Deadline approaching. Prepare your estimated tax payment.")
-                        .font(.caption)
-                        .foregroundStyle(urgencyLevel.color)
-                }
-            }
-            .padding()
-            .background(urgencyLevel.color.opacity(0.1))
-            .cornerRadius(16)
-            .padding(.horizontal)
-            .onAppear {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                    iconAppeared = true
-                }
-            }
-        }
-    }
-}
+// MARK: - Preview
 
-// MARK: - Enhanced Stat Card with Trends
-
-struct EnhancedStatCard: View {
-    let title: String
-    let amount: Double
-    let color: Color
-    let icon: String
-    let trend: Double?
-    
-    private var currencyCode: String { Locale.current.currency?.identifier ?? "USD" }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: icon)
-                    .foregroundStyle(color)
-                    .font(.caption)
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            
-            Text(amount, format: .currency(code: currencyCode))
-                .font(.system(.callout, design: .rounded))
-                .fontWeight(.semibold)
-                .foregroundStyle(color)
-                .minimumScaleFactor(0.6)
-                .lineLimit(1)
-                .contentTransition(.numericText())
-            
-            if let trend = trend {
-                HStack(spacing: 2) {
-                    Image(systemName: trend >= 0 ? "arrow.up.right" : "arrow.down.right")
-                        .font(.caption2)
-                    Text("\(String(format: "%.1f", abs(trend)))%")
-                        .font(.caption2)
-                }
-                .foregroundStyle(
-                    trend >= 0 ?
-                    (title == "Expenses" ? Color.expenseRed : Color.incomeGreen) :
-                    (title == "Expenses" ? Color.incomeGreen : Color.expenseRed)
-                )
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
-    }
-}
-
-// MARK: - Month Comparison Card
-
-struct MonthComparisonCard: View {
-    let data: MonthlyData
-    let currencyCode: String
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(data.label)
-                .font(.headline)
-                .foregroundStyle(Color.brandPrimary)
-            
-            Divider()
-            
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .foregroundStyle(Color.incomeGreen)
-                        .font(.caption)
-                    Text(data.income, format: .currency(code: currencyCode))
-                        .font(.caption)
-                        .foregroundStyle(Color.incomeGreen)
-                        .contentTransition(.numericText())
-                }
-                HStack {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .foregroundStyle(Color.expenseRed)
-                        .font(.caption)
-                    Text(data.expense, format: .currency(code: currencyCode))
-                        .font(.caption)
-                        .foregroundStyle(Color.expenseRed)
-                        .contentTransition(.numericText())
-                }
-            }
-            
-            Divider()
-            
-            HStack {
-                Text("Net:")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(data.netCashFlow, format: .currency(code: currencyCode))
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(data.netCashFlow >= 0 ? Color.incomeGreen : Color.expenseRed)
-                    .contentTransition(.numericText())
-            }
-        }
-        .padding()
-        .frame(width: 140)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
-    }
-}
-
-// MARK: - Insight Row
-
-struct InsightRow: View {
-    let icon: String
-    let color: Color
-    let text: String
-    
-    var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: icon)
-                .foregroundStyle(color)
-                .font(.subheadline)
-            Text(text)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-
-// MARK: - Tax Deductible Summary
-
-struct TaxDeductibleSummary: View {
-    let transactions: [Transaction]
-    
-    private var currencyCode: String { Locale.current.currency?.identifier ?? "USD" }
-    
-    var deductibleAmount: Double {
-        transactions
-            .filter { !$0.isIncome && ($0.category?.isTaxDeductible ?? false) }
-            .reduce(0) { $0 + $1.amount }
-    }
-    
-    var deductibleCount: Int {
-        transactions
-            .filter { !$0.isIncome && ($0.category?.isTaxDeductible ?? false) }
-            .count
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "doc.text.fill")
-                    .foregroundStyle(Color.incomeGreen)
-                Text("Tax Deductible Expenses")
-                    .font(.headline)
-            }
-            .padding(.horizontal)
-            
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Total Deductible")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(deductibleAmount, format: .currency(code: currencyCode))
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundStyle(Color.incomeGreen)
-                        .contentTransition(.numericText())
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("Transactions")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("\(deductibleCount)")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .contentTransition(.numericText())
-                }
-            }
-            .padding()
-            .background(Color.incomeGreen.opacity(0.1))
-            .cornerRadius(12)
-            .padding(.horizontal)
-        }
-        .padding(.vertical)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
-        .padding(.horizontal)
-    }
-}
-
-// MARK: - Report Export Sheet
-
-struct ReportExportSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    let transactions: [Transaction]
-    let allTransactions: [Transaction]
-    let dateRangeText: String
-    let selectedPeriod: ReportsView.TimePeriod
-    let totalIncome: Double
-    let totalExpense: Double
-    let businessExpenses: Double
-    
-    // Haptic Generators
-                
-    enum ExportFormat: String, CaseIterable {
-        case pdf = "PDF"
-        case csv = "CSV"
-        
-        var icon: String {
-            switch self {
-            case .pdf: return "doc.richtext.fill"
-            case .csv: return "tablecells.fill"
-            }
-        }
-    }
-    
-    @State private var exportFormat: ExportFormat = .pdf
-    @State private var includeAllTransactions = false
-    @State private var includeTotals = true
-    @State private var isExporting = false
-    @State private var exportError: String?
-    @State private var showShareSheet = false
-    @State private var exportedData: Data?
-    @State private var exportedURL: URL?
-    
-    private var transactionsToExport: [Transaction] {
-        includeAllTransactions ? allTransactions : transactions
-    }
-    
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Picker("Format", selection: $exportFormat) {
-                        ForEach(ExportFormat.allCases, id: \.self) { format in
-                            Label(format.rawValue, systemImage: format.icon).tag(format)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: exportFormat) { _, _ in
-                        HapticService.play(.selection)
-                    }
-                } header: {
-                    Text("Export Format")
-                }
-                
-                Section {
-                    Toggle("Include All Transactions", isOn: $includeAllTransactions)
-                        .onChange(of: includeAllTransactions) { _, _ in
-                            HapticService.play(.light)
-                        }
-                    if exportFormat == .csv {
-                        Toggle("Include Totals Row", isOn: $includeTotals)
-                            .onChange(of: includeTotals) { _, _ in
-                                HapticService.play(.light)
-                            }
-                    }
-                } header: {
-                    Text("Options")
-                }
-                
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Period:")
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(includeAllTransactions ? "All Time" : dateRangeText)
-                                .fontWeight(.medium)
-                        }
-                        HStack {
-                            Text("Transactions:")
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text("\(transactionsToExport.count)")
-                                .fontWeight(.medium)
-                                .contentTransition(.numericText())
-                        }
-                        HStack {
-                            Text("Income:")
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(totalIncome, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
-                                .foregroundStyle(Color.incomeGreen)
-                                .fontWeight(.medium)
-                        }
-                        HStack {
-                            Text("Expenses:")
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(totalExpense, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
-                                .foregroundStyle(Color.expenseRed)
-                                .fontWeight(.medium)
-                        }
-                        if businessExpenses > 0 {
-                            HStack {
-                                Text("Business (Deductible):")
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(businessExpenses, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
-                                    .foregroundStyle(Color.businessColor)
-                                    .fontWeight(.medium)
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Export Preview")
-                }
-                
-                if let error = exportError {
-                    Section {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.red)
-                            Text(error)
-                                .foregroundStyle(.red)
-                        }
-                    }
-                }
-                
-                Section {
-                    Button {
-                        HapticService.play(.medium)
-                        performExport()
-                    } label: {
-                        HStack {
-                            Spacer()
-                            if isExporting {
-                                ProgressView()
-                                    .padding(.trailing, 8)
-                            }
-                            Image(systemName: "square.and.arrow.up")
-                            Text("Export & Share")
-                                .fontWeight(.semibold)
-                            Spacer()
-                        }
-                    }
-                    .disabled(isExporting || transactionsToExport.isEmpty)
-                }
-            }
-            .navigationTitle("Export Report")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        HapticService.play(.light)
-                        dismiss()
-                    }
-                }
-            }
-            .sheet(isPresented: $showShareSheet) {
-                if let data = exportedData {
-                    ShareSheet(items: [data])
-                } else if let url = exportedURL {
-                    ShareSheet(items: [url])
-                }
-            }
-        }
-    }
-    
-    private func performExport() {
-        isExporting = true
-        exportError = nil
-        
-        Task {
-            switch exportFormat {
-            case .pdf:
-                let result = ExportService.shared.generatePDF(
-                    transactions: transactionsToExport,
-                    title: "FLO Financial Report - \(includeAllTransactions ? "All Time" : dateRangeText)"
-                )
-                switch result {
-                case .success(let data):
-                    exportedData = data
-                    isExporting = false
-                    showShareSheet = true
-                case .failure(let error):
-                    exportError = error.localizedDescription
-                    isExporting = false
-                }
-                
-            case .csv:
-                let result = ExportService.shared.generateCSV(
-                    transactions: transactionsToExport,
-                    includeTotals: includeTotals
-                )
-                switch result {
-                case .success(let csv):
-                    let filename = "FLO_Report_\(Date().formatted(.iso8601.year().month().day()))"
-                    let saveResult = ExportService.shared.saveCSVToTemporaryFile(csv: csv, filename: filename)
-                    switch saveResult {
-                    case .success(let url):
-                        exportedURL = url
-                        isExporting = false
-                        showShareSheet = true
-                    case .failure(let error):
-                        exportError = error.localizedDescription
-                        isExporting = false
-                    }
-                case .failure(let error):
-                    exportError = error.localizedDescription
-                    isExporting = false
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Color Extensions
-
-extension Color {
-    
-    // MARK: - Preview
-    
     #Preview("Reports - Full Experience") {
         let container = try! ModelContainer(
             for: Transaction.self, Category.self, Budget.self, TaxSettings.self,
@@ -1951,4 +961,3 @@ extension Color {
         TaxDeadlineCountdownCard()
             .padding()
     }
-}

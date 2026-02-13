@@ -1,13 +1,23 @@
 //  Color+Extensions.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.1 — Fixed potential naming conflicts with iOS system colors
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.2 - Added accessible text color for WCAG AA compliance
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.2:
+//  - Added brandPrimaryText for WCAG AA 4.5:1 contrast ratio compliance
+//  - Use for teal text on white/light backgrounds
 //
 
 import SwiftUI
 
 extension Color {
+    
+    // MARK: - Accessible Text Colors (WCAG AA Compliant)
+    
+    /// Darker teal for text that meets WCAG AA 4.5:1 contrast ratio on white backgrounds
+    /// Use this instead of brandPrimary when coloring text
+    static let brandPrimaryText = Color(flowHex: "0D7377")
     
     // MARK: - Dynamic Brand Colors (from selected scheme)
     
@@ -104,7 +114,7 @@ extension Color {
         Color(flowHex: hex)
     }
     
-    // MARK: - RGB (0–255) convenience
+    // MARK: - RGB (0-255) convenience
     
     init(r: Int, g: Int, b: Int, opacity: Double = 1.0) {
         self.init(red: Double(r)/255, green: Double(g)/255, blue: Double(b)/255, opacity: opacity)

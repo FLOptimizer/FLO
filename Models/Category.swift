@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 2.1 – Production-ready with correct bidirectional relationships
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Category model with validation, computed properties, and inverse relationships
 //
@@ -74,21 +74,25 @@ final class Category {
     }
     
     // MARK: - Color Normalization
-    
+
     /// Ensures consistent uppercase hex format with leading #.
     /// Falls back to Tailwind blue-500 (#3B82F6) if invalid.
     private static func normalizeColorHex(_ hex: String) -> String {
-        let cleaned = hex
+        var cleaned = hex
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .uppercased()
-            .replacingOccurrences(of: "^#+", with: "#", options: .regularExpression)
         
-        // Validate #RRGGBB format
-        guard cleaned.range(of: "^#[0-9A-F]{6}$", options: .regularExpression) != nil else {
+        // Remove any existing # symbols
+        cleaned = cleaned.replacingOccurrences(of: "#", with: "")
+        
+        // Validate 6-character hex format
+        guard cleaned.count == 6,
+              cleaned.range(of: "^[0-9A-F]{6}$", options: .regularExpression) != nil else {
             return "#3B82F6"
         }
         
-        return cleaned
+        // Add # prefix
+        return "#\(cleaned)"
     }
     
     // MARK: - Computed Properties

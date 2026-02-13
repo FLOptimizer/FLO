@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 1.0 - Initial Business Profile Model
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Stores user's business information for invoices, reports, and branding.
 //  Singleton pattern - only one BusinessProfile should exist per user.

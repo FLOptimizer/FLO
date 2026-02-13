@@ -1,14 +1,19 @@
 //  InvoiceTypes.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.1 - Production-perfect with ReminderRecord as @Model
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.2 - ReminderRecord as Codable struct (not @Model)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Shared types for invoice management
 //
+//  CHANGES v2.2:
+//  ✅ Converted ReminderRecord from @Model to Codable struct
+//  ✅ ReminderRecord is now embedded data owned by Invoice
+//  ✅ Eliminates SwiftData relationship issues
+//  ✅ Removed SwiftData import (not needed for supporting types)
+//
 
 import Foundation
-import SwiftData
 
 // MARK: - Invoice Statistics
 
@@ -226,11 +231,12 @@ struct EmailReminder {
     let body: String
 }
 
-// MARK: - Reminder Record
+// MARK: - Reminder Record (Embedded Data)
+// This is embedded data owned by Invoice, not a separate SwiftData model.
+// Stored as JSON-encoded array in Invoice.remindersSent
 
-@Model
-final class ReminderRecord {
-    @Attribute(.unique) var id: UUID
+struct ReminderRecord: Codable, Identifiable, Hashable {
+    var id: UUID
     var date: Date
     var daysOverdue: Int
     var reminderType: ReminderType

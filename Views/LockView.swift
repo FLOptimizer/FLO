@@ -1,14 +1,23 @@
 //  LockView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.1 - Removed time/date, fixed passcode layout
+//  Version 2.2 - Accessibility Audit: Full VoiceOver support for lock screen
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v2.1:
-//  ✅ REMOVED: Time/date display (redundant with iOS status bar)
-//  ✅ FIXED: Passcode "0" button going off screen
-//  ✅ IMPROVED: Better vertical spacing and layout
-//  ✅ IMPROVED: Biometric is clearly primary, passcode is secondary
+//  CHANGES v2.2:
+//  ✅ ADDED: VoiceOver labels on all passcode number buttons
+//  ✅ ADDED: Accessibility label on biometric unlock button
+//  ✅ ADDED: Passcode dots read as "X of Y digits entered"
+//  ✅ ADDED: Status text announced as live region
+//  ✅ ADDED: Decorative elements hidden from VoiceOver (orbs, glow, shimmer)
+//  ✅ ADDED: Screen change announcement on appear
+//  ✅ ADDED: Success/error announcements for VoiceOver
+//  ✅ ADDED: Delete button and cancel/biometric shortcut labels
+//  ✅ ADDED: Lockout status announced to VoiceOver
+//  ✅ ADDED: minimumTouchTarget on all interactive elements
+//
+//  PREVIOUS (v2.1):
+//  - Removed time/date, fixed passcode layout
 //
 //  FEATURES:
 //  ✅ Animated floating orbs background
@@ -64,8 +73,9 @@ struct LockView: View {
     
     var body: some View {
         ZStack {
-            // Animated Background
+            // Animated Background - v2.2: Hidden from VoiceOver (purely decorative)
             animatedBackground
+                .accessibilityHidden(true)
             
             // Success overlay
             if showSuccessAnimation {
@@ -80,7 +90,7 @@ struct LockView: View {
                 
                 // App Branding with glow
                 brandingSection
-                    .opacity(showContent ? 1 : 0)
+                    .opacity(showContent ? 1 : 0.001)
                     .scaleEffect(showContent ? 1 : 0.85)
                 
                 Spacer()
@@ -103,7 +113,7 @@ struct LockView: View {
                             ))
                     }
                 }
-                .opacity(showContent ? 1 : 0)
+                .opacity(showContent ? 1 : 0.001)
                 
                 Spacer()
                     .frame(height: 60)
@@ -115,6 +125,10 @@ struct LockView: View {
         .onAppear(perform: handleOnAppear)
         .onDisappear {
             timerCancellable?.cancel()
+        }
+        // v2.2: Announce lock screen to VoiceOver on appear
+        .onAppear {
+            AccessibilityAnnouncement.screenChanged("FLO is locked. \(statusText)")
         }
     }
     
@@ -191,9 +205,9 @@ struct LockView: View {
     
     private var brandingSection: some View {
         VStack(spacing: 20) {
-            // App Icon with glow and shimmer
+            // App Icon with glow and shimmer - v2.2: Decorative, group for VoiceOver
             ZStack {
-                // Outer glow rings
+                // Outer glow rings - decorative
                 ForEach(0..<3) { i in
                     Circle()
                         .stroke(
@@ -254,6 +268,8 @@ struct LockView: View {
                     .font(.system(size: 44, weight: .medium))
                     .foregroundStyle(.white)
             }
+            // v2.2: Group entire icon as single accessible element
+            .accessibilityHidden(true)
             
             // App Name and tagline
             VStack(spacing: 6) {
@@ -266,6 +282,10 @@ struct LockView: View {
                     .foregroundStyle(.white.opacity(0.5))
                     .tracking(1.5)
             }
+            // v2.2: Group app name for VoiceOver
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("FLO, Finance Ledger Optimizer")
+            .accessibilityAddTraits(.isHeader)
         }
     }
     
@@ -273,12 +293,14 @@ struct LockView: View {
     
     private var biometricSection: some View {
         VStack(spacing: 24) {
-            // Status text
+            // Status text - v2.2: Live region for VoiceOver announcements
             Text(statusText)
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundStyle(statusColor)
                 .animation(.easeInOut(duration: 0.2), value: statusText)
+                .accessibilityLabel(statusText)
+                .accessibilityAddTraits(.updatesFrequently)
             
             // Biometric Button (Primary - Glassmorphism style)
             if authService.isBiometricAvailable && authService.biometricEnabled {
@@ -331,6 +353,10 @@ struct LockView: View {
                 }
                 .disabled(isAuthenticating)
                 .padding(.horizontal, 50)
+                // v2.2: Clear VoiceOver label for biometric button
+                .accessibilityLabel(biometricText)
+                .accessibilityHint("Double tap to authenticate with \(biometricAccessibilityName)")
+                .accessibilityAddTraits(.isButton)
             }
             
             // Passcode Option (Secondary - text link style)
@@ -347,6 +373,10 @@ struct LockView: View {
                         .foregroundStyle(Color(flowHex: "14B8A6").opacity(0.8))
                 }
                 .padding(.top, 4)
+                // v2.2: VoiceOver label
+                .accessibilityLabel("Use passcode instead")
+                .accessibilityHint("Double tap to switch to passcode entry")
+                .minimumTouchTarget()
             }
             
             // No security fallback
@@ -366,6 +396,9 @@ struct LockView: View {
                         )
                 }
                 .padding(.horizontal, 50)
+                // v2.2: VoiceOver label
+                .accessibilityLabel("Continue to FLO")
+                .accessibilityHint("Double tap to open the app")
             }
         }
     }
@@ -374,13 +407,15 @@ struct LockView: View {
     
     private var passcodeSection: some View {
         VStack(spacing: 24) {
-            // Status text
+            // Status text - v2.2: Live region
             Text(statusText)
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundStyle(statusColor)
+                .accessibilityLabel(statusText)
+                .accessibilityAddTraits(.updatesFrequently)
             
-            // Passcode Dots with glow
+            // Passcode Dots with glow - v2.2: Grouped with progress label
             HStack(spacing: 18) {
                 ForEach(0..<passcodeLength, id: \.self) { index in
                     ZStack {
@@ -410,6 +445,10 @@ struct LockView: View {
                 value: isShaking
             )
             .padding(.bottom, 8)
+            // v2.2: VoiceOver reads passcode progress
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(passcodeProgressLabel)
+            .accessibilityValue("\(passcode.count) of \(passcodeLength) digits entered")
             
             // Number Pad (Compact design)
             VStack(spacing: 12) {
@@ -438,6 +477,9 @@ struct LockView: View {
                                 .frame(width: 68, height: 68)
                         }
                         .disabled(isLockedOut)
+                        // v2.2: VoiceOver label for biometric shortcut
+                        .accessibilityLabel("Switch to \(biometricAccessibilityName)")
+                        .accessibilityHint("Double tap to use \(biometricAccessibilityName) instead of passcode")
                     } else {
                         Button {
                             HapticService.play(.light)
@@ -451,6 +493,9 @@ struct LockView: View {
                                 .foregroundStyle(.gray)
                                 .frame(width: 68, height: 68)
                         }
+                        // v2.2: VoiceOver label
+                        .accessibilityLabel("Cancel passcode entry")
+                        .accessibilityHint("Double tap to go back")
                     }
                     
                     // Zero
@@ -468,12 +513,20 @@ struct LockView: View {
                             .frame(width: 68, height: 68)
                     }
                     .disabled(passcode.isEmpty || isLockedOut)
+                    // v2.2: VoiceOver label for delete button
+                    .accessibilityLabel("Delete last digit")
+                    .accessibilityHint(passcode.isEmpty ? "No digits to delete" : "Double tap to remove the last digit")
                 }
             }
+            // v2.2: Group number pad for VoiceOver rotor navigation
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Passcode number pad")
         }
         .padding(.horizontal, 32)
         .onAppear {
             startLockoutTimer()
+            // v2.2: Announce passcode mode
+            AccessibilityAnnouncement.screenChanged("Passcode entry. \(passcodeLength) digit passcode required.")
         }
     }
     
@@ -500,6 +553,10 @@ struct LockView: View {
             }
         }
         .disabled(isLockedOut)
+        // v2.2: VoiceOver label for each number button
+        .accessibilityLabel("\(number)")
+        .accessibilityHint(isLockedOut ? "Locked out" : "Double tap to enter \(number)")
+        .accessibilityAddTraits(.isButton)
     }
     
     // MARK: - Success Overlay
@@ -530,9 +587,16 @@ struct LockView: View {
                     .font(.title2)
                     .fontWeight(.semibold)
                     .foregroundStyle(.white)
-                    .opacity(showSuccessAnimation ? 1 : 0)
+                    .opacity(showSuccessAnimation ? 1 : 0.001)
                     .animation(.easeOut(duration: 0.3).delay(0.2), value: showSuccessAnimation)
             }
+        }
+        // v2.2: Announce success to VoiceOver
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Authentication successful. Welcome back.")
+        .accessibilityAddTraits(.isModal)
+        .onAppear {
+            AccessibilityAnnouncement.announce("Unlocked successfully. Welcome back.")
         }
     }
     
@@ -574,6 +638,27 @@ struct LockView: View {
         case .touchID: return "Unlock with Touch ID"
         case .opticID: return "Unlock with Optic ID"
         default: return "Unlock"
+        }
+    }
+    
+    // v2.2: Spoken biometric name for VoiceOver hints
+    private var biometricAccessibilityName: String {
+        switch authService.biometricType {
+        case .faceID: return "Face ID"
+        case .touchID: return "Touch ID"
+        case .opticID: return "Optic ID"
+        default: return "biometrics"
+        }
+    }
+    
+    // v2.2: Passcode progress for VoiceOver
+    private var passcodeProgressLabel: String {
+        if isLockedOut {
+            return "Account locked. Too many failed attempts."
+        } else if passcode.isEmpty {
+            return "Passcode entry. \(passcodeLength) digits required."
+        } else {
+            return "\(passcode.count) of \(passcodeLength) digits entered"
         }
     }
     
@@ -648,6 +733,9 @@ struct LockView: View {
             
             if success {
                 showSuccess()
+            } else {
+                // v2.2: Announce failure to VoiceOver
+                AccessibilityAnnouncement.announce("Authentication failed. Try again or use passcode.")
             }
         }
     }
@@ -672,6 +760,9 @@ struct LockView: View {
         HapticService.play(.light)
         passcode += "\(digit)"
         
+        // v2.2: Announce digit count to VoiceOver (without revealing the digit)
+        AccessibilityAnnouncement.announce("\(passcode.count) of \(passcodeLength)")
+        
         if passcode.count == passcodeLength {
             verifyPasscode()
         }
@@ -692,6 +783,14 @@ struct LockView: View {
             
             withAnimation {
                 isPasscodeError = true
+            }
+            
+            // v2.2: Announce error to VoiceOver
+            let attemptsRemaining = maxAttempts - failedAttempts
+            if attemptsRemaining > 0 {
+                AccessibilityAnnouncement.announce("Incorrect passcode. \(attemptsRemaining) attempts remaining.")
+            } else {
+                AccessibilityAnnouncement.announce("Too many failed attempts. Account locked for 60 seconds.")
             }
             
             shakePasscode()
@@ -731,6 +830,8 @@ struct LockView: View {
                     isLockedOut = false
                     lockoutEndTime = nil
                     failedAttempts = 0
+                    // v2.2: Announce lockout ended
+                    AccessibilityAnnouncement.announce("Lockout ended. You can try again.")
                 }
             }
     }

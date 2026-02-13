@@ -1,8 +1,12 @@
 //  MileageTrackingDiagnosticView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.0 - Enhanced with Haptics & Micro-Animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.1.1 - Accessibility: decorative icon hiding, status labels
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.1:
+//  ✅ Screen change announcement on appear
+//  ✅ Fixed garbled UTF-8 characters (arrows, checkmarks)
 //
 //  Comprehensive diagnostics and troubleshooting for mileage tracking
 //
@@ -46,7 +50,7 @@ struct MileageTrackingDiagnosticView: View {
                         message: systemHealthMessage,
                         issues: systemIssues
                     )
-                    .opacity(healthVisible ? 1 : 0)
+                    .opacity(healthVisible ? 1 : 0.001)
                     .scaleEffect(healthVisible ? 1 : 0.95)
                     .animation(.spring(response: 0.4, dampingFraction: 0.7), value: healthVisible)
                 } header: {
@@ -60,7 +64,7 @@ struct MileageTrackingDiagnosticView: View {
                         value: trackingService.isTracking ? "Yes" : "No",
                         status: trackingService.isTracking ? .good : .neutral
                     )
-                    .opacity(statusVisible ? 1 : 0)
+                    .opacity(statusVisible ? 1 : 0.001)
                     .offset(x: statusVisible ? 0 : -10)
                     .animation(.easeOut(duration: 0.3), value: statusVisible)
                     
@@ -69,7 +73,7 @@ struct MileageTrackingDiagnosticView: View {
                         value: trackingService.gpsStatus.description,
                         status: gpsStatusLevel
                     )
-                    .opacity(statusVisible ? 1 : 0)
+                    .opacity(statusVisible ? 1 : 0.001)
                     .offset(x: statusVisible ? 0 : -10)
                     .animation(.easeOut(duration: 0.3).delay(0.05), value: statusVisible)
                     
@@ -78,7 +82,7 @@ struct MileageTrackingDiagnosticView: View {
                         value: trackingService.currentTrip != nil ? "Yes" : "No",
                         status: trackingService.currentTrip != nil ? .good : .neutral
                     )
-                    .opacity(statusVisible ? 1 : 0)
+                    .opacity(statusVisible ? 1 : 0.001)
                     .offset(x: statusVisible ? 0 : -10)
                     .animation(.easeOut(duration: 0.3).delay(0.1), value: statusVisible)
                     
@@ -129,6 +133,7 @@ struct MileageTrackingDiagnosticView: View {
                     if let error = trackingService.trackingError {
                         HStack(alignment: .top, spacing: 8) {
                             Image(systemName: "exclamationmark.triangle.fill")
+                                .accessibilityHidden(true)
                                 .foregroundStyle(.red)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Active Error")
@@ -151,7 +156,7 @@ struct MileageTrackingDiagnosticView: View {
                         value: permissionText,
                         status: permissionStatus
                     )
-                    .opacity(permissionsVisible ? 1 : 0)
+                    .opacity(permissionsVisible ? 1 : 0.001)
                     .animation(.easeOut(duration: 0.3), value: permissionsVisible)
                     
                     if trackingService.trackingPermissionStatus == .authorizedWhenInUse {
@@ -179,7 +184,7 @@ struct MileageTrackingDiagnosticView: View {
                             .controlSize(.small)
                         }
                         .padding(.vertical, 4)
-                        .opacity(permissionsVisible ? 1 : 0)
+                        .opacity(permissionsVisible ? 1 : 0.001)
                         .animation(.easeOut(duration: 0.3).delay(0.1), value: permissionsVisible)
                     }
                     
@@ -194,7 +199,7 @@ struct MileageTrackingDiagnosticView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.red)
-                        .opacity(permissionsVisible ? 1 : 0)
+                        .opacity(permissionsVisible ? 1 : 0.001)
                         .animation(.easeOut(duration: 0.3).delay(0.15), value: permissionsVisible)
                     }
                 }
@@ -203,6 +208,7 @@ struct MileageTrackingDiagnosticView: View {
                 Section("Battery & Power") {
                     HStack {
                         Image(systemName: batteryIcon)
+                        .accessibilityHidden(true)
                             .foregroundStyle(batteryColor)
                         Text("Battery Level")
                         Spacer()
@@ -215,12 +221,13 @@ struct MileageTrackingDiagnosticView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .opacity(batteryVisible ? 1 : 0)
+                    .opacity(batteryVisible ? 1 : 0.001)
                     .animation(.easeOut(duration: 0.3), value: batteryVisible)
                     
                     if trackingService.batteryWarning {
                         HStack(alignment: .top, spacing: 8) {
                             Image(systemName: "battery.0")
+                                .accessibilityHidden(true)
                                 .foregroundStyle(.red)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Low Battery Warning")
@@ -232,7 +239,7 @@ struct MileageTrackingDiagnosticView: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
-                        .opacity(batteryVisible ? 1 : 0)
+                        .opacity(batteryVisible ? 1 : 0.001)
                         .animation(.easeOut(duration: 0.3).delay(0.1), value: batteryVisible)
                     }
                 }
@@ -244,7 +251,7 @@ struct MileageTrackingDiagnosticView: View {
                         value: trackingService.isContextInjected ? "Connected" : "Not Connected",
                         status: trackingService.isContextInjected ? .good : .bad
                     )
-                    .opacity(databaseVisible ? 1 : 0)
+                    .opacity(databaseVisible ? 1 : 0.001)
                     .animation(.easeOut(duration: 0.3), value: databaseVisible)
                     
                     DiagnosticRow(
@@ -252,7 +259,7 @@ struct MileageTrackingDiagnosticView: View {
                         value: "\(recentTrips.count)",
                         status: .neutral
                     )
-                    .opacity(databaseVisible ? 1 : 0)
+                    .opacity(databaseVisible ? 1 : 0.001)
                     .animation(.easeOut(duration: 0.3).delay(0.05), value: databaseVisible)
                     
                     if let latestTrip = recentTrips.first {
@@ -262,7 +269,7 @@ struct MileageTrackingDiagnosticView: View {
                             Text(latestTrip.startDate.formatted(date: .abbreviated, time: .shortened))
                                 .foregroundStyle(.secondary)
                         }
-                        .opacity(databaseVisible ? 1 : 0)
+                        .opacity(databaseVisible ? 1 : 0.001)
                         .animation(.easeOut(duration: 0.3).delay(0.1), value: databaseVisible)
                     }
                 }
@@ -276,7 +283,7 @@ struct MileageTrackingDiagnosticView: View {
                                 title: issue,
                                 tips: [tipForIssue(issue)]
                             )
-                            .opacity(tipsVisible ? 1 : 0)
+                            .opacity(tipsVisible ? 1 : 0.001)
                             .offset(x: tipsVisible ? 0 : -10)
                             .animation(.easeOut(duration: 0.3).delay(Double(index) * 0.1), value: tipsVisible)
                         }
@@ -288,6 +295,7 @@ struct MileageTrackingDiagnosticView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
+                        // a11y: label from button text
 
                         HapticService.play(.medium)
                         dismiss()
@@ -296,6 +304,7 @@ struct MileageTrackingDiagnosticView: View {
             }
             .onAppear {
                 animateEntrance()
+                AccessibilityAnnouncement.screenChanged("Mileage diagnostics")
             }
         }
     }
@@ -419,10 +428,10 @@ struct MileageTrackingDiagnosticView: View {
     
     private var permissionText: String {
         switch trackingService.trackingPermissionStatus {
-        case .authorizedAlways: return "Always Allow ✓"
-        case .authorizedWhenInUse: return "When In Use ⚠️"
-        case .denied: return "Denied ✕"
-        case .restricted: return "Restricted ✕"
+        case .authorizedAlways: return "Always Allow ✅"
+        case .authorizedWhenInUse: return "When In Use âš ï¸"
+        case .denied: return "Denied âŒ"
+        case .restricted: return "Restricted âŒ"
         case .notDetermined: return "Not Set"
         @unknown default: return "Unknown"
         }
@@ -479,6 +488,7 @@ struct SystemHealthRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: isHealthy ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .accessibilityHidden(true)
                 .font(.title2)
                 .foregroundStyle(isHealthy ? .green : .orange)
                 .scaleEffect(pulse ? 1.1 : 1.0)

@@ -1,8 +1,13 @@
 //  BusinessProfileDiagnosticView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.0 - Enhanced with Haptics & Micro-Animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.2.2 - Accessibility: element grouping, decorative icon hiding, text scaling
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.2:
+//  ✅ Screen change announcement
+//  ✅ Celebration section combined for VoiceOver
+//  ✅ Fixed garbled UTF-8 in print statements
 //
 //  Diagnostic Tool for BusinessProfile persistence issues
 //
@@ -38,9 +43,11 @@ struct BusinessProfileDiagnosticView: View {
                     HStack {
                         Image(systemName: "stethoscope")
                             .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
                         Text("Tap 'Run Diagnostics' below")
                             .foregroundStyle(.secondary)
                     }
+                    .accessibilityElement(children: .combine)
                 } else if isRunning {
                     HStack {
                         ProgressView()
@@ -65,6 +72,7 @@ struct BusinessProfileDiagnosticView: View {
                 } label: {
                     HStack {
                         Image(systemName: "play.fill")
+                            .accessibilityHidden(true)
                         Text("Run Diagnostics")
                     }
                     .frame(maxWidth: .infinity)
@@ -79,6 +87,7 @@ struct BusinessProfileDiagnosticView: View {
                     } label: {
                         HStack {
                             Image(systemName: "plus.circle.fill")
+                                .accessibilityHidden(true)
                             Text("Create Test Profile")
                         }
                         .frame(maxWidth: .infinity)
@@ -98,6 +107,7 @@ struct BusinessProfileDiagnosticView: View {
                                 .font(.system(size: 48))
                                 .foregroundStyle(.green)
                                 .scaleEffect(celebrationScale)
+                                .accessibilityHidden(true)
                             
                             Text("All Tests Passed!")
                                 .font(.headline)
@@ -107,7 +117,11 @@ struct BusinessProfileDiagnosticView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.8)
                         }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("All tests passed. Business profile persistence is working correctly")
                         Spacer()
                     }
                     .padding(.vertical)
@@ -117,6 +131,9 @@ struct BusinessProfileDiagnosticView: View {
         }
         .navigationTitle("Diagnostics")
         .animation(.spring(response: 0.4, dampingFraction: 0.7), value: testPassed)
+        .onAppear {
+            AccessibilityAnnouncement.screenChanged("Business profile diagnostics")
+        }
     }
     
     // MARK: - Animated Actions
@@ -167,7 +184,7 @@ struct BusinessProfileDiagnosticView: View {
     private func runDiagnostics() {
         var results: [DiagnosticResult] = []
         
-        print("\n🔍 ===== STARTING DIAGNOSTICS =====\n")
+        print("\nðŸ”—ðŸ” ===== STARTING DIAGNOSTICS =====\n")
         
         // Test 1: Check ModelContainer schema
         results.append(DiagnosticResult(text: "Test 1: ModelContainer Schema", type: .header))
@@ -175,7 +192,7 @@ struct BusinessProfileDiagnosticView: View {
         let container = modelContext.container
         let entities = container.schema.entities.map { $0.name }
         
-        print("📦 All models in schema:")
+        print("ðŸ”— All models in schema:")
         entities.forEach { print("  - \($0)") }
         
         if entities.contains("BusinessProfile") {
@@ -184,7 +201,7 @@ struct BusinessProfileDiagnosticView: View {
         } else {
             results.append(DiagnosticResult(text: "BusinessProfile NOT in schema", type: .error))
             results.append(DiagnosticResult(text: "This is the problem! ModelContainer_Shared.swift not updated.", type: .warning))
-            print("❌ BusinessProfile NOT in schema - THIS IS THE PROBLEM!")
+            print("âŒ BusinessProfile NOT in schema - THIS IS THE PROBLEM!")
             
             finishDiagnostics(results: results, passed: false)
             return
@@ -202,7 +219,7 @@ struct BusinessProfileDiagnosticView: View {
         results.append(DiagnosticResult(text: "Test 3: Database Location", type: .header))
         if let storeURL = container.configurations.first?.url {
             results.append(DiagnosticResult(text: "Database: \(storeURL.lastPathComponent)", type: .info))
-            print("💾 Database URL: \(storeURL)")
+            print("ðŸ”— Database URL: \(storeURL)")
             
             let fileManager = FileManager.default
             if fileManager.fileExists(atPath: storeURL.path) {
@@ -210,11 +227,11 @@ struct BusinessProfileDiagnosticView: View {
                 print("✅ Database file exists")
             } else {
                 results.append(DiagnosticResult(text: "Database file doesn't exist yet (will be created on first save)", type: .warning))
-                print("⚠️ Database file doesn't exist yet")
+                print("âš ï¸ Database file doesn't exist yet")
             }
         } else {
             results.append(DiagnosticResult(text: "Cannot determine database location", type: .error))
-            print("❌ Cannot determine database location")
+            print("âŒ Cannot determine database location")
         }
         
         // Test 4: Try to insert and save
@@ -224,11 +241,11 @@ struct BusinessProfileDiagnosticView: View {
             email: "diagnostic@test.com"
         )
         
-        print("💾 Attempting to insert test profile...")
+        print("ðŸ”— Attempting to insert test profile...")
         modelContext.insert(testProfile)
         
         do {
-            print("💾 Attempting to save...")
+            print("ðŸ”— Attempting to save...")
             try modelContext.save()
             results.append(DiagnosticResult(text: "Save succeeded!", type: .success))
             print("✅ Save succeeded!")
@@ -238,7 +255,7 @@ struct BusinessProfileDiagnosticView: View {
             let descriptor = FetchDescriptor<BusinessProfile>()
             let profiles = try modelContext.fetch(descriptor)
             
-            print("🔍 Found \(profiles.count) profiles")
+            print("ðŸ”—ðŸ” Found \(profiles.count) profiles")
             results.append(DiagnosticResult(text: "Found \(profiles.count) profile(s)", type: .success))
             
             if let found = profiles.first {
@@ -248,12 +265,12 @@ struct BusinessProfileDiagnosticView: View {
                 
                 results.append(DiagnosticResult(text: "ALL TESTS PASSED!", type: .celebration))
                 results.append(DiagnosticResult(text: "BusinessProfile persistence is working!", type: .success))
-                print("\n🎉 ALL TESTS PASSED - BusinessProfile persistence working!\n")
+                print("\nðŸ”—✅ ALL TESTS PASSED - BusinessProfile persistence working!\n")
                 
                 finishDiagnostics(results: results, passed: true)
             } else {
                 results.append(DiagnosticResult(text: "No profiles found after save", type: .error))
-                print("❌ No profiles found after save")
+                print("âŒ No profiles found after save")
                 finishDiagnostics(results: results, passed: false)
             }
             
@@ -268,11 +285,11 @@ struct BusinessProfileDiagnosticView: View {
         } catch {
             results.append(DiagnosticResult(text: "Save failed: \(error.localizedDescription)", type: .error))
             results.append(DiagnosticResult(text: "Error type: \(type(of: error))", type: .warning))
-            print("❌ Save failed: \(error)")
+            print("âŒ Save failed: \(error)")
             finishDiagnostics(results: results, passed: false)
         }
         
-        print("\n🔍 ===== DIAGNOSTICS COMPLETE =====\n")
+        print("\nðŸ”—ðŸ” ===== DIAGNOSTICS COMPLETE =====\n")
     }
     
     private func finishDiagnostics(results: [DiagnosticResult], passed: Bool) {
@@ -285,8 +302,7 @@ struct BusinessProfileDiagnosticView: View {
         
         if passed {
             // Success haptic
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
+            HapticService.shared.success()
             
             withAnimation(.spring(response: 0.3, dampingFraction: 0.5).delay(0.3)) {
                 testPassed = true
@@ -330,17 +346,15 @@ struct BusinessProfileDiagnosticView: View {
             diagnosticResults.append(DiagnosticResult(text: "Test profile created!", type: .success))
             diagnosticResults.append(DiagnosticResult(text: "Go back to Business Profile to see it", type: .info))
             
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
+            HapticService.shared.success()
             
             print("✅ Test profile created successfully")
         } catch {
             diagnosticResults.append(DiagnosticResult(text: "Failed to create test profile: \(error.localizedDescription)", type: .error))
             
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.error)
+            HapticService.shared.error()
             
-            print("❌ Failed to create test profile: \(error)")
+            print("âŒ Failed to create test profile: \(error)")
         }
         
         withAnimation(.easeOut(duration: 0.3)) {
@@ -402,12 +416,17 @@ struct AnimatedDiagnosticRow: View {
             Image(systemName: result.type.icon)
                 .foregroundStyle(result.type.color)
                 .scaleEffect(iconBounce ? 1.2 : 1.0)
+                .accessibilityHidden(true)
             
             Text(result.text)
                 .font(result.type == .header ? .subheadline.bold() : .subheadline)
                 .foregroundStyle(result.type.color)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
         }
-        .opacity(isVisible ? 1 : 0)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(result.type == .success ? "Passed" : result.type == .error ? "Failed" : result.type == .header ? "Test" : "Info"): \(result.text)")
+        .opacity(isVisible ? 1 : 0.001)
         .offset(x: isVisible ? 0 : -10)
         .animation(FLOAnimation.quick.delay(delay), value: isVisible)
         .onChange(of: isVisible) { _, newValue in

@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 2.2 - Fully working, no errors, production-ready
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES FROM v2.1:
 //  - FIXED: Replaced non-existent ModelContainer.makePreview() with proper initialization

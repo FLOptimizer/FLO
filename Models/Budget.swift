@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 2.3 - Added Account relationship for multi-account budgeting
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Budget model with envelope, simple, zero-based, and percentage-based budgeting
 //

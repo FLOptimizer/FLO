@@ -1,8 +1,12 @@
 //  AppearanceSettingsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.3 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.4.2 - Accessibility: decorative icon hiding, screen labels
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.4:
+//  ✅ Screen change announcement on appear
+//  ✅ Color scheme row: emoji hidden, spoken scheme name
 //
 //  CHANGES FROM v1.2:
 //  ✅ Haptic feedback on theme selection
@@ -52,14 +56,16 @@ struct AppearanceSettingsView: View {
                         
                         Text(colorSchemeManager.currentScheme.emoji)
                             .font(.title3)
+                            .accessibilityHidden(true)
                     }
                 }
+                .accessibilityLabel("Color scheme, current: \(colorSchemeManager.currentScheme.name)")
             } header: {
                 Text("Colors")
             } footer: {
                 Text("Choose a color scheme that matches your style")
             }
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
             
@@ -71,7 +77,8 @@ struct AppearanceSettingsView: View {
                             .foregroundStyle(.primary)
                     } icon: {
                         Image(systemName: "circle.lefthalf.filled")
-                            .foregroundStyle(Color.brandPrimary)
+                            .accessibilityHidden(true)
+                             .foregroundStyle(Color.brandPrimaryText)
                     }
                     .tag("system")
                     
@@ -80,7 +87,8 @@ struct AppearanceSettingsView: View {
                             .foregroundStyle(.primary)
                     } icon: {
                         Image(systemName: "sun.max.fill")
-                            .foregroundStyle(Color.brandPrimary)
+                            .accessibilityHidden(true)
+                             .foregroundStyle(Color.brandPrimaryText)
                     }
                     .tag("light")
                     
@@ -89,7 +97,8 @@ struct AppearanceSettingsView: View {
                             .foregroundStyle(.primary)
                     } icon: {
                         Image(systemName: "moon.fill")
-                            .foregroundStyle(Color.brandPrimary)
+                            .accessibilityHidden(true)
+                             .foregroundStyle(Color.brandPrimaryText)
                     }
                     .tag("dark")
                 }
@@ -102,7 +111,7 @@ struct AppearanceSettingsView: View {
             } footer: {
                 Text("Choose how FLO appears throughout the day")
             }
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
             
@@ -140,7 +149,7 @@ struct AppearanceSettingsView: View {
             } footer: {
                 Text("Customize how transactions and amounts are displayed")
             }
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
         }
@@ -151,6 +160,7 @@ struct AppearanceSettingsView: View {
                         withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
+            AccessibilityAnnouncement.screenChanged("Appearance")
         }
     }
     

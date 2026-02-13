@@ -1,21 +1,38 @@
 //  SettingsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.4 - Enhanced haptics and micro-animations + HelpCenterView
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.8 - Accessibility audit (Sprint 6a)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES FROM v3.2:
-//  ✅ Haptic feedback on all interactive elements
-//  ✅ Section entrance animations
-//  ✅ Profile card animation
-//  ✅ Button press haptics
-//  ✅ About view animations
-//  ✅ Added HelpCenterView with staggered article animations
-//  ✅ Added HelpArticleView with section stagger
-//  ✅ Added HelpSection model
+//  CHANGES v3.8:
+//  ✅ Full VoiceOver accessibility across all embedded views
+//  ✅ Screen change announcements on appear
+//  ✅ Profile section combined with spoken name/email
+//  ✅ Security row: checkmark status read aloud, chevron hidden
+//  ✅ Subscription row: current tier spoken
+//  ✅ Storage rows combined with spoken counts
+//  ✅ About view decorative icon hidden, content combined
+//  ✅ HelpArticleView section titles get .isHeader trait
+//  ✅ BackupSettingsView decorative icon hidden, combined
+//  ✅ Fixed garbled UTF-8 characters
 //
-//  PREVIOUS (v3.2):
-//  - Fixed Button/Link text, working theme picker
+//  CHANGES FROM v3.6:
+//  ✅ ADDED: EULA NavigationLink in Support section (Apple Guideline 3.1.2)
+//
+//  PREVIOUS (v3.6):
+//  - Siri Shortcuts help section
+//  - Quick Actions help section
+//  - Control Center help section (iOS 18+)
+//  - Mileage help with pause/resume features
+//  - Contact email to flo.financeapp@gmail.com
+//  - Rate FLO link in Help Center
+//  - Security section with location privacy info
+//
+//  PREVIOUS (v3.5):
+//  - Receipt Storage navigation in Data section
+//  - All haptics use centralized HapticService
+//  - All animations use FLOAnimation presets
+//
 
 import SwiftUI
 import SwiftData
@@ -31,8 +48,6 @@ struct SettingsView: View {
     @State private var showingExportOptions = false
     @State private var viewAppeared = false
     
-    // Haptic Generators
-                
     private var colorScheme: ColorScheme? {
         switch preferredColorScheme {
         case "light": return .light
@@ -49,7 +64,7 @@ struct SettingsView: View {
                     HStack {
                         Image(systemName: "person.circle.fill")
                             .font(.system(size: 60))
-                            .foregroundStyle(Color.brandPrimary)
+                             .foregroundStyle(Color.brandPrimaryText)
                             .symbolEffect(.bounce, value: viewAppeared)
                         
                         VStack(alignment: .leading, spacing: 4) {
@@ -73,6 +88,12 @@ struct SettingsView: View {
                         .padding(.leading, 12)
                     }
                     .padding(.vertical, 8)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel({
+                        var label = userName.isEmpty ? "No name set" : userName
+                        if !userEmail.isEmpty { label += ", \(userEmail)" }
+                        return label
+                    }())
                     
                     NavigationLink {
                         ProfileEditView(userName: $userName, userEmail: $userEmail)
@@ -82,7 +103,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
                         } icon: {
                             Image(systemName: "pencil")
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
                     }
                     
@@ -94,13 +115,13 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
                         } icon: {
                             Image(systemName: "building.2")
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
                     }
                 } header: {
                     Text("Profile")
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
@@ -116,7 +137,7 @@ struct SettingsView: View {
                                     .foregroundStyle(.primary)
                             } icon: {
                                 Image(systemName: "lock.shield.fill")
-                                    .foregroundStyle(Color.brandPrimary)
+                                     .foregroundStyle(Color.brandPrimaryText)
                             }
                             
                             Spacer()
@@ -124,20 +145,24 @@ struct SettingsView: View {
                             if BiometricAuthService.shared.biometricEnabled || PasscodeService.shared.hasPasscode() {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundStyle(.green)
+                                    .accessibilityHidden(true)
                             }
                             
                             Image(systemName: "chevron.right")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Passcode and Biometrics\(BiometricAuthService.shared.biometricEnabled || PasscodeService.shared.hasPasscode() ? ", enabled" : ", not configured")")
+                    .accessibilityHint("Opens security settings")
                 } header: {
                     Text("Security")
                 } footer: {
                     Text("Protect your financial data with Face ID or a passcode")
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
@@ -151,11 +176,11 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
                         } icon: {
                             Image(systemName: "folder")
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
                     }
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
@@ -176,7 +201,7 @@ struct SettingsView: View {
                                 }
                             } icon: {
                                 Image(systemName: "doc.text.fill")
-                                    .foregroundStyle(Color.brandPrimary)
+                                     .foregroundStyle(Color.brandPrimaryText)
                                     .frame(width: 28)
                             }
                         }
@@ -184,7 +209,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Features")
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
@@ -199,17 +224,18 @@ struct SettingsView: View {
                                     .foregroundStyle(.primary)
                             } icon: {
                                 Image(systemName: "star.fill")
-                                    .foregroundStyle(Color.brandPrimary)
+                                     .foregroundStyle(Color.brandPrimaryText)
                             }
                             Spacer()
                             Text(SubscriptionManager.shared.currentTier.displayName)
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .accessibilityLabel("Subscription, current plan: \(SubscriptionManager.shared.currentTier.displayName)")
                 } header: {
                     Text("Premium Features")
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 
@@ -223,7 +249,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
                         } icon: {
                             Image(systemName: "bell.fill")
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
                     }
                     
@@ -236,12 +262,14 @@ struct SettingsView: View {
                                     .foregroundStyle(.primary)
                             } icon: {
                                 Image(systemName: "paintbrush.fill")
-                                    .foregroundStyle(Color.brandPrimary)
+                                     .foregroundStyle(Color.brandPrimaryText)
                             }
                             Spacer()
                             Text(ColorSchemeManager.shared.currentScheme.emoji)
+                                .accessibilityHidden(true)
                         }
                     }
+                    .accessibilityLabel("Appearance, current: \(ColorSchemeManager.shared.currentScheme.name)")
                     
                     NavigationLink {
                         DataManagementView()
@@ -251,17 +279,17 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
                         } icon: {
                             Image(systemName: "externaldrive.fill")
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
                     }
                 } header: {
                     Text("Preferences")
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                 
-                // Export & Backup Section
+                // Data Section - NOW INCLUDES RECEIPT STORAGE
                 Section {
                     Button {
                         HapticService.play(.medium)
@@ -272,10 +300,28 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
                         } icon: {
                             Image(systemName: "square.and.arrow.up")
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
                     }
                     .buttonStyle(.plain)
+                    
+                    // NEW: Receipt Storage Navigation
+                    NavigationLink {
+                        ReceiptStorageSettingsView()
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Receipt Storage")
+                                    .foregroundStyle(.primary)
+                                Text("Export & manage receipt images")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "doc.text.image")
+                                 .foregroundStyle(Color.brandPrimaryText)
+                        }
+                    }
                     
                     NavigationLink {
                         BackupSettingsView()
@@ -285,25 +331,25 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
                         } icon: {
                             Image(systemName: "icloud.fill")
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
                     }
                 } header: {
                     Text("Data")
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                 
                 // Support Section
                 Section {
-                    Link(destination: URL(string: "mailto:flo.financeapp@gmail.com")!) {
+                    Link(destination: URL(string: "mailto:flowledgerco@gmail.com")!) {
                         Label {
                             Text("Contact Support")
                                 .foregroundStyle(.primary)
                         } icon: {
                             Image(systemName: "envelope.fill")
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
                     }
                     .buttonStyle(.plain)
@@ -316,7 +362,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
                         } icon: {
                             Image(systemName: "questionmark.circle.fill")
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
                     }
                     
@@ -328,7 +374,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
                         } icon: {
                             Image(systemName: "hand.raised.fill")
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
                     }
                     
@@ -340,7 +386,20 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
                         } icon: {
                             Image(systemName: "doc.text.fill")
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
+                        }
+                    }
+                    
+                    // EULA - Added for App Store Guideline 3.1.2 compliance
+                    NavigationLink {
+                        EULAView()
+                    } label: {
+                        Label {
+                            Text("End User License Agreement")
+                                .foregroundStyle(.primary)
+                        } icon: {
+                            Image(systemName: "signature")
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
                     }
                     
@@ -352,13 +411,13 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
                         } icon: {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(Color.brandPrimary)
+                                 .foregroundStyle(Color.brandPrimaryText)
                         }
                     }
                 } header: {
                     Text("Support")
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
                 
@@ -374,7 +433,7 @@ struct SettingsView: View {
                                     .foregroundStyle(.primary)
                             } icon: {
                                 Image(systemName: "info.circle.fill")
-                                    .foregroundStyle(Color.brandPrimary)
+                                     .foregroundStyle(Color.brandPrimaryText)
                             }
                             
                             Spacer()
@@ -382,6 +441,7 @@ struct SettingsView: View {
                             Image(systemName: "chevron.right")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
                         }
                     }
                     .buttonStyle(.plain)
@@ -393,10 +453,11 @@ struct SettingsView: View {
                         Text(appVersion)
                             .foregroundStyle(.secondary)
                     }
+                    .accessibilityElement(children: .combine)
                 } header: {
                     Text("About")
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
             }
@@ -411,17 +472,15 @@ struct SettingsView: View {
                 ExportOptionsView()
             }
             .onAppear {
-                                withAnimation(FLOAnimation.standard) {
+                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
+                AccessibilityAnnouncement.screenChanged("Settings")
             }
         }
         .preferredColorScheme(colorScheme)
     }
     
-    // MARK: - Haptic Preparation
-    
-        
     private var appVersion: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
@@ -440,8 +499,6 @@ struct ProfileEditView: View {
     @State private var editedEmail: String
     @State private var viewAppeared = false
     
-    // Haptic Generators
-                
     init(userName: Binding<String>, userEmail: Binding<String>) {
         self._userName = userName
         self._userEmail = userEmail
@@ -460,7 +517,7 @@ struct ProfileEditView: View {
                     .keyboardType(.emailAddress)
                     .textInputAutocapitalization(.never)
             }
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
             
@@ -469,7 +526,7 @@ struct ProfileEditView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
         }
@@ -494,6 +551,7 @@ struct ProfileEditView: View {
             withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
+            AccessibilityAnnouncement.screenChanged("Edit profile")
         }
     }
     
@@ -515,8 +573,6 @@ struct NotificationSettingsView: View {
     
     @State private var viewAppeared = false
     
-    // Haptic Generators
-        
     var body: some View {
         Form {
             Section {
@@ -528,7 +584,7 @@ struct NotificationSettingsView: View {
             } footer: {
                 Text("Allow FLO to send you important reminders and updates")
             }
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
             
@@ -558,11 +614,12 @@ struct NotificationSettingsView: View {
         }
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: notificationsEnabled)
+        .animation(FLOAnimation.standard, value: notificationsEnabled)
         .onAppear {
             withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
+            AccessibilityAnnouncement.screenChanged("Notifications")
         }
     }
 }
@@ -573,36 +630,72 @@ struct DataManagementView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var transactions: [Transaction]
     @Query private var trips: [MileageTrip]
+    @Query private var receipts: [ReceiptData]
     
     @State private var showingClearDataAlert = false
     @State private var viewAppeared = false
     
-    // Haptic Generators
-                
     var body: some View {
         Form {
             Section("Storage") {
                 HStack {
-                    Text("Transactions")
+                    Label("Transactions", systemImage: "creditcard")
                         .foregroundStyle(.primary)
                     Spacer()
                     Text("\(transactions.count)")
                         .foregroundStyle(.secondary)
                         .contentTransition(.numericText())
                 }
+                .accessibilityElement(children: .combine)
                 
                 HStack {
-                    Text("Mileage Trips")
+                    Label("Mileage Trips", systemImage: "car")
                         .foregroundStyle(.primary)
                     Spacer()
                     Text("\(trips.count)")
                         .foregroundStyle(.secondary)
                         .contentTransition(.numericText())
                 }
+                .accessibilityElement(children: .combine)
+                
+                HStack {
+                    Label("Receipts", systemImage: "doc.text.image")
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Text("\(receipts.count)")
+                        .foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
+                }
+                .accessibilityElement(children: .combine)
             }
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
+            
+            // Receipt Storage Link
+            Section {
+                NavigationLink {
+                    ReceiptStorageSettingsView()
+                } label: {
+                    HStack {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Manage Receipt Storage")
+                                    .foregroundStyle(.primary)
+                                Text("Export to ZIP, purge by month/year")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "photo.on.rectangle.angled")
+                                 .foregroundStyle(Color.brandPrimaryText)
+                        }
+                    }
+                }
+            }
+            .opacity(viewAppeared ? 1 : 0.001)
+            .offset(y: viewAppeared ? 0 : 10)
+            .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
             
             Section {
                 Button(role: .destructive) {
@@ -618,11 +711,11 @@ struct DataManagementView: View {
                     }
                 }
             } footer: {
-                Text("This will permanently delete all your transactions, trips, and settings. This action cannot be undone.")
+                Text("This will permanently delete all your transactions, trips, receipts, and settings. This action cannot be undone.")
             }
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
+            .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
         }
         .navigationTitle("Data & Storage")
         .navigationBarTitleDisplayMode(.inline)
@@ -634,12 +727,13 @@ struct DataManagementView: View {
                 clearAllData()
             }
         } message: {
-            Text("This will permanently delete all your data. This action cannot be undone.")
+            Text("This will permanently delete all your data including \(transactions.count) transactions, \(trips.count) trips, and \(receipts.count) receipts. This action cannot be undone.")
         }
         .onAppear {
             withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
+            AccessibilityAnnouncement.screenChanged("Data and storage")
         }
     }
     
@@ -650,6 +744,10 @@ struct DataManagementView: View {
         
         for trip in trips {
             modelContext.delete(trip)
+        }
+        
+        for receipt in receipts {
+            modelContext.delete(receipt)
         }
         
         do {
@@ -674,103 +772,31 @@ struct BackupSettingsView: View {
                         .font(.system(size: 40))
                         .foregroundStyle(Color.brandPrimary)
                         .symbolEffect(.bounce, value: viewAppeared)
+                        .accessibilityHidden(true)
                     
                     Text("iCloud sync coming soon")
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
+                .accessibilityElement(children: .combine)
             } header: {
                 Text("Backup")
             } footer: {
-                Text("Automatically sync your data across all your devices with iCloud")
+                Text("Your data is automatically included in your device's iCloud backup if enabled in iOS Settings.")
             }
+            .opacity(viewAppeared ? 1 : 0.001)
+            .offset(y: viewAppeared ? 0 : 10)
+            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
         }
         .navigationTitle("Backup & Sync")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            viewAppeared = true
+            withAnimation(FLOAnimation.standard) {
+                viewAppeared = true
+            }
+            AccessibilityAnnouncement.screenChanged("Backup and sync")
         }
-    }
-}
-
-// MARK: - Export Options View
-
-struct ExportOptionsView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
-    @Query private var transactions: [Transaction]
-    @Query private var trips: [MileageTrip]
-    
-    @State private var viewAppeared = false
-    
-    // Haptic Generators
-                
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Transactions") {
-                    Button {
-                        HapticService.play(.medium)
-                        exportTransactionsCSV()
-                    } label: {
-                        Label {
-                            Text("Export Transactions to CSV")
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "doc.text")
-                                .foregroundStyle(Color.brandPrimary)
-                        }
-                    }
-                }
-                .opacity(viewAppeared ? 1 : 0)
-                .offset(y: viewAppeared ? 0 : 10)
-                .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
-                
-                Section("Mileage") {
-                    Button {
-                        HapticService.play(.medium)
-                        exportMileageCSV()
-                    } label: {
-                        Label {
-                            Text("Export Mileage Log to CSV")
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "car")
-                                .foregroundStyle(Color.brandPrimary)
-                        }
-                    }
-                }
-                .opacity(viewAppeared ? 1 : 0)
-                .offset(y: viewAppeared ? 0 : 10)
-                .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
-            }
-            .navigationTitle("Export Data")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        HapticService.play(.light)
-                        dismiss()
-                    }
-                }
-            }
-            .onAppear {
-                withAnimation(FLOAnimation.standard) {
-                    viewAppeared = true
-                }
-            }
-        }
-    }
-    
-    private func exportTransactionsCSV() {
-        HapticService.play(.success)
-        // Export logic here
-    }
-    
-    private func exportMileageCSV() {
-        HapticService.play(.success)
-        // Export logic here
     }
 }
 
@@ -780,25 +806,20 @@ struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewAppeared = false
     
-    // Haptic Generators
-        
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
-                    // App Icon
-                    Image(systemName: "drop.triangle.fill")
-                        .font(.system(size: 80))
-                        .foregroundStyle(Color.brandPrimary)
-                        .padding(.top, 40)
-                        .scaleEffect(viewAppeared ? 1 : 0.5)
-                        .opacity(viewAppeared ? 1 : 0)
-                        .animation(.spring(response: 0.6, dampingFraction: 0.7), value: viewAppeared)
-                    
-                    // App Name & Version
-                    VStack(spacing: 8) {
+                VStack(spacing: 32) {
+                    // App Icon and Name
+                    VStack(spacing: 16) {
+                        Image(systemName: "chart.line.uptrend.xyaxis.circle.fill")
+                            .font(.system(size: 80))
+                            .foregroundStyle(Color.brandPrimary)
+                            .symbolEffect(.bounce, value: viewAppeared)
+                            .accessibilityHidden(true)
+                        
                         Text("FLO")
-                            .font(.title)
+                            .font(.largeTitle)
                             .fontWeight(.bold)
                         
                         Text("Finance Ledger Optimizer")
@@ -806,59 +827,51 @@ struct AboutView: View {
                             .foregroundStyle(.secondary)
                         
                         Text("Version \(appVersion)")
-                            .font(.subheadline)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    .opacity(viewAppeared ? 1 : 0)
+                    .padding(.top, 32)
+                    .accessibilityElement(children: .combine)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 20)
                     .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                     
                     // Description
-                    Text("Financial management designed for freelancers, gig workers, and small business owners")
-                        .font(.body)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal)
-                        .opacity(viewAppeared ? 1 : 0)
-                        .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
-                    
-                    // Features
-                    VStack(alignment: .leading, spacing: 16) {
-                        ForEach(Array(features.enumerated()), id: \.offset) { index, feature in
-                            SettingsFeatureRow(icon: feature.icon, title: feature.title)
-                                .opacity(viewAppeared ? 1 : 0)
-                                .offset(x: viewAppeared ? 0 : 20)
-                                .animation(
-                                    FLOAnimation.standard
-                                    .delay(0.2 + Double(index) * 0.05),
-                                    value: viewAppeared
-                                )
-                        }
-                    }
-                    .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(12)
-                    .padding(.horizontal)
-                    
-                    // Credits
-                    VStack(spacing: 12) {
-                        Text("Made by Finch & Poppy Co LLC")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                    VStack(spacing: 8) {
+                        Text("Made for Freelancers")
+                            .font(.headline)
                         
-                        Link("Visit Our Website", destination: URL(string: "https://floptimizer.github.io/FLO/index.html")!)
-                            .font(.subheadline)
-                            .foregroundStyle(Color.brandPrimary)
+                        Text("FLO helps freelancers, gig workers, and small business owners manage their finances, track expenses, and prepare for taxes with confidence.")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                     }
-                    .padding(.bottom, 40)
-                    .opacity(viewAppeared ? 1 : 0)
-                    .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
+                    .padding(.horizontal, 32)
+                    .opacity(viewAppeared ? 1 : 0.001)
+                    .offset(y: viewAppeared ? 0 : 15)
+                    .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
+                    
+                    // Company Info
+                    VStack(spacing: 8) {
+                        Text("Finch & Poppy Co LLC")
+                            .font(.headline)
+                        
+                        Text("© 2025 All Rights Reserved")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, 16)
+                    .opacity(viewAppeared ? 1 : 0.001)
+                    .offset(y: viewAppeared ? 0 : 15)
+                    .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
+                    
+                    Spacer()
                 }
             }
             .navigationTitle("About")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
                         HapticService.play(.light)
                         dismiss()
@@ -866,44 +879,21 @@ struct AboutView: View {
                 }
             }
             .onAppear {
-                withAnimation(FLOAnimation.standard) {
-                    viewAppeared = true
+                // Delay entrance animation until sheet is fully presented
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(FLOAnimation.standard) {
+                        viewAppeared = true
+                    }
                 }
+                AccessibilityAnnouncement.screenChanged("About FLO")
             }
         }
-    }
-    
-    private var features: [(icon: String, title: String)] {
-        [
-            ("chart.line.uptrend.xyaxis", "Smart Expense Tracking"),
-            ("doc.text", "Quarterly Tax Estimates"),
-            ("car", "Automatic Mileage Tracking"),
-            ("camera", "Receipt Scanning"),
-            ("lock.shield", "Secure & Private")
-        ]
     }
     
     private var appVersion: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         return "\(version) (\(build))"
-    }
-}
-
-struct SettingsFeatureRow: View {
-    let icon: String
-    let title: String
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundStyle(Color.brandPrimary)
-                .frame(width: 30)
-            
-            Text(title)
-                .font(.body)
-        }
     }
 }
 
@@ -915,153 +905,109 @@ struct HelpCenterView: View {
     var body: some View {
         List {
             Section("Getting Started") {
-                NavigationLink("Adding Transactions") {
+                NavigationLink("Tracking Transactions") {
                     HelpArticleView(
-                        title: "Adding Transactions",
-                        icon: "plus.circle.fill",
+                        title: "Transactions",
+                        icon: "creditcard.fill",
                         sections: [
                             HelpSection(
-                                title: "Quick Add",
-                                content: "Tap the + button on any screen to add a new transaction. Enter the amount, select whether it's income or expense, and choose a category."
-                            ),
-                            HelpSection(
-                                title: "Business vs Personal",
-                                content: "Mark each transaction as Business or Personal. Business expenses are automatically flagged for potential tax deductions. Personal expenses are tracked separately for your records."
+                                title: "Adding Transactions",
+                                content: "Tap the + button on the Dashboard to add a new transaction. Enter the amount, select a category, and add any notes."
                             ),
                             HelpSection(
                                 title: "Categories",
-                                content: "Assign categories to organize your spending. You can create custom categories in Settings > Categories to match your business needs."
+                                content: "Organize your spending with categories. You can create custom categories in Settings > Categories."
                             ),
                             HelpSection(
-                                title: "Receipts",
-                                content: "Attach receipt photos to any transaction by tapping 'Scan Receipt'. The app will automatically extract the amount, date, and merchant name."
+                                title: "Business vs Personal",
+                                content: "Mark transactions as business expenses to track them separately for tax purposes."
                             )
                         ]
                     )
                 }
-                .opacity(viewAppeared ? 1 : 0)
-                .offset(x: viewAppeared ? 0 : 15)
-                .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
-                
-                NavigationLink("Setting Up Tax Estimates") {
-                    HelpArticleView(
-                        title: "Tax Estimates",
-                        icon: "doc.text.fill",
-                        sections: [
-                            HelpSection(
-                                title: "Initial Setup",
-                                content: "Go to Settings > Tax Settings to configure your tax profile. Select your state and filing status (Single, Married Filing Jointly, etc.) for accurate estimates."
-                            ),
-                            HelpSection(
-                                title: "How Estimates Work",
-                                content: "FLO calculates estimated quarterly taxes based on your year-to-date income and business expenses. It uses current IRS tax brackets, your state's tax rate, and self-employment tax (15.3%)."
-                            ),
-                            HelpSection(
-                                title: "Quarterly Deadlines",
-                                content: "For 2025, quarterly estimated tax payments are due:\n• Q1 (Jan-Mar): April 15\n• Q2 (Apr-May): June 16\n• Q3 (Jun-Aug): September 15\n• Q4 (Sep-Dec): January 15, 2026"
-                            ),
-                            HelpSection(
-                                title: "Reminders",
-                                content: "Enable quarterly reminders to get notified before each deadline. You can customize how many days in advance you'd like to be reminded."
-                            ),
-                            HelpSection(
-                                title: "Important Disclaimer",
-                                content: "Tax estimates are for planning purposes only and should not be considered tax advice. Consult a qualified tax professional for your specific situation."
-                            )
-                        ]
-                    )
-                }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(x: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
-                NavigationLink("Tracking Mileage") {
+                NavigationLink("Budgets") {
                     HelpArticleView(
-                        title: "Mileage Tracking",
-                        icon: "car.fill",
-                        sections: [
-                            HelpSection(
-                                title: "Getting Started",
-                                content: "Go to the Mileage tab and tap 'Start Trip' when you begin a business drive. The app uses your phone's GPS to track distance automatically."
-                            ),
-                            HelpSection(
-                                title: "Automatic Trip Detection",
-                                content: "Enable automatic tracking to let FLO detect when you're driving. Trips end automatically after you've been stationary for a few minutes."
-                            ),
-                            HelpSection(
-                                title: "IRS Mileage Rate",
-                                content: "FLO uses the current IRS standard mileage rate (72.5¢ per mile for 2026) to calculate your deduction. This rate is updated annually."
-                            ),
-                            HelpSection(
-                                title: "Manual Entry",
-                                content: "You can also add trips manually if you forgot to track. Enter the start location, end location, and purpose of the trip."
-                            ),
-                            HelpSection(
-                                title: "Location Permissions",
-                                content: "For best results, allow 'Always' location access. This enables background tracking so trips continue even when the app isn't open."
-                            )
-                        ]
-                    )
-                }
-                .opacity(viewAppeared ? 1 : 0)
-                .offset(x: viewAppeared ? 0 : 15)
-                .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
-            }
-            
-            Section("Features") {
-                NavigationLink("Budgeting") {
-                    HelpArticleView(
-                        title: "Budgeting",
+                        title: "Budgets",
                         icon: "chart.pie.fill",
                         sections: [
                             HelpSection(
                                 title: "Creating Budgets",
-                                content: "Tap 'Create Budget' to set spending limits for different categories. Choose between monthly or custom time periods."
+                                content: "Set spending limits for different categories. FLO will track your progress and alert you when you're close to your limit."
                             ),
                             HelpSection(
-                                title: "Envelope Budgeting",
-                                content: "FLO supports envelope-style budgeting where each category gets a fixed amount. When you spend from a category, it reduces that envelope."
+                                title: "Budget Periods",
+                                content: "Choose weekly, monthly, or custom budget periods based on your cash flow needs."
                             ),
                             HelpSection(
                                 title: "Rollover",
-                                content: "Enable rollover to carry unused budget amounts to the next month. Great for saving up for larger purchases."
-                            ),
-                            HelpSection(
-                                title: "Warnings",
-                                content: "Get notified when you're approaching your budget limit. Customize the warning threshold (e.g., alert at 80% spent)."
+                                content: "Enable rollover to carry unused budget amounts to the next period."
                             )
                         ]
                     )
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(x: viewAppeared ? 0 : 15)
-                .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
-                NavigationLink("Receipt Scanning") {
+                NavigationLink("Mileage Tracking") {
                     HelpArticleView(
-                        title: "Receipt Scanning",
-                        icon: "camera.fill",
+                        title: "Mileage",
+                        icon: "car.fill",
                         sections: [
                             HelpSection(
-                                title: "How to Scan",
-                                content: "Use the camera button when adding a transaction, or use the Quick Action on the Dashboard. Point your camera at the receipt and hold steady."
+                                title: "Automatic Tracking",
+                                content: "Enable GPS tracking to automatically log your business trips. FLO detects when you start and stop driving, even when running in the background."
                             ),
                             HelpSection(
-                                title: "What's Extracted",
-                                content: "The scanner automatically detects the merchant name, total amount, date, and suggests a category based on the store type."
+                                title: "Quick Pause & Resume",
+                                content: "Pause mileage tracking quickly without opening the app using: Long-press the FLO app icon, Control Center toggle (iOS 18+), or Siri commands. This helps save battery when you're not driving."
                             ),
                             HelpSection(
-                                title: "Editing Results",
-                                content: "After scanning, you can edit any field before saving. If the scanner misread something, simply tap the field to correct it."
+                                title: "Manual Entry",
+                                content: "Add trips manually by entering the start and end locations or the total miles driven."
+                            ),
+                            HelpSection(
+                                title: "Trip Classification",
+                                content: "Auto-tracked trips are marked as 'Needs Review'. Tap any trip to classify it as Business or Personal before it counts toward your tax deduction."
+                            ),
+                            HelpSection(
+                                title: "IRS Rate",
+                                content: "FLO uses the current IRS standard mileage rate to calculate your deduction. The 2025 rate is $0.70 per mile for business use."
+                            )
+                        ]
+                    )
+                }
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(x: viewAppeared ? 0 : 15)
+                .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
+            }
+            
+            Section("Features") {
+                NavigationLink("Receipt Scanning") {
+                    HelpArticleView(
+                        title: "Receipts",
+                        icon: "doc.text.viewfinder",
+                        sections: [
+                            HelpSection(
+                                title: "Scanning Receipts",
+                                content: "Use your camera to scan receipts. FLO will automatically extract the merchant, amount, and date using AI."
+                            ),
+                            HelpSection(
+                                title: "Matching to Transactions",
+                                content: "Link scanned receipts to transactions for complete documentation of your expenses."
                             ),
                             HelpSection(
                                 title: "Storage",
-                                content: "Receipt images are stored securely on your device. They're attached to transactions for easy reference and tax documentation."
+                                content: "Receipt images are stored securely on your device. Export or purge receipts anytime in Settings > Receipt Storage."
                             )
                         ]
                     )
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(x: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 
@@ -1089,9 +1035,85 @@ struct HelpCenterView: View {
                         ]
                     )
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(x: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
+            }
+            
+            Section("Quick Access") {
+                NavigationLink("Siri Shortcuts") {
+                    HelpArticleView(
+                        title: "Siri",
+                        icon: "waveform.circle.fill",
+                        sections: [
+                            HelpSection(
+                                title: "Voice Commands",
+                                content: "Control FLO hands-free with Siri. Try saying:\n• \"Hey Siri, pause mileage tracking in FLO\"\n• \"Hey Siri, resume mileage in FLO\"\n• \"Hey Siri, check mileage status in FLO\""
+                            ),
+                            HelpSection(
+                                title: "Shortcuts App",
+                                content: "FLO shortcuts also appear in the Shortcuts app. Create automations like pausing mileage when you arrive at home or resuming when you leave for work."
+                            ),
+                            HelpSection(
+                                title: "Customizing Phrases",
+                                content: "Go to Settings > FLO > Siri & Shortcuts to customize voice phrases or add shortcuts to your Home Screen."
+                            )
+                        ]
+                    )
+                }
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(x: viewAppeared ? 0 : 15)
+                .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
+                
+                NavigationLink("Quick Actions") {
+                    HelpArticleView(
+                        title: "Quick Actions",
+                        icon: "hand.tap.fill",
+                        sections: [
+                            HelpSection(
+                                title: "App Icon Menu",
+                                content: "Long-press (3D Touch or Haptic Touch) the FLO app icon on your Home Screen to see quick actions:\n• Pause/Resume Mileage\n• Add Transaction\n• Scan Receipt"
+                            ),
+                            HelpSection(
+                                title: "Dynamic Options",
+                                content: "The mileage option automatically changes between 'Pause' and 'Resume' based on your current tracking state."
+                            ),
+                            HelpSection(
+                                title: "Requirements",
+                                content: "Mileage quick actions only appear after you've completed the mileage setup and granted 'Always Allow' location permission."
+                            )
+                        ]
+                    )
+                }
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(x: viewAppeared ? 0 : 15)
+                .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
+                
+                if #available(iOS 18.0, *) {
+                    NavigationLink("Control Center") {
+                        HelpArticleView(
+                            title: "Control Center",
+                            icon: "slider.horizontal.3",
+                            sections: [
+                                HelpSection(
+                                    title: "Mileage Toggle",
+                                    content: "Add a mileage tracking toggle to Control Center for one-tap pause and resume. Swipe down from the top-right corner to access it instantly."
+                                ),
+                                HelpSection(
+                                    title: "Adding the Control",
+                                    content: "Go to Settings > Control Center, scroll down to find 'Mileage Timer' under FLO, and tap the + button to add it."
+                                ),
+                                HelpSection(
+                                    title: "iOS 18 Required",
+                                    content: "Control Center widgets are a new feature in iOS 18. If you don't see this option, make sure your device is updated to iOS 18 or later."
+                                )
+                            ]
+                        )
+                    }
+                    .opacity(viewAppeared ? 1 : 0.001)
+                    .offset(x: viewAppeared ? 0 : 15)
+                    .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
+                }
             }
             
             Section("Security & Privacy") {
@@ -1113,45 +1135,78 @@ struct HelpCenterView: View {
                                 content: "All your data is stored locally on your device. We don't have access to your financial information."
                             ),
                             HelpSection(
+                                title: "Location Privacy",
+                                content: "Mileage tracking uses your location only to record trips. Location data stays on your device and is never sent to our servers."
+                            ),
+                            HelpSection(
                                 title: "Backups",
                                 content: "Your data is included in your device's iCloud backup if enabled. This allows restoration if you get a new device."
                             )
                         ]
                     )
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(x: viewAppeared ? 0 : 15)
-                .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.5), value: viewAppeared)
             }
             
             Section("Need More Help?") {
                 Link(destination: URL(string: "mailto:flo.financeapp@gmail.com")!) {
                     Label {
-                        Text("Contact Support")
-                            .foregroundStyle(.primary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Contact Support")
+                                .foregroundStyle(.primary)
+                            Text("flo.financeapp@gmail.com")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     } icon: {
                         Image(systemName: "envelope.fill")
-                            .foregroundStyle(Color.brandPrimary)
+                             .foregroundStyle(Color.brandPrimaryText)
                     }
                 }
                 .buttonStyle(.plain)
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(x: viewAppeared ? 0 : 15)
-                .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.55), value: viewAppeared)
                 
-                Link(destination: URL(string: "https://floptimizer.github.io/FLO/index.htm")!) {
+                Link(destination: URL(string: "https://floptimizer.github.io/FLO/index.html#features")!) {
                     Label {
-                        Text("FAQ")
-                            .foregroundStyle(.primary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("FAQ & Tutorials")
+                                .foregroundStyle(.primary)
+                            Text("https://floptimizer.github.io/FLO/index.html")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     } icon: {
-                        Image(systemName: "questionmark.circle.fill")
-                            .foregroundStyle(Color.brandPrimary)
+                        Image(systemName: "book.fill")
+                             .foregroundStyle(Color.brandPrimaryText)
                     }
                 }
                 .buttonStyle(.plain)
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(x: viewAppeared ? 0 : 15)
-                .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
+                .animation(FLOAnimation.standard.delay(0.6), value: viewAppeared)
+                
+                Link(destination: URL(string: "https://apps.apple.com/app/flo-finance-ledger-optimizer/id6740109874?action=write-review")!) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Rate FLO")
+                                .foregroundStyle(.primary)
+                            Text("Leave a review on the App Store")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "star.fill")
+                            .foregroundStyle(.yellow)
+                    }
+                }
+                .buttonStyle(.plain)
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(x: viewAppeared ? 0 : 15)
+                .animation(FLOAnimation.standard.delay(0.65), value: viewAppeared)
             }
         }
         .navigationTitle("Help Center")
@@ -1159,6 +1214,7 @@ struct HelpCenterView: View {
             withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
+            AccessibilityAnnouncement.screenChanged("Help center")
         }
     }
 }
@@ -1185,7 +1241,7 @@ struct HelpArticleView: View {
                 HStack {
                     Image(systemName: icon)
                         .font(.system(size: 40))
-                        .foregroundStyle(Color.brandPrimary)
+                         .foregroundStyle(Color.brandPrimaryText)
                         .symbolEffect(.bounce, value: viewAppeared)
                     
                     Text(title)
@@ -1193,7 +1249,7 @@ struct HelpArticleView: View {
                         .fontWeight(.bold)
                 }
                 .padding(.bottom, 8)
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
@@ -1202,7 +1258,8 @@ struct HelpArticleView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(section.title)
                             .font(.headline)
-                            .foregroundStyle(Color.brandPrimary)
+                             .foregroundStyle(Color.brandPrimaryText)
+                            .accessibilityAddTraits(.isHeader)
                         
                         Text(section.content)
                             .font(.body)
@@ -1213,11 +1270,10 @@ struct HelpArticleView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(12)
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 15)
                     .animation(
-                        FLOAnimation.standard
-                        .delay(0.1 + Double(index) * 0.05),
+                        FLOAnimation.standard.delay(0.1 + Double(index) * 0.05),
                         value: viewAppeared
                     )
                 }
@@ -1230,6 +1286,7 @@ struct HelpArticleView: View {
             withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
+            AccessibilityAnnouncement.screenChanged(title)
         }
     }
 }
@@ -1238,5 +1295,5 @@ struct HelpArticleView: View {
 
 #Preview {
     SettingsView()
-        .modelContainer(for: [Transaction.self, MileageTrip.self], inMemory: true)
+        .modelContainer(for: [Transaction.self, MileageTrip.self, ReceiptData.self], inMemory: true)
 }

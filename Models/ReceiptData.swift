@@ -1,8 +1,13 @@
 //  ReceiptData.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.0 - MVP Deployment Ready
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.1 - Fixed SwiftData schema issue
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.1:
+//  ✅ Removed 'description' computed property from ReceiptLineItem
+//  ✅ 'description' shadowed NSObject.description, breaking SwiftData schema
+//  ✅ Use 'itemDescription' property instead
 //
 //  Enhanced receipt data model for smart scanning and matching
 //
@@ -156,7 +161,7 @@ extension ReceiptData {
 final class ReceiptLineItem {
     @Attribute(.unique) var id: UUID
     var receipt: ReceiptData?  // Back reference
-    var itemDescription: String  // Renamed from 'description' to avoid keyword
+    var itemDescription: String  // Renamed from 'description' to avoid keyword conflict
     var amount: Double
     var quantity: Int
     var isBusiness: Bool  // For split receipts
@@ -180,11 +185,8 @@ final class ReceiptLineItem {
         amount * Double(quantity)
     }
     
-    // Convenience accessor for compatibility
-    var description: String {
-        get { itemDescription }
-        set { itemDescription = newValue }
-    }
+    // REMOVED: 'description' computed property was shadowing NSObject.description
+    // which breaks SwiftData schema generation. Use 'itemDescription' instead.
 }
 
 // MARK: - Receipt Matching

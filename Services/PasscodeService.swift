@@ -1,11 +1,18 @@
 //  PasscodeService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.0 - Added passcode length persistence
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.1 - Fixed reinstall passcode persistence issue
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Secure passcode management using Keychain
-//  FIXES: Passcode length is now persisted and retrievable
+//
+//  CHANGES v2.1:
+//  - CRITICAL FIX: Detect app reinstall and clear orphaned Keychain passcode
+//  - Prevents users from being locked out after reinstall
+//  - UserDefaults flags app as "initialized" to detect fresh installs
+//
+//  PREVIOUS v2.0:
+//  - Added passcode length persistence
 //
 
 import Foundation
@@ -26,12 +33,13 @@ final class PasscodeService: ObservableObject {
     private let passcodeAccount = "userPasscode"
     private let passcodeEnabledKey = "passcodeEnabled"
     private let passcodeLengthKey = "passcodeLength"
+    private let appInitializedKey = "appInitialized_v2" // Tracks if app has been set up
     
     // MARK: - Initialization
     
     private init() {
         // Load enabled state and length from UserDefaults
-        self.isPasscodeEnabled = UserDefaults.standard.bool(forKey: passcodeEnabledKey)
+        let storedEnabled = UserDefaults.standard.bool(forKey: passcodeEnabledKey)
         self.passcodeLength = UserDefaults.standard.integer(forKey: passcodeLengthKey)
         
         // Default to 6 if not set
@@ -39,8 +47,34 @@ final class PasscodeService: ObservableObject {
             self.passcodeLength = 6
         }
         
+        // CRITICAL FIX: Detect reinstall scenario
+        // Keychain persists after app deletion, but UserDefaults does not.
+        // If UserDefaults says passcode is NOT enabled, but Keychain has a passcode,
+        // this means the app was deleted and reinstalled. Clear the orphaned Keychain entry.
+        let hasKeychainPasscode = getPasscodeFromKeychain() != nil
+        let appWasInitialized = UserDefaults.standard.bool(forKey: appInitializedKey)
+        
+        if !appWasInitialized && hasKeychainPasscode {
+            // App was reinstalled - clear orphaned passcode from previous installation
+            #if DEBUG
+            print("[PasscodeService] Detected app reinstall - clearing orphaned Keychain passcode")
+            #endif
+            removePasscodeFromKeychain()
+            self.isPasscodeEnabled = false
+            
+            // Mark app as initialized
+            UserDefaults.standard.set(true, forKey: appInitializedKey)
+        } else if !appWasInitialized {
+            // Fresh install - just mark as initialized
+            UserDefaults.standard.set(true, forKey: appInitializedKey)
+            self.isPasscodeEnabled = storedEnabled
+        } else {
+            // Normal launch - use stored value
+            self.isPasscodeEnabled = storedEnabled
+        }
+        
         #if DEBUG
-        print("🔐 PasscodeService initialized - enabled: \(isPasscodeEnabled), length: \(passcodeLength)")
+        print("[PasscodeService] Initialized - enabled: \(isPasscodeEnabled), length: \(passcodeLength)")
         #endif
     }
     
@@ -61,7 +95,7 @@ final class PasscodeService: ObservableObject {
         // Validate passcode (must be 4 or 6 digits)
         guard isValidPasscode(passcode) else {
             #if DEBUG
-            print("❌ Invalid passcode format - must be 4 or 6 digits")
+            print("[PasscodeService] Invalid passcode format - must be 4 or 6 digits")
             #endif
             return false
         }
@@ -69,7 +103,7 @@ final class PasscodeService: ObservableObject {
         // Hash the passcode before storing
         guard let hashedPasscode = hashPasscode(passcode) else {
             #if DEBUG
-            print("❌ Failed to hash passcode")
+            print("[PasscodeService] Failed to hash passcode")
             #endif
             return false
         }
@@ -90,7 +124,7 @@ final class PasscodeService: ObservableObject {
         
         if status == errSecSuccess {
             #if DEBUG
-            print("✅ Passcode set successfully (length: \(passcode.count))")
+            print("[PasscodeService] Passcode set successfully (length: \(passcode.count))")
             #endif
             
             DispatchQueue.main.async {
@@ -105,7 +139,7 @@ final class PasscodeService: ObservableObject {
             return true
         } else {
             #if DEBUG
-            print("❌ Failed to save passcode: \(status)")
+            print("[PasscodeService] Failed to save passcode: \(status)")
             #endif
             return false
         }
@@ -115,14 +149,14 @@ final class PasscodeService: ObservableObject {
     func verifyPasscode(_ passcode: String) -> Bool {
         guard let storedHash = getPasscodeFromKeychain() else {
             #if DEBUG
-            print("❌ No passcode stored")
+            print("[PasscodeService] No passcode stored")
             #endif
             return false
         }
         
         guard let inputHash = hashPasscode(passcode) else {
             #if DEBUG
-            print("❌ Failed to hash input passcode")
+            print("[PasscodeService] Failed to hash input passcode")
             #endif
             return false
         }
@@ -130,7 +164,7 @@ final class PasscodeService: ObservableObject {
         let verified = inputHash == storedHash
         
         #if DEBUG
-        print(verified ? "✅ Passcode verified" : "❌ Passcode incorrect")
+        print("[PasscodeService] Passcode \(verified ? "verified" : "incorrect")")
         #endif
         
         return verified
@@ -140,7 +174,7 @@ final class PasscodeService: ObservableObject {
     func changePasscode(current: String, new: String) -> Bool {
         guard verifyPasscode(current) else {
             #if DEBUG
-            print("❌ Current passcode incorrect")
+            print("[PasscodeService] Current passcode incorrect")
             #endif
             return false
         }
@@ -160,7 +194,7 @@ final class PasscodeService: ObservableObject {
         // Keep the length setting for next time
         
         #if DEBUG
-        print("✅ Passcode removed")
+        print("[PasscodeService] Passcode removed")
         #endif
     }
     

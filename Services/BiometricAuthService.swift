@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 3.0 - Centralized biometric authentication with single LAContext
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Biometric authentication service with Face ID/Touch ID support
 //  FIXES: Multiple Face ID prompts by centralizing all auth through this service

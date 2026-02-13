@@ -3,7 +3,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 1.0 - Phase 1 AI Tax Optimization (On-Device)
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  On-device tax optimization engine for proactive deduction discovery,
 //  savings estimation, year-end planning, and audit risk management.

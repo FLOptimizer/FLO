@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 1.3 - Elite production-ready widget data management
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES FROM v1.2:
 //  - FIXED: Swift 6 concurrency - made sharedDefaults nonisolated

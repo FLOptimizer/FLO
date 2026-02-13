@@ -1,18 +1,24 @@
 //  InvoiceSettingsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.2 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.4.2 - Accessibility: decorative icon hiding
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v1.2:
-//  ✅ Haptic feedback on picker changes
-//  ✅ Haptic on toggle changes
-//  ✅ Haptic on stepper changes
-//  ✅ Section entrance animations
-//  ✅ Warning icon pulse animation
+//  CHANGES v1.4:
+//  ✅ Screen change announcements across all sub-views
+//  ✅ Coming soon decorative icons hidden
+//  ✅ Fixed garbled UTF-8 currency symbols
 //
-//  PREVIOUS (v1.1):
-//  - Notification permission request on toggle
+//  CHANGES v1.3:
+//  ✅ FIXED: "Failed to create image slot" error during navigation
+//  ✅ Changed opacity from 0 to 0.001 to prevent zero-height calculations
+//
+//  PREVIOUS (v1.2):
+//  - Haptic feedback on picker changes
+//  - Haptic on toggle changes
+//  - Haptic on stepper changes
+//  - Section entrance animations
+//  - Warning icon pulse animation
 
 import SwiftUI
 import UserNotifications
@@ -28,8 +34,6 @@ struct InvoiceSettingsView: View {
     @State private var showingNotificationDeniedAlert = false
     @State private var viewAppeared = false
     
-    // Haptic Generators
-                
     var body: some View {
         List {
             Section {
@@ -47,8 +51,8 @@ struct InvoiceSettingsView: View {
                 
                 Picker("Currency", selection: $defaultCurrency) {
                     Text("USD ($)").tag("USD")
-                    Text("EUR (€)").tag("EUR")
-                    Text("GBP (£)").tag("GBP")
+                    Text("EUR (Ã¢â€šÂ¬)").tag("EUR")
+                    Text("GBP (Ã‚Â£)").tag("GBP")
                     Text("CAD (C$)").tag("CAD")
                 }
                 .onChange(of: defaultCurrency) { _, _ in
@@ -57,7 +61,7 @@ struct InvoiceSettingsView: View {
             } header: {
                 Text("Invoice Defaults")
             }
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
             
@@ -79,6 +83,7 @@ struct InvoiceSettingsView: View {
                     if !notificationsAuthorized {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
+                                .accessibilityHidden(true)
                                 .foregroundStyle(.orange)
                                 .symbolEffect(.pulse, value: viewAppeared)
                             Text("Notifications disabled in Settings")
@@ -115,7 +120,7 @@ struct InvoiceSettingsView: View {
             }
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: enableReminders)
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: notificationsAuthorized)
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
             
@@ -134,17 +139,18 @@ struct InvoiceSettingsView: View {
             } header: {
                 Text("Customization")
             }
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
         }
         .navigationTitle("Invoice Settings")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-                        checkNotificationStatus()
+            checkNotificationStatus()
             withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
+            AccessibilityAnnouncement.screenChanged("Invoice settings")
         }
         .alert("Notifications Required", isPresented: $showingNotificationDeniedAlert) {
             Button("Open Settings") {
@@ -160,9 +166,6 @@ struct InvoiceSettingsView: View {
         }
     }
     
-    // MARK: - Haptic Preparation
-    
-        
     // MARK: - Notification Helpers
     
     private func requestNotificationPermission() {
@@ -199,6 +202,8 @@ struct InvoiceSettingsView: View {
     }
 }
 
+// MARK: - Invoice Template Editor
+
 struct InvoiceTemplateEditor: View {
     @State private var viewAppeared = false
     
@@ -207,9 +212,11 @@ struct InvoiceTemplateEditor: View {
             Section {
                 VStack(spacing: 16) {
                     Image(systemName: "doc.richtext")
+                        .accessibilityHidden(true)
                         .font(.system(size: 40))
                         .foregroundStyle(AppConstants.primaryColor)
                         .symbolEffect(.bounce, value: viewAppeared)
+                        .accessibilityHidden(true)
                     
                     Text("Invoice template customization coming soon")
                         .foregroundStyle(.secondary)
@@ -226,6 +233,8 @@ struct InvoiceTemplateEditor: View {
     }
 }
 
+// MARK: - Business Info Editor
+
 struct BusinessInfoEditor: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("businessName") private var businessName = ""
@@ -236,8 +245,6 @@ struct BusinessInfoEditor: View {
     
     @State private var viewAppeared = false
     
-    // Haptic Generators
-            
     var body: some View {
         Form {
             Section {
@@ -257,7 +264,7 @@ struct BusinessInfoEditor: View {
             } footer: {
                 Text("This information will appear on your invoices")
             }
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
         }
@@ -277,6 +284,7 @@ struct BusinessInfoEditor: View {
             withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
+            AccessibilityAnnouncement.screenChanged("Business info")
         }
     }
 }

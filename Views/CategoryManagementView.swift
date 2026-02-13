@@ -1,18 +1,28 @@
 //  CategoryManagementView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.3 - Accessibility audit (Sprint 5d)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v1.1:
-//  ✅ Haptic feedback on row tap/edit
-//  ✅ Haptic on delete swipe action
-//  ✅ Haptic on add button
-//  ✅ Row entrance animations
-//  ✅ Icon scale animation on appear
-//  ✅ Badge entrance animations
+//  CHANGES v1.3:
+//  ✅ Full VoiceOver accessibility coverage
+//  ✅ Screen change announcement on appear
+//  ✅ Add category button labeled with hint
+//  ✅ CategoryRow combined with spoken name, badges, and edit hint
+//  ✅ Decorative chevrons hidden from VoiceOver
+//  ✅ Fixed garbled UTF-8 characters
 //
-//  PREVIOUS (v1.0): Basic category list
+//  CHANGES v1.2:
+//  ✅ FIXED: "Failed to create image slot" error during navigation
+//  ✅ Changed opacity from 0 to 0.001 to prevent zero-height calculations
+//
+//  PREVIOUS (v1.1):
+//  - Haptic feedback on row tap/edit
+//  - Haptic on delete swipe action
+//  - Haptic on add button
+//  - Row entrance animations
+//  - Icon scale animation on appear
+//  - Badge entrance animations
 
 import SwiftUI
 import SwiftData
@@ -25,8 +35,6 @@ struct CategoryManagementView: View {
     @State private var categoryToEdit: Category?
     @State private var viewAppeared = false
     
-    // Haptic Generators
-                        
     var expenseCategories: [Category] {
         categories.filter { !$0.isIncome }
     }
@@ -64,7 +72,7 @@ struct CategoryManagementView: View {
                             }
                             .tint(.blue)
                         }
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(x: viewAppeared ? 0 : 20)
                         .animation(
                             .spring(response: 0.4, dampingFraction: 0.8)
@@ -101,7 +109,7 @@ struct CategoryManagementView: View {
                             }
                             .tint(.blue)
                         }
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(x: viewAppeared ? 0 : 20)
                         .animation(
                             .spring(response: 0.4, dampingFraction: 0.8)
@@ -122,6 +130,8 @@ struct CategoryManagementView: View {
                     Image(systemName: "plus")
                         .foregroundStyle(AppConstants.primaryColor)
                 }
+                .accessibilityLabel("Add category")
+                .accessibilityHint("Creates a new expense or income category")
             }
         }
         .sheet(isPresented: $showingAddCategory) {
@@ -131,15 +141,13 @@ struct CategoryManagementView: View {
             EditCategoryView(category: category)
         }
         .onAppear {
-                        withAnimation(FLOAnimation.standard) {
+            withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
+            AccessibilityAnnouncement.screenChanged("Categories")
         }
     }
     
-    // MARK: - Haptic Preparation
-    
-        
     private func deleteCategory(_ category: Category) {
         withAnimation(FLOAnimation.quick) {
             context.delete(category)
@@ -153,6 +161,8 @@ struct CategoryManagementView: View {
         }
     }
 }
+
+// MARK: - Category Row
 
 struct CategoryRow: View {
     let category: Category
@@ -204,8 +214,17 @@ struct CategoryRow: View {
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel({
+            var label = category.name
+            if category.isDefault { label += ", default" }
+            if category.isTaxDeductible { label += ", tax deductible" }
+            return label
+        }())
+        .accessibilityHint("Tap to edit, swipe for more options")
         .onAppear {
             iconAppeared = true
         }

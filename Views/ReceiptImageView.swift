@@ -1,8 +1,8 @@
 //  ReceiptImageView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.0 - Enhanced with Haptics & Micro-Animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.1 - Migrated to centralized HapticService
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Full-screen receipt viewer with smooth pinch-to-zoom, panning, and double-tap gestures
 //
@@ -193,8 +193,7 @@ struct ReceiptImageView: View {
             errorShake = true
         }
         
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.error)
+        HapticService.shared.error()
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             errorShake = false

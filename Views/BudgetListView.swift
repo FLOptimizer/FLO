@@ -1,8 +1,16 @@
 //  BudgetListView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.1 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.3 - Accessibility Audit Pass - Added VoiceOver Accessibility Support
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.2:
+//  ✅ Added VoiceOver labels to BudgetCardWithComparison
+//  ✅ Added accessibility to finance mode and content pickers
+//  ✅ Added accessibility to wrap-up and carryover banners
+//  ✅ Added accessibility to empty states
+//  ✅ Added accessibility hints to all interactive elements
+//  ✅ Added header traits to section headers
 //
 //  CHANGES v2.1:
 //  ✅ Haptic feedback on all segment/picker changes
@@ -37,8 +45,6 @@ struct BudgetListView: View {
     
     @AppStorage("lastWrapUpBannerDismissedMonth") private var lastDismissedMonth: String = ""
     
-    // Haptic Generators
-                    
     private let calendar = Calendar.current
     
     enum FinanceMode: String, CaseIterable {
@@ -179,11 +185,11 @@ struct BudgetListView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 financeModeSegment
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : -10)
                 
                 contentTypeSegment
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : -10)
                 
                 mainContent
@@ -206,16 +212,13 @@ struct BudgetListView: View {
                 HapticService.play(.selection)
             }
             .onAppear {
-                                withAnimation(FLOAnimation.standard) {
+                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
             }
         }
     }
     
-    // MARK: - Haptic Preparation
-    
-        
     // MARK: - View Components
     
     private var financeModeSegment: some View {
@@ -227,6 +230,8 @@ struct BudgetListView: View {
         .pickerStyle(.segmented)
         .padding(.horizontal)
         .padding(.top)
+        .accessibilityLabel("Finance mode filter")
+        .accessibilityHint("Select to filter by business, personal, or all")
     }
     
     private var contentTypeSegment: some View {
@@ -237,6 +242,8 @@ struct BudgetListView: View {
         }
         .pickerStyle(.segmented)
         .padding()
+        .accessibilityLabel("Content type")
+        .accessibilityHint("Select to view budgets or recurring transactions")
     }
     
     @ViewBuilder
@@ -265,6 +272,8 @@ struct BudgetListView: View {
             } label: {
                 Image(systemName: "plus.circle.fill")
             }
+            .accessibilityLabel(selectedTab == .budgets ? "Create new budget" : "Add recurring transaction")
+            .accessibilityHint(selectedTab == .budgets ? "Double tap to create a new budget" : "Double tap to add a recurring transaction")
         }
     }
     
@@ -330,7 +339,10 @@ struct BudgetListView: View {
             .buttonStyle(.borderedProminent)
             .tint(Color.brandPrimary)
         }
-        .opacity(viewAppeared ? 1 : 0)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(emptyBudgetsTitle). \(emptyBudgetsDescription)")
+        .accessibilityHint("Double tap the Create Budget button to get started")
+        .opacity(viewAppeared ? 1 : 0.001)
         .scaleEffect(viewAppeared ? 1 : 0.95)
         .animation(FLOAnimation.standard, value: viewAppeared)
     }
@@ -352,7 +364,7 @@ struct BudgetListView: View {
                 if totalCarryover > 0 && !shouldShowWrapUpBanner {
                     carryoverBanner
                         .padding(.horizontal)
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 20)
                         .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 }
@@ -360,7 +372,7 @@ struct BudgetListView: View {
                 // Month header
                 monthHeader
                     .padding(.horizontal)
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
@@ -368,7 +380,7 @@ struct BudgetListView: View {
                 if currentMonthBudgets.isEmpty {
                     noBudgetsThisMonth
                         .padding(.horizontal)
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .scaleEffect(viewAppeared ? 1 : 0.95)
                         .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 } else {
@@ -385,7 +397,7 @@ struct BudgetListView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                         .padding(.horizontal)
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 20)
                         .animation(
                             FLOAnimation.standard
@@ -399,7 +411,7 @@ struct BudgetListView: View {
                 viewHistoryButton
                     .padding(.horizontal)
                     .padding(.top, 8)
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
                 
                 Spacer(minLength: 20)
@@ -416,9 +428,11 @@ struct BudgetListView: View {
                 Image(systemName: "chart.bar.doc.horizontal")
                     .font(.title2)
                     .foregroundStyle(Color.brandPrimary)
+                    .accessibilityHidden(true)
                 
                 Text("\(previousMonthName) Wrap-up")
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
                 
                 Spacer()
                 
@@ -429,12 +443,14 @@ struct BudgetListView: View {
                         .foregroundStyle(.secondary)
                 }
                 .accessibilityLabel("Dismiss wrap-up banner")
+                .accessibilityHint("Double tap to hide this summary")
             }
             
             let stats = previousMonthStats
             HStack(spacing: 4) {
                 Image(systemName: stats.underBudget == stats.total ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                     .foregroundStyle(stats.underBudget == stats.total ? Color.incomeGreen : Color.orange)
+                    .accessibilityHidden(true)
                 
                 Text("\(stats.underBudget) of \(stats.total) budgets under control")
                     .font(.subheadline)
@@ -444,6 +460,7 @@ struct BudgetListView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "dollarsign.circle.fill")
                         .foregroundStyle(Color.incomeGreen)
+                        .accessibilityHidden(true)
                     
                     Text("\(totalCarryover.formatted(.currency(code: "USD"))) rolling into \(currentMonthName)")
                         .font(.subheadline)
@@ -458,16 +475,30 @@ struct BudgetListView: View {
                     Spacer()
                     Text("View \(previousMonthName)")
                     Image(systemName: "chevron.right")
+                        .accessibilityHidden(true)
                 }
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundStyle(Color.brandPrimary)
             }
+            .accessibilityLabel("View \(previousMonthName) budget history")
+            .accessibilityHint("Double tap to see detailed budget history")
         }
         .padding()
         .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(wrapUpBannerAccessibilityLabel)
+    }
+    
+    private var wrapUpBannerAccessibilityLabel: String {
+        let stats = previousMonthStats
+        var label = "\(previousMonthName) Wrap-up. \(stats.underBudget) of \(stats.total) budgets under control."
+        if totalCarryover > 0 {
+            label += " \(totalCarryover.formatted(.currency(code: "USD"))) rolling into \(currentMonthName)."
+        }
+        return label
     }
     
     private func dismissWrapUpBanner() {
@@ -485,6 +516,7 @@ struct BudgetListView: View {
             Image(systemName: "dollarsign.circle.fill")
                 .font(.title2)
                 .foregroundStyle(Color.incomeGreen)
+                .accessibilityHidden(true)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(totalCarryover.formatted(.currency(code: "USD"))) rolled over")
@@ -501,6 +533,8 @@ struct BudgetListView: View {
         .padding()
         .background(Color.incomeGreen.opacity(0.1))
         .cornerRadius(12)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(totalCarryover.formatted(.currency(code: "USD"))) rolled over from \(previousMonthName) envelope budgets")
     }
     
     // MARK: - Month Header
@@ -510,6 +544,7 @@ struct BudgetListView: View {
             Text("\(currentMonthName) Budgets")
                 .font(.title2)
                 .fontWeight(.bold)
+                .accessibilityAddTraits(.isHeader)
             
             Spacer()
         }
@@ -523,10 +558,12 @@ struct BudgetListView: View {
                 .font(.system(size: 40))
                 .foregroundStyle(.secondary)
                 .symbolEffect(.bounce, value: viewAppeared)
+                .accessibilityHidden(true)
             
             Text("No budgets for \(currentMonthName) yet")
                 .font(.headline)
                 .foregroundStyle(.secondary)
+                .accessibilityAddTraits(.isHeader)
             
             if !previousMonthBudgets.isEmpty {
                 Text("Your \(previousMonthName) budgets can be copied over")
@@ -543,6 +580,7 @@ struct BudgetListView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color.brandPrimary)
+                .accessibilityHint("Double tap to copy all budgets from \(previousMonthName)")
             }
         }
         .frame(maxWidth: .infinity)
@@ -550,6 +588,16 @@ struct BudgetListView: View {
         .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(noBudgetsAccessibilityLabel)
+    }
+    
+    private var noBudgetsAccessibilityLabel: String {
+        var label = "No budgets for \(currentMonthName) yet."
+        if !previousMonthBudgets.isEmpty {
+            label += " Your \(previousMonthName) budgets can be copied over."
+        }
+        return label
     }
     
     private func copyPreviousMonthBudgets() {
@@ -595,6 +643,7 @@ struct BudgetListView: View {
         } label: {
             HStack {
                 Image(systemName: "clock.arrow.circlepath")
+                    .accessibilityHidden(true)
                 Text("View Budget History")
             }
             .font(.subheadline)
@@ -605,6 +654,8 @@ struct BudgetListView: View {
             .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
         }
+        .accessibilityLabel("View Budget History")
+        .accessibilityHint("Double tap to see past months' budgets")
     }
     
     // MARK: - Recurring Content
@@ -636,7 +687,10 @@ struct BudgetListView: View {
             .buttonStyle(.borderedProminent)
             .tint(Color.brandPrimary)
         }
-        .opacity(viewAppeared ? 1 : 0)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(emptyRecurringTitle). \(emptyRecurringDescription)")
+        .accessibilityHint("Double tap the Add Recurring button to get started")
+        .opacity(viewAppeared ? 1 : 0.001)
         .scaleEffect(viewAppeared ? 1 : 0.95)
         .animation(FLOAnimation.standard, value: viewAppeared)
     }
@@ -647,6 +701,7 @@ struct BudgetListView: View {
                 NavigationLink(destination: EditRecurringView(recurringTransaction: recurring)) {
                     RecurringRow(recurring: recurring)
                 }
+                .accessibilityHint("Double tap to edit this recurring transaction")
             }
             .onDelete(perform: deleteRecurring)
         }
@@ -784,6 +839,7 @@ struct BudgetCardWithComparison: View {
                 if let category = budget.category {
                     Image(systemName: category.icon)
                         .foregroundStyle(Color(flowHex: category.colorHex))
+                        .accessibilityHidden(true)
                 }
                 
                 Text(budget.displayName)
@@ -793,6 +849,7 @@ struct BudgetCardWithComparison: View {
                 
                 Text(budget.financeType == .business ? "🏢" : "👤")
                     .font(.caption)
+                    .accessibilityLabel(budget.financeType == .business ? "Business" : "Personal")
             }
             
             // Progress bar with animation
@@ -809,6 +866,7 @@ struct BudgetCardWithComparison: View {
                 .cornerRadius(5)
             }
             .frame(height: 10)
+            .accessibilityHidden(true)
             
             // Amounts row
             HStack {
@@ -852,12 +910,13 @@ struct BudgetCardWithComparison: View {
                 HStack(spacing: 4) {
                     Image(systemName: comp.icon)
                         .font(.caption2)
+                        .accessibilityHidden(true)
                     Text(comp.text)
                         .font(.caption)
                 }
                 .foregroundStyle(comp.isGood ? Color.incomeGreen : Color.orange)
                 .padding(.top, 4)
-                .opacity(appeared ? 1 : 0)
+                .opacity(appeared ? 1 : 0.001)
                 .animation(.easeIn.delay(0.3), value: appeared)
             }
         }
@@ -865,6 +924,9 @@ struct BudgetCardWithComparison: View {
         .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(budgetAccessibilityLabel)
+        .accessibilityHint("Double tap to edit this budget")
         .onAppear {
             appeared = true
             withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.1)) {
@@ -876,6 +938,28 @@ struct BudgetCardWithComparison: View {
                 animatedProgress = newValue
             }
         }
+    }
+    
+    // MARK: - Accessibility
+    
+    private var budgetAccessibilityLabel: String {
+        var label = "\(budget.displayName) budget"
+        label += ", \(budget.financeType == .business ? "Business" : "Personal")"
+        label += ". Spent \(spent.formatted(.currency(code: "USD")))"
+        label += " of \(budget.totalAvailable.formatted(.currency(code: "USD")))"
+        label += ", \(remaining.formatted(.currency(code: "USD"))) remaining"
+        
+        if remaining < 0 {
+            label += ", over budget"
+        } else if progress >= 0.8 {
+            label += ", approaching limit"
+        }
+        
+        if let comp = comparison {
+            label += ". \(comp.text)"
+        }
+        
+        return label
     }
     
     private var progressColor: Color {

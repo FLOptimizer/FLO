@@ -1,8 +1,8 @@
 //  EditRecurringView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.3 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.3.2 - Accessibility: decorative hiding, field labels
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES FROM v2.2:
 //  ✅ Haptic feedback on all picker changes
@@ -74,6 +74,8 @@ struct EditRecurringView: View {
                         HapticService.play(.light)
                         dismiss()
                     }
+                    .accessibilityLabel("Cancel editing")
+                    .accessibilityHint("Discard changes and go back")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
@@ -81,6 +83,7 @@ struct EditRecurringView: View {
                         save()
                     }
                     .disabled(!isValid)
+                    .accessibilityHint("Saves changes to recurring transaction")
                 }
             }
             .alert("Delete Recurring Transaction", isPresented: $showingDeleteAlert) {
@@ -94,9 +97,10 @@ struct EditRecurringView: View {
                 Text("Are you sure you want to delete this recurring transaction? This will not affect any transactions already created.")
             }
             .onAppear {
-                                withAnimation(FLOAnimation.standard) {
+                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
+                AccessibilityAnnouncement.screenChanged("Edit recurring transaction")
             }
         }
     }
@@ -119,7 +123,7 @@ struct EditRecurringView: View {
                 HapticService.play(.selection)
             }
         }
-        .opacity(viewAppeared ? 1 : 0)
+        .opacity(viewAppeared ? 1 : 0.001)
         .offset(y: viewAppeared ? 0 : 10)
         .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
     }
@@ -130,11 +134,13 @@ struct EditRecurringView: View {
             
             HStack {
                 Text("$")
+                    .accessibilityHidden(true)
                 TextField("0.00", text: $amount)
                     .keyboardType(.decimalPad)
+                    .accessibilityLabel("Amount in dollars")
             }
         }
-        .opacity(viewAppeared ? 1 : 0)
+        .opacity(viewAppeared ? 1 : 0.001)
         .offset(y: viewAppeared ? 0 : 10)
         .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
     }
@@ -150,7 +156,7 @@ struct EditRecurringView: View {
                 HapticService.play(.selection)
             }
         }
-        .opacity(viewAppeared ? 1 : 0)
+        .opacity(viewAppeared ? 1 : 0.001)
         .offset(y: viewAppeared ? 0 : 10)
         .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
     }
@@ -159,7 +165,7 @@ struct EditRecurringView: View {
         Section("Start Date") {
             DatePicker("Starts", selection: $startDate, displayedComponents: .date)
         }
-        .opacity(viewAppeared ? 1 : 0)
+        .opacity(viewAppeared ? 1 : 0.001)
         .offset(y: viewAppeared ? 0 : 10)
         .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
     }
@@ -180,7 +186,7 @@ struct EditRecurringView: View {
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: hasEndDate)
-        .opacity(viewAppeared ? 1 : 0)
+        .opacity(viewAppeared ? 1 : 0.001)
         .offset(y: viewAppeared ? 0 : 10)
         .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
     }
@@ -212,7 +218,7 @@ struct EditRecurringView: View {
                 HapticService.play(.selection)
             }
         }
-        .opacity(viewAppeared ? 1 : 0)
+        .opacity(viewAppeared ? 1 : 0.001)
         .offset(y: viewAppeared ? 0 : 10)
         .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
     }
@@ -236,7 +242,7 @@ struct EditRecurringView: View {
         } footer: {
             Text("Inactive recurring transactions will not generate new transactions")
         }
-        .opacity(viewAppeared ? 1 : 0)
+        .opacity(viewAppeared ? 1 : 0.001)
         .offset(y: viewAppeared ? 0 : 10)
         .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
     }
@@ -253,8 +259,9 @@ struct EditRecurringView: View {
                     Spacer()
                 }
             }
+            .accessibilityHint("Shows confirmation before deleting")
         }
-        .opacity(viewAppeared ? 1 : 0)
+        .opacity(viewAppeared ? 1 : 0.001)
         .offset(y: viewAppeared ? 0 : 10)
         .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
     }
@@ -318,7 +325,7 @@ struct EditRecurringView: View {
             HapticService.play(.success)
             dismiss()
         } catch {
-            print("❌ Failed to save recurring transaction: \(error)")
+            print("Ã¢ÂÅ’ Failed to save recurring transaction: \(error)")
             HapticService.play(.error)
         }
     }
@@ -331,7 +338,7 @@ struct EditRecurringView: View {
             HapticService.play(.success)
             dismiss()
         } catch {
-            print("❌ Failed to delete recurring transaction: \(error)")
+            print("Ã¢ÂÅ’ Failed to delete recurring transaction: \(error)")
             HapticService.play(.error)
         }
     }

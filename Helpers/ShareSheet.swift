@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 2.1 - Fully working, no errors, production-ready
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES FROM v2.0:
 //  - Enhanced completion callback with activityType and error
@@ -71,7 +71,7 @@ struct ShareSheet: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIActivityViewController {
         // Validate items before creating controller
         guard !items.isEmpty else {
-            print("⚠️ ShareSheet: No items to share")
+            print("âš ï¸ ShareSheet: No items to share")
             onCompletion?(nil, false, NSError(
                 domain: "ShareSheet",
                 code: -1,
@@ -106,7 +106,7 @@ struct ShareSheet: UIViewControllerRepresentable {
         // Enhanced completion handler for tracking share success with details
         controller.completionWithItemsHandler = { activityType, completed, returnedItems, error in
             if let error = error {
-                print("❌ ShareSheet v\(Self.version): Share error - \(error.localizedDescription)")
+                print("âŒ ShareSheet v\(Self.version): Share error - \(error.localizedDescription)")
             }
             
             if let type = activityType {
@@ -254,7 +254,7 @@ extension View {
                 if completed, let type = activityType {
                     print("✅ Shared via: \(type.rawValue)")
                 } else if let error = error {
-                    print("❌ Share failed: \(error.localizedDescription)")
+                    print("âŒ Share failed: \(error.localizedDescription)")
                 }
             }
         }
@@ -276,7 +276,7 @@ extension View {
                 
                 Text("$1,234.56")
                     .font(.title)
-                    .foregroundStyle(Color.brandPrimary)
+                    .foregroundStyle(Color.brandPrimaryText)
                 
                 Button("Share Invoice") {
                     showingShare = true
@@ -419,7 +419,7 @@ extension View {
                             print("   Method: \(type.rawValue)")
                         }
                     } else if let error = error {
-                        print("❌ Share failed: \(error.localizedDescription)")
+                        print("âŒ Share failed: \(error.localizedDescription)")
                     }
                 }
             }

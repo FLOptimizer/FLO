@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 2.1 - Fully working, no errors, production-ready
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  DEPLOYMENT REQUIREMENTS:
 //  - iOS 15.0+ / macOS 12.0+ (for .formatted() API)

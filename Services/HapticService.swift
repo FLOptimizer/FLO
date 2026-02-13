@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 1.2 - Final Production Polish
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v1.2:
 //  ✅ Added intensity clamping (0.0-1.0) for defensive programming

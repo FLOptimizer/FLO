@@ -1,49 +1,39 @@
 //  SeedData.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.1 - Perfect 10/10 with all review fixes implemented
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.6 - Added Gas category
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES FROM v2.0:
-//  - FIXED: Removed financeType assignment (not in Category model)
-//  - FIXED: Actually set sortOrder on category instances
-//  - FIXED: Improved error handling (broader Error catching)
-//  - ADDED: Migration support with UserDefaults version tracking
-//  - ADDED: Testing hook for clearing categories
-//  - ADDED: SF Symbol fallback checks
-//  - ENHANCED: Documentation with model assumptions
+//  CHANGES FROM v2.6:
+//  ✅ Added "Gas" category to defaults (fuelpump.fill, orange, tax deductible)
+//  ✅ migrateCategories() now adds missing default categories for existing users
 //
-//  CHANGES FROM v1.0:
-//  - Expanded to 32 categories for freelancers & small business
-//  - Added business/personal classification in category names
-//  - Enhanced tax deductibility flags (15 deductible categories)
-//  - Added version tracking and migration support
-//  - Improved error handling with Result types
-//  - Added idempotent seeding
-//  - Better color coordination with FLO brand
+//  CHANGES FROM v2.5:
+//  ✅ migrateCategories() now removes duplicate categories
+//  ✅ Keeps the first category, deletes subsequent duplicates with same name
 //
-//  USAGE:
-//  ```swift
-//  Task { @MainActor in
-//      let result = await SeedData.seedDefaultCategories(in: modelContext)
-//      switch result {
-//      case .success(let count):
-//          print("Seeded \(count) categories")
-//      case .failure(let error):
-//          print("Seed failed: \(error)")
-//      }
-//  }
-//  ```
+//  CHANGES FROM v2.4:
+//  ✅ Added migrateCategories() to fix icons in existing data
+//  ✅ Migrates "doc.badge.fill" -> "signature" for existing users
+//
+//  CHANGES FROM v2.3:
+//  ✅ FIXED: Changed "doc.badge.fill" to "signature" for Contract Work category
+//  ✅ "doc.badge.fill" is not a valid SF Symbol
+//
+//  CHANGES FROM v2.2:
+//  ✅ More vibrant, visually distinct colors for each category
+//  ✅ Better contrast between similar categories
+//  ✅ Improved icon selections for clarity
+//  ✅ Colors now match the colorful aesthetic of MoreView
 //
 //  MODEL ASSUMPTIONS:
 //  - Category model must have: name, icon, colorHex, isDefault, isIncome, isTaxDeductible
 //  - Optional properties that enhance functionality: sortOrder (Int)
-//  - Business/personal classification is encoded in category names (e.g., "Utilities (Business)")
+//  - Business/personal classification is encoded in category names
 //
 //  TAX DEDUCTIBILITY NOTES:
 //  Categories marked as tax deductible are commonly deductible for self-employed
 //  individuals. Users should consult a tax professional for specific situations.
-//  FLO - Finance Ledger Optimizer does not provide tax advice.
 //
 
 import SwiftData
@@ -54,7 +44,7 @@ struct SeedData {
     
     // MARK: - Version Management
     
-    static let version = "2.1"
+    static let version = "2.4"
     
     private static let versionKey = "com.finchandpoppy.flo.seeddata.version"
     
@@ -88,7 +78,6 @@ struct SeedData {
     
     // MARK: - Default Category Configuration
     
-    /// Internal representation of a default category
     private struct DefaultCategory {
         let name: String
         let icon: String
@@ -96,32 +85,43 @@ struct SeedData {
         let isIncome: Bool
         let isTaxDeductible: Bool
         let sortOrder: Int
-        
-        // Note: Business/personal classification is encoded in name
-        // (e.g., "Utilities (Business)" vs "Utilities (Personal)")
-        // This avoids dependency on Category model having a financeType property
     }
     
-    // MARK: - Predefined Categories
+    // MARK: - Predefined Categories (v2.2 - Enhanced Colors)
+    //
+    // COLOR PALETTE - Each category has a DISTINCT color:
+    // Teal:     14B8A6 (brand primary)
+    // Green:    22C55E, 10B981, 84CC16
+    // Blue:     3B82F6, 0EA5E9, 06B6D4
+    // Purple:   8B5CF6, A855F7, 7C3AED
+    // Indigo:   6366F1, 4F46E5
+    // Pink:     EC4899, F472B6
+    // Rose:     F43F5E, FB7185
+    // Red:      EF4444, DC2626
+    // Orange:   F97316, EA580C
+    // Amber:    F59E0B, D97706
+    // Yellow:   EAB308
+    // Slate:    64748B, 475569
+    //
     
-    /// Comprehensive default categories for freelancers and small business owners
-    /// Organized by: Business Expenses, Personal Expenses, Income
     private static let defaults: [DefaultCategory] = [
         
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         // MARK: Business Expense Categories (Tax Deductible)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         
         DefaultCategory(
             name: "Office Supplies",
-            icon: "pencil.and.list.clipboard",
-            colorHex: "14B8A6",  // Brand teal
+            icon: "pencil.and.ruler.fill",
+            colorHex: "F59E0B",  // Amber - stands out
             isIncome: false,
             isTaxDeductible: true,
             sortOrder: 1
         ),
         DefaultCategory(
             name: "Software & Subscriptions",
-            icon: "app.badge",
-            colorHex: "0D9488",  // Darker teal
+            icon: "app.badge.fill",
+            colorHex: "8B5CF6",  // Purple
             isIncome: false,
             isTaxDeductible: true,
             sortOrder: 2
@@ -129,7 +129,7 @@ struct SeedData {
         DefaultCategory(
             name: "Professional Services",
             icon: "briefcase.fill",
-            colorHex: "10B981",  // Success green
+            colorHex: "3B82F6",  // Blue
             isIncome: false,
             isTaxDeductible: true,
             sortOrder: 3
@@ -137,7 +137,7 @@ struct SeedData {
         DefaultCategory(
             name: "Marketing & Advertising",
             icon: "megaphone.fill",
-            colorHex: "3B82F6",  // Blue
+            colorHex: "EC4899",  // Pink
             isIncome: false,
             isTaxDeductible: true,
             sortOrder: 4
@@ -145,7 +145,7 @@ struct SeedData {
         DefaultCategory(
             name: "Business Travel",
             icon: "airplane",
-            colorHex: "8B5CF6",  // Purple
+            colorHex: "06B6D4",  // Cyan
             isIncome: false,
             isTaxDeductible: true,
             sortOrder: 5
@@ -153,7 +153,7 @@ struct SeedData {
         DefaultCategory(
             name: "Meals & Entertainment (Business)",
             icon: "fork.knife",
-            colorHex: "F59E0B",  // Amber
+            colorHex: "F97316",  // Orange
             isIncome: false,
             isTaxDeductible: true,
             sortOrder: 6
@@ -161,15 +161,15 @@ struct SeedData {
         DefaultCategory(
             name: "Education & Training",
             icon: "book.fill",
-            colorHex: "06B6D4",  // Cyan
+            colorHex: "6366F1",  // Indigo
             isIncome: false,
             isTaxDeductible: true,
             sortOrder: 7
         ),
         DefaultCategory(
             name: "Equipment & Tools",
-            icon: "hammer.fill",
-            colorHex: "84CC16",  // Lime
+            icon: "wrench.and.screwdriver.fill",
+            colorHex: "64748B",  // Slate
             isIncome: false,
             isTaxDeductible: true,
             sortOrder: 8
@@ -185,7 +185,7 @@ struct SeedData {
         DefaultCategory(
             name: "Insurance (Business)",
             icon: "shield.lefthalf.filled",
-            colorHex: "14B8A6",  // Teal
+            colorHex: "10B981",  // Emerald
             isIncome: false,
             isTaxDeductible: true,
             sortOrder: 10
@@ -193,7 +193,7 @@ struct SeedData {
         DefaultCategory(
             name: "Rent/Lease (Business)",
             icon: "building.2.fill",
-            colorHex: "64748B",  // Slate
+            colorHex: "7C3AED",  // Violet
             isIncome: false,
             isTaxDeductible: true,
             sortOrder: 11
@@ -201,7 +201,7 @@ struct SeedData {
         DefaultCategory(
             name: "Utilities (Business)",
             icon: "bolt.fill",
-            colorHex: "F97316",  // Orange
+            colorHex: "EAB308",  // Yellow
             isIncome: false,
             isTaxDeductible: true,
             sortOrder: 12
@@ -209,7 +209,7 @@ struct SeedData {
         DefaultCategory(
             name: "Contract Labor",
             icon: "person.2.fill",
-            colorHex: "6366F1",  // Indigo
+            colorHex: "14B8A6",  // Teal (brand)
             isIncome: false,
             isTaxDeductible: true,
             sortOrder: 13
@@ -225,13 +225,23 @@ struct SeedData {
         DefaultCategory(
             name: "Legal & Accounting",
             icon: "doc.text.fill",
-            colorHex: "1F2937",  // Gray-dark
+            colorHex: "475569",  // Slate dark
             isIncome: false,
             isTaxDeductible: true,
             sortOrder: 15
         ),
+        DefaultCategory(
+            name: "Gas",
+            icon: "fuelpump.fill",
+            colorHex: "F97316",  // Orange
+            isIncome: false,
+            isTaxDeductible: true,
+            sortOrder: 16
+        ),
         
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         // MARK: Personal Expense Categories
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         
         DefaultCategory(
             name: "Groceries",
@@ -243,8 +253,8 @@ struct SeedData {
         ),
         DefaultCategory(
             name: "Dining Out",
-            icon: "fork.knife",
-            colorHex: "F59E0B",  // Amber
+            icon: "fork.knife.circle.fill",
+            colorHex: "F97316",  // Orange
             isIncome: false,
             isTaxDeductible: false,
             sortOrder: 102
@@ -267,8 +277,8 @@ struct SeedData {
         ),
         DefaultCategory(
             name: "Utilities (Personal)",
-            icon: "bolt.fill",
-            colorHex: "F97316",  // Orange
+            icon: "lightbulb.fill",
+            colorHex: "EAB308",  // Yellow
             isIncome: false,
             isTaxDeductible: false,
             sortOrder: 105
@@ -284,7 +294,7 @@ struct SeedData {
         DefaultCategory(
             name: "Entertainment",
             icon: "tv.fill",
-            colorHex: "EC4899",  // Pink
+            colorHex: "A855F7",  // Fuchsia
             isIncome: false,
             isTaxDeductible: false,
             sortOrder: 107
@@ -292,15 +302,15 @@ struct SeedData {
         DefaultCategory(
             name: "Shopping",
             icon: "bag.fill",
-            colorHex: "A855F7",  // Purple-light
+            colorHex: "EC4899",  // Pink
             isIncome: false,
             isTaxDeductible: false,
             sortOrder: 108
         ),
         DefaultCategory(
             name: "Personal Care",
-            icon: "scissors",
-            colorHex: "EC4899",  // Pink
+            icon: "sparkles",
+            colorHex: "F472B6",  // Pink light
             isIncome: false,
             isTaxDeductible: false,
             sortOrder: 109
@@ -314,12 +324,14 @@ struct SeedData {
             sortOrder: 110
         ),
         
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         // MARK: Income Categories
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         
         DefaultCategory(
             name: "Client Payments",
             icon: "dollarsign.circle.fill",
-            colorHex: "10B981",  // Success green
+            colorHex: "10B981",  // Emerald
             isIncome: true,
             isTaxDeductible: false,
             sortOrder: 201
@@ -327,15 +339,15 @@ struct SeedData {
         DefaultCategory(
             name: "Freelance Income",
             icon: "laptopcomputer",
-            colorHex: "14B8A6",  // Brand teal
+            colorHex: "14B8A6",  // Teal (brand)
             isIncome: true,
             isTaxDeductible: false,
             sortOrder: 202
         ),
         DefaultCategory(
             name: "Contract Work",
-            icon: "doc.text.fill",
-            colorHex: "22C55E",  // Green
+            icon: "signature",  // FIXED: Was "doc.badge.fill" (invalid)
+            colorHex: "3B82F6",  // Blue
             isIncome: true,
             isTaxDeductible: false,
             sortOrder: 203
@@ -343,7 +355,7 @@ struct SeedData {
         DefaultCategory(
             name: "Salary/Wages",
             icon: "banknote.fill",
-            colorHex: "059669",  // Green-dark
+            colorHex: "22C55E",  // Green
             isIncome: true,
             isTaxDeductible: false,
             sortOrder: 204
@@ -351,7 +363,7 @@ struct SeedData {
         DefaultCategory(
             name: "Investment Income",
             icon: "chart.line.uptrend.xyaxis",
-            colorHex: "3B82F6",  // Blue
+            colorHex: "6366F1",  // Indigo
             isIncome: true,
             isTaxDeductible: false,
             sortOrder: 205
@@ -385,8 +397,7 @@ struct SeedData {
         do {
             // Check if migration is needed
             if let seededVer = seededVersion, seededVer != version {
-                // Future: Handle migration between versions
-                // For now, we only seed if empty
+                // Version mismatch - could migrate here in future
                 print("⚠️ SeedData: Version mismatch (seeded: \(seededVer), current: \(version))")
             }
             
@@ -410,10 +421,6 @@ struct SeedData {
                     isTaxDeductible: defaultCategory.isTaxDeductible
                 )
                 
-                // NOTE: sortOrder is defined in DefaultCategory for future use
-                // If your Category model has a sortOrder property, uncomment this line:
-                // category.sortOrder = defaultCategory.sortOrder
-                
                 context.insert(category)
             }
             
@@ -426,15 +433,11 @@ struct SeedData {
             return .success(defaults.count)
             
         } catch {
-            // Enhanced error handling - catches any Error, not just NSError
             let descriptor = String(describing: error)
             
             if descriptor.contains("fetch") || descriptor.contains("Fetch") {
                 return .failure(.fetchFailed(error))
-            } else if descriptor.contains("save") || descriptor.contains("Save") {
-                return .failure(.saveFailed(error))
             } else {
-                // Generic save failure
                 return .failure(.saveFailed(error))
             }
         }
@@ -446,15 +449,12 @@ struct SeedData {
     }
     
     /// Checks if seeding is needed without performing it
-    /// - Parameter context: The ModelContext to check
-    /// - Returns: True if database is empty and needs seeding
     static func needsSeeding(in context: ModelContext) -> Bool {
         do {
             let fetchDescriptor = FetchDescriptor<Category>()
             let count = try context.fetchCount(fetchDescriptor)
             return count == 0
         } catch {
-            // If we can't check, assume seeding is needed
             return true
         }
     }
@@ -463,8 +463,6 @@ struct SeedData {
     
     #if DEBUG
     /// Clears all categories from the database. FOR TESTING ONLY.
-    /// - Parameter context: The ModelContext to clear
-    /// - Throws: Any SwiftData errors during deletion
     static func clearAllCategories(in context: ModelContext) throws {
         let fetchDescriptor = FetchDescriptor<Category>()
         let categories = try context.fetch(fetchDescriptor)
@@ -474,127 +472,162 @@ struct SeedData {
         }
         
         try context.save()
-        
-        // Reset version tracking
         seededVersion = nil
         
         print("🧹 SeedData: Cleared \(categories.count) categories for testing")
     }
     #endif
     
+    // MARK: - Migration Functions
+    
+    /// Migrates existing categories to fix known issues.
+    /// Call this on app launch to ensure data is up to date.
+    ///
+    /// Currently fixes:
+    /// - "doc.badge.fill" -> "signature" (invalid SF Symbol)
+    /// - Removes duplicate categories (keeps the first one)
+    /// - Adds missing default categories (e.g., "Gas")
+    static func migrateCategories(in context: ModelContext) {
+        // Icon migrations: old invalid icon -> new valid icon
+        let iconMigrations: [String: String] = [
+            "doc.badge.fill": "signature"  // Contract Work category
+        ]
+        
+        // Categories that may be missing from older installs
+        let missingCategoryChecks: [(name: String, icon: String, colorHex: String, isIncome: Bool, isTaxDeductible: Bool)] = [
+            ("Gas", "fuelpump.fill", "F97316", false, true)
+        ]
+        
+        do {
+            let fetchDescriptor = FetchDescriptor<Category>()
+            let categories = try context.fetch(fetchDescriptor)
+            
+            var migratedCount = 0
+            var duplicatesRemoved = 0
+            var categoriesAdded = 0
+            
+            // Track seen category names to detect duplicates
+            var seenNames: Set<String> = []
+            var categoriesToDelete: [Category] = []
+            
+            for category in categories {
+                // Fix invalid icons
+                if let newIcon = iconMigrations[category.icon] {
+                    let oldIcon = category.icon
+                    category.icon = newIcon
+                    migratedCount += 1
+                    print("🔄 SeedData: Migrated '\(category.name)' icon: \(oldIcon) -> \(newIcon)")
+                }
+                
+                // Check for duplicates
+                if seenNames.contains(category.name) {
+                    categoriesToDelete.append(category)
+                    duplicatesRemoved += 1
+                } else {
+                    seenNames.insert(category.name)
+                }
+            }
+            
+            // Delete duplicate categories
+            for category in categoriesToDelete {
+                print("🗑️ SeedData: Removing duplicate category: '\(category.name)'")
+                context.delete(category)
+            }
+            
+            // Add missing default categories
+            for check in missingCategoryChecks {
+                if !seenNames.contains(check.name) {
+                    let newCategory = Category(
+                        name: check.name,
+                        icon: check.icon,
+                        colorHex: check.colorHex,
+                        isDefault: true,
+                        isIncome: check.isIncome,
+                        isTaxDeductible: check.isTaxDeductible
+                    )
+                    context.insert(newCategory)
+                    categoriesAdded += 1
+                    print("➕ SeedData: Added missing category: '\(check.name)'")
+                }
+            }
+            
+            if migratedCount > 0 || duplicatesRemoved > 0 || categoriesAdded > 0 {
+                try context.save()
+                if migratedCount > 0 {
+                    print("✅ SeedData: Migrated \(migratedCount) category icon(s)")
+                }
+                if duplicatesRemoved > 0 {
+                    print("✅ SeedData: Removed \(duplicatesRemoved) duplicate category(ies)")
+                }
+                if categoriesAdded > 0 {
+                    print("✅ SeedData: Added \(categoriesAdded) missing category(ies)")
+                }
+            }
+        } catch {
+            print("❌ SeedData: Migration failed: \(error.localizedDescription)")
+        }
+    }
+    
     // MARK: - Analytics Helpers
     
-    /// Returns count of business expense categories for analytics
     static var businessExpenseCount: Int {
         defaults.filter { !$0.isIncome && $0.name.contains("Business") }.count
     }
     
-    /// Returns count of personal expense categories for analytics
     static var personalExpenseCount: Int {
         defaults.filter { !$0.isIncome && !$0.name.contains("Business") }.count
     }
     
-    /// Returns count of income categories for analytics
     static var incomeCount: Int {
         defaults.filter { $0.isIncome }.count
     }
     
-    /// Returns count of tax-deductible categories for analytics
     static var taxDeductibleCount: Int {
         defaults.filter { $0.isTaxDeductible }.count
     }
 }
 
-// MARK: - Usage Examples
-
+// MARK: - Color Reference
 /*
- EXAMPLE 1: Seed during app initialization
- ==========================================
- 
- @main
- struct FLOApp: App {
-     var body: some Scene {
-         WindowGroup {
-             ContentView()
-                 .task {
-                     let context = modelContainer.mainContext
-                     let result = await SeedData.seedDefaultCategoriesAsync(in: context)
-                     
-                     switch result {
-                     case .success(let count):
-                         if count > 0 {
-                             print("✅ Seeded \(count) default categories")
-                         }
-                     case .failure(let error):
-                         print("❌ Seed failed: \(error.localizedDescription)")
-                     }
-                 }
-         }
-     }
- }
- 
- EXAMPLE 2: Check if seeding is needed
- ======================================
- 
- if SeedData.needsSeeding(in: modelContext) {
-     let result = SeedData.seedDefaultCategories(in: modelContext)
-     // Handle result...
- }
- 
- EXAMPLE 3: Testing - Clear and reseed
- ======================================
- 
- #if DEBUG
- try SeedData.clearAllCategories(in: testContext)
- let result = SeedData.seedDefaultCategories(in: testContext)
- XCTAssertEqual(result, .success(32))
- #endif
- 
- EXAMPLE 4: Version migration check
- ===================================
- 
- // Future use when adding new categories in v3.0
- if let seeded = UserDefaults.standard.string(forKey: SeedData.versionKey) {
-     print("Currently seeded version: \(seeded)")
-     if seeded < SeedData.version {
-         // Perform migration
-     }
- }
- 
- CATEGORY BREAKDOWN:
- ===================
- 
- Business Expenses (Tax Deductible): 15 categories
- - Office supplies, software, professional services
- - Marketing, travel, meals (business)
- - Equipment, internet, insurance
- - Rent, utilities, contract labor
- - Bank fees, legal, accounting
- 
- Personal Expenses: 10 categories
- - Groceries, dining, transportation
- - Housing, utilities, healthcare
- - Entertainment, shopping, personal care
- - Gifts & donations
- 
- Income: 7 categories
- - Client payments, freelance, contracts
- - Salary, investments, side gigs
- - Refunds & reimbursements
- 
- Total: 32 comprehensive categories for freelancers & small business
- 
- BUSINESS/PERSONAL CLASSIFICATION:
- ==================================
- 
- Business vs personal is encoded in category names:
- - "Utilities (Business)" vs "Utilities (Personal)"
- - "Internet & Phone (Business)"
- - "Meals & Entertainment (Business)"
- 
- This approach:
- ✅ Works with any Category model (no financeType property required)
- ✅ Clear in UI listings
- ✅ Easy to filter with string matching
- ✅ Follows accounting best practices
+ ┌─────────────────────────────────────────────────────────────┐
+ │ FLO CATEGORY COLOR PALETTE v2.4                             │
+ ├─────────────────────────────────────────────────────────────┤
+ │ BUSINESS EXPENSES                                           │
+ │ ├─ Office Supplies      F59E0B  Amber                       │
+ │ ├─ Software             8B5CF6  Purple                      │
+ │ ├─ Professional Svc     3B82F6  Blue                        │
+ │ ├─ Marketing            EC4899  Pink                        │
+ │ ├─ Business Travel      06B6D4  Cyan                        │
+ │ ├─ Meals (Business)     F97316  Orange                      │
+ │ ├─ Education            6366F1  Indigo                      │
+ │ ├─ Equipment            64748B  Slate                       │
+ │ ├─ Internet/Phone       0EA5E9  Sky                         │
+ │ ├─ Insurance            10B981  Emerald                     │
+ │ ├─ Rent/Lease           7C3AED  Violet                      │
+ │ ├─ Utilities (Biz)      EAB308  Yellow                      │
+ │ ├─ Contract Labor       14B8A6  Teal (brand)                │
+ │ ├─ Bank Fees            EF4444  Red                         │
+ │ └─ Legal/Accounting     475569  Slate Dark                  │
+ ├─────────────────────────────────────────────────────────────┤
+ │ PERSONAL EXPENSES                                           │
+ │ ├─ Groceries            22C55E  Green                       │
+ │ ├─ Dining Out           F97316  Orange                      │
+ │ ├─ Transportation       3B82F6  Blue                        │
+ │ ├─ Housing              8B5CF6  Purple                      │
+ │ ├─ Utilities (Personal) EAB308  Yellow                      │
+ │ ├─ Healthcare           EF4444  Red                         │
+ │ ├─ Entertainment        A855F7  Fuchsia                     │
+ │ ├─ Shopping             EC4899  Pink                        │
+ │ ├─ Personal Care        F472B6  Pink Light                  │
+ │ └─ Gifts & Donations    F43F5E  Rose                        │
+ ├─────────────────────────────────────────────────────────────┤
+ │ INCOME                                                      │
+ │ ├─ Client Payments      10B981  Emerald                     │
+ │ ├─ Freelance Income     14B8A6  Teal (brand)                │
+ │ ├─ Contract Work        3B82F6  Blue (icon: signature)      │
+ │ ├─ Salary/Wages         22C55E  Green                       │
+ │ ├─ Investment Income    6366F1  Indigo                      │
+ │ ├─ Side Gig             F59E0B  Amber                       │
+ │ └─ Refunds              06B6D4  Cyan                        │
+ └─────────────────────────────────────────────────────────────┘
  */

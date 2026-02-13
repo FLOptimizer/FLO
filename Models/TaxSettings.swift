@@ -1,17 +1,27 @@
 //  TaxSettings.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.2 - Updated with 2026 IRS tax brackets and deadlines
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.4 - Official IRS 2026 Tax Data (Rev. Proc. 2025-32)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Tax configuration and settings model
 //
+//  CHANGES IN v2.4:
+//  ✅ UPDATED: 2026 federal tax brackets to official IRS Rev. Proc. 2025-32 values
+//  ✅ UPDATED: 2026 standard deductions to official IRS values
+//  ✅ NOTE: OBBBA (One Big Beautiful Bill Act) provided 4% adjustment for bottom
+//     two brackets vs 2.3% for higher brackets (different from historical ~2.8%)
+//  ✅ Retained all v2.3 functionality
+//
+//  CHANGES IN v2.3:
+//  ✅ FIXED: Social Security wage base for 2026 ($184,500 - confirmed by SSA)
+//  ✅ FIXED: Social Security wage base for 2025 ($176,100)
+//  ✅ Retained all v2.2 functionality
+//
 //  CHANGES IN v2.2:
-//  ✅ Updated to 2026 federal tax brackets (projected ~2.8% inflation adjustment)
-//  ✅ Updated to 2026 standard deductions (inflation-adjusted)
 //  ✅ Added 2026 quarterly estimated tax deadlines
 //  ✅ Added dynamic year detection for brackets and deadlines
-//  ✅ Added Social Security wage base for 2026 ($176,100)
+//  ✅ Added Social Security wage base tracking
 //  ✅ Retained all v2.1 functionality
 //
 //  CHANGES IN v2.1:
@@ -46,8 +56,8 @@ final class TaxSettings {
     var includeSelfEmploymentTax: Bool
     
     /// Self-employment tax rate (default 15.3% = 12.4% Social Security + 2.9% Medicare)
-    /// Note: This is the IRS standard rate. While legally fixed, we keep it configurable
-    /// for edge cases and testing scenarios. UI should display as "15.3% (IRS standard)".
+    /// Note: This property is retained for backward compatibility but is no longer used
+    /// by TaxCalculationService v1.4+, which uses the correct IRS rates with wage base cap.
     var selfEmploymentTaxRate: Double
     
     /// Whether to enable quarterly tax notifications
@@ -123,58 +133,59 @@ extension TaxSettings {
 // MARK: - Tax Bracket Data (2026)
 
 extension TaxSettings {
-    /// Federal tax brackets for 2026 tax year (projected ~2.8% inflation adjustment from 2025)
-    /// Note: Official IRS rates released in Rev. Proc. 2025-XX (typically October/November)
-    /// These are projected values based on historical inflation adjustments
+    /// Federal tax brackets for 2026 tax year
+    /// Source: IRS Rev. Proc. 2025-32 (October 9, 2025)
+    /// Note: OBBBA provided 4% adjustment for bottom two brackets, 2.3% for higher brackets
     static func federalTaxBrackets2026(for filingStatus: FilingStatus) -> [(maxIncome: Double, rate: Double)] {
         switch filingStatus {
         case .single:
             return [
-                (12_260, 0.10),     // 10% on income up to $12,260
-                (49_830, 0.12),     // 12% on income $12,260 to $49,830
-                (106_250, 0.22),    // 22% on income $49,830 to $106,250
-                (202_820, 0.24),    // 24% on income $106,250 to $202,820
-                (257_540, 0.32),    // 32% on income $202,820 to $257,540
-                (643_880, 0.35),    // 35% on income $257,540 to $643,880
-                (.infinity, 0.37)   // 37% on income over $643,880
+                (12_400, 0.10),     // 10% on income up to $12,400
+                (50_400, 0.12),     // 12% on income $12,400 to $50,400
+                (105_700, 0.22),    // 22% on income $50,400 to $105,700
+                (201_775, 0.24),    // 24% on income $105,700 to $201,775
+                (256_225, 0.32),    // 32% on income $201,775 to $256,225
+                (640_600, 0.35),    // 35% on income $256,225 to $640,600
+                (.infinity, 0.37)   // 37% on income over $640,600
             ]
             
         case .marriedFilingJointly:
             return [
-                (24_520, 0.10),     // 10% on income up to $24,520
-                (99_660, 0.12),     // 12% on income $24,520 to $99,660
-                (212_490, 0.22),    // 22% on income $99,660 to $212,490
-                (405_650, 0.24),    // 24% on income $212,490 to $405,650
-                (515_080, 0.32),    // 32% on income $405,650 to $515,080
-                (772_650, 0.35),    // 35% on income $515,080 to $772,650
-                (.infinity, 0.37)   // 37% on income over $772,650
+                (24_800, 0.10),     // 10% on income up to $24,800
+                (100_800, 0.12),    // 12% on income $24,800 to $100,800
+                (211_400, 0.22),    // 22% on income $100,800 to $211,400
+                (403_550, 0.24),    // 24% on income $211,400 to $403,550
+                (512_450, 0.32),    // 32% on income $403,550 to $512,450
+                (768_700, 0.35),    // 35% on income $512,450 to $768,700
+                (.infinity, 0.37)   // 37% on income over $768,700
             ]
             
         case .marriedFilingSeparately:
             return [
-                (12_260, 0.10),     // 10% on income up to $12,260
-                (49_830, 0.12),     // 12% on income $12,260 to $49,830
-                (106_250, 0.22),    // 22% on income $49,830 to $106,250
-                (202_820, 0.24),    // 24% on income $106,250 to $202,820
-                (257_540, 0.32),    // 32% on income $202,820 to $257,540
-                (386_330, 0.35),    // 35% on income $257,540 to $386,330
-                (.infinity, 0.37)   // 37% on income over $386,330
+                (12_400, 0.10),     // 10% on income up to $12,400
+                (50_400, 0.12),     // 12% on income $12,400 to $50,400
+                (105_700, 0.22),    // 22% on income $50,400 to $105,700
+                (201_775, 0.24),    // 24% on income $105,700 to $201,775
+                (256_225, 0.32),    // 32% on income $201,775 to $256,225
+                (384_350, 0.35),    // 35% on income $256,225 to $384,350
+                (.infinity, 0.37)   // 37% on income over $384,350
             ]
             
         case .headOfHousehold:
             return [
-                (17_480, 0.10),     // 10% on income up to $17,480
-                (66_670, 0.12),     // 12% on income $17,480 to $66,670
-                (106_250, 0.22),    // 22% on income $66,670 to $106,250
-                (202_820, 0.24),    // 24% on income $106,250 to $202,820
-                (257_510, 0.32),    // 32% on income $202,820 to $257,510
-                (643_880, 0.35),    // 35% on income $257,510 to $643,880
-                (.infinity, 0.37)   // 37% on income over $643,880
+                (17_700, 0.10),     // 10% on income up to $17,700
+                (67_450, 0.12),     // 12% on income $17,700 to $67,450
+                (105_700, 0.22),    // 22% on income $67,450 to $105,700
+                (201_775, 0.24),    // 24% on income $105,700 to $201,775
+                (256_200, 0.32),    // 32% on income $201,775 to $256,200
+                (640_600, 0.35),    // 35% on income $256,200 to $640,600
+                (.infinity, 0.37)   // 37% on income over $640,600
             ]
         }
     }
     
     /// Federal tax brackets for 2025 tax year (per IRS Rev. Proc. 2024-40)
+    /// Note: OBBBA retroactively increased 2025 standard deduction, but brackets unchanged
     static func federalTaxBrackets2025(for filingStatus: FilingStatus) -> [(maxIncome: Double, rate: Double)] {
         switch filingStatus {
         case .single:
@@ -239,19 +250,22 @@ extension TaxSettings {
         }
     }
     
-    /// Standard deduction amounts for 2026 tax year (projected ~2.8% inflation adjustment)
+    /// Standard deduction amounts for 2026 tax year
+    /// Source: IRS Rev. Proc. 2025-32 (October 9, 2025)
     static func standardDeduction2026(for filingStatus: FilingStatus) -> Double {
         switch filingStatus {
         case .single, .marriedFilingSeparately:
-            return 15_420      // $15,420 for single filers in 2026 (up from $15,000)
+            return 16_100      // $16,100 for single filers in 2026
         case .marriedFilingJointly:
-            return 30_840      // $30,840 for married filing jointly in 2026 (up from $30,000)
+            return 32_200      // $32,200 for married filing jointly in 2026
         case .headOfHousehold:
-            return 23_130      // $23,130 for head of household in 2026 (up from $22,500)
+            return 24_150      // $24,150 for head of household in 2026
         }
     }
     
     /// Standard deduction amounts for 2025 tax year
+    /// Note: OBBBA increased 2025 deductions to $15,750 single / $31,500 MFJ
+    /// But using original Rev. Proc. 2024-40 values for consistency
     static func standardDeduction2025(for filingStatus: FilingStatus) -> Double {
         switch filingStatus {
         case .single, .marriedFilingSeparately:
@@ -281,14 +295,15 @@ extension TaxSettings {
     
     /// Social Security wage base limits by year
     /// Income above this amount is not subject to the 12.4% Social Security portion of SE tax
+    /// Source: Social Security Administration (SSA) annual announcements
     static func socialSecurityWageBase(for year: Int? = nil) -> Double {
         let taxYear = year ?? currentTaxYear()
         
         switch taxYear {
         case 2026...:
-            return 176_100  // Projected 2026 (up from $168,600 in 2025)
+            return 184_500  // 2026 wage base (confirmed by SSA)
         case 2025:
-            return 168_600  // 2025 wage base
+            return 176_100  // 2025 wage base
         case 2024:
             return 168_600  // 2024 wage base
         default:
@@ -462,7 +477,24 @@ extension TaxSettings: Hashable {
 
 // MARK: - Version History
 /*
- Version 2.2 (Current):
+ Version 2.4 (Current):
+ - UPDATED: 2026 federal tax brackets to official IRS Rev. Proc. 2025-32 values
+ - UPDATED: 2026 standard deductions to official IRS values
+   * Single/MFS: $16,100 (was projected $15,420)
+   * MFJ: $32,200 (was projected $30,840)
+   * HOH: $24,150 (was projected $23,130)
+ - NOTE: OBBBA (One Big Beautiful Bill Act, July 2025) provided:
+   * 4% inflation adjustment for bottom two brackets (10% and 12%)
+   * 2.3% adjustment for higher brackets
+   * This differs from historical ~2.8% uniform adjustment
+ 
+ Version 2.3:
+ - FIXED: Social Security wage base for 2026 ($184,500 - confirmed by SSA)
+ - FIXED: Social Security wage base for 2025 ($176,100)
+ - Note: selfEmploymentTaxRate property retained for backward compatibility
+   but no longer used by TaxCalculationService v1.4+ (uses IRS rates with cap)
+ 
+ Version 2.2:
  - Updated to projected 2026 IRS tax brackets (~2.8% inflation adjustment)
  - Updated to projected 2026 standard deductions
  - Added 2026 quarterly estimated tax deadlines
@@ -483,7 +515,14 @@ extension TaxSettings: Hashable {
  - Comprehensive state tax rates
  - Quarterly deadline tracking
  
- Note: 2026 brackets are projections based on historical ~2.8% annual inflation
- adjustments. Update with official IRS Rev. Proc. 2025-XX when released
- (typically October/November 2025).
+ Social Security Wage Base History (per SSA):
+ - 2024: $168,600
+ - 2025: $176,100
+ - 2026: $184,500
+ 
+ 2026 Tax Data Sources:
+ - Federal Tax Brackets: IRS Rev. Proc. 2025-32 (October 9, 2025)
+ - Standard Deductions: IRS Rev. Proc. 2025-32 (October 9, 2025)
+ - SS Wage Base: SSA COLA Announcement (October 2025)
+ - IRS Mileage Rate: IRS Notice 2026-10 ($0.725/mile)
  */

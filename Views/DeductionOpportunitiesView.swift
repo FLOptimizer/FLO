@@ -2,8 +2,19 @@
 //  DeductionOpportunitiesView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.2 - Accessibility audit (Sprint 5c)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.2:
+//  ✅ Full VoiceOver accessibility coverage
+//  ✅ Screen change announcement on appear
+//  ✅ Summary header: opportunity count and savings combined with spoken values
+//  ✅ FilterChip with .isSelected trait
+//  ✅ Sort menu button labeled with hint
+//  ✅ OpportunityCard combined with spoken savings, confidence, risk
+//  ✅ Decorative icons hidden throughout
+//  ✅ Empty state combined
+//  ✅ Fixed garbled UTF-8 characters
 //
 //  CHANGES FROM v1.0:
 //  ✅ Haptic feedback on filter chips, sort menu
@@ -93,8 +104,10 @@ struct DeductionOpportunitiesView: View {
                         }
                     } label: {
                         Image(systemName: "arrow.up.arrow.down.circle")
-                            .foregroundColor(.brandPrimary)
+                             .foregroundColor(.brandPrimaryText)
                     }
+                    .accessibilityLabel("Sort opportunities")
+                    .accessibilityHint("Current sort: \(sortOrder.rawValue)")
                 }
             }
             .searchable(text: $searchText, prompt: "Search opportunities")
@@ -105,6 +118,7 @@ struct DeductionOpportunitiesView: View {
                                 withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
+                AccessibilityAnnouncement.screenChanged("Tax deduction opportunities")
             }
         }
     }
@@ -120,7 +134,7 @@ struct DeductionOpportunitiesView: View {
                 VStack(spacing: 4) {
                     Text("\(filteredOpportunities.count)")
                         .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(.brandPrimary)
+                         .foregroundColor(.brandPrimaryText)
                         .contentTransition(.numericText())
                     
                     Text("Opportunities")
@@ -147,8 +161,10 @@ struct DeductionOpportunitiesView: View {
             .cornerRadius(12)
             .padding(.horizontal)
             .padding(.top)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(filteredOpportunities.count) opportunities, potential savings \(AccessibilityFormatters.spokenCurrency(totalSavings))")
         }
-        .opacity(viewAppeared ? 1 : 0)
+        .opacity(viewAppeared ? 1 : 0.001)
         .offset(y: viewAppeared ? 0 : 15)
         .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
     }
@@ -174,7 +190,7 @@ struct DeductionOpportunitiesView: View {
             .padding(.vertical, 12)
         }
         .background(Color(.systemGroupedBackground))
-        .opacity(viewAppeared ? 1 : 0)
+        .opacity(viewAppeared ? 1 : 0.001)
         .offset(y: viewAppeared ? 0 : 10)
         .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
     }
@@ -202,6 +218,8 @@ struct DeductionOpportunitiesView: View {
                 .scaleEffect(isSelected ? 1.02 : 1.0)
             }
             .animation(FLOAnimation.quick, value: isSelected)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+            .accessibilityHint("Filter by \(filter.rawValue)")
         }
     }
     
@@ -212,7 +230,7 @@ struct DeductionOpportunitiesView: View {
             LazyVStack(spacing: 12) {
                 ForEach(Array(sortedOpportunities.enumerated()), id: \.element.id) { index, opportunity in
                     OpportunityCard(opportunity: opportunity)
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 20)
                         .animation(
                             FLOAnimation.standard
@@ -316,6 +334,18 @@ struct DeductionOpportunitiesView: View {
                 .scaleEffect(isPressed ? 0.98 : 1.0)
             }
             .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel({
+                var label = "\(opportunity.title), \(opportunity.category.displayName)"
+                label += ". Estimated savings \(AccessibilityFormatters.spokenCurrency(opportunity.estimatedSavings))"
+                label += ", \(Int(opportunity.confidence * 100)) percent confidence"
+                label += ", \(opportunity.riskLevel.rawValue) risk"
+                if opportunity.requiresProTier {
+                    label += ", requires Pro"
+                }
+                return label
+            }())
+            .accessibilityHint("Opens deduction details")
             .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
                 withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
                     isPressed = pressing
@@ -335,6 +365,7 @@ struct DeductionOpportunitiesView: View {
                 .font(.system(size: 60))
                 .foregroundStyle(.secondary)
                 .symbolEffect(.pulse, options: .repeating.speed(0.5))
+                .accessibilityHidden(true)
             
             Text("No opportunities found")
                 .font(.headline)
@@ -346,7 +377,8 @@ struct DeductionOpportunitiesView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
-        .opacity(viewAppeared ? 1 : 0)
+        .accessibilityElement(children: .combine)
+        .opacity(viewAppeared ? 1 : 0.001)
         .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
     }
     

@@ -1,10 +1,15 @@
 //  Invoice.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.2 - Added payments relationship for partial payment support
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.3 - ReminderRecord now Codable struct (auto-serialized by SwiftData)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Invoice tracking and management model
+//
+//  CHANGES v2.3:
+//  ✅ ReminderRecord is now a Codable struct (not @Model)
+//  ✅ remindersSent array is automatically JSON-serialized by SwiftData
+//  ✅ No relationship management needed for embedded reminder data
 //
 import Foundation
 import SwiftData
@@ -112,7 +117,7 @@ final class Invoice {
         didSet { updateModifiedDate() }
     }
     
-    /// Reminder history
+    /// Reminder history (embedded Codable data, auto-serialized as JSON)
     var remindersSent: [ReminderRecord] = []
     
     /// Date when invoice was created

@@ -1,8 +1,8 @@
 //  AddRecurringView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.2.1 - Fixed FinanceType comparison issues
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.2.2 - Accessibility: labels, hints, decorative icon hiding
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES FROM v2.2:
 //  ✅ FIXED: FinanceType comparison (Account now uses Transaction.FinanceType)
@@ -64,6 +64,8 @@ struct AddRecurringView: View {
                         HapticService.play(.light)
                         dismiss()
                     }
+                    .accessibilityLabel("Cancel")
+                    .accessibilityHint("Discard changes and go back")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
@@ -71,6 +73,8 @@ struct AddRecurringView: View {
                     }
                     .disabled(!isValid)
                     .fontWeight(.semibold)
+                    .accessibilityLabel("Save recurring transaction")
+                    .accessibilityHint(isValid ? "Double tap to save" : "Enter merchant name and amount first")
                 }
             }
             .onAppear {
@@ -112,6 +116,7 @@ struct AddRecurringView: View {
             HStack {
                 Text("$")
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
                 TextField("0.00", text: $amount)
                     .keyboardType(.decimalPad)
             }
@@ -182,7 +187,7 @@ struct AddRecurringView: View {
                             HapticService.play(.light)
                         }
                         .font(.caption)
-                        .foregroundStyle(Color.brandPrimary)
+                         .foregroundStyle(Color.brandPrimaryText)
                     }
                 }
             } footer: {
@@ -404,7 +409,7 @@ struct AddRecurringView: View {
             
             dismiss()
         } catch {
-            print("❌ Failed to save recurring transaction: \(error)")
+            print("âŒ Failed to save recurring transaction: \(error)")
             
             HapticService.play(.error)
         }
@@ -428,7 +433,7 @@ struct RecurringAccountChip: View {
                         .frame(width: 32, height: 32)
                     
                     Image(systemName: account.icon)
-                        .font(.system(size: 14))
+                        .font(.subheadline)
                         .foregroundStyle(Color(hex: account.color))
                 }
                 
@@ -453,7 +458,8 @@ struct RecurringAccountChip: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 16))
-                        .foregroundStyle(Color.brandPrimary)
+                         .foregroundStyle(Color.brandPrimaryText)
+                        .accessibilityHidden(true)
                 }
             }
             .padding(.horizontal, 12)
@@ -470,6 +476,10 @@ struct RecurringAccountChip: View {
         .buttonStyle(PlainButtonStyle())
         .scaleEffect(isSelected ? 1.02 : 1.0)
         .animation(FLOAnimation.quick, value: isSelected)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(account.name) account\(isSelected ? ", selected" : "")")
+        .accessibilityHint(isSelected ? "Double tap to deselect" : "Double tap to select")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }
 

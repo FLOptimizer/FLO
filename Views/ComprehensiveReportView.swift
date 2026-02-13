@@ -1,13 +1,21 @@
 //  ComprehensiveReportView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - UI for generating CPA-ready comprehensive reports (Fixed)
+//  Version 1.2 - Accessibility audit (Sprint 5a)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v1.1:
-//  ✅ Removed duplicate ShareSheet declaration (uses ShareSheet.swift)
-//  ✅ Fixed BusinessProfile.businessAddress -> formattedAddress
-//  ✅ Fixed Task in generateReport to properly handle async
+//  CHANGES v1.2:
+//  ✅ Full VoiceOver accessibility coverage
+//  ✅ Screen change announcement on appear
+//  ✅ All section headers marked with .isHeader trait
+//  ✅ Report type buttons accessible with selected state
+//  ✅ Toggle rows combined with icon hidden and hint
+//  ✅ Preview cards combined with spoken counts
+//  ✅ Generate button labeled with state and hint
+//  ✅ CPA tips section combined, checkmark icons hidden
+//  ✅ Warning empty state accessible with icon hidden
+//  ✅ Header decorative icon hidden
+//  ✅ Date range summary accessible
 //
 //  FEATURES:
 //  ✅ Annual and quarterly report options
@@ -124,43 +132,43 @@ struct ComprehensiveReportView: View {
                 VStack(spacing: 24) {
                     // Header
                     headerSection
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 20)
                         .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                     
                     // Report Type Selection
                     reportTypeSection
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 20)
                         .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                     
                     // Date Selection
                     dateSelectionSection
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 20)
                         .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                     
                     // Report Sections
                     sectionsToggleSection
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 20)
                         .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                     
                     // Data Preview
                     dataPreviewSection
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 20)
                         .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                     
                     // Generate Button
                     generateButton
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 20)
                         .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                     
                     // CPA Tips
                     cpaTipsSection
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 20)
                         .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
                 }
@@ -200,6 +208,7 @@ struct ComprehensiveReportView: View {
                 withAnimation {
                     viewAppeared = true
                 }
+                AccessibilityAnnouncement.screenChanged("Generate CPA-ready report")
             }
         }
     }
@@ -217,6 +226,7 @@ struct ComprehensiveReportView: View {
                     .font(.system(size: 36))
                     .foregroundStyle(Color.businessColor)
             }
+            .accessibilityHidden(true)
             
             Text("CPA-Ready Reports")
                 .font(.title2)
@@ -228,6 +238,7 @@ struct ComprehensiveReportView: View {
                 .multilineTextAlignment(.center)
         }
         .padding(.vertical)
+        .accessibilityElement(children: .combine)
     }
     
     // MARK: - Report Type Section
@@ -236,6 +247,7 @@ struct ComprehensiveReportView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Report Type")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             
             HStack(spacing: 12) {
                 ForEach(ReportType.allCases, id: \.self) { type in
@@ -248,6 +260,7 @@ struct ComprehensiveReportView: View {
                         VStack(spacing: 8) {
                             Image(systemName: type.icon)
                                 .font(.title2)
+                                .accessibilityHidden(true)
                             Text(type.rawValue)
                                 .font(.caption)
                                 .fontWeight(.medium)
@@ -261,6 +274,9 @@ struct ComprehensiveReportView: View {
                         .foregroundStyle(reportType == type ? .white : .primary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(type.rawValue)
+                    .accessibilityAddTraits(reportType == type ? [.isSelected] : [])
+                    .accessibilityHint(reportType == type ? "Currently selected" : "Double tap to select")
                 }
             }
         }
@@ -275,6 +291,7 @@ struct ComprehensiveReportView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Date Range")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             
             switch reportType {
             case .annual:
@@ -332,6 +349,7 @@ struct ComprehensiveReportView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Include Sections")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             
             VStack(spacing: 0) {
                 toggleRow(
@@ -389,6 +407,7 @@ struct ComprehensiveReportView: View {
                 .font(.title3)
                 .foregroundStyle(Color.businessColor)
                 .frame(width: 30)
+                .accessibilityHidden(true)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -409,6 +428,10 @@ struct ComprehensiveReportView: View {
                 }
         }
         .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title)")
+        .accessibilityValue(isOn.wrappedValue ? "Included" : "Excluded")
+        .accessibilityHint(subtitle)
     }
     
     // MARK: - Data Preview Section
@@ -417,6 +440,7 @@ struct ComprehensiveReportView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Data Preview")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             
             HStack(spacing: 16) {
                 previewCard(
@@ -446,10 +470,13 @@ struct ComprehensiveReportView: View {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
+                        .accessibilityHidden(true)
                     Text("No transactions found for this period")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Warning: No transactions found for this period")
             }
         }
         .padding()
@@ -462,6 +489,7 @@ struct ComprehensiveReportView: View {
             Image(systemName: icon)
                 .font(.title3)
                 .foregroundStyle(Color.businessColor)
+                .accessibilityHidden(true)
             
             Text("\(count)")
                 .font(.title2)
@@ -475,6 +503,8 @@ struct ComprehensiveReportView: View {
         .padding(.vertical, 12)
         .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(count) \(label)")
     }
     
     // MARK: - Generate Button
@@ -488,8 +518,10 @@ struct ComprehensiveReportView: View {
                 if isGenerating {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .accessibilityHidden(true)
                 } else {
                     Image(systemName: "doc.badge.plus")
+                        .accessibilityHidden(true)
                 }
                 
                 Text(isGenerating ? "Generating Report..." : "Generate CPA-Ready Report")
@@ -506,6 +538,8 @@ struct ComprehensiveReportView: View {
         .disabled(isGenerating || filteredTransactionCount == 0)
         .scaleEffect(isGenerating ? 0.98 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isGenerating)
+        .accessibilityLabel(isGenerating ? "Generating report" : "Generate CPA-ready report")
+        .accessibilityHint(filteredTransactionCount == 0 ? "No transactions available for this period" : "Generates a comprehensive PDF report with \(filteredTransactionCount) transactions")
     }
     
     // MARK: - CPA Tips Section
@@ -515,9 +549,11 @@ struct ComprehensiveReportView: View {
             HStack {
                 Image(systemName: "lightbulb.fill")
                     .foregroundStyle(.yellow)
+                    .accessibilityHidden(true)
                 Text("Tips for Your CPA")
                     .font(.headline)
             }
+            .accessibilityAddTraits(.isHeader)
             
             VStack(alignment: .leading, spacing: 8) {
                 tipRow("Print or share this PDF directly with your accountant")
@@ -536,10 +572,12 @@ struct ComprehensiveReportView: View {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(Color.incomeGreen)
                 .font(.caption)
+                .accessibilityHidden(true)
             Text(text)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        .accessibilityElement(children: .combine)
     }
     
     // MARK: - Generate Report Action

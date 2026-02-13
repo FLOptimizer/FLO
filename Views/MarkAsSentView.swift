@@ -1,26 +1,25 @@
 //  MarkAsSentView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.2 - Fixed for InvoiceService v4.0 throwing methods
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.4 - Accessibility Audit: Full VoiceOver support
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES FROM v2.1:
-//  ✅ Updated shareInvoicePDF() with do/try/catch for throwing method
+//  CHANGES v2.4:
+//  ✅ ADDED: Header icon + title decorative/grouped for VoiceOver
+//  ✅ ADDED: Invoice summary card accessible (client, amount, due date combined)
+//  ✅ ADDED: Sent date picker accessible with spoken date
+//  ✅ ADDED: Due date info accessible with days until due + urgency
+//  ✅ ADDED: Mark as Sent button labeled with hint
+//  ✅ ADDED: Share Invoice PDF button labeled with hint
+//  ✅ ADDED: Cancel toolbar button labeled
+//  ✅ ADDED: Screen change announcement on appear
+//  ✅ ADDED: Mark as sent success announced
+//  ✅ ADDED: Decorative icons hidden
 //
-//  INHERITED FROM v2.1:
-//  ✅ Share Invoice now generates and shares PDF (not plain text)
-//  ✅ Added PDF generation error handling with alert
-//  ✅ Button text changed to "Share Invoice PDF"
+//  CHANGES v2.3:
+//  - Migrated to centralized HapticService
+//  - Updated shareInvoicePDF() with do/try/catch
 //
-//  INHERITED FROM v2.0:
-//  ✅ Animated header icon with bounce effect
-//  ✅ Haptic feedback on all button interactions
-//  ✅ Smooth card entrance animations
-//  ✅ Button press scale effects
-//  ✅ Success celebration animation sequence
-//  ✅ Paperplane fly-away animation on mark as sent
-//
-//  Code Quality: 100/100 Elite App Store Ready
 
 import SwiftUI
 import SwiftData
@@ -69,13 +68,15 @@ struct MarkAsSentView: View {
                         
                         Image(systemName: "paperplane.circle.fill")
                             .font(.system(size: 60))
-                            .foregroundStyle(Color.brandPrimary)
+                            .foregroundStyle(Color.brandPrimaryText)
                             .rotationEffect(.degrees(iconRotation))
                             .offset(x: flyAway ? 200 : 0, y: flyAway ? -200 : 0)
                             .opacity(flyAway ? 0 : 1)
                     }
                     .scaleEffect(headerScale)
                     .opacity(headerOpacity)
+                    // v2.4: Decorative icon
+                    .accessibilityHidden(true)
                     
                     Text("Send Invoice")
                         .font(.title2)
@@ -89,6 +90,10 @@ struct MarkAsSentView: View {
                         .opacity(headerOpacity)
                 }
                 .padding(.top, 20)
+                // v2.4: Group header for VoiceOver
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Send Invoice \(invoice.invoiceNumber)")
+                .accessibilityAddTraits(.isHeader)
                 
                 // Invoice Summary
                 VStack(spacing: 16) {
@@ -112,9 +117,12 @@ struct MarkAsSentView: View {
                             Text(invoice.totalAmount.formatted(.currency(code: "USD")))
                                 .font(.title3)
                                 .fontWeight(.bold)
-                                .foregroundStyle(Color.brandPrimary)
+                                .foregroundStyle(Color.brandPrimaryText)
                         }
                     }
+                    // v2.4: Client and amount grouped
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Invoice for \(invoice.client?.name ?? "no client"), \(AccessibilityFormatters.spokenCurrency(invoice.totalAmount))")
                     
                     Divider()
                     
@@ -126,9 +134,10 @@ struct MarkAsSentView: View {
                         displayedComponents: .date
                     )
                     .onChange(of: sentDate) { _, _ in
-                        let generator = UISelectionFeedbackGenerator()
-                        generator.selectionChanged()
+                        HapticService.shared.selection()
                     }
+                    // v2.4: VoiceOver
+                    .accessibilityValue(AccessibilityFormatters.spokenDate(sentDate))
                     
                     Divider()
                     
@@ -136,6 +145,8 @@ struct MarkAsSentView: View {
                     HStack {
                         Image(systemName: "calendar")
                             .foregroundStyle(.secondary)
+                            // v2.4: Decorative
+                            .accessibilityHidden(true)
                         
                         Text("Due: \(invoice.dueDate.formatted(date: .abbreviated, time: .omitted))")
                             .font(.subheadline)
@@ -147,6 +158,8 @@ struct MarkAsSentView: View {
                                 Image(systemName: "exclamationmark.circle.fill")
                                     .font(.caption)
                                     .foregroundStyle(.orange)
+                                    // v2.4: Decorative (status conveyed in parent)
+                                    .accessibilityHidden(true)
                             }
                             Text("\(daysUntilDue) days")
                                 .font(.subheadline)
@@ -154,6 +167,9 @@ struct MarkAsSentView: View {
                                 .foregroundStyle(daysUntilDue <= 7 ? .orange : .secondary)
                         }
                     }
+                    // v2.4: Due date accessible
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Due \(AccessibilityFormatters.spokenDate(invoice.dueDate)), \(daysUntilDue) days\(daysUntilDue <= 7 ? ", due soon" : "")")
                 }
                 .padding()
                 .background(Color(.secondarySystemBackground))
@@ -190,6 +206,9 @@ struct MarkAsSentView: View {
                     }
                     .disabled(isMarking)
                     .buttonStyle(.plain)
+                    // v2.4: VoiceOver
+                    .accessibilityLabel("Mark as sent")
+                    .accessibilityHint("Double tap to mark this invoice as sent on \(AccessibilityFormatters.spokenDate(sentDate))")
                     
                     // Share Invoice PDF Button
                     Button {
@@ -202,11 +221,14 @@ struct MarkAsSentView: View {
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Color(.secondarySystemBackground))
-                        .foregroundStyle(Color.brandPrimary)
+                        .foregroundStyle(Color.brandPrimaryText)
                         .cornerRadius(12)
                         .scaleEffect(shareButtonPressed ? 0.95 : 1.0)
                     }
                     .buttonStyle(.plain)
+                    // v2.4: VoiceOver
+                    .accessibilityLabel("Share invoice PDF")
+                    .accessibilityHint("Double tap to generate and share the invoice as a PDF file")
                 }
                 .padding(.horizontal)
                 .padding(.bottom)
@@ -220,10 +242,15 @@ struct MarkAsSentView: View {
                         HapticService.play(.medium)
                         dismiss()
                     }
+                    // v2.4: VoiceOver
+                    .accessibilityLabel("Cancel")
+                    .accessibilityHint("Double tap to go back without sending")
                 }
             }
             .onAppear {
                 animateEntrance()
+                // v2.4: Announce screen
+                AccessibilityAnnouncement.screenChanged("Send Invoice \(invoice.invoiceNumber)")
             }
             .sheet(isPresented: $showingShareSheet) {
                 if let url = pdfURL {
@@ -248,24 +275,20 @@ struct MarkAsSentView: View {
     // MARK: - Animations
     
     private func animateEntrance() {
-        // Header animation
         withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
             headerScale = 1.0
             headerOpacity = 1.0
         }
         
-        // Icon rotation for visual interest
         withAnimation(.easeInOut(duration: 0.6).delay(0.2)) {
             iconRotation = 15
         }
         
-        // Card slide in
         withAnimation(.spring(response: 0.5, dampingFraction: 0.75).delay(0.15)) {
             cardOffset = 0
             cardOpacity = 1.0
         }
         
-        // Buttons slide in
         withAnimation(.spring(response: 0.5, dampingFraction: 0.75).delay(0.25)) {
             buttonsOffset = 0
             buttonsOpacity = 1.0
@@ -275,7 +298,6 @@ struct MarkAsSentView: View {
     // MARK: - Actions
     
     private func markAsSent() {
-        // Button press haptic and animation
         HapticService.play(.heavy)
         
         withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
@@ -284,12 +306,10 @@ struct MarkAsSentView: View {
         
         isMarking = true
         
-        // Fly away animation for the icon
         withAnimation(.easeIn(duration: 0.5)) {
             flyAway = true
         }
         
-        // Small delay for dramatic effect
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                 markButtonPressed = false
@@ -301,14 +321,14 @@ struct MarkAsSentView: View {
         do {
             try modelContext.save()
             
-            // Success haptic sequence
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
+            HapticService.shared.success()
             
-            // Secondary celebratory haptic
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 HapticService.play(.heavy)
             }
+            
+            // v2.4: Announce success
+            AccessibilityAnnouncement.announce("Invoice \(invoice.invoiceNumber) marked as sent")
             
             showingSuccess = true
             
@@ -317,14 +337,13 @@ struct MarkAsSentView: View {
             #endif
             
         } catch {
-            print("❌ Failed to mark invoice as sent: \(error)")
+            print("Failed to mark invoice as sent: \(error)")
             
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.error)
+            HapticService.shared.error()
+            AccessibilityAnnouncement.announce("Failed to mark invoice as sent")
             
             isMarking = false
             
-            // Reset fly away animation on error
             withAnimation(FLOAnimation.quick) {
                 flyAway = false
             }
@@ -333,7 +352,6 @@ struct MarkAsSentView: View {
     
     /// Generate and share invoice as PDF
     private func shareInvoicePDF() {
-        // Button press haptic and animation
         HapticService.play(.medium)
         
         withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
@@ -345,14 +363,11 @@ struct MarkAsSentView: View {
             }
         }
         
-        // Generate PDF using InvoiceService (v4.0 throwing method)
         do {
             let url = try InvoiceService.shared.savePDFToTemporaryFile(for: invoice, context: modelContext)
             pdfURL = url
             
-            // Success haptic
-            let successGenerator = UINotificationFeedbackGenerator()
-            successGenerator.notificationOccurred(.success)
+            HapticService.shared.success()
             
             showingShareSheet = true
             
@@ -360,14 +375,13 @@ struct MarkAsSentView: View {
             print("✅ PDF generated for invoice: \(invoice.invoiceNumber)")
             #endif
         } catch {
-            // Error haptic
-            let errorGenerator = UINotificationFeedbackGenerator()
-            errorGenerator.notificationOccurred(.error)
+            HapticService.shared.error()
+            AccessibilityAnnouncement.announce("Failed to generate PDF")
             
             showingPDFError = true
             
             #if DEBUG
-            print("❌ Failed to generate PDF for invoice: \(invoice.invoiceNumber) - \(error)")
+            print("Failed to generate PDF for invoice: \(invoice.invoiceNumber) - \(error)")
             #endif
         }
     }

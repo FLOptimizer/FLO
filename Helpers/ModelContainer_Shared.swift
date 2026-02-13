@@ -1,17 +1,30 @@
-//  ModelContainer+Shared.swift
+//  ModelContainer_Shared.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 4.0 - Added Account and InvoicePayment models for payment tracking
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 4.5 - Fixed CloudKit validation in preview/testing containers
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 // Centralized ModelContainer factory with shared schema definition
 // Eliminates duplication and ensures consistency across app, previews, and tests
 //
-// CHANGES FROM v3.0:
-// ✅ Added Account model for bank/payment account tracking (15 total models now)
-// ✅ Added InvoicePayment model for partial payment support
-// ✅ Maintains custom "FLOSwiftData.store" location
-// ✅ Works with App Groups for widget data sharing
+// CHANGES FROM v4.4:
+// ✅ Added cloudKitDatabase: .none to preview() container
+// ✅ Fixes test failures when app has CloudKit entitlements
+// ✅ SwiftData validates schema against CloudKit even for in-memory stores
+//
+// CHANGES FROM v4.3:
+// ✅ Added ReceiptLineItem.self (was missing, caused test crashes)
+// ✅ Now 15 total models
+//
+// CHANGES FROM v4.2:
+// ✅ Added automatic recovery when migration fails
+// ✅ Deletes old incompatible store and creates fresh one
+// ✅ Prevents "Cannot migrate store in-place" crashes
+//
+// CHANGES FROM v4.1:
+// ✅ Disabled CloudKit sync with cloudKitDatabase: .none
+// ✅ CloudKit requires optional attributes, no unique constraints, relationship inverses
+// ✅ Can re-enable later when models are CloudKit-ready
 
 import SwiftData
 import Foundation
@@ -37,53 +50,110 @@ extension ModelContainer {
         
         // Use the same unique store name: FLOSwiftData.store
         let storeURL = groupURL.appendingPathComponent("FLOSwiftData.store")
-        let config = ModelConfiguration(url: storeURL)
         
-        // Create ModelContainer with ALL 15 models
-        return try ModelContainer(
-            for: Transaction.self,
-            Category.self,
-            Budget.self,
-            RecurringTransaction.self,
-            TaxSettings.self,
-            MileageTrip.self,
-            Client.self,
-            Invoice.self,
-            InvoiceItem.self,
-            ReminderRecord.self,
-            BusinessProfile.self,
-            MerchantCategoryMapping.self,
-            ReceiptData.self,
-            Account.self,              // ✅ Added in v4.0
-            InvoicePayment.self,       // ✅ Added in v4.0
-            configurations: config
-        )
+        // IMPORTANT: Disable CloudKit sync - our models aren't CloudKit-compatible yet
+        // CloudKit requires: all optional attributes, no unique constraints, all relationship inverses
+        // We can enable this later when we make models CloudKit-ready
+        let config = ModelConfiguration(url: storeURL, cloudKitDatabase: .none)
+        
+        do {
+            // Create ModelContainer with ALL 15 models
+            return try ModelContainer(
+                for: Transaction.self,
+                Category.self,
+                Budget.self,
+                RecurringTransaction.self,
+                TaxSettings.self,
+                MileageTrip.self,
+                Client.self,
+                Invoice.self,
+                InvoiceItem.self,
+                BusinessProfile.self,
+                MerchantCategoryMapping.self,
+                ReceiptData.self,
+                ReceiptLineItem.self,      // ✅ Added in v4.4 (was missing!)
+                Account.self,
+                InvoicePayment.self,
+                configurations: config
+            )
+        } catch {
+            // Migration failed - attempt recovery by deleting old store
+            print("⚠️ ModelContainer migration failed: \(error)")
+            print("🔄 Attempting recovery by deleting old store...")
+            
+            // Delete old store files
+            let fileManager = FileManager.default
+            let storeFiles = [
+                storeURL,
+                storeURL.appendingPathExtension("shm"),
+                storeURL.appendingPathExtension("wal")
+            ]
+            
+            for file in storeFiles {
+                try? fileManager.removeItem(at: file)
+            }
+            
+            // Also check for .store-shm and .store-wal variations
+            let basePath = storeURL.path
+            for suffix in ["-shm", "-wal"] {
+                let path = basePath + suffix
+                try? fileManager.removeItem(atPath: path)
+            }
+            
+            print("✅ Old store files deleted, creating fresh container...")
+            
+            // Try again with fresh store
+            return try ModelContainer(
+                for: Transaction.self,
+                Category.self,
+                Budget.self,
+                RecurringTransaction.self,
+                TaxSettings.self,
+                MileageTrip.self,
+                Client.self,
+                Invoice.self,
+                InvoiceItem.self,
+                BusinessProfile.self,
+                MerchantCategoryMapping.self,
+                ReceiptData.self,
+                ReceiptLineItem.self,
+                Account.self,
+                InvoicePayment.self,
+                configurations: config
+            )
+        }
     }
     
     // MARK: - Preview & Testing Container
     
-    /// Creates an in-memory only container to ideal for SwiftUI previews and unit tests.
+    /// Creates an in-memory only container ideal for SwiftUI previews and unit tests.
     /// Data is never persisted to disk and is discarded when the container is deallocated.
     static func preview() -> ModelContainer {
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        return try! ModelContainer(
-            for: Transaction.self,
-            Category.self,
-            Budget.self,
-            RecurringTransaction.self,
-            TaxSettings.self,
-            MileageTrip.self,
-            Client.self,
-            Invoice.self,
-            InvoiceItem.self,
-            ReminderRecord.self,
-            BusinessProfile.self,
-            MerchantCategoryMapping.self,
-            ReceiptData.self,
-            Account.self,              // ✅ Added in v4.0
-            InvoicePayment.self,       // ✅ Added in v4.0
-            configurations: config
-        )
+        // IMPORTANT: Must explicitly disable CloudKit even for in-memory stores
+        // Otherwise SwiftData validates schema against CloudKit requirements
+        let config = ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+        do {
+            return try ModelContainer(
+                for: Transaction.self,
+                Category.self,
+                Budget.self,
+                RecurringTransaction.self,
+                TaxSettings.self,
+                MileageTrip.self,
+                Client.self,
+                Invoice.self,
+                InvoiceItem.self,
+                BusinessProfile.self,
+                MerchantCategoryMapping.self,
+                ReceiptData.self,
+                ReceiptLineItem.self,      // ✅ Added in v4.4
+                Account.self,
+                InvoicePayment.self,
+                configurations: config
+            )
+        } catch {
+            fatalError("Failed to create preview ModelContainer: \(error)")
+        }
     }
     
     // MARK: - Test Container (Optional Helper)

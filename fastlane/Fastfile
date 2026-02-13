@@ -1,0 +1,184 @@
+# Fastfile
+# FLO - Finance Ledger Optimizer
+#
+# Version 1.2 - Updated for Xcode 26 simulators
+# Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+#
+# USAGE:
+# - Screenshots: fastlane screenshots
+# - Quick test:  fastlane screenshots_quick
+# - Beta deploy: fastlane beta
+# - App Store:   fastlane release
+#
+
+default_platform(:ios)
+
+platform :ios do
+  
+  # ============================================================================
+  # SCREENSHOTS
+  # ============================================================================
+  
+  desc "Capture screenshots for App Store"
+  lane :screenshots do
+    capture_screenshots(
+      project: "FLO.xcodeproj",
+      scheme: "FLO",
+      devices: [
+        "iPhone 16 Pro Max",
+        "iPhone 16 Pro",
+        "iPhone 16e",
+      ],
+      languages: ["en-US"],
+      output_directory: "./fastlane/screenshots",
+      clear_previous_screenshots: true,
+      override_status_bar: true,
+      localize_simulator: true,
+      dark_mode: false,
+      skip_open_summary: false
+    )
+  end
+  
+  desc "Capture screenshots for all device sizes"
+  lane :screenshots_all do
+    capture_screenshots(
+      project: "FLO.xcodeproj",
+      scheme: "FLO",
+      devices: [
+        "iPhone 16 Pro Max",
+        "iPhone 16 Pro",
+        "iPhone 16 Plus",
+        "iPhone 16",
+        "iPhone 16e",
+        "iPad Pro 13-inch (M4)",
+        "iPad Pro 11-inch (M4)",
+        "iPad Air 13-inch (M3)",
+      ],
+      languages: ["en-US"],
+      output_directory: "./fastlane/screenshots",
+      clear_previous_screenshots: true,
+      override_status_bar: true
+    )
+  end
+  
+  desc "Quick screenshot test (single device)"
+  lane :screenshots_quick do
+    capture_screenshots(
+      project: "FLO.xcodeproj",
+      scheme: "FLO",
+      devices: ["iPhone 16 Pro"],
+      languages: ["en-US"],
+      output_directory: "./fastlane/screenshots/quick",
+      clear_previous_screenshots: true
+    )
+  end
+  
+  # ============================================================================
+  # TESTING
+  # ============================================================================
+  
+  desc "Run all unit tests"
+  lane :test do
+    run_tests(
+      project: "FLO.xcodeproj",
+      scheme: "FLO",
+      devices: ["iPhone 16 Pro"],
+      code_coverage: true,
+      output_directory: "./fastlane/test_results",
+      output_types: "html,junit"
+    )
+  end
+  
+  desc "Run UI tests only"
+  lane :test_ui do
+    run_tests(
+      project: "FLO.xcodeproj",
+      scheme: "FLO",
+      devices: ["iPhone 16 Pro"],
+      only_testing: ["FLOUITests"],
+      output_directory: "./fastlane/test_results"
+    )
+  end
+  
+  # ============================================================================
+  # BETA DEPLOYMENT (TestFlight)
+  # ============================================================================
+  
+  desc "Push a new beta build to TestFlight"
+  lane :beta do
+    increment_build_number(
+      xcodeproj: "FLO.xcodeproj"
+    )
+    
+    build_app(
+      project: "FLO.xcodeproj",
+      scheme: "FLO",
+      export_method: "app-store",
+      output_directory: "./fastlane/builds",
+      output_name: "FLO.ipa"
+    )
+    
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true
+    )
+  end
+  
+  # ============================================================================
+  # APP STORE RELEASE
+  # ============================================================================
+  
+  desc "Deploy a new version to the App Store"
+  lane :release do
+    capture_screenshots
+    
+    build_app(
+      project: "FLO.xcodeproj",
+      scheme: "FLO",
+      export_method: "app-store"
+    )
+    
+    upload_to_app_store(
+      skip_screenshots: false,
+      skip_metadata: false,
+      submit_for_review: false,
+      automatic_release: false,
+      force: true
+    )
+  end
+  
+  # ============================================================================
+  # UTILITY LANES
+  # ============================================================================
+  
+  desc "Increment version number"
+  lane :bump_version do |options|
+    increment_version_number(
+      xcodeproj: "FLO.xcodeproj",
+      bump_type: options[:type] || "patch"
+    )
+  end
+  
+  desc "Increment build number"
+  lane :bump_build do
+    increment_build_number(
+      xcodeproj: "FLO.xcodeproj"
+    )
+  end
+  
+  desc "Sync certificates and provisioning profiles"
+  lane :sync_certs do
+    match(
+      type: "appstore",
+      readonly: true
+    )
+  end
+  
+  # ============================================================================
+  # ERROR HANDLING
+  # ============================================================================
+  
+  error do |lane, exception|
+    # Notification on failure (optional)
+  end
+  
+end

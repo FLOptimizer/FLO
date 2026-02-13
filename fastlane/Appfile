@@ -1,0 +1,64 @@
+# Appfile
+# FLO - Finance Ledger Optimizer
+#
+# App Store Connect credentials and app identifiers
+# See: https://docs.fastlane.tools/advanced/Appfile/
+#
+
+# ============================================================================
+# APP IDENTIFIER
+# ============================================================================
+
+# Your app's bundle identifier
+app_identifier("com.finchandpoppy.flo")  # Update with your actual bundle ID
+
+# ============================================================================
+# APPLE ID
+# ============================================================================
+
+# Your Apple ID email address
+apple_id("travis.anderson1982@gmail.com")  # Update with your Apple ID
+
+# ============================================================================
+# TEAM CONFIGURATION
+# ============================================================================
+
+# Developer Portal Team ID
+# Find at: https://developer.apple.com/account/#/membership
+# team_id("D9HZRHZ736")  # Uncomment and add your Team ID
+
+# App Store Connect Team ID (if different from Developer Portal)
+# itc_team_id("XXXXXXXXXX")  # Uncomment if needed
+
+# ============================================================================
+# ENVIRONMENT-SPECIFIC CONFIGURATION
+# ============================================================================
+
+# For different lanes, you can override settings:
+
+for_lane :beta do
+  # app_identifier("com.finchandpoppy.flo.beta")  # If using separate beta bundle ID
+end
+
+for_lane :release do
+  app_identifier("com.finchandpoppy.flo")
+end
+
+# ============================================================================
+# NOTES
+# ============================================================================
+#
+# FIRST TIME SETUP:
+# 1. Update app_identifier with your actual bundle ID
+# 2. Update apple_id with your Apple ID email
+# 3. Uncomment and add team_id from Apple Developer Portal
+#
+# SECURITY:
+# - Don't commit passwords to git
+# - Use environment variables or fastlane match for credentials
+# - Consider using App Store Connect API key for CI/CD
+#
+# API KEY (recommended for CI):
+# Store your API key in ~/.fastlane/api_key.json or use environment variables
+# See: https://docs.fastlane.tools/app-store-connect-api/
+#

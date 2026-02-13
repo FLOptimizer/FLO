@@ -1,8 +1,14 @@
 //  BusinessProfileSettingsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.0 - Enhanced with Haptics & Micro-Animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.2 - Accessibility audit (Sprint 6d)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.2:
+//  ✅ Screen change announcement on appear
+//  ✅ Header icon hidden from VoiceOver
+//  ✅ Validation checkmarks hidden from VoiceOver
+//  ✅ Fixed garbled UTF-8 characters in print statements
 //
 //  Business profile settings for invoice customization
 //
@@ -76,6 +82,7 @@ struct BusinessProfileSettingsView: View {
                                 .foregroundStyle(Color.businessColor)
                                 .symbolEffect(.bounce, options: .speed(0.5), value: headerOpacity > 0)
                         }
+                        .accessibilityHidden(true)
                         
                         VStack(alignment: .leading) {
                             Text("Business Profile")
@@ -105,6 +112,7 @@ struct BusinessProfileSettingsView: View {
                                 .font(.caption2)
                                 .foregroundStyle(.green)
                                 .transition(.scale.combined(with: .opacity))
+                                .accessibilityHidden(true)
                         }
                     }
                     
@@ -131,6 +139,7 @@ struct BusinessProfileSettingsView: View {
                                 .font(.caption2)
                                 .foregroundStyle(.green)
                                 .transition(.scale.combined(with: .opacity))
+                                .accessibilityHidden(true)
                         }
                     }
                     
@@ -294,6 +303,7 @@ struct BusinessProfileSettingsView: View {
         .onAppear {
             loadProfile()
             animateEntrance()
+            AccessibilityAnnouncement.screenChanged("Business profile")
         }
         .alert("Profile Saved", isPresented: $showingSaveConfirmation) {
             Button("OK") {
@@ -337,8 +347,7 @@ struct BusinessProfileSettingsView: View {
     }
     
     private func triggerValidationShake(for field: String) {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.error)
+        HapticService.shared.error()
         
         if field == "name" {
             withAnimation(.easeInOut(duration: 0.05).repeatCount(5, autoreverses: true)) {
@@ -448,7 +457,7 @@ struct BusinessProfileSettingsView: View {
             
         } else {
             #if DEBUG
-            print("✨ Creating NEW profile")
+            print("📝 Creating NEW profile")
             #endif
             
             // Create new profile
@@ -468,7 +477,7 @@ struct BusinessProfileSettingsView: View {
             
             #if DEBUG
             print("📦 Profile object created (ID: \(newProfile.id))")
-            print("💾 Inserting into ModelContext...")
+            print("📝 Inserting into ModelContext...")
             #endif
             
             modelContext.insert(newProfile)
@@ -487,8 +496,7 @@ struct BusinessProfileSettingsView: View {
             #endif
             
             // Success haptic
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
+            HapticService.shared.success()
             
             // Show saved check animation
             withAnimation(FLOAnimation.quick) {
@@ -515,8 +523,7 @@ struct BusinessProfileSettingsView: View {
             print("📝 Error details: \(error)")
             #endif
             
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.error)
+            HapticService.shared.error()
             
             isSaving = false
             errorMessage = "Failed to save profile: \(error.localizedDescription)"

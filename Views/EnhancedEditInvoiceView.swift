@@ -1,19 +1,30 @@
 //  EnhancedEditInvoiceView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.0 - Full invoice editing with haptics and animations
+//  Version 1.1 - Accessibility Audit: Full VoiceOver support
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  FEATURES:
-//  ✅ Edit all invoice fields (client, dates, line items, etc.)
-//  ✅ Pre-populated from existing invoice
-//  ✅ Haptic feedback on all interactions
-//  ✅ Animated form sections
-//  ✅ Line item management (add/edit/delete)
-//  ✅ Real-time total calculations
-//  ✅ Payment link editing
-//  ✅ Status change capability
-//  ✅ Validation before save
+//  CHANGES v1.1:
+//  ✅ ADDED: Invoice number row accessible
+//  ✅ ADDED: Client section accessible (name + contact + email combined)
+//  ✅ ADDED: Status picker with spoken status and color dots hidden
+//  ✅ ADDED: Invoice details date pickers with spoken dates
+//  ✅ ADDED: Payment terms picker accessible
+//  ✅ ADDED: EditableLineItemRow accessible (fields labeled, total spoken)
+//  ✅ ADDED: Add Line Item button labeled with hint
+//  ✅ ADDED: Line item validation footer accessible
+//  ✅ ADDED: Totals section rows accessible with spoken currency
+//  ✅ ADDED: Total row marked as isSummaryElement
+//  ✅ ADDED: Payment option fields labeled
+//  ✅ ADDED: Notes fields labeled
+//  ✅ ADDED: Cancel/Save toolbar buttons with dynamic hints
+//  ✅ ADDED: EditInvoiceClientPicker rows accessible with selection state
+//  ✅ ADDED: Screen change announcement on appear
+//  ✅ ADDED: Save success/failure announced
+//  ✅ ADDED: Decorative icons hidden
+//
+//  CHANGES v1.0:
+//  - Full invoice editing with haptics and animations
 //
 
 import SwiftUI
@@ -55,8 +66,6 @@ struct EnhancedEditInvoiceView: View {
     @State private var showingDeleteLineItemAlert = false
     @State private var lineItemToDelete: EditableLineItem?
     
-    // Haptic Generators
-                    
     // MARK: - Validation
     
     var isValid: Bool {
@@ -64,7 +73,6 @@ struct EnhancedEditInvoiceView: View {
     }
     
     var hasChanges: Bool {
-        // Check if any field has changed from original
         selectedClient?.id != invoice.client?.id ||
         issueDate != invoice.issueDate ||
         dueDate != invoice.dueDate ||
@@ -127,8 +135,11 @@ struct EnhancedEditInvoiceView: View {
                         Text(invoiceNumber)
                             .fontWeight(.medium)
                     }
+                    // v1.1: VoiceOver
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Invoice number: \(invoiceNumber)")
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 // Client section
@@ -155,7 +166,11 @@ struct EnhancedEditInvoiceView: View {
                                 showingClientPicker = true
                             }
                             .foregroundStyle(Color.businessColor)
+                            // v1.1: VoiceOver
+                            .accessibilityLabel("Change client")
                         }
+                        // v1.1: Combined label
+                        .accessibilityElement(children: .combine)
                         .transition(.scale.combined(with: .opacity))
                     } else {
                         Button {
@@ -165,14 +180,19 @@ struct EnhancedEditInvoiceView: View {
                             HStack {
                                 Image(systemName: "person.badge.plus")
                                     .foregroundStyle(Color.businessColor)
+                                    // v1.1: Decorative
+                                    .accessibilityHidden(true)
                                 Text("Select Client")
                                     .foregroundStyle(Color.businessColor)
                             }
                         }
+                        // v1.1: VoiceOver
+                        .accessibilityLabel("Select client")
+                        .accessibilityHint("Required. Choose a client for this invoice")
                     }
                 }
                 .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedClient != nil)
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 // Status section
@@ -191,8 +211,11 @@ struct EnhancedEditInvoiceView: View {
                     .onChange(of: status) { _, _ in
                         HapticService.play(.selection)
                     }
+                    // v1.1: VoiceOver
+                    .accessibilityLabel("Invoice status")
+                    .accessibilityValue(statusLabel(for: status))
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
                 // Invoice details
@@ -201,11 +224,15 @@ struct EnhancedEditInvoiceView: View {
                         .onChange(of: issueDate) { _, _ in
                             HapticService.play(.light)
                         }
+                        // v1.1: VoiceOver
+                        .accessibilityValue(AccessibilityFormatters.spokenDate(issueDate))
                     
                     DatePicker("Due Date", selection: $dueDate, displayedComponents: .date)
                         .onChange(of: dueDate) { _, _ in
                             HapticService.play(.light)
                         }
+                        // v1.1: VoiceOver
+                        .accessibilityValue(AccessibilityFormatters.spokenDate(dueDate))
                     
                     Picker("Payment Terms", selection: $paymentTerms) {
                         Text("Due on Receipt").tag("Due on Receipt")
@@ -216,13 +243,14 @@ struct EnhancedEditInvoiceView: View {
                     }
                     .onChange(of: paymentTerms) { oldValue, newValue in
                         HapticService.play(.selection)
-                        // Auto-update due date based on payment terms
                         if newValue != oldValue {
                             updateDueDateFromTerms(newValue)
                         }
                     }
+                    // v1.1: VoiceOver
+                    .accessibilityValue(paymentTerms)
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
                 // Line items
@@ -239,6 +267,8 @@ struct EnhancedEditInvoiceView: View {
                         withAnimation(FLOAnimation.quick) {
                             lineItems.remove(atOffsets: indexSet)
                         }
+                        // v1.1: Announce
+                        AccessibilityAnnouncement.announce("Line item removed. \(lineItems.count) items remaining.")
                     }
                     
                     Button {
@@ -246,10 +276,14 @@ struct EnhancedEditInvoiceView: View {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                             lineItems.append(EditableLineItem())
                         }
+                        AccessibilityAnnouncement.announce("Line item added")
                     } label: {
                         Label("Add Line Item", systemImage: "plus.circle.fill")
                             .foregroundStyle(Color.businessColor)
                     }
+                    // v1.1: VoiceOver
+                    .accessibilityLabel("Add line item")
+                    .accessibilityHint("Double tap to add a new line item")
                 } header: {
                     Text("Line Items")
                 } footer: {
@@ -260,7 +294,7 @@ struct EnhancedEditInvoiceView: View {
                         Text("Swipe left to delete items")
                     }
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 
                 // Totals
@@ -271,6 +305,9 @@ struct EnhancedEditInvoiceView: View {
                         Text(subtotal.formatted(.currency(code: "USD")))
                             .contentTransition(.numericText())
                     }
+                    // v1.1: VoiceOver
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Subtotal: \(AccessibilityFormatters.spokenCurrency(subtotal))")
                     
                     HStack {
                         Text("Tax Rate")
@@ -280,6 +317,9 @@ struct EnhancedEditInvoiceView: View {
                             .multilineTextAlignment(.trailing)
                             .frame(width: 80)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Tax rate")
+                    .accessibilityValue(taxRate > 0 ? "\(Int(taxRate * 100)) percent" : "0 percent")
                     
                     if taxRate > 0 {
                         HStack {
@@ -290,6 +330,8 @@ struct EnhancedEditInvoiceView: View {
                                 .contentTransition(.numericText())
                         }
                         .transition(.opacity)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Tax amount: \(AccessibilityFormatters.spokenCurrency(taxAmount))")
                     }
                     
                     HStack {
@@ -300,6 +342,9 @@ struct EnhancedEditInvoiceView: View {
                             .multilineTextAlignment(.trailing)
                             .frame(width: 100)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Discount")
+                    .accessibilityValue(discountAmount > 0 ? AccessibilityFormatters.spokenCurrency(discountAmount) : "none")
                     
                     HStack {
                         Text("Total")
@@ -310,9 +355,13 @@ struct EnhancedEditInvoiceView: View {
                             .foregroundStyle(Color.businessColor)
                             .contentTransition(.numericText())
                     }
+                    // v1.1: VoiceOver
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Invoice total: \(AccessibilityFormatters.spokenCurrency(totalAmount))")
+                    .accessibilityAddTraits(.isSummaryElement)
                 }
                 .animation(.spring(response: 0.4, dampingFraction: 0.8), value: taxRate > 0)
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                 
                 // Payment options
@@ -321,32 +370,40 @@ struct EnhancedEditInvoiceView: View {
                         .textContentType(.URL)
                         .keyboardType(.URL)
                         .autocapitalization(.none)
+                        // v1.1: VoiceOver
+                        .accessibilityLabel("Stripe payment link")
                     
                     TextField("PayPal Link", text: $paypalLink)
                         .textContentType(.URL)
                         .keyboardType(.URL)
                         .autocapitalization(.none)
+                        .accessibilityLabel("PayPal link")
                     
                     TextField("Venmo Username", text: $venmoUsername)
                         .autocapitalization(.none)
+                        .accessibilityLabel("Venmo username")
                     
                     TextField("Zelle Email", text: $zelleEmail)
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
+                        .accessibilityLabel("Zelle email address")
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                 
                 // Notes
                 Section("Notes & Instructions") {
                     TextField("Invoice notes", text: $notes, axis: .vertical)
                         .lineLimit(3...6)
+                        // v1.1: VoiceOver
+                        .accessibilityLabel("Invoice notes")
                     
                     TextField("Payment instructions", text: $paymentInstructions, axis: .vertical)
                         .lineLimit(3...6)
+                        .accessibilityLabel("Payment instructions")
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
             }
             .navigationTitle("Edit Invoice")
@@ -357,6 +414,9 @@ struct EnhancedEditInvoiceView: View {
                         HapticService.play(.light)
                         dismiss()
                     }
+                    // v1.1: VoiceOver
+                    .accessibilityLabel("Cancel")
+                    .accessibilityHint("Double tap to discard changes")
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
@@ -366,6 +426,9 @@ struct EnhancedEditInvoiceView: View {
                     }
                     .disabled(!isValid)
                     .fontWeight(.semibold)
+                    // v1.1: VoiceOver
+                    .accessibilityLabel("Save invoice")
+                    .accessibilityHint(isValid ? "Double tap to save your changes" : "Select a client and add line items to enable saving")
                 }
             }
             .sheet(isPresented: $showingClientPicker) {
@@ -377,22 +440,22 @@ struct EnhancedEditInvoiceView: View {
                 Text(saveError?.localizedDescription ?? "An unknown error occurred. Please try again.")
             }
             .onAppear {
-                                loadInvoiceData()
+                loadInvoiceData()
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     withAnimation {
                         viewAppeared = true
                     }
                 }
+                // v1.1: Announce screen
+                AccessibilityAnnouncement.screenChanged("Edit Invoice \(invoice.invoiceNumber)")
             }
         }
     }
     
     // MARK: - Helper Methods
     
-        
     private func loadInvoiceData() {
-        // Load all data from the invoice
         selectedClient = invoice.client
         invoiceNumber = invoice.invoiceNumber
         issueDate = invoice.issueDate
@@ -408,7 +471,6 @@ struct EnhancedEditInvoiceView: View {
         venmoUsername = invoice.venmoUsername ?? ""
         zelleEmail = invoice.zelleEmail ?? ""
         
-        // Load line items
         lineItems = invoice.items.map { item in
             EditableLineItem(
                 id: item.id,
@@ -418,7 +480,6 @@ struct EnhancedEditInvoiceView: View {
             )
         }
         
-        // Ensure at least one line item row
         if lineItems.isEmpty {
             lineItems.append(EditableLineItem())
         }
@@ -435,7 +496,7 @@ struct EnhancedEditInvoiceView: View {
         case "Net 60":
             dueDate = issueDate.addingTimeInterval(60 * 86400)
         default:
-            break // Custom - don't change
+            break
         }
     }
     
@@ -464,7 +525,6 @@ struct EnhancedEditInvoiceView: View {
     }
     
     private func saveChanges() {
-        // Update invoice properties
         invoice.client = selectedClient
         invoice.issueDate = issueDate
         invoice.dueDate = dueDate
@@ -480,13 +540,10 @@ struct EnhancedEditInvoiceView: View {
         invoice.zelleEmail = zelleEmail.isEmpty ? nil : zelleEmail
         invoice.modifiedDate = Date()
         
-        // Update line items
-        // First, remove all existing items
         for item in invoice.items {
             modelContext.delete(item)
         }
         
-        // Then add updated items
         for itemData in lineItems where itemData.isValid {
             let item = InvoiceItem(
                 itemDescription: itemData.description,
@@ -500,12 +557,15 @@ struct EnhancedEditInvoiceView: View {
         do {
             try modelContext.save()
             HapticService.play(.success)
+            // v1.1: Announce save
+            AccessibilityAnnouncement.announce("Invoice \(invoiceNumber) saved")
             dismiss()
         } catch {
             saveError = error
             showingSaveError = true
             HapticService.play(.error)
-            print("❌ Failed to save invoice changes: \(error)")
+            AccessibilityAnnouncement.announce("Failed to save invoice changes")
+            print("Failed to save invoice changes: \(error)")
         }
     }
 }
@@ -536,29 +596,40 @@ struct EditableLineItemRow: View {
         VStack(spacing: 8) {
             TextField("Description", text: $item.description)
                 .font(.body)
+                // v1.1: VoiceOver
+                .accessibilityLabel("Line item description")
             
             HStack {
                 HStack(spacing: 4) {
                     Text("Qty:")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        // v1.1: Decorative (field label handles it)
+                        .accessibilityHidden(true)
                     TextField("1", value: $item.quantity, format: .number)
                         .keyboardType(.decimalPad)
                         .frame(width: 50)
                         .textFieldStyle(.roundedBorder)
+                        // v1.1: VoiceOver
+                        .accessibilityLabel("Quantity")
                 }
                 
                 Text("×")
                     .foregroundStyle(.secondary)
+                    // v1.1: Decorative
+                    .accessibilityHidden(true)
                 
                 HStack(spacing: 4) {
                     Text("Price:")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
                     TextField("$0.00", value: $item.unitPrice, format: .currency(code: "USD"))
                         .keyboardType(.decimalPad)
                         .frame(width: 90)
                         .textFieldStyle(.roundedBorder)
+                        // v1.1: VoiceOver
+                        .accessibilityLabel("Unit price in dollars")
                 }
                 
                 Spacer()
@@ -567,10 +638,13 @@ struct EditableLineItemRow: View {
                     Text("Total")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
                     Text(item.total.formatted(.currency(code: "USD")))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.businessColor)
                         .contentTransition(.numericText())
+                        // v1.1: VoiceOver
+                        .accessibilityLabel("Line total: \(AccessibilityFormatters.spokenCurrency(item.total))")
                 }
             }
         }
@@ -585,7 +659,6 @@ struct EditInvoiceClientPicker: View {
     @Binding var selectedClient: Client?
     let clients: [Client]
     
-            
     var body: some View {
         NavigationStack {
             Group {
@@ -623,9 +696,16 @@ struct EditInvoiceClientPicker: View {
                                     Image(systemName: "checkmark.circle.fill")
                                         .foregroundStyle(Color.businessColor)
                                         .font(.title3)
+                                        // v1.1: Decorative
+                                        .accessibilityHidden(true)
                                 }
                             }
                         }
+                        // v1.1: Client row accessible
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(clientRowLabel(client))
+                        .accessibilityHint("Double tap to select this client")
+                        .accessibilityAddTraits(selectedClient?.id == client.id ? .isSelected : [])
                     }
                 }
             }
@@ -637,9 +717,23 @@ struct EditInvoiceClientPicker: View {
                         HapticService.play(.light)
                         dismiss()
                     }
+                    .accessibilityLabel("Cancel")
                 }
             }
+            // v1.1: Announce screen
+            .onAppear {
+                AccessibilityAnnouncement.screenChanged("Select Client. \(clients.count) clients available.")
+            }
         }
+    }
+    
+    // v1.1: Build client label
+    private func clientRowLabel(_ client: Client) -> String {
+        var parts = [client.name]
+        if let contact = client.contactName { parts.append(contact) }
+        if let email = client.email { parts.append(email) }
+        if selectedClient?.id == client.id { parts.append("Currently selected") }
+        return parts.joined(separator: ", ")
     }
 }
 

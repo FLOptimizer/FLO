@@ -1,27 +1,58 @@
 //  SmartReceiptScanningView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.1.1 - Fixed FinanceType comparison issues
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.5 - Accessibility audit (Sprint 7)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v3.1.1:
-//  ✅ FIXED: FinanceType comparison (Account now uses Transaction.FinanceType)
-//  ✅ FIXED: Explicit type annotations in sorted closure
+//  CHANGES v3.5:
+//  ✅ Screen change announcements across all sub-views
+//  ✅ CaptureOptionsView header icon hidden from VoiceOver
+//  ✅ Receipt image gets accessibility label
+//  ✅ ProcessingView announced to VoiceOver
+//  ✅ MatchRow chevron hidden, row combined
+//  ✅ DuplicateMatchRow combined with spoken status
+//  ✅ ErrorBanner combined with dismiss hint
+//  ✅ ReceiptAccountChip spoken selection state and traits
+//  ✅ Fixed garbled UTF-8 characters in print statements
 //
-//  CHANGES v3.1:
-//  ✅ ADDED: Account selection with horizontal chips (Premium+)
-//  ✅ ADDED: Smart account defaults based on financeType
-//  ✅ ADDED: Account passed to created transaction
+//  CHANGES v3.4:
+//  ✅ ADDED: Camera permission check before showing camera (Apple 5.1.1 compliance)
+//  ✅ ADDED: Settings redirect alert when permission denied
+//  ✅ ADDED: CameraPermissionHelper integration
+//  ✅ No pre-permission screens - permission requested contextually
 //
-//  CHANGES v3.0:
-//  - Editable fields for merchant, amount, date, category
-//  - Learning from user corrections when category changed
+//  CHANGES v3.3:
+//  ✅ Added DuplicateMatchRow component for showing potential duplicate receipts
+//  ✅ Matches section now shows duplicates separately with orange warning styling
+//  ✅ Distinguishes between "link to existing" and "possible duplicate" matches
+//
+//  CHANGES v3.2.2:
+//  ✅ Added validatedCategoryName binding to prevent picker warnings
+//  ✅ If suggested category doesn't exist in expense categories, defaults to "None"
+//
+//  CHANGES v3.2.1:
+//  ✅ Fixed ForEach using id: \.name -> id: \.id to prevent duplicate ID warnings
+//
+//  CHANGES v3.2:
+//  ✅ Moved Classification (Business/Personal) BEFORE Account selection
+//  ✅ Renamed "Type" to "Classification" for consistency with other views
+//  ✅ Logical flow: Classification determines which accounts are relevant
+//
+//  PREVIOUS (v3.1.1):
+//  - Fixed FinanceType comparison (Account now uses Transaction.FinanceType)
+//  - Explicit type annotations in sorted closure
+//
+//  PREVIOUS (v3.1):
+//  - Account selection with horizontal chips (Premium+)
+//  - Smart account defaults based on financeType
+//  - Account passed to created transaction
 //
 
 import SwiftUI
 import SwiftData
 import PhotosUI
 import VisionKit
+import AVFoundation
 
 @MainActor
 struct SmartReceiptScanningView: View {
@@ -39,6 +70,9 @@ struct SmartReceiptScanningView: View {
     @State private var isProcessing = false
     @State private var processedReceipt: ReceiptData?
     @State private var errorMessage: String?
+    
+    // v3.4: Camera permission state
+    @State private var showingCameraPermissionAlert = false
     
     // Editable fields
     @State private var editedMerchant: String = ""
@@ -80,7 +114,7 @@ struct SmartReceiptScanningView: View {
                     ProcessingView()
                 } else {
                     CaptureOptionsView(
-                        onCameraSelected: { showingCamera = true },
+                        onCameraSelected: handleCameraButtonTapped,
                         onPhotoSelected: { showingImagePicker = true }
                     )
                 }
@@ -128,6 +162,15 @@ struct SmartReceiptScanningView: View {
                     SplitReceiptView(receipt: receipt)
                 }
             }
+            // v3.4: Camera permission denied alert
+            .alert("Camera Access Required", isPresented: $showingCameraPermissionAlert) {
+                Button("Open Settings") {
+                    CameraPermissionHelper.openSettings()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("FLO needs camera access to scan receipts. Please enable it in Settings.")
+            }
             .onChange(of: selectedImage) { _, newImage in
                 guard !isProcessing, let image = newImage else { return }
                 Task {
@@ -136,9 +179,34 @@ struct SmartReceiptScanningView: View {
             }
             .onAppear {
                 setDefaultAccount()
+                AccessibilityAnnouncement.screenChanged("Smart receipt scanner")
             }
             .onChange(of: editedFinanceType) { _, newType in
                 updateAccountForFinanceType(newType)
+            }
+        }
+    }
+    
+    // MARK: - Camera Permission Handler (v3.4)
+    
+    private func handleCameraButtonTapped() {
+        HapticService.play(.medium)
+        
+        Task {
+            let result = await CameraPermissionHelper.handleCameraAccess()
+            
+            await MainActor.run {
+                switch result {
+                case .proceed:
+                    showingCamera = true
+                case .denied:
+                    // User just denied permission in system dialog
+                    // Don't show another alert - they made their choice
+                    break
+                case .needsSettings:
+                    // Permission was previously denied - show settings alert
+                    showingCameraPermissionAlert = true
+                }
             }
         }
     }
@@ -287,7 +355,7 @@ struct SmartReceiptScanningView: View {
                 dismiss()
                 
                 #if DEBUG
-                print("💵 Marked as cash purchase: \(receipt.merchantName)")
+                print("🔗 Marked as cash purchase: \(receipt.merchantName)")
                 #endif
             } catch {
                 errorMessage = "Failed to save: \(error.localizedDescription)"
@@ -356,7 +424,7 @@ struct SmartReceiptScanningView: View {
                     HapticService.play(.success)
                     
                     #if DEBUG
-                    print("💾 Created transaction from receipt: \(finalMerchant) - Account: \(selectedAccount?.name ?? "None")")
+                    print("🔗 Created transaction from receipt: \(finalMerchant) - Account: \(selectedAccount?.name ?? "None")")
                     #endif
                 }
                 
@@ -433,6 +501,23 @@ struct EditableReceiptReviewViewWithAccount: View {
         categories.filter { !$0.isIncome }
     }
     
+    /// Returns the edited category name only if it exists in expense categories
+    /// This prevents "invalid selection" picker warnings
+    private var validatedCategoryName: Binding<String> {
+        Binding(
+            get: {
+                // Only return the category name if it exists in our expense categories
+                if expenseCategories.contains(where: { $0.name == editedCategoryName }) {
+                    return editedCategoryName
+                }
+                return ""
+            },
+            set: { newValue in
+                editedCategoryName = newValue
+            }
+        )
+    }
+    
     private var sortedAccounts: [Account] {
         let active = accounts.filter { $0.isActive }
         
@@ -457,6 +542,7 @@ struct EditableReceiptReviewViewWithAccount: View {
                         .frame(maxHeight: 180)
                         .cornerRadius(12)
                         .padding(.horizontal)
+                        .accessibilityLabel("Scanned receipt image")
                 }
                 
                 // Editable Fields Card
@@ -506,9 +592,9 @@ struct EditableReceiptReviewViewWithAccount: View {
                         Text("Category")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        Picker("Category", selection: $editedCategoryName) {
+                        Picker("Category", selection: validatedCategoryName) {
                             Text("None").tag("")
-                            ForEach(expenseCategories, id: \.name) { category in
+                            ForEach(expenseCategories, id: \.id) { category in
                                 Label(category.name, systemImage: category.icon)
                                     .tag(category.name)
                             }
@@ -517,7 +603,35 @@ struct EditableReceiptReviewViewWithAccount: View {
                         .tint(Color.brandPrimary)
                     }
                     
-                    // Account Section (Premium+)
+                    Divider()
+                    
+                    // Classification (Business/Personal) - MOVED BEFORE Account
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Classification")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Picker("Classification", selection: $editedFinanceType) {
+                            Label("Business", systemImage: "briefcase.fill")
+                                .tag(Transaction.FinanceType.business)
+                            Label("Personal", systemImage: "person.fill")
+                                .tag(Transaction.FinanceType.personal)
+                        }
+                        .pickerStyle(.segmented)
+                        .onChange(of: editedFinanceType) { _, _ in
+                            HapticService.play(.light)
+                        }
+                    }
+                    
+                    if editedFinanceType == .business {
+                        HStack {
+                            Label("Tax Deductible", systemImage: "checkmark.seal.fill")
+                                .foregroundStyle(.green)
+                                .font(.footnote)
+                            Spacer()
+                        }
+                    }
+                    
+                    // Account Section (Premium+) - NOW AFTER Classification
                     if subscriptionTier.hasMultipleAccounts && !accounts.isEmpty {
                         Divider()
                         
@@ -537,7 +651,7 @@ struct EditableReceiptReviewViewWithAccount: View {
                                         HapticService.play(.light)
                                     }
                                     .font(.caption)
-                                    .foregroundStyle(Color.brandPrimary)
+                                     .foregroundStyle(Color.brandPrimaryText)
                                 }
                             }
                             
@@ -563,38 +677,10 @@ struct EditableReceiptReviewViewWithAccount: View {
                             }
                             
                             if let account = selectedAccount, account.financeType != editedFinanceType {
-                                Label("Account type differs from transaction", systemImage: "exclamationmark.triangle")
+                                Label("Account type differs from classification", systemImage: "exclamationmark.triangle")
                                     .font(.caption)
                                     .foregroundStyle(.orange)
                             }
-                        }
-                    }
-                    
-                    Divider()
-                    
-                    // Finance Type
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Type")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Picker("Finance Type", selection: $editedFinanceType) {
-                            Label("Business", systemImage: "briefcase.fill")
-                                .tag(Transaction.FinanceType.business)
-                            Label("Personal", systemImage: "person.fill")
-                                .tag(Transaction.FinanceType.personal)
-                        }
-                        .pickerStyle(.segmented)
-                        .onChange(of: editedFinanceType) { _, _ in
-                            HapticService.play(.light)
-                        }
-                    }
-                    
-                    if editedFinanceType == .business {
-                        HStack {
-                            Label("Tax Deductible", systemImage: "checkmark.seal.fill")
-                                .foregroundStyle(.green)
-                                .font(.footnote)
-                            Spacer()
                         }
                     }
                 }
@@ -606,26 +692,61 @@ struct EditableReceiptReviewViewWithAccount: View {
                 
                 // Potential Matches
                 if !matches.isEmpty {
+                    let duplicates = matches.filter { $0.isDuplicate }
+                    let linkable = matches.filter { !$0.isDuplicate }
+                    
                     VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Image(systemName: "link.circle.fill")
-                                .foregroundStyle(.blue)
-                            Text("Found \(matches.count) potential match(es)")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                            Spacer()
-                        }
-                        .padding(.horizontal)
-                        
-                        ForEach(matches.prefix(3), id: \.transaction.id) { match in
-                            MatchRow(match: match, onTap: {
-                                onMatch(match.transaction, match.score)
-                            })
+                        // Duplicate Warning Section
+                        if !duplicates.isEmpty {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                                Text("Possible Duplicate Receipt")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.orange)
+                                Spacer()
+                            }
                             .padding(.horizontal)
+                            
+                            Text("You may have already scanned this receipt:")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal)
+                            
+                            ForEach(duplicates.prefix(2), id: \.transaction.id) { match in
+                                DuplicateMatchRow(match: match)
+                                    .padding(.horizontal)
+                            }
+                        }
+                        
+                        // Linkable Matches Section
+                        if !linkable.isEmpty {
+                            if !duplicates.isEmpty {
+                                Divider()
+                                    .padding(.vertical, 4)
+                            }
+                            
+                            HStack {
+                                Image(systemName: "link.circle.fill")
+                                    .foregroundStyle(.blue)
+                                Text("Link to Existing Transaction")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                            }
+                            .padding(.horizontal)
+                            
+                            ForEach(linkable.prefix(3), id: \.transaction.id) { match in
+                                MatchRow(match: match, onTap: {
+                                    onMatch(match.transaction, match.score)
+                                })
+                                .padding(.horizontal)
+                            }
                         }
                     }
                     .padding(.vertical, 12)
-                    .background(Color.blue.opacity(0.05))
+                    .background(duplicates.isEmpty ? Color.blue.opacity(0.05) : Color.orange.opacity(0.08))
                     .cornerRadius(12)
                 }
                 
@@ -681,8 +802,8 @@ struct ReceiptAccountChip: View {
                 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.brandPrimary)
+                        .font(.subheadline)
+                         .foregroundStyle(Color.brandPrimaryText)
                 }
             }
             .padding(.horizontal, 10)
@@ -699,6 +820,8 @@ struct ReceiptAccountChip: View {
         .buttonStyle(PlainButtonStyle())
         .scaleEffect(isSelected ? 1.02 : 1.0)
         .animation(FLOAnimation.quick, value: isSelected)
+        .accessibilityLabel("\(account.name)\(isSelected ? ", selected" : "")")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }
 
@@ -717,6 +840,8 @@ struct ProcessingView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Processing receipt, extracting merchant, amount, and date")
     }
 }
 
@@ -731,6 +856,7 @@ struct CaptureOptionsView: View {
             Image(systemName: "doc.text.viewfinder")
                 .font(.system(size: 80))
                 .foregroundStyle(Color.brandPrimary)
+                .accessibilityHidden(true)
             
             Text("Scan a Receipt")
                 .font(.title2)
@@ -743,7 +869,7 @@ struct CaptureOptionsView: View {
             
             VStack(spacing: 16) {
                 Button {
-                    HapticService.play(.medium)
+                    // v3.4: Permission check now handled in parent view
                     onCameraSelected()
                 } label: {
                     Label("Take Photo", systemImage: "camera.fill")
@@ -796,6 +922,9 @@ struct ErrorBanner: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(.red.opacity(0.3), lineWidth: 1)
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Error: \(message)")
+        .accessibilityHint("Tap to dismiss")
     }
 }
 
@@ -830,6 +959,7 @@ struct MatchRow: View {
                     Image(systemName: "chevron.right")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
                 }
             }
             .padding()
@@ -846,6 +976,57 @@ struct MatchRow: View {
         case .moderate: return .orange
         case .weak: return .red
         }
+    }
+}
+
+// MARK: - Duplicate Match Row
+
+struct DuplicateMatchRow: View {
+    let match: TransactionMatch
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Image(systemName: "doc.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                    Text(match.transaction.merchantName)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                }
+                
+                Text(match.transaction.date, style: .date)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                
+                Text("\(Int(match.score * 100))% match - already has receipt")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 4) {
+                Text(match.transaction.amount.asCurrency)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                
+                if match.transaction.hasReceipt {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+        .padding()
+        .background(Color.orange.opacity(0.1))
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+        )
     }
 }
 
@@ -991,6 +1172,9 @@ struct TransactionMatchingView: View {
                         dismiss()
                     }
                 }
+            }
+            .onAppear {
+                AccessibilityAnnouncement.screenChanged("Match transaction")
             }
         }
     }

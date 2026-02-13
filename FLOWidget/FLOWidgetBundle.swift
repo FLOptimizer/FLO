@@ -1,15 +1,16 @@
 //  FLOWidgetBundle.swift
 //  FLO - Finance Ledger OptimizerWidget
 //
-//  Version 1.0 - Elite widget bundle configuration
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.1 - Control Widget Enabled
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CURRENT WIDGETS:
 //  - FLOWidget: Home screen widget (small, medium, large sizes)
+//  - FLOMileageControl: iOS 18+ Control Center toggle (ENABLED)
 //
 //  INTEGRATION STATUS:
 //  ✅ FLOWidget - Implemented and working
-//  🚧 FLOMileageControl - ControlWidget (add when FLOWidgetControl.swift is in target)
+//  ✅ FLOMileageControl - ControlWidget ENABLED
 //  🚧 FLOWidgetLiveActivity - Live Activity (implement when needed)
 //
 
@@ -21,13 +22,10 @@ struct FLOWidgetBundle: WidgetBundle {
     var body: some Widget {
         FLOWidget()
         
-        // ✅ WHEN READY: Add iOS 18 Control Widget
-        // Uncomment when FLOWidgetControl.swift is added to target
-        /*
+        // ✅ iOS 18 Control Widget - ENABLED
         if #available(iOS 18.0, *) {
             FLOMileageControl()
         }
-        */
         
         // ✅ WHEN READY: Add Live Activity
         // Uncomment when FLOWidgetLiveActivity is implemented
@@ -42,9 +40,9 @@ struct FLOWidgetBundle: WidgetBundle {
 /*
  HOW TO ADD CONTROL WIDGET (iOS 18):
  
- 1. Ensure FLOWidgetControl_v1.6_FINAL.swift is in your widget target
+ 1. Ensure FLOWidgetControl.swift is in your widget target
  2. Ensure WidgetDataService.swift is in BOTH main app and widget targets
- 3. Uncomment the FLOMileageControl() line above
+ 3. The FLOMileageControl() line above is now uncommented
  4. Build and run
  
  WHY IT MIGHT NOT BE IN SCOPE:

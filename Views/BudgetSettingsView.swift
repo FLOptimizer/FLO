@@ -1,8 +1,14 @@
 //  BudgetSettingsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.2 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.3.2 - Accessibility: decorative icon hiding
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.3:
+//  ✅ Screen change announcements
+//  ✅ Warning threshold slider accessibility value
+//  ✅ Notification warning row combined
+//  ✅ Coming soon decorative icon hidden
 //
 //  CHANGES v1.2:
 //  ✅ Haptic feedback on toggle changes
@@ -51,7 +57,7 @@ struct BudgetSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
 
@@ -65,7 +71,7 @@ struct BudgetSettingsView: View {
             } footer: {
                 Text("Unused funds automatically carry over to the next month")
             }
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
 
@@ -87,6 +93,7 @@ struct BudgetSettingsView: View {
                     if !notificationsAuthorized {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
+                                .accessibilityHidden(true)
                                 .foregroundStyle(.orange)
                                 .symbolEffect(.pulse, value: viewAppeared)
                             Text("Notifications disabled in Settings")
@@ -117,6 +124,7 @@ struct BudgetSettingsView: View {
                                 .onChange(of: warningThreshold) { _, _ in
                                     HapticService.play(.selection)
                                 }
+                                .accessibilityValue("\(Int(warningThreshold)) percent")
 
                             Text("\(Int(warningThreshold))%")
                                 .font(.system(.body, design: .monospaced))
@@ -140,7 +148,7 @@ struct BudgetSettingsView: View {
             }
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showWarnings)
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: notificationsAuthorized)
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
 
@@ -153,7 +161,7 @@ struct BudgetSettingsView: View {
             } header: {
                 Text("Advanced")
             }
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
         }
@@ -164,6 +172,7 @@ struct BudgetSettingsView: View {
             withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
+            AccessibilityAnnouncement.screenChanged("Budget preferences")
         }
         .alert("Notifications Required", isPresented: $showingNotificationDeniedAlert) {
             Button("Open Settings") {
@@ -226,9 +235,11 @@ struct BudgetCategoryDefaultsView: View {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
                     Image(systemName: "folder.badge.gearshape")
+                        .accessibilityHidden(true)
                         .font(.system(size: 40))
                         .foregroundStyle(AppConstants.primaryColor)
                         .symbolEffect(.bounce, value: viewAppeared)
+                        .accessibilityHidden(true)
                     
                     Text("Set default budget amounts per category")
                         .foregroundStyle(.secondary)

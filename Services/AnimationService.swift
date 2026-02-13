@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 1.2 - Fixed Animation.none compile error
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v1.1:
 //  ✅ Added OSLog logging for debugging (consistency with HapticService)
@@ -425,7 +425,7 @@ struct EntranceAnimationModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content
-            .opacity(reduceMotion ? 1 : (isVisible ? 1 : 0))
+            .opacity(reduceMotion ? 1 : (isVisible ? 1 : 0.001))
             .offset(y: reduceMotion ? 0 : (isVisible ? 0 : offset))
             .onAppear {
                 if reduceMotion {
@@ -449,7 +449,7 @@ struct StaggeredEntranceModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content
-            .opacity(reduceMotion ? 1 : (isVisible ? 1 : 0))
+            .opacity(reduceMotion ? 1 : (isVisible ? 1 : 0.001))
             .offset(y: reduceMotion ? 0 : (isVisible ? 0 : offset))
             .onAppear {
                 if reduceMotion {
@@ -483,7 +483,7 @@ struct FadeModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content
-            .opacity(isVisible ? 1 : 0)
+            .opacity(isVisible ? 1 : 0.001)
             .animation(
                 reduceMotion ? .none : .easeInOut(duration: duration),
                 value: isVisible
@@ -518,7 +518,7 @@ struct SlideModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content
-            .opacity(isVisible ? 1 : 0)
+            .opacity(isVisible ? 1 : 0.001)
             .offset(x: xOffset, y: yOffset)
             .animation(FLOAnimation.standard, value: isVisible)
     }
@@ -634,7 +634,7 @@ extension View {
  
  ForEach(items.indices, id: \.self) { index in
      ItemView(item: items[index])
-         .opacity(viewAppeared ? 1 : 0)
+         .opacity(viewAppeared ? 1 : 0.001)
          .offset(y: viewAppeared ? 0 : 10)
          .animation(
              .spring(response: 0.5, dampingFraction: 0.8)

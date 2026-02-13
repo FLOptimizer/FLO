@@ -1,48 +1,40 @@
 //  OnboardingView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.2 - Fixed All Mileage Setup Issues
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 4.1 - Accessibility Audit Pass - Elite Onboarding Experience
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v2.2:
-//  ✅ Fixed Page 3 "Location access..." text hidden behind nav buttons
-//  ✅ Fixed "Upgrade to Always Allow" button not working after user declines
-//  ✅ iOS only shows Always prompt ONCE - now directs to Settings after decline
-//  ✅ Button text changes to "Open Phone Settings" after Always is declined
-//  ✅ Added buttonIcon computed property for dynamic icon updates
+//  CHANGES v4.0:
+//  ✅ REMOVED: Tax Setup page (moved to Getting Started card)
+//  ✅ ADDED: FLO in Action page (app preview carousel)
+//  ✅ ADDED: Value Proposition page (3 key benefits)
+//  ✅ IMPROVED: More engaging, visual-first onboarding
+//  ✅ Flow: Welcome → FLO in Action → Built for You → Get Started
 //
-//  PREVIOUS (v2.1):
-//  - Fixed "Skip for Now" button hidden behind page indicator dots
-//  - Fixed timing issue with Limited Mode sheet showing prematurely
+//  CHANGES v3.0:
+//  - Apple 5.1.1 compliance (removed permissions page)
+//  - Added Tax Setup page (now removed in v4.0)
 //
-//  Beautiful first-time user experience with feature highlights and permissions
 
 import SwiftUI
-import LocalAuthentication
+import SwiftData
 import CoreLocation
-import AVFoundation
-import UserNotifications
 
 struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
-    @AppStorage("mileageSetupCompleted") private var mileageSetupCompleted = false
     
     @State private var currentPage = 0
-    @State private var showingPermissionDeniedAlert = false
-    @State private var showingLimitedModeSheet = false
     
-    @StateObject private var mileageLocationManager = MileageSetupLocationManager()
-    
-    private let totalPages = 5  // Welcome, Features, Permissions, Mileage Setup, Get Started
+    private let totalPages = 4  // Welcome, FLO in Action, Built for You, Get Started
     
     var body: some View {
         ZStack {
             // Background gradient
             LinearGradient(
                 colors: [
-                    Color(flowHex: "14B8A6").opacity(0.1),
-                    Color(flowHex: "0D9488").opacity(0.05)
+                    Color.brandPrimary.opacity(0.1),
+                    Color.brandPrimaryDark.opacity(0.05)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -50,7 +42,7 @@ struct OnboardingView: View {
             .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Skip button
+                // Skip button (not shown on final page)
                 if currentPage < totalPages - 1 {
                     HStack {
                         Spacer()
@@ -59,12 +51,14 @@ struct OnboardingView: View {
                         } label: {
                             Text("Skip")
                                 .font(.subheadline)
-                                .foregroundStyle(Color(flowHex: "14B8A6"))
+                                 .foregroundStyle(Color.brandPrimaryText)
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 8)
                         }
                     }
                     .padding()
+                } else {
+                    Color.clear.frame(height: 52)
                 }
                 
                 // Page content
@@ -72,35 +66,14 @@ struct OnboardingView: View {
                     WelcomePageView()
                         .tag(0)
                     
-                    FeaturesPageView()
+                    FLOInActionPageView()
                         .tag(1)
                     
-                    PermissionsPageView(
-                        showingDeniedAlert: $showingPermissionDeniedAlert
-                    )
+                    ValuePropositionPageView()
                         .tag(2)
                     
-                    MileageSetupPageView(
-                        locationManager: mileageLocationManager,
-                        showingLimitedModeSheet: $showingLimitedModeSheet,
-                        onSetupComplete: {
-                            mileageSetupCompleted = true
-                            withAnimation {
-                                currentPage = 4
-                            }
-                        },
-                        onSkip: {
-                            withAnimation {
-                                currentPage = 4
-                            }
-                        }
-                    )
+                    GetStartedPageView(completeAction: completeOnboarding)
                         .tag(3)
-                    
-                    GetStartedPageView(
-                        completeAction: completeOnboarding
-                    )
-                        .tag(4)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .always))
                 .indexViewStyle(.page(backgroundDisplayMode: .always))
@@ -110,12 +83,14 @@ struct OnboardingView: View {
                     // Back button
                     if currentPage > 0 {
                         Button {
+                            HapticService.play(.light)
                             withAnimation {
                                 currentPage -= 1
                             }
                         } label: {
                             HStack {
                                 Image(systemName: "chevron.left")
+                                    .accessibilityHidden(true)
                                 Text("Back")
                             }
                             .font(.headline)
@@ -127,9 +102,10 @@ struct OnboardingView: View {
                         }
                     }
                     
-                    // Next/Get Started button (hide on mileage setup page - it has its own buttons)
-                    if currentPage < totalPages - 1 && currentPage != 3 {
+                    // Next button (not shown on final page - it has its own button)
+                    if currentPage < totalPages - 1 {
                         Button {
+                            HapticService.play(.light)
                             withAnimation {
                                 currentPage += 1
                             }
@@ -137,12 +113,13 @@ struct OnboardingView: View {
                             HStack {
                                 Text("Next")
                                 Image(systemName: "chevron.right")
+                                    .accessibilityHidden(true)
                             }
                             .font(.headline)
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color(flowHex: "14B8A6"))
+                            .background(Color.brandPrimary)
                             .cornerRadius(12)
                         }
                     }
@@ -151,38 +128,10 @@ struct OnboardingView: View {
                 .padding(.bottom, 20)
             }
         }
-        .alert("Permission Denied", isPresented: $showingPermissionDeniedAlert) {
-            Button("Settings", role: .cancel) {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                }
-            }
-            Button("Continue", role: .cancel) { }
-        } message: {
-            Text("You can enable permissions later in Phone Settings → FLO")
-        }
-        .sheet(isPresented: $showingLimitedModeSheet) {
-            LimitedModeExplanationView(
-                onOpenSettings: {
-                    showingLimitedModeSheet = false
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
-                },
-                onContinue: {
-                    showingLimitedModeSheet = false
-                    mileageSetupCompleted = true
-                    withAnimation {
-                        currentPage = 4
-                    }
-                }
-            )
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.visible)
-        }
     }
     
     private func completeOnboarding() {
+        HapticService.play(.success)
         hasCompletedOnboarding = true
         dismiss()
     }
@@ -191,31 +140,40 @@ struct OnboardingView: View {
 // MARK: - Welcome Page
 
 struct WelcomePageView: View {
+    @State private var logoScale: CGFloat = 0.5
+    @State private var logoOpacity: Double = 0
+    @State private var textOpacity: Double = 0
+    
     var body: some View {
         VStack(spacing: 30) {
             Spacer()
             
-            // App icon placeholder (or use actual icon)
+            // Animated app icon
             ZStack {
                 Circle()
-                    .fill(Color(flowHex: "14B8A6"))
+                    .fill(Color.brandPrimary)
                     .frame(width: 120, height: 120)
                 
                 Image(systemName: "chart.line.uptrend.xyaxis")
                     .font(.system(size: 60))
                     .foregroundStyle(.white)
             }
-            .shadow(color: Color(flowHex: "14B8A6").opacity(0.3), radius: 20)
+            .shadow(color: Color.brandPrimary.opacity(0.3), radius: 20)
+            .scaleEffect(logoScale)
+            .opacity(logoOpacity)
+            .accessibilityHidden(true)
             
             VStack(spacing: 12) {
                 Text("Welcome to FLO")
                     .font(.system(size: 36, weight: .bold))
                     .foregroundStyle(.primary)
+                    .accessibilityAddTraits(.isHeader)
                 
                 Text("Finance Ledger Optimizer")
                     .font(.title3)
-                    .foregroundStyle(Color(flowHex: "14B8A6"))
+                     .foregroundStyle(Color.brandPrimaryText)
             }
+            .opacity(textOpacity)
             
             VStack(spacing: 16) {
                 Text("Take control of your business finances")
@@ -230,566 +188,245 @@ struct WelcomePageView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 30)
             }
+            .opacity(textOpacity)
             
             Spacer()
             Spacer()
         }
-        .padding()
-    }
-}
-
-// MARK: - Features Page
-
-struct FeaturesPageView: View {
-    var body: some View {
-        VStack(spacing: 30) {
-            VStack(spacing: 12) {
-                Text("Everything You Need")
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundStyle(.primary)
-                
-                Text("Powerful features for freelancers and small businesses")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Welcome to FLO, Finance Ledger Optimizer. Take control of your business finances. Track expenses, estimate taxes, manage invoices, and stay organized.")
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
+                logoScale = 1.0
+                logoOpacity = 1.0
             }
-            .padding(.top, 40)
-            
-            VStack(spacing: 20) {
-                OnboardingFeatureRow(
-                    icon: "chart.bar.fill",
-                    iconColor: Color(flowHex: "14B8A6"),
-                    title: "Smart Tax Estimates",
-                    description: "Know what you owe before tax season arrives"
-                )
-                
-                OnboardingFeatureRow(
-                    icon: "camera.fill",
-                    iconColor: .blue,
-                    title: "Receipt Scanning",
-                    description: "Snap photos and auto-categorize expenses with AI"
-                )
-                
-                OnboardingFeatureRow(
-                    icon: "doc.text.fill",
-                    iconColor: .purple,
-                    title: "Professional Invoicing",
-                    description: "Create and send beautiful PDF invoices to clients"
-                )
-                
-                OnboardingFeatureRow(
-                    icon: "car.fill",
-                    iconColor: .orange,
-                    title: "Mileage Tracking",
-                    description: "Automatic GPS tracking for tax deductions"
-                )
-                
-                OnboardingFeatureRow(
-                    icon: "chart.pie.fill",
-                    iconColor: .green,
-                    title: "Budget Management",
-                    description: "Envelope-style budgets with automatic rollover"
-                )
+            withAnimation(.easeOut(duration: 0.5).delay(0.4)) {
+                textOpacity = 1.0
             }
-            .padding(.horizontal)
-            
-            Spacer()
         }
     }
 }
 
-// MARK: - Permissions Page
+// MARK: - FLO in Action Page (NEW in v4.0)
 
-struct PermissionsPageView: View {
-    @Binding var showingDeniedAlert: Bool
-    @State private var cameraGranted = false
-    @State private var notificationsGranted = false
-    @State private var biometricsGranted = false
+struct FLOInActionPageView: View {
+    @State private var currentPreview = 0
+    @State private var appeared = false
+    
+    private let previews: [(icon: String, title: String, description: String, color: Color)] = [
+        ("chart.bar.doc.horizontal", "Smart Dashboard", "Your finances at a glance—income, expenses, and tax estimates all in one place.", .blue),
+        ("camera.viewfinder", "Receipt Scanning", "Snap a photo, and FLO extracts the details automatically.", .green),
+        ("percent", "Tax Estimates", "Real-time quarterly estimates with 2026 IRS rates. No surprises at tax time.", .orange),
+        ("car.fill", "Mileage Tracking", "Automatic GPS tracking turns your drives into deductions.", .purple)
+    ]
     
     var body: some View {
         VStack(spacing: 24) {
-            VStack(spacing: 12) {
-                Image(systemName: "hand.raised.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(Color(flowHex: "14B8A6"))
-                    .padding(.bottom, 10)
-                
-                Text("Quick Setup")
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundStyle(.primary)
-                
-                Text("FLO needs a few permissions to work its magic")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 30)
-            }
-            .padding(.top, 30)
+            Spacer()
             
-            ScrollView {
-                VStack(spacing: 14) {
-                    // Camera
-                    OnboardingPermissionCard(
-                        icon: "camera.fill",
-                        title: "Camera Access",
-                        description: "Scan receipts and capture expense photos",
-                        isGranted: $cameraGranted,
-                        action: requestCameraPermission
+            Text("FLO in Action")
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(.primary)
+                .opacity(appeared ? 1 : 0.001)
+                .offset(y: appeared ? 0 : 20)
+                .accessibilityAddTraits(.isHeader)
+            
+            // Feature preview carousel
+            TabView(selection: $currentPreview) {
+                ForEach(0..<previews.count, id: \.self) { index in
+                    FeaturePreviewCard(
+                        icon: previews[index].icon,
+                        title: previews[index].title,
+                        description: previews[index].description,
+                        color: previews[index].color
                     )
-                    
-                    // Notifications
-                    OnboardingPermissionCard(
-                        icon: "bell.badge.fill",
-                        title: "Notifications",
-                        description: "Get reminders for tax deadlines and invoices",
-                        isGranted: $notificationsGranted,
-                        action: requestNotificationPermission
-                    )
-                    
-                    // Biometrics
-                    OnboardingPermissionCard(
-                        icon: "faceid",
-                        title: "Face ID / Touch ID",
-                        description: "Secure your financial data with biometrics",
-                        isGranted: $biometricsGranted,
-                        action: requestBiometricPermission
-                    )
+                    .tag(index)
                 }
-                .padding(.horizontal)
             }
+            .tabViewStyle(.page(indexDisplayMode: .always))
+            .frame(height: 340)
+            .opacity(appeared ? 1 : 0.001)
+            .offset(y: appeared ? 0 : 30)
+            .accessibilityLabel("Feature preview, showing \(previews[currentPreview].title)")
+            .accessibilityHint("Swipe left or right to see other features")
             
-            Text("Location access is set up on the next screen")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-                .padding(.bottom, 80) // Extra padding to clear navigation buttons
+            // Swipe hint
+            HStack(spacing: 4) {
+                Image(systemName: "hand.draw")
+                    .font(.caption)
+                Text("Swipe to explore")
+                    .font(.caption)
+            }
+            .foregroundStyle(.secondary)
+            .opacity(appeared ? 0.7 : 0)
+            .accessibilityHidden(true)
+            
+            Spacer()
+            Spacer()
         }
         .onAppear {
-            checkExistingPermissions()
-        }
-    }
-    
-    // MARK: - Permission Checks
-    
-    private func checkExistingPermissions() {
-        // Check camera
-        let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
-        cameraGranted = (cameraStatus == .authorized)
-        
-        // Check notifications
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
-            DispatchQueue.main.async {
-                notificationsGranted = (settings.authorizationStatus == .authorized)
-            }
-        }
-    }
-    
-    // MARK: - Permission Requests
-    
-    private func requestCameraPermission() {
-        AVCaptureDevice.requestAccess(for: .video) { granted in
-            DispatchQueue.main.async {
-                withAnimation {
-                    cameraGranted = granted
-                    if !granted {
-                        showingDeniedAlert = true
-                    }
-                }
-            }
-        }
-    }
-    
-    private func requestNotificationPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
-            DispatchQueue.main.async {
-                withAnimation {
-                    notificationsGranted = granted
-                    if !granted {
-                        showingDeniedAlert = true
-                    }
-                }
-            }
-        }
-    }
-    
-    private func requestBiometricPermission() {
-        let context = LAContext()
-        var error: NSError?
-        
-        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
-            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Secure access to FLO") { success, _ in
-                DispatchQueue.main.async {
-                    withAnimation {
-                        biometricsGranted = success
-                    }
-                }
-            }
-        } else {
-            // Biometrics not available
-            withAnimation {
-                biometricsGranted = false
+            withAnimation(.easeOut(duration: 0.5)) {
+                appeared = true
             }
         }
     }
 }
 
-// MARK: - Mileage Setup Page (NEW in v2.0)
+// MARK: - Feature Preview Card
 
-struct MileageSetupPageView: View {
-    @ObservedObject var locationManager: MileageSetupLocationManager
-    @Binding var showingLimitedModeSheet: Bool
-    let onSetupComplete: () -> Void
-    let onSkip: () -> Void
+struct FeaturePreviewCard: View {
+    let icon: String
+    let title: String
+    let description: String
+    let color: Color
     
-    @State private var hasRequestedPermission = false
-    @State private var hasRequestedAlways = false // Track if we've already asked for Always
-    @State private var isWaitingForAlwaysResponse = false
-    
-            
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
-            
-            // Icon
+        VStack(spacing: 20) {
+            // Icon with background
             ZStack {
-                Circle()
-                    .fill(Color.orange.opacity(0.15))
-                    .frame(width: 120, height: 120)
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(color.opacity(0.15))
+                    .frame(width: 100, height: 100)
                 
-                Image(systemName: "car.fill")
-                    .font(.system(size: 50))
-                    .foregroundStyle(.orange)
+                Image(systemName: icon)
+                    .font(.system(size: 44))
+                    .foregroundStyle(color)
             }
+            .accessibilityHidden(true)
             
             VStack(spacing: 12) {
-                Text("Automatic Mileage Tracking")
-                    .font(.system(size: 28, weight: .bold))
+                Text(title)
+                    .font(.title2)
+                    .fontWeight(.bold)
                     .foregroundStyle(.primary)
-                    .multilineTextAlignment(.center)
                 
-                Text("Track business miles automatically while you drive—even when FLO is in the background.")
+                Text(description)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 30)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            
-            // Info card
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 12) {
-                    Image(systemName: "location.fill")
-                        .font(.title3)
-                        .foregroundStyle(Color(flowHex: "14B8A6"))
-                        .frame(width: 24)
-                    
-                    Text("Why choose \"Always Allow\"?")
-                        .font(.headline)
-                }
-                
-                VStack(alignment: .leading, spacing: 12) {
-                    MileageSetupBullet(text: "Records trips with app in background")
-                    MileageSetupBullet(text: "No need to manually start tracking")
-                    MileageSetupBullet(text: "Battery-optimized GPS tracking")
-                    MileageSetupBullet(text: "Your location stays on your device")
-                }
-            }
-            .padding(20)
-            .background(Color(.secondarySystemBackground))
-            .cornerRadius(16)
-            .padding(.horizontal)
-            
-            // Privacy note
-            HStack(spacing: 8) {
-                Image(systemName: "lock.shield.fill")
-                    .foregroundStyle(Color(flowHex: "14B8A6"))
-                Text("Your location data never leaves your device")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            
+            .padding(.horizontal, 24)
+        }
+        .padding(.vertical, 30)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.08), radius: 15, y: 5)
+        )
+        .padding(.horizontal, 20)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title). \(description)")
+    }
+}
+
+// MARK: - Value Proposition Page (NEW in v4.0)
+
+struct ValuePropositionPageView: View {
+    @State private var appeared = false
+    
+    var body: some View {
+        VStack(spacing: 30) {
             Spacer()
             
-            // Buttons - added extra bottom padding to clear page dots
             VStack(spacing: 12) {
-                Button {
-                    HapticService.play(.medium)
-                    requestLocationPermission()
-                } label: {
-                    HStack {
-                        Image(systemName: buttonIcon)
-                        Text(buttonTitle)
-                    }
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(buttonColor)
-                    .cornerRadius(12)
-                }
-                .disabled(locationManager.authorizationStatus == .authorizedAlways)
-                
-                Button {
-                    onSkip()
-                } label: {
-                    Text("Skip for Now")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.bottom, 30) // Extra padding to clear page indicator dots
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 20)
-        }
-        .onChange(of: locationManager.authorizationStatus) { oldValue, newValue in
-            handleAuthorizationChange(from: oldValue, to: newValue)
-        }
-    }
-    
-    private var buttonIcon: String {
-        switch locationManager.authorizationStatus {
-        case .authorizedAlways:
-            return "checkmark.circle.fill"
-        case .authorizedWhenInUse:
-            return hasRequestedAlways ? "gearshape.fill" : "location.fill"
-        case .denied, .restricted:
-            return "gearshape.fill"
-        default:
-            return "location.fill"
-        }
-    }
-    
-    private var buttonTitle: String {
-        switch locationManager.authorizationStatus {
-        case .authorizedAlways:
-            return "Tracking Enabled ✓"
-        case .authorizedWhenInUse:
-            // If we already asked for Always and they declined, direct to Settings
-            return hasRequestedAlways ? "Open Phone Settings" : "Upgrade to Always Allow"
-        case .denied, .restricted:
-            return "Open Phone Settings"
-        default:
-            return "Enable Mileage Tracking"
-        }
-    }
-    
-    private var buttonColor: Color {
-        switch locationManager.authorizationStatus {
-        case .authorizedAlways:
-            return .green
-        case .authorizedWhenInUse:
-            return .orange
-        case .denied, .restricted:
-            return .red
-        default:
-            return Color(flowHex: "14B8A6")
-        }
-    }
-    
-    private func requestLocationPermission() {
-        let status = locationManager.authorizationStatus
-        
-        switch status {
-        case .notDetermined:
-            // First time - request "When In Use" first (iOS requires this)
-            hasRequestedPermission = true
-            locationManager.requestWhenInUseAuthorization()
-            
-        case .authorizedWhenInUse:
-            if hasRequestedAlways {
-                // Already asked for Always and user declined - go to Settings
-                openSettings()
-            } else {
-                // Haven't asked for Always yet - request it now
-                isWaitingForAlwaysResponse = true
-                hasRequestedAlways = true
-                locationManager.requestAlwaysAuthorization()
-            }
-            
-        case .authorizedAlways:
-            // Already have Always - complete setup
-            HapticService.play(.success)
-            onSetupComplete()
-            
-        case .denied, .restricted:
-            // Need to go to settings
-            openSettings()
-            
-        @unknown default:
-            break
-        }
-    }
-    
-    private func openSettings() {
-        if let url = URL(string: UIApplication.openSettingsURLString) {
-            UIApplication.shared.open(url)
-        }
-    }
-    
-    private func handleAuthorizationChange(from oldValue: CLAuthorizationStatus, to newValue: CLAuthorizationStatus) {
-        guard hasRequestedPermission else { return }
-        
-        switch newValue {
-        case .authorizedAlways:
-            // Perfect! User chose Always Allow
-            isWaitingForAlwaysResponse = false
-            HapticService.play(.success)
-            onSetupComplete()
-            
-        case .authorizedWhenInUse:
-            // User chose "While Using App"
-            if oldValue == .notDetermined {
-                // Just got "When In Use" from first prompt - now request Always
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    isWaitingForAlwaysResponse = true
-                    hasRequestedAlways = true
-                    locationManager.requestAlwaysAuthorization()
-                }
-            } else if isWaitingForAlwaysResponse {
-                // User declined the "Always Allow" prompt
-                isWaitingForAlwaysResponse = false
-                showingLimitedModeSheet = true
-            }
-            
-        case .denied, .restricted:
-            // User denied - show limited mode explanation
-            isWaitingForAlwaysResponse = false
-            showingLimitedModeSheet = true
-            
-        default:
-            break
-        }
-    }
-}
-
-// MARK: - Mileage Setup Bullet Point
-
-struct MileageSetupBullet: View {
-    let text: String
-    
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(Color(flowHex: "14B8A6"))
-                .font(.subheadline)
-            
-            Text(text)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
-        }
-    }
-}
-
-// MARK: - Limited Mode Explanation View
-
-struct LimitedModeExplanationView: View {
-    let onOpenSettings: () -> Void
-    let onContinue: () -> Void
-    
-        
-    var body: some View {
-        VStack(spacing: 24) {
-            // Header
-            VStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(Color.orange.opacity(0.15))
-                        .frame(width: 80, height: 80)
-                    
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.orange)
-                }
-                
-                Text("Limited Tracking Mode")
-                    .font(.title2.bold())
+                Text("Built for Freelancers")
+                    .font(.system(size: 28, weight: .bold))
                     .foregroundStyle(.primary)
+                    .accessibilityAddTraits(.isHeader)
                 
-                Text("You selected \"While Using App\"")
+                Text("By freelancers, for freelancers")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            .padding(.top, 24)
+            .opacity(appeared ? 1 : 0.001)
+            .offset(y: appeared ? 0 : 20)
             
-            // What this means
-            VStack(alignment: .leading, spacing: 16) {
-                Text("This means:")
-                    .font(.headline)
-                
-                LimitedModeRow(
-                    icon: "xmark.circle.fill",
-                    iconColor: .red,
-                    text: "Trips won't record when FLO is closed"
+            VStack(spacing: 16) {
+                ValuePropRow(
+                    icon: "checkmark.seal.fill",
+                    title: "Know What You Owe",
+                    description: "Real-time tax estimates so quarterly payments are never a surprise",
+                    delay: 0.1
                 )
                 
-                LimitedModeRow(
-                    icon: "xmark.circle.fill",
-                    iconColor: .red,
-                    text: "You'll need to keep the app open while driving"
+                ValuePropRow(
+                    icon: "bolt.fill",
+                    title: "Save Hours Every Month",
+                    description: "Receipt scanning and automatic categorization do the work for you",
+                    delay: 0.2
                 )
                 
-                LimitedModeRow(
-                    icon: "checkmark.circle.fill",
-                    iconColor: .green,
-                    text: "You can change this anytime in Phone Settings → FLO → Location"
+                ValuePropRow(
+                    icon: "dollarsign.circle.fill",
+                    title: "Maximize Deductions",
+                    description: "Mileage tracking and expense categorization help you keep more",
+                    delay: 0.3
                 )
             }
-            .padding(20)
-            .background(Color(.secondarySystemBackground))
-            .cornerRadius(16)
-            .padding(.horizontal)
+            .padding(.horizontal, 20)
             
             Spacer()
-            
-            // Buttons
-            VStack(spacing: 12) {
-                Button {
-                    HapticService.play(.medium)
-                    onOpenSettings()
-                } label: {
-                    HStack {
-                        Image(systemName: "gearshape.fill")
-                        Text("Open Phone Settings")
-                    }
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color(flowHex: "14B8A6"))
-                    .cornerRadius(12)
-                }
-                
-                Button {
-                    onContinue()
-                } label: {
-                    Text("Continue with Limited Mode")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+            Spacer()
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.4)) {
+                appeared = true
             }
-            .padding(.horizontal)
-            .padding(.bottom, 24)
         }
     }
 }
 
-// MARK: - Limited Mode Row
+// MARK: - Value Prop Row
 
-struct LimitedModeRow: View {
+struct ValuePropRow: View {
     let icon: String
-    let iconColor: Color
-    let text: String
+    let title: String
+    let description: String
+    let delay: Double
+    
+    @State private var appeared = false
     
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .foregroundStyle(iconColor)
-                .font(.subheadline)
-                .frame(width: 20)
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color.brandPrimary.opacity(0.15))
+                    .frame(width: 50, height: 50)
+                
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundStyle(Color.brandPrimary)
+            }
+            .accessibilityHidden(true)
             
-            Text(text)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            
+            Spacer()
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
+        .opacity(appeared ? 1 : 0.001)
+        .offset(x: appeared ? 0 : -20)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title). \(description)")
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.4).delay(delay)) {
+                appeared = true
+            }
         }
     }
 }
@@ -799,55 +436,64 @@ struct LimitedModeRow: View {
 struct GetStartedPageView: View {
     let completeAction: () -> Void
     
+    @State private var checkmarkScale: CGFloat = 0
+    @State private var contentOpacity: Double = 0
+    
     var body: some View {
         VStack(spacing: 30) {
             Spacer()
             
-            // Success icon
+            // Success icon with animation
             ZStack {
                 Circle()
-                    .fill(Color(flowHex: "14B8A6").opacity(0.2))
+                    .fill(Color.brandPrimary.opacity(0.2))
                     .frame(width: 140, height: 140)
                 
                 Circle()
-                    .fill(Color(flowHex: "14B8A6"))
+                    .fill(Color.brandPrimary)
                     .frame(width: 120, height: 120)
                 
                 Image(systemName: "checkmark")
                     .font(.system(size: 60, weight: .bold))
                     .foregroundStyle(.white)
             }
-            .shadow(color: Color(flowHex: "14B8A6").opacity(0.3), radius: 20)
+            .shadow(color: Color.brandPrimary.opacity(0.3), radius: 20)
+            .scaleEffect(checkmarkScale)
+            .accessibilityHidden(true)
             
             VStack(spacing: 16) {
                 Text("You're All Set!")
-                    .font(.system(size: 36, weight: .bold))
+                    .font(.system(size: 32, weight: .bold))
                     .foregroundStyle(.primary)
+                    .accessibilityAddTraits(.isHeader)
                 
-                Text("Start tracking your business finances with FLO")
-                    .font(.title3)
+                Text("Your dashboard is ready.\nWe'll guide you through the rest.")
+                    .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 30)
             }
+            .opacity(contentOpacity)
             
+            // Quick tips
             VStack(spacing: 12) {
                 QuickTipRow(
+                    icon: "hand.tap.fill",
+                    text: "Look for the Getting Started card on your dashboard"
+                )
+                
+                QuickTipRow(
                     icon: "plus.circle.fill",
-                    text: "Add your first transaction to get started"
+                    text: "Tap + to add your first transaction"
                 )
                 
                 QuickTipRow(
-                    icon: "camera.fill",
-                    text: "Tap the camera icon to scan a receipt"
-                )
-                
-                QuickTipRow(
-                    icon: "gearshape.fill",
-                    text: "Visit Settings to customize categories and tax info"
+                    icon: "questionmark.circle.fill",
+                    text: "Need help? Visit Settings → Support"
                 )
             }
-            .padding(.horizontal, 40)
+            .padding(.horizontal, 30)
+            .opacity(contentOpacity)
             
             Spacer()
             
@@ -855,21 +501,61 @@ struct GetStartedPageView: View {
             Button {
                 completeAction()
             } label: {
-                Text("Get Started")
+                Text("Let's Go!")
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color(flowHex: "14B8A6"))
+                    .background(Color.brandPrimary)
                     .cornerRadius(12)
             }
-            .padding(.horizontal)
-            .padding(.bottom, 30)
+            .padding(.horizontal, 30)
+            .padding(.bottom, 20)
+            .opacity(contentOpacity)
+            .accessibilityLabel("Let's Go!")
+            .accessibilityHint("Double tap to complete setup and go to your dashboard")
+            
+            Spacer()
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6).delay(0.1)) {
+                checkmarkScale = 1.0
+            }
+            withAnimation(.easeOut(duration: 0.4).delay(0.3)) {
+                contentOpacity = 1.0
+            }
         }
     }
 }
 
+// MARK: - Quick Tip Row
+
+struct QuickTipRow: View {
+    let icon: String
+    let text: String
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundStyle(Color.brandPrimary)
+                .frame(width: 24)
+                .accessibilityHidden(true)
+            
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.leading)
+            
+            Spacer()
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Tip: \(text)")
+    }
+}
+
 // MARK: - Mileage Setup Location Manager
+// Used by MileageSetupPromptView and MileageTrackingMainView
 
 class MileageSetupLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
@@ -897,123 +583,98 @@ class MileageSetupLocationManager: NSObject, ObservableObject, CLLocationManager
     }
 }
 
-// MARK: - Supporting Views
+// MARK: - Limited Mode Views (kept for MileageSetupPromptView)
 
-struct OnboardingFeatureRow: View {
-    let icon: String
-    let iconColor: Color
-    let title: String
-    let description: String
+struct LimitedModeExplanationView: View {
+    let onOpenSettings: () -> Void
+    let onContinue: () -> Void
     
     var body: some View {
-        HStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(iconColor.opacity(0.15))
-                    .frame(width: 50, height: 50)
-                
-                Image(systemName: icon)
-                    .font(.title3)
-                    .foregroundStyle(iconColor)
-            }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                
-                Text(description)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            
-            Spacer()
-        }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
-    }
-}
-
-struct OnboardingPermissionCard: View {
-    let icon: String
-    let title: String
-    let description: String
-    @Binding var isGranted: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 16) {
+        VStack(spacing: 24) {
+            VStack(spacing: 16) {
                 ZStack {
                     Circle()
-                        .fill(isGranted ? Color.green.opacity(0.15) : Color(flowHex: "14B8A6").opacity(0.15))
-                        .frame(width: 50, height: 50)
+                        .fill(Color.orange.opacity(0.15))
+                        .frame(width: 80, height: 80)
                     
-                    Image(systemName: icon)
-                        .font(.title3)
-                        .foregroundStyle(isGranted ? .green : Color(flowHex: "14B8A6"))
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.orange)
                 }
+                .accessibilityHidden(true)
                 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    
-                    Text(description)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                Text("Limited Tracking Mode")
+                    .font(.title2.bold())
+                    .foregroundStyle(.primary)
+                
+                Text("Without \"Always Allow\", FLO can only track trips while the app is open on your screen.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+            }
+            .padding(.top, 24)
+            
+            VStack(alignment: .leading, spacing: 12) {
+                Text("What this means:")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+                
+                LimitedModeRow(icon: "xmark.circle.fill", iconColor: .red, text: "No automatic trip detection")
+                LimitedModeRow(icon: "xmark.circle.fill", iconColor: .red, text: "Tracking stops when app is backgrounded")
+                LimitedModeRow(icon: "checkmark.circle.fill", iconColor: .green, text: "Manual trip entry still works")
+            }
+            .padding()
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(12)
+            .padding(.horizontal)
+            
+            Spacer()
+            
+            VStack(spacing: 12) {
+                Button {
+                    onOpenSettings()
+                } label: {
+                    HStack {
+                        Image(systemName: "gearshape.fill")
+                            .accessibilityHidden(true)
+                        Text("Open Phone Settings")
+                    }
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.brandPrimary)
+                    .cornerRadius(12)
                 }
-                
-                Spacer()
                 
                 Button {
-                    action()
+                    onContinue()
                 } label: {
-                    if isGranted {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.green)
-                    } else {
-                        Text("Enable")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color(flowHex: "14B8A6"))
-                            .cornerRadius(8)
-                    }
+                    Text("Continue with Limited Mode")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                .disabled(isGranted)
             }
+            .padding(.horizontal)
+            .padding(.bottom, 24)
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
     }
 }
 
-struct QuickTipRow: View {
+struct LimitedModeRow: View {
     let icon: String
+    let iconColor: Color
     let text: String
     
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.title3)
-                .foregroundStyle(Color(flowHex: "14B8A6"))
-                .frame(width: 30)
-            
+                .foregroundStyle(iconColor)
+                .accessibilityHidden(true)
             Text(text)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.leading)
-            
-            Spacer()
+                .foregroundStyle(.primary)
         }
     }
 }

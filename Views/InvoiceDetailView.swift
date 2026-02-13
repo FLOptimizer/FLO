@@ -1,23 +1,34 @@
 //  InvoiceDetailView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 5.5 - Fixed for InvoiceService v4.0 throwing methods
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 5.6 - Added comprehensive VoiceOver accessibility
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES FROM v5.4:
+//  CHANGES FROM v5.5:
+//  ✅ Status header: Combined element with invoice number, amount, status, description
+//  ✅ Payment progress: Accessible progress bar with percentage spoken
+//  ✅ Paid/remaining amounts combined with labels
+//  ✅ Client section: Combined contact info with envelope/phone/mappin decorative
+//  ✅ Invoice details: DetailRow combined labels with spoken dates/values
+//  ✅ Line items: LineItemRow combined with description, quantity, price, total spoken
+//  ✅ Totals: All rows accessible with spoken currency, total as isSummaryElement
+//  ✅ Payment history: Each payment combined (amount, method, date), checkmark decorative
+//  ✅ Payment instructions: Section labeled
+//  ✅ Payment links: PaymentLinkRow combined with service name and link
+//  ✅ Actions: All buttons labeled with hints based on invoice state
+//  ✅ Reminder history: Each reminder combined, checkmark decorative
+//  ✅ Toolbar menu: Labeled with hint
+//  ✅ PDF failure sheet: Warning icon decorative, dismiss button labeled
+//  ✅ Announcements: Screen change on appear, duplicate success
+//
+//  INHERITED FROM v5.5:
 //  ✅ Updated duplicateInvoice() with try/catch for throwing method
 //  ✅ Updated generateInvoicePDF() with try/catch for throwing method
-//
-//  INHERITED FROM v5.4:
 //  ✅ Staggered entrance animations for all card sections
 //  ✅ Spring physics for smooth, natural motion
 //  ✅ Haptic feedback on all interactive elements
-//  ✅ Scale animations on button press
-//  ✅ Animated status badge transitions
-//  ✅ Progress bar animation with spring physics
-//  ✅ Smooth sheet presentations
-//  ✅ Button press feedback with ScaleButtonStyle
 //
+//  Accessibility: 89 references
 //  Code Quality: 100/100 Elite App Store Ready
 
 import SwiftUI
@@ -47,46 +58,46 @@ struct InvoiceDetailView: View {
             VStack(spacing: 20) {
                 // Status header
                 statusHeader
-                    .opacity(contentAppeared ? 1 : 0)
+                    .opacity(contentAppeared ? 1 : 0.001)
                     .offset(y: contentAppeared ? 0 : 20)
                     .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.05), value: contentAppeared)
                 
                 // Payment progress (for partially paid)
                 if invoice.hasPayments && !invoice.isFullyPaid {
                     paymentProgressSection
-                        .opacity(contentAppeared ? 1 : 0)
+                        .opacity(contentAppeared ? 1 : 0.001)
                         .offset(y: contentAppeared ? 0 : 20)
                         .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1), value: contentAppeared)
                 }
                 
                 // Client info
                 clientSection
-                    .opacity(contentAppeared ? 1 : 0)
+                    .opacity(contentAppeared ? 1 : 0.001)
                     .offset(y: contentAppeared ? 0 : 20)
                     .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.15), value: contentAppeared)
                 
                 // Invoice details
                 invoiceDetailsSection
-                    .opacity(contentAppeared ? 1 : 0)
+                    .opacity(contentAppeared ? 1 : 0.001)
                     .offset(y: contentAppeared ? 0 : 20)
                     .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2), value: contentAppeared)
                 
                 // Line items
                 lineItemsSection
-                    .opacity(contentAppeared ? 1 : 0)
+                    .opacity(contentAppeared ? 1 : 0.001)
                     .offset(y: contentAppeared ? 0 : 20)
                     .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.25), value: contentAppeared)
                 
                 // Totals
                 totalsSection
-                    .opacity(contentAppeared ? 1 : 0)
+                    .opacity(contentAppeared ? 1 : 0.001)
                     .offset(y: contentAppeared ? 0 : 20)
                     .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.3), value: contentAppeared)
                 
                 // Payment history
                 if invoice.hasPayments {
                     paymentHistorySection
-                        .opacity(contentAppeared ? 1 : 0)
+                        .opacity(contentAppeared ? 1 : 0.001)
                         .offset(y: contentAppeared ? 0 : 20)
                         .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.35), value: contentAppeared)
                 }
@@ -94,7 +105,7 @@ struct InvoiceDetailView: View {
                 // Payment info
                 if let paymentInstructions = invoice.paymentInstructions {
                     paymentInstructionsSection(paymentInstructions)
-                        .opacity(contentAppeared ? 1 : 0)
+                        .opacity(contentAppeared ? 1 : 0.001)
                         .offset(y: contentAppeared ? 0 : 20)
                         .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.4), value: contentAppeared)
                 }
@@ -102,21 +113,21 @@ struct InvoiceDetailView: View {
                 // Payment links
                 if hasPaymentLinks {
                     paymentLinksSection
-                        .opacity(contentAppeared ? 1 : 0)
+                        .opacity(contentAppeared ? 1 : 0.001)
                         .offset(y: contentAppeared ? 0 : 20)
                         .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.45), value: contentAppeared)
                 }
                 
                 // Actions
                 actionsSection
-                    .opacity(actionsAppeared ? 1 : 0)
+                    .opacity(actionsAppeared ? 1 : 0.001)
                     .scaleEffect(actionsAppeared ? 1 : 0.95)
                     .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.5), value: actionsAppeared)
                 
                 // Reminder history
                 if !invoice.remindersSent.isEmpty {
                     reminderHistorySection(invoice.remindersSent)
-                        .opacity(contentAppeared ? 1 : 0)
+                        .opacity(contentAppeared ? 1 : 0.001)
                         .offset(y: contentAppeared ? 0 : 20)
                         .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.55), value: contentAppeared)
                 }
@@ -160,6 +171,8 @@ struct InvoiceDetailView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
+                        .accessibilityLabel("Invoice actions")
+                        .accessibilityHint("Edit, share, duplicate, or delete this invoice")
                 }
             }
         }
@@ -180,6 +193,7 @@ struct InvoiceDetailView: View {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.system(size: 50))
                         .foregroundStyle(.orange)
+                        .accessibilityHidden(true)
                     Text("PDF Generation Failed")
                         .font(.title2.bold())
                     Text("Unable to generate PDF. Please ensure the invoice has at least one line item and try again.")
@@ -192,8 +206,11 @@ struct InvoiceDetailView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.businessColor)
+                    .accessibilityHint("Close PDF error dialog")
                 }
                 .padding()
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("PDF generation failed. Unable to generate PDF. Please ensure the invoice has at least one line item and try again.")
             }
         }
         .alert("Delete Invoice", isPresented: $showingDeleteAlert) {
@@ -210,14 +227,20 @@ struct InvoiceDetailView: View {
             Text("A copy of this invoice has been created as a new draft.")
         }
         .onAppear {
-                        
-            // Trigger entrance animations
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                contentAppeared = true
+            // Announce screen
+            AccessibilityAnnouncement.screenChanged(
+                "Invoice details, \(invoice.invoiceNumber), \(statusText), \(AccessibilityFormatters.spokenCurrency(invoice.totalAmount))"
+            )
+            
+            // Delay entrance animation until view is fully presented
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                    contentAppeared = true
+                }
             }
             
-            // Delay actions animation slightly
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            // Delay actions animation slightly more (was 0.3, now 0.6 to maintain relative timing)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
                     actionsAppeared = true
                 }
@@ -252,6 +275,20 @@ struct InvoiceDetailView: View {
             }
         }
         .card()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(statusHeaderLabel)
+        .accessibilityAddTraits(.isHeader)
+    }
+    
+    /// Combined accessibility label for status header
+    private var statusHeaderLabel: String {
+        var parts = [
+            "Invoice \(invoice.invoiceNumber)",
+            AccessibilityFormatters.spokenCurrency(invoice.totalAmount),
+            "Status: \(statusText)"
+        ]
+        parts.append(statusDescription)
+        return parts.joined(separator: ", ")
     }
     
     private var statusBadge: some View {
@@ -263,6 +300,7 @@ struct InvoiceDetailView: View {
             .background(statusColor)
             .clipShape(Capsule())
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: invoice.status)
+            .accessibilityHidden(true)
     }
     
     // MARK: - Payment Progress Section
@@ -297,6 +335,9 @@ struct InvoiceDetailView: View {
                 .cornerRadius(6)
             }
             .frame(height: 12)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Payment progress")
+            .accessibilityValue("\(Int(invoice.paymentProgress * 100)) percent")
             
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -321,6 +362,8 @@ struct InvoiceDetailView: View {
                         .foregroundStyle(.orange)
                 }
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Paid \(invoice.formattedAmountPaid), remaining \(invoice.formattedRemainingBalance)")
         }
         .card()
     }
@@ -331,6 +374,7 @@ struct InvoiceDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Payment History")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             
             VStack(spacing: 8) {
                 ForEach(Array(invoice.payments.enumerated()), id: \.element.id) { index, payment in
@@ -353,12 +397,15 @@ struct InvoiceDetailView: View {
                             
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(.green)
+                                .accessibilityHidden(true)
                         }
                     }
                     .padding(.vertical, 4)
-                    .opacity(contentAppeared ? 1 : 0)
+                    .opacity(contentAppeared ? 1 : 0.001)
                     .offset(x: contentAppeared ? 0 : -20)
                     .animation(FLOAnimation.standard.delay(Double(index) * 0.05), value: contentAppeared)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(paymentRowLabel(payment))
                     
                     if payment != invoice.payments.last {
                         Divider()
@@ -369,12 +416,18 @@ struct InvoiceDetailView: View {
         .card()
     }
     
+    /// Accessibility label for a payment history row
+    private func paymentRowLabel(_ payment: InvoicePayment) -> String {
+        "\(AccessibilityFormatters.spokenCurrency(payment.amount)) via \(payment.paymentMethod.displayName), on \(AccessibilityFormatters.spokenDate(payment.date))"
+    }
+    
     // MARK: - Client Section
     
     private var clientSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Client Information")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             
             if let client = invoice.client {
                 VStack(alignment: .leading, spacing: 8) {
@@ -386,6 +439,7 @@ struct InvoiceDetailView: View {
                             Image(systemName: "envelope")
                                 .foregroundStyle(.secondary)
                                 .font(.caption)
+                                .accessibilityHidden(true)
                             Text(email)
                                 .font(.subheadline)
                         }
@@ -396,6 +450,7 @@ struct InvoiceDetailView: View {
                             Image(systemName: "phone")
                                 .foregroundStyle(.secondary)
                                 .font(.caption)
+                                .accessibilityHidden(true)
                             Text(phone)
                                 .font(.subheadline)
                         }
@@ -406,11 +461,14 @@ struct InvoiceDetailView: View {
                             Image(systemName: "mappin.circle")
                                 .foregroundStyle(.secondary)
                                 .font(.caption)
+                                .accessibilityHidden(true)
                             Text(address)
                                 .font(.subheadline)
                         }
                     }
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(clientAccessibilityLabel(client))
             } else {
                 Text("No client assigned")
                     .foregroundStyle(.secondary)
@@ -419,17 +477,29 @@ struct InvoiceDetailView: View {
         .card()
     }
     
+    /// Combined accessibility label for client info
+    private func clientAccessibilityLabel(_ client: Client) -> String {
+        var parts = [client.name]
+        if let email = client.email { parts.append("Email: \(email)") }
+        if let phone = client.phone { parts.append("Phone: \(phone)") }
+        if let address = client.address { parts.append("Address: \(address)") }
+        return parts.joined(separator: ", ")
+    }
+    
     // MARK: - Invoice Details Section
     
     private var invoiceDetailsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Invoice Details")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             
             VStack(spacing: 8) {
                 DetailRow(label: "Invoice Number", value: invoice.invoiceNumber)
                 DetailRow(label: "Issue Date", value: invoice.issueDate.formatted(date: .abbreviated, time: .omitted))
+                    .accessibilityLabel("Issue date, \(AccessibilityFormatters.spokenDate(invoice.issueDate))")
                 DetailRow(label: "Due Date", value: invoice.dueDate.formatted(date: .abbreviated, time: .omitted))
+                    .accessibilityLabel("Due date, \(AccessibilityFormatters.spokenDate(invoice.dueDate))")
                 
                 if invoice.isOverdue {
                     DetailRow(
@@ -437,12 +507,14 @@ struct InvoiceDetailView: View {
                         value: "\(invoice.daysOverdue) days",
                         valueColor: .red
                     )
+                    .accessibilityLabel("\(invoice.daysOverdue) days overdue")
                 }
                 
                 DetailRow(label: "Payment Terms", value: invoice.paymentTerms.isEmpty ? "N/A" : invoice.paymentTerms)
                 
                 if let sentDate = invoice.sentDate {
                     DetailRow(label: "Sent Date", value: sentDate.formatted(date: .abbreviated, time: .omitted))
+                        .accessibilityLabel("Sent date, \(AccessibilityFormatters.spokenDate(sentDate))")
                 }
                 
                 if let paidDate = invoice.paidDate {
@@ -451,6 +523,7 @@ struct InvoiceDetailView: View {
                         value: paidDate.formatted(date: .abbreviated, time: .omitted),
                         valueColor: .green
                     )
+                    .accessibilityLabel("Paid date, \(AccessibilityFormatters.spokenDate(paidDate))")
                 }
             }
         }
@@ -463,11 +536,12 @@ struct InvoiceDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Line Items")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             
             VStack(spacing: 8) {
                 ForEach(Array(invoice.items.enumerated()), id: \.element.id) { index, item in
                     LineItemRow(item: item)
-                        .opacity(contentAppeared ? 1 : 0)
+                        .opacity(contentAppeared ? 1 : 0.001)
                         .offset(x: contentAppeared ? 0 : -15)
                         .animation(FLOAnimation.standard.delay(Double(index) * 0.03), value: contentAppeared)
                     
@@ -490,6 +564,8 @@ struct InvoiceDetailView: View {
                 Spacer()
                 Text(invoice.subtotal.formatted(.currency(code: "USD")))
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Subtotal, \(AccessibilityFormatters.spokenCurrency(invoice.subtotal))")
             
             if invoice.discountAmount > 0 {
                 HStack {
@@ -499,6 +575,8 @@ struct InvoiceDetailView: View {
                     Text("-\(invoice.discountAmount.formatted(.currency(code: "USD")))")
                         .foregroundStyle(.red)
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Discount, minus \(AccessibilityFormatters.spokenCurrency(invoice.discountAmount))")
             }
             
             if invoice.taxAmount > 0 {
@@ -508,6 +586,8 @@ struct InvoiceDetailView: View {
                     Spacer()
                     Text(invoice.taxAmount.formatted(.currency(code: "USD")))
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Tax at \(Int(invoice.taxRate * 100)) percent, \(AccessibilityFormatters.spokenCurrency(invoice.taxAmount))")
             }
             
             Divider()
@@ -518,9 +598,12 @@ struct InvoiceDetailView: View {
                 Spacer()
                 Text(invoice.totalAmount.formatted(.currency(code: "USD")))
                     .font(.title3.bold())
-                    .foregroundStyle(Color.brandPrimary)
+                     .foregroundStyle(Color.brandPrimaryText)
                     .contentTransition(.numericText())
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Total, \(AccessibilityFormatters.spokenCurrency(invoice.totalAmount))")
+            .accessibilityAddTraits(.isSummaryElement)
         }
         .card()
     }
@@ -531,6 +614,7 @@ struct InvoiceDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Payment Instructions")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             Text(instructions)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -551,6 +635,7 @@ struct InvoiceDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Payment Options")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             
             VStack(spacing: 8) {
                 if let stripe = invoice.stripePaymentLink {
@@ -606,6 +691,8 @@ struct InvoiceDetailView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(AnimatedActionButtonStyle(color: .green))
+                .accessibilityLabel(invoice.hasPayments ? "Record payment" : "Mark as paid")
+                .accessibilityHint(invoice.hasPayments ? "Record an additional payment for this invoice" : "Record full or partial payment for this invoice")
             }
             
             // Ready to Send button (only if draft)
@@ -618,6 +705,8 @@ struct InvoiceDetailView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(AnimatedActionButtonStyle(color: .accentColor))
+                .accessibilityLabel("Ready to send")
+                .accessibilityHint("Mark this invoice as sent to the client")
             }
             
             // Send Reminder button (if overdue and not paid)
@@ -630,6 +719,8 @@ struct InvoiceDetailView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(AnimatedSecondaryButtonStyle())
+                .accessibilityLabel("Send reminder")
+                .accessibilityHint("Send a payment reminder for this overdue invoice, \(invoice.daysOverdue) days past due")
             }
         }
     }
@@ -638,6 +729,7 @@ struct InvoiceDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Reminder History")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             
             VStack(spacing: 8) {
                 ForEach(Array(reminders.enumerated()), id: \.offset) { index, reminder in
@@ -652,10 +744,13 @@ struct InvoiceDetailView: View {
                         Spacer()
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.green)
+                            .accessibilityHidden(true)
                     }
-                    .opacity(contentAppeared ? 1 : 0)
+                    .opacity(contentAppeared ? 1 : 0.001)
                     .offset(x: contentAppeared ? 0 : -20)
                     .animation(FLOAnimation.standard.delay(Double(index) * 0.05), value: contentAppeared)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(reminder.reminderType.rawValue) reminder sent \(AccessibilityFormatters.spokenDate(reminder.date))")
                 }
             }
         }
@@ -722,6 +817,7 @@ struct InvoiceDetailView: View {
         Task {
             await InvoiceReminderService.shared.scheduleReminder(for: invoice, immediately: true)
         }
+        AccessibilityAnnouncement.announce("Reminder sent")
     }
     
     /// Duplicate invoice (InvoiceService v4.0 compatible)
@@ -730,8 +826,10 @@ struct InvoiceDetailView: View {
             _ = try InvoiceService.shared.duplicateInvoice(invoice, context: modelContext)
             HapticService.play(.success)
             showingDuplicateSuccess = true
+            AccessibilityAnnouncement.announce("Invoice duplicated as new draft")
         } catch {
             HapticService.play(.error)
+            AccessibilityAnnouncement.announce("Failed to duplicate invoice")
             print("❌ Failed to duplicate invoice: \(error)")
         }
     }
@@ -740,6 +838,7 @@ struct InvoiceDetailView: View {
         HapticService.play(.warning)
         modelContext.delete(invoice)
         try? modelContext.save()
+        AccessibilityAnnouncement.announce("Invoice deleted")
         dismiss()
     }
     
@@ -818,6 +917,7 @@ private struct DetailRow: View {
                 .foregroundStyle(valueColor)
         }
         .font(.subheadline)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -837,6 +937,12 @@ struct LineItemRow: View {
             Text(item.total.formatted(.currency(code: "USD")))
                 .font(.subheadline.weight(.medium))
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(lineItemAccessibilityLabel)
+    }
+    
+    private var lineItemAccessibilityLabel: String {
+        "\(item.itemDescription), \(Int(item.quantity)) at \(AccessibilityFormatters.spokenCurrency(item.unitPrice)), total \(AccessibilityFormatters.spokenCurrency(item.total))"
     }
 }
 
@@ -849,6 +955,7 @@ struct PaymentLinkRow: View {
         HStack {
             Image(systemName: icon)
                 .foregroundStyle(Color.businessColor)
+                .accessibilityHidden(true)
             Text(service)
                 .font(.subheadline.weight(.medium))
             Spacer()
@@ -857,6 +964,8 @@ struct PaymentLinkRow: View {
                 .foregroundStyle(.blue)
                 .lineLimit(1)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(service), \(link)")
     }
 }
 

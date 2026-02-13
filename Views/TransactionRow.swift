@@ -1,8 +1,21 @@
 //  TransactionRow.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.5 - Enhanced micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.2 - Transfer badge and styling for Move Money
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.1:
+//  ✅ ADDED: accessibilityHint for row interaction guidance
+//  ✅ ADDED: accessibilityValue with spoken currency amount
+//  ✅ IMPROVED: accessibilityLabel uses AccessibilityFormatters.spokenCurrency
+//  ✅ ADDED: Decorative category icon hidden (parent combine handles)
+//
+//  CHANGES v2.0:
+//  ✅ Finance type badge now shows ICON ONLY (no text)
+//  ✅ Migrated animations to FLOAnimation presets
+//  ✅ Colorful category icons maintained
+//  ✅ Improved visual hierarchy
+//  ✅ Smaller, cleaner badge design
 //
 //  CHANGES v1.5:
 //  ✅ Icon scale animation on appear
@@ -11,10 +24,6 @@
 //  ✅ Receipt indicator pulse effect
 //  ✅ Improved visual hierarchy with subtle shadows
 //
-//  PREVIOUS FIXES:
-//  - Fixed expense color to use expenseRed
-//  - Fixed crash when accessing financeType on deleted transaction
-//  - Added safeFinanceType computed property with fallback
 
 import SwiftUI
 import SwiftData
@@ -26,7 +35,7 @@ struct TransactionRow: View {
     @State private var appeared = false
     @State private var iconScale: CGFloat = 0.8
     
-    // v1.3: Safe property access to prevent crash on deleted transactions
+    // Safe property access to prevent crash on deleted transactions
     private var safeFinanceType: Transaction.FinanceType {
         guard transaction.modelContext != nil else {
             return .personal
@@ -50,20 +59,36 @@ struct TransactionRow: View {
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 
-                HStack(spacing: 8) {
-                    if isTransactionValid, let category = transaction.category {
-                        categoryBadge(category)
-                            .opacity(appeared ? 1 : 0)
+                HStack(spacing: 6) {
+                    // v2.2: Transfer type badge
+                    if isTransactionValid && transaction.isTransfer, let tType = transaction.transferType {
+                        Text(tType.displayName)
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Color(hex: tType.colorHex))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color(hex: tType.colorHex).opacity(0.12))
+                            .clipShape(Capsule())
+                            .lineLimit(1)
+                            .opacity(appeared ? 1 : 0.001)
                             .offset(x: appeared ? 0 : -5)
                     }
                     
-                    financeTypeBadge
-                        .opacity(appeared ? 1 : 0)
+                    if isTransactionValid, let category = transaction.category {
+                        categoryBadge(category)
+                            .opacity(appeared ? 1 : 0.001)
+                            .offset(x: appeared ? 0 : -5)
+                    }
+                    
+                    // Icon-only finance type badge
+                    financeTypeIcon
+                        .opacity(appeared ? 1 : 0.001)
                         .offset(x: appeared ? 0 : -5)
                     
                     if isTransactionValid && transaction.hasReceipt {
                         receiptIndicator
-                            .opacity(appeared ? 1 : 0)
+                            .opacity(appeared ? 1 : 0.001)
                             .scaleEffect(appeared ? 1 : 0.5)
                     }
                 }
@@ -85,14 +110,17 @@ struct TransactionRow: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .opacity(appeared ? 1 : 0)
+            .opacity(appeared ? 1 : 0.001)
             .offset(x: appeared ? 0 : 10)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
+        // v2.1: Add hint and value for better VoiceOver experience
+        .accessibilityValue(isTransactionValid ? AccessibilityFormatters.spokenCurrency(transaction.amount) : "")
+        .accessibilityHint("Double tap to edit")
         .onAppear {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+            withAnimation(FLOAnimation.standard) {
                 appeared = true
                 iconScale = 1.0
             }
@@ -103,23 +131,35 @@ struct TransactionRow: View {
     
     @ViewBuilder
     private var categoryIcon: some View {
-        if isTransactionValid, let category = transaction.category {
+        if isTransactionValid && transaction.isTransfer {
+            // Transfer icon - distinct purple styling
+            let transferColor = Color(hex: transaction.transferType?.colorHex ?? "8B5CF6")
+            Image(systemName: transaction.transferType?.icon ?? "arrow.left.arrow.right.circle.fill")
+                .font(.title3)
+                .foregroundStyle(transferColor)
+                .frame(width: 40, height: 40)
+                .background(transferColor.opacity(0.12))
+                .clipShape(Circle())
+                .shadow(color: transferColor.opacity(0.15), radius: 2, x: 0, y: 1)
+        } else if isTransactionValid, let category = transaction.category {
+            // Colorful category icon
             Image(systemName: category.icon)
                 .font(.title3)
                 .foregroundStyle(Color(flowHex: category.colorHex))
                 .frame(width: 40, height: 40)
-                .background(Color(flowHex: category.colorHex).opacity(0.1))
+                .background(Color(flowHex: category.colorHex).opacity(0.12))
                 .clipShape(Circle())
-                .shadow(color: Color(flowHex: category.colorHex).opacity(0.2), radius: 2, x: 0, y: 1)
+                .shadow(color: Color(flowHex: category.colorHex).opacity(0.15), radius: 2, x: 0, y: 1)
         } else {
+            // Default income/expense icon
             let isIncome = isTransactionValid ? transaction.isIncome : false
             Image(systemName: isIncome ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
                 .font(.title3)
                 .foregroundStyle(isIncome ? Color.incomeGreen : Color.expenseRed)
                 .frame(width: 40, height: 40)
-                .background(isIncome ? Color.incomeGreen.opacity(0.1) : Color.expenseRed.opacity(0.1))
+                .background(isIncome ? Color.incomeGreen.opacity(0.12) : Color.expenseRed.opacity(0.12))
                 .clipShape(Circle())
-                .shadow(color: (isIncome ? Color.incomeGreen : Color.expenseRed).opacity(0.2), radius: 2, x: 0, y: 1)
+                .shadow(color: (isIncome ? Color.incomeGreen : Color.expenseRed).opacity(0.15), radius: 2, x: 0, y: 1)
         }
     }
     
@@ -131,43 +171,42 @@ struct TransactionRow: View {
             .foregroundStyle(Color(flowHex: category.colorHex))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(Color(flowHex: category.colorHex).opacity(0.15))
+            .background(Color(flowHex: category.colorHex).opacity(0.12))
             .clipShape(Capsule())
             .lineLimit(1)
     }
     
+    /// Icon-only finance type indicator (no text)
     @ViewBuilder
-    private var financeTypeBadge: some View {
+    private var financeTypeIcon: some View {
         let financeType = safeFinanceType
-        HStack(spacing: 3) {
-            Image(systemName: financeType.icon)
-                .font(.system(size: 9))
-            Text(financeType.displayName)
-                .font(.caption2)
-                .fontWeight(.medium)
-        }
-        .foregroundStyle(financeTypeColor)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .background(financeTypeColor.opacity(0.15))
-        .clipShape(Capsule())
+        Image(systemName: financeType.icon)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(financeTypeColor)
+            .frame(width: 20, height: 20)
+            .background(financeTypeColor.opacity(0.12))
+            .clipShape(Circle())
+            .accessibilityLabel(financeType.displayName)
     }
     
     @ViewBuilder
     private var receiptIndicator: some View {
         Image(systemName: "doc.text.fill")
-            .font(.system(size: 10))
-            .foregroundStyle(Color.brandPrimary)
-            .padding(4)
-            .background(Color.brandPrimary.opacity(0.15))
+            .font(.caption2)
+            .foregroundStyle(Color.brandPrimaryText)
+            .frame(width: 20, height: 20)
+            .background(Color.brandPrimary.opacity(0.12))
             .clipShape(Circle())
-            .shadow(color: Color.brandPrimary.opacity(0.2), radius: 1, x: 0, y: 1)
+            .accessibilityLabel("Has receipt")
     }
     
     // MARK: - Computed Properties
     
     private var amountColor: Color {
         guard isTransactionValid else { return .primary }
+        if transaction.isTransfer {
+            return Color(hex: transaction.transferType?.colorHex ?? "8B5CF6")
+        }
         return transaction.isIncome ? Color.incomeGreen : Color.expenseRed
     }
     
@@ -183,23 +222,32 @@ struct TransactionRow: View {
     private var accessibilityLabel: String {
         guard isTransactionValid else { return "Transaction" }
         
-        var label = "\(transaction.isIncome ? "Income" : "Expense") of \(transaction.formattedAmount)"
+        // v2.2: Handle transfer accessibility
+        if transaction.isTransfer {
+            let spokenAmount = AccessibilityFormatters.spokenCurrency(transaction.amount)
+            let typeLabel = transaction.transferType?.displayName ?? "Transfer"
+            return "\(typeLabel), \(spokenAmount), \(transaction.merchantName)"
+        }
+        
+        // v2.1: Use spoken currency format for VoiceOver
+        let spokenAmount = AccessibilityFormatters.spokenCurrency(transaction.amount)
+        var label = "\(transaction.isIncome ? "Income" : "Expense"), \(spokenAmount)"
         
         if !transaction.merchantName.isEmpty {
-            label += " at \(transaction.merchantName)"
+            label += ", at \(transaction.merchantName)"
         }
         
         if let category = transaction.category {
-            label += ", category \(category.name)"
+            label += ", \(category.name)"
         }
         
         label += ", \(safeFinanceType.displayName)"
         
         if transaction.hasReceipt {
-            label += ", has receipt"
+            label += ", receipt attached"
         }
         
-        label += ", on \(transaction.date.formatted(date: .long, time: .omitted))"
+        label += ", \(AccessibilityFormatters.spokenDate(transaction.date))"
         
         return label
     }
@@ -299,6 +347,41 @@ struct TransactionRow: View {
     
     return List {
         TransactionRow(transaction: transaction)
+    }
+    .modelContainer(container)
+}
+
+#Preview("Multiple Transactions") {
+    let container = try! ModelContainer(
+        for: Transaction.self, Category.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    
+    let context = container.mainContext
+    
+    // Categories with different colors
+    let clientPayment = Category(name: "Client Payment", icon: "dollarsign.circle.fill", colorHex: "14B8A6", isIncome: true)
+    let groceries = Category(name: "Groceries", icon: "cart.fill", colorHex: "10B981", isIncome: false)
+    let supplies = Category(name: "Office Supplies", icon: "pencil.circle.fill", colorHex: "F59E0B", isIncome: false)
+    let travel = Category(name: "Travel", icon: "airplane", colorHex: "8B5CF6", isIncome: false)
+    let utilities = Category(name: "Utilities", icon: "bolt.fill", colorHex: "EF4444", isIncome: false)
+    
+    [clientPayment, groceries, supplies, travel, utilities].forEach { context.insert($0) }
+    
+    let transactions = [
+        Transaction(amount: 5000, date: .now, note: "Website Design", isIncome: true, merchantName: "Acme Corp", category: clientPayment, financeType: .business, hasReceipt: true),
+        Transaction(amount: 42.99, date: .now, note: "Weekly Shopping", isIncome: false, merchantName: "Whole Foods", category: groceries, financeType: .personal, hasReceipt: false),
+        Transaction(amount: 125.50, date: .now, note: "Office Supplies", isIncome: false, merchantName: "Staples", category: supplies, financeType: .business, hasReceipt: true),
+        Transaction(amount: 350, date: .now, note: "Flight to NYC", isIncome: false, merchantName: "Delta", category: travel, financeType: .business, hasReceipt: true),
+        Transaction(amount: 89.50, date: .now, note: "Electric Bill", isIncome: false, merchantName: "Power Co", category: utilities, financeType: .personal, hasReceipt: false)
+    ]
+    
+    transactions.forEach { context.insert($0) }
+    
+    return List {
+        ForEach(transactions) { transaction in
+            TransactionRow(transaction: transaction)
+        }
     }
     .modelContainer(container)
 }

@@ -1,8 +1,15 @@
 //  ColorSchemeSettingsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.3 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.4 - Accessibility audit (Sprint 6c)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.4:
+//  ✅ Screen change announcement on appear
+//  ✅ Header icon hidden from VoiceOver
+//  ✅ ColorSchemeCard combined with spoken name, description, selection state
+//  ✅ Color preview and example text hidden decoratively
+//  ✅ Confirmation toast announced to VoiceOver
 //
 //  CHANGES v1.3:
 //  ✅ Enhanced selection haptics
@@ -39,14 +46,15 @@ struct ColorSchemeSettingsView: View {
                             .font(.system(size: 50))
                             .foregroundStyle(Color.brandPrimary)
                             .scaleEffect(viewAppeared ? 1 : 0.5)
-                            .opacity(viewAppeared ? 1 : 0)
+                            .opacity(viewAppeared ? 1 : 0.001)
                             .animation(.spring(response: 0.6, dampingFraction: 0.7), value: viewAppeared)
+                            .accessibilityHidden(true)
                         
                         Text("Choose Your Style")
                             .font(.title2)
                             .fontWeight(.bold)
                             .foregroundStyle(.white)
-                            .opacity(viewAppeared ? 1 : 0)
+                            .opacity(viewAppeared ? 1 : 0.001)
                             .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                         
                         Text("Pick a color scheme that matches your personality and makes managing money feel great")
@@ -54,7 +62,7 @@ struct ColorSchemeSettingsView: View {
                             .foregroundStyle(.white.opacity(0.8))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
-                            .opacity(viewAppeared ? 1 : 0)
+                            .opacity(viewAppeared ? 1 : 0.001)
                             .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                     }
                     .padding(.vertical)
@@ -73,7 +81,7 @@ struct ColorSchemeSettingsView: View {
                                     applyScheme(scheme)
                                 }
                             }
-                            .opacity(viewAppeared ? 1 : 0)
+                            .opacity(viewAppeared ? 1 : 0.001)
                             .offset(y: viewAppeared ? 0 : 30)
                             .animation(
                                 FLOAnimation.standard
@@ -107,6 +115,7 @@ struct ColorSchemeSettingsView: View {
                                 withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
+                AccessibilityAnnouncement.screenChanged("Color scheme")
             }
         }
     }
@@ -127,6 +136,7 @@ struct ColorSchemeSettingsView: View {
         .shadow(radius: 8)
         .padding()
         .transition(.move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.9)))
+        .accessibilityElement(children: .combine)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
@@ -233,6 +243,10 @@ struct ColorSchemeCard: View {
         .shadow(color: isSelected ? Color.flow(scheme.primary).opacity(0.3) : .clear, radius: 8)
         .scaleEffect(isSelected ? 1.02 : 1.0)
         .animation(FLOAnimation.quick, value: isSelected)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(scheme.name), \(scheme.description)\(isSelected ? ", selected" : "")")
+        .accessibilityHint(isSelected ? "Current color scheme" : "Tap to apply this color scheme")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
     
     private func colorBlock(_ color: Color) -> some View {

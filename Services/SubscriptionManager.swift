@@ -1,19 +1,31 @@
 //  SubscriptionManager.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.2 - Added yearly subscription support
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.4 - Added offer code redemption sheet support
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.4:
+//  - Added presentOfferCodeRedeemSheet() for in-app offer code redemption
+//  - Uses AppStore.presentOfferCodeRedeemSheet(in:) (iOS 16+)
+//  - Automatically refreshes subscription status after redemption
+//
+//  CHANGES v1.3:
+//  - Fixed debug tier buttons to actually change currentTier
+//  - Debug mode respects saved tier override from UserDefaults
+//  - Added debugSetTier() method that properly updates currentTier
+//  - Debug tier persists across app launches (in DEBUG only)
+//  - Production builds unaffected - still use real StoreKit
 //
 //  CHANGES v1.2:
-//  ✅ Added yearly product IDs to match App Store Connect
-//  ✅ Updated tierForProductID to handle yearly subscriptions
-//  ✅ Both monthly and yearly plans now available
+//  - Added yearly product IDs to match App Store Connect
+//  - Updated tierForProductID to handle yearly subscriptions
 //
 //  CHANGES v1.1:
 //  - Fixed UTF-8 encoding issues
 //
 //  Manages StoreKit 2 subscriptions with async/await
 //
+
 import Foundation
 import StoreKit
 
@@ -26,16 +38,10 @@ class SubscriptionManager: ObservableObject {
     
     // MARK: - Published State
     
-    @Published private(set) var currentTier: SubscriptionTier = {
-        #if DEBUG
-        // DEBUG builds: Always Pro
-        return .pro
-        #else
-        // Production: Check for permanent unlock first
-        let unlocked = UserDefaults.standard.bool(forKey: "FLO_ProUnlockedPermanently")
-        return unlocked ? .pro : .free
-        #endif
-    }()
+    /// Current subscription tier
+    /// - DEBUG: Defaults to Pro but can be overridden via debug menu
+    /// - RELEASE: Determined by StoreKit entitlements
+    @Published private(set) var currentTier: SubscriptionTier = .free
     
     @Published private(set) var availableProducts: [Product] = []
     @Published private(set) var isLoading = false
@@ -43,6 +49,18 @@ class SubscriptionManager: ObservableObject {
     @Published private(set) var activeSubscription: Product?
     @Published private(set) var expirationDate: Date?
     @Published private(set) var isInTrialPeriod = false
+    
+    // MARK: - Debug Mode
+    
+    #if DEBUG
+    /// Key for storing debug tier override
+    private static let debugTierKey = "debug_subscription_tier_override"
+    
+    /// Whether we're using a debug tier override
+    private var isUsingDebugOverride: Bool {
+        UserDefaults.standard.object(forKey: Self.debugTierKey) != nil
+    }
+    #endif
     
     // MARK: - Permanent Pro Unlock
     
@@ -63,7 +81,12 @@ class SubscriptionManager: ObservableObject {
     /// Reset unlock (for testing)
     func resetProUnlock() {
         UserDefaults.standard.removeObject(forKey: "FLO_ProUnlockedPermanently")
+        #if DEBUG
+        // In debug, revert to debug tier or default
+        loadDebugTier()
+        #else
         currentTier = .free
+        #endif
         print("🔒 Pro unlock reset")
     }
     
@@ -86,6 +109,15 @@ class SubscriptionManager: ObservableObject {
     // MARK: - Initialization
     
     private init() {
+        // Set initial tier based on build configuration
+        #if DEBUG
+        loadDebugTier()
+        #else
+        // Production: Check for permanent unlock
+        let unlocked = UserDefaults.standard.bool(forKey: "FLO_ProUnlockedPermanently")
+        currentTier = unlocked ? .pro : .free
+        #endif
+        
         // Start listening for transaction updates
         startTransactionListener()
     }
@@ -94,15 +126,60 @@ class SubscriptionManager: ObservableObject {
         updateListenerTask?.cancel()
     }
     
+    // MARK: - Debug Tier Management
+    
+    #if DEBUG
+    /// Load saved debug tier or default to Pro
+    private func loadDebugTier() {
+        if let savedTierRaw = UserDefaults.standard.object(forKey: Self.debugTierKey) as? Int,
+           let savedTier = SubscriptionTier(rawValue: savedTierRaw) {
+            currentTier = savedTier
+            print("🔧 DEBUG: Loaded saved tier override: \(savedTier.displayName)")
+        } else {
+            // Default to Pro in debug for convenience
+            currentTier = .pro
+            print("🔧 DEBUG: Using default Pro tier (no override set)")
+        }
+    }
+    
+    /// Set debug tier override - actually changes currentTier
+    /// Call this from the debug menu to test different tiers
+    func debugSetTier(_ tier: SubscriptionTier) {
+        UserDefaults.standard.set(tier.rawValue, forKey: Self.debugTierKey)
+        currentTier = tier
+        print("🔧 DEBUG: Tier changed to \(tier.displayName)")
+    }
+    
+    /// Clear debug tier override and revert to default (Pro)
+    func debugClearTierOverride() {
+        UserDefaults.standard.removeObject(forKey: Self.debugTierKey)
+        currentTier = .pro
+        print("🔧 DEBUG: Tier override cleared, reverted to Pro")
+    }
+    
+    /// Get the current debug tier for display
+    var debugCurrentTierInfo: String {
+        if isUsingDebugOverride {
+            return "\(currentTier.displayName) (debug override)"
+        } else {
+            return "\(currentTier.displayName) (default)"
+        }
+    }
+    #endif
+    
     // MARK: - Public Methods
     
     /// Initialize subscription system - call on app launch
     func initialize() async {
-        #if !DEBUG
+        #if DEBUG
+        // In debug, still load products so SubscriptionView works
+        // but don't update tier from StoreKit (use debug override instead)
+        await loadProducts()
+        print("🔧 DEBUG: Products loaded, tier remains: \(currentTier.displayName)")
+        #else
+        // Production: Full StoreKit initialization
         await loadProducts()
         await updateSubscriptionStatus()
-        #else
-        print("🔓 DEBUG MODE: Skipping subscription initialization, using Pro tier")
         #endif
     }
     
@@ -201,6 +278,35 @@ class SubscriptionManager: ObservableObject {
         }
     }
     
+    /// Present the offer code redemption sheet (iOS 16+)
+    /// Allows users to redeem subscription offer codes directly within the app
+    @available(iOS 16.0, *)
+    func presentOfferCodeRedeemSheet() async {
+        do {
+            try await AppStore.presentOfferCodeRedeemSheet(in: Self.currentWindowScene)
+            // Refresh subscription status after redemption
+            await updateSubscriptionStatus()
+            print("\u{2705} Offer code redemption sheet presented successfully")
+        } catch {
+            print("\u{274C} Failed to present offer code sheet: \(error)")
+            purchaseError = .offerCodeFailed
+        }
+    }
+    
+    /// Get the current window scene for presenting StoreKit sheets
+    private static var currentWindowScene: UIWindowScene {
+        guard let scene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive })
+        else {
+            // Fallback to any connected window scene
+            return UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .first!
+        }
+        return scene
+    }
+    
     /// Check if user can access a specific feature
     func canAccess(_ feature: Feature) -> Bool {
         currentTier.canAccess(feature)
@@ -216,10 +322,25 @@ class SubscriptionManager: ObservableObject {
     
     /// Update current subscription status from App Store
     private func updateSubscriptionStatus() async {
+        #if DEBUG
+        // In debug mode, don't override the debug tier setting
+        if isUsingDebugOverride {
+            print("🔧 DEBUG: Skipping StoreKit status update (using debug override)")
+            return
+        }
+        #endif
+        
         var highestTier: SubscriptionTier = .free
         var highestProduct: Product?
         var latestExpirationDate: Date?
         var inTrial = false
+        
+        // Check for permanent unlock first
+        if UserDefaults.standard.bool(forKey: "FLO_ProUnlockedPermanently") {
+            self.currentTier = .pro
+            print("✅ Pro tier active (permanent unlock)")
+            return
+        }
         
         // Check all current entitlements
         for await result in StoreKit.Transaction.currentEntitlements {
@@ -317,6 +438,7 @@ enum PurchaseError: LocalizedError, Equatable {
     case purchasePending
     case verificationFailed
     case restoreFailed
+    case offerCodeFailed
     
     var errorDescription: String? {
         switch self {
@@ -330,6 +452,8 @@ enum PurchaseError: LocalizedError, Equatable {
             return "Unable to verify purchase. Please contact support if this persists."
         case .restoreFailed:
             return "Unable to restore purchases. Please try again later."
+        case .offerCodeFailed:
+            return "Unable to present offer code redemption. Please try redeeming in the App Store instead."
         }
     }
     

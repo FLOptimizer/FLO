@@ -1,8 +1,8 @@
 //  InvoiceDashboardCard.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.0 - Enhanced with Haptics & Micro-Animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.1.1 - Accessibility: text clipping prevention for Dynamic Type
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  ENHANCEMENTS v3.0:
 //  - Animated counter for outstanding balance
@@ -12,6 +12,16 @@
 //  - Create button press animation
 //  - Smooth card press feedback
 //  - WCAG 2.1 AA Compliant
+//
+//  CHANGES v3.1 - Accessibility Audit:
+//  ✅ Header doc icon hidden from VoiceOver
+//  ✅ Chevron navigation icon hidden from VoiceOver
+//  ✅ Header text marked with isHeader trait
+//  ✅ Card marked with isSummaryElement trait
+//  ✅ Empty state decorative icon hidden
+//  ✅ Create Invoice button accessibility hint
+//  ✅ Outstanding balance label uses spoken currency
+//  ✅ Calendar icon in avg payment row hidden
 //
 
 import SwiftUI
@@ -65,9 +75,13 @@ struct InvoiceDashboardCard: View {
                         .font(.title2)
                         .foregroundStyle(Color.brandPrimary)
                         .symbolEffect(.bounce, value: cardVisible)
+                        .accessibilityHidden(true)
                     
                     Text("Invoices")
                         .font(.headline)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .accessibilityAddTraits(.isHeader)
                     
                     Spacer()
                     
@@ -83,9 +97,10 @@ struct InvoiceDashboardCard: View {
                     Image(systemName: "chevron.right")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
                 }
                 .padding()
-                .opacity(cardVisible ? 1 : 0)
+                .opacity(cardVisible ? 1 : 0.001)
                 
                 Divider()
                 
@@ -108,6 +123,7 @@ struct InvoiceDashboardCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(cardAccessibilityLabel)
         .accessibilityHint("Double tap to view invoice list")
+        .accessibilityAddTraits(.isSummaryElement)
         .onAppear {
             animateEntrance()
         }
@@ -192,12 +208,14 @@ struct InvoiceDashboardCard: View {
                 
                 Text(displayedBalance.formatted(.currency(code: "USD")))
                     .font(.title)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .fontWeight(.bold)
                     .foregroundStyle(stats.totalOutstanding > 0 ? Color.brandPrimary : .secondary)
                     .contentTransition(.numericText())
                     .accessibilityLabel("Outstanding balance: \(stats.formattedTotalOutstanding)")
             }
-            .opacity(balanceVisible ? 1 : 0)
+            .opacity(balanceVisible ? 1 : 0.001)
             .scaleEffect(balanceVisible ? 1 : 0.95)
             
             // Status Grid
@@ -232,6 +250,7 @@ struct InvoiceDashboardCard: View {
                 HStack {
                     Image(systemName: "calendar")
                         .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
                     Text("Avg. time to payment:")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -243,7 +262,7 @@ struct InvoiceDashboardCard: View {
                 .padding(.horizontal, 4)
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Average time to payment: \(avgDays)")
-                .opacity(pillsVisible ? 1 : 0)
+                .opacity(pillsVisible ? 1 : 0.001)
                 .animation(.easeOut(duration: 0.3).delay(0.3), value: pillsVisible)
             }
         }
@@ -259,6 +278,7 @@ struct InvoiceDashboardCard: View {
                 .font(.system(size: 40))
                 .foregroundStyle(Color.brandPrimary)
                 .offset(y: emptyIconBounce ? -5 : 0)
+                .accessibilityHidden(true)
             
             Text("No Invoices Yet")
                 .font(.subheadline)
@@ -276,17 +296,18 @@ struct InvoiceDashboardCard: View {
                 Text("Create Invoice")
                     .font(.caption)
                     .fontWeight(.medium)
-                    .foregroundStyle(Color.brandPrimary)
+                     .foregroundStyle(Color.brandPrimaryText)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
                     .background(Color.brandPrimary.opacity(0.1))
                     .cornerRadius(8)
                     .scaleEffect(createButtonScale)
+                    .accessibilityHint("Double tap to create a new invoice")
             }
         }
         .padding()
         .frame(maxWidth: .infinity)
-        .opacity(cardVisible ? 1 : 0)
+        .opacity(cardVisible ? 1 : 0.001)
     }
     
     // MARK: - Helper Functions
@@ -399,6 +420,8 @@ struct AnimatedStatusPill: View {
                     .font(.caption)
                 Text("\(value)")
                     .font(.title3)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .fontWeight(.semibold)
             }
             .foregroundStyle(isHighlighted ? color : .secondary)
@@ -427,7 +450,7 @@ struct AnimatedStatusPill: View {
                 .stroke(isHighlighted ? color.opacity(0.3) : Color.clear, lineWidth: 1)
         )
         .scaleEffect(pillScale)
-        .opacity(isVisible ? 1 : 0)
+        .opacity(isVisible ? 1 : 0.001)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label): \(value)" + (amount != nil && isHighlighted ? ", \(amount!)" : ""))
         .onChange(of: isVisible) { _, newValue in

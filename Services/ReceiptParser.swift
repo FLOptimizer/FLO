@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 2.0 - Fixed Category False Positives & Date Extraction
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  FIXES v2.0:
 //  ✅ FIXED: "76" no longer matches item codes like "793016"

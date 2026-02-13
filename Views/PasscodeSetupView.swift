@@ -1,8 +1,8 @@
 //  PasscodeSetupView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.0 - Enhanced with Haptics & Micro-Animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.2 - Accessibility Audit Pass
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Passcode setup and management screen
 //
@@ -91,6 +91,7 @@ struct PasscodeSetupView: View {
                             }
                         }
                         .animation(FLOAnimation.quick, value: showSuccessCheck)
+                        .accessibilityHidden(true)
                         
                         Text(headerText)
                             .font(.title2)
@@ -213,6 +214,7 @@ struct PasscodeSetupView: View {
                 }
             }
             .onAppear {
+                AccessibilityAnnouncement.screenChanged("Passcode setup")
                 animateEntrance()
             }
         }
@@ -293,8 +295,7 @@ struct PasscodeSetupView: View {
     // MARK: - Actions
     
     private func selectLength(_ length: Int) {
-        let generator = UISelectionFeedbackGenerator()
-        generator.selectionChanged()
+        HapticService.shared.selection()
         
         withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
             lengthButtonScale = 0.9
@@ -368,8 +369,7 @@ struct PasscodeSetupView: View {
     private func verifyCurrentPasscode() {
         if passcodeService.verifyPasscode(currentPasscode) {
             // Success
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
+            HapticService.shared.success()
             
             animateStepTransition()
             
@@ -386,8 +386,7 @@ struct PasscodeSetupView: View {
     }
     
     private func moveToConfirmation() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
+        HapticService.shared.success()
         
         animateStepTransition()
         
@@ -400,8 +399,7 @@ struct PasscodeSetupView: View {
         if passcode == confirmPasscode {
             // Success
             if passcodeService.setPasscode(passcode) {
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.success)
+                HapticService.shared.success()
                 
                 // Show success checkmark
                 withAnimation(FLOAnimation.quick) {
@@ -452,8 +450,7 @@ struct PasscodeSetupView: View {
     }
     
     private func triggerShake() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.error)
+        HapticService.shared.error()
         
         withAnimation(.easeInOut(duration: 0.05).repeatCount(5, autoreverses: true)) {
             shakeOffset = 10

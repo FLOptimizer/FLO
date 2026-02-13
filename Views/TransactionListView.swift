@@ -1,23 +1,32 @@
 //  TransactionListView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.3 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.2 - Accessibility Audit: Full VoiceOver support
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v2.3:
-//  ✅ Haptic feedback on filter changes
-//  ✅ Haptic feedback on swipe actions
-//  ✅ Haptic on add transaction button
-//  ✅ Pull-to-refresh with haptic
-//  ✅ List entrance animations
-//  ✅ Filter badge animations
-//  ✅ Empty state icon animation
-//  ✅ Prepared haptic generators for responsiveness
+//  CHANGES v3.2:
+//  ✅ ADDED: VoiceOver label + hint on Add Transaction toolbar button
+//  ✅ ADDED: VoiceOver label + hint on Filter menu button
+//  ✅ ADDED: Skeleton loading view hidden from VoiceOver
+//  ✅ ADDED: Empty state view accessible with meaningful labels
+//  ✅ ADDED: Screen change announcement on appear
+//  ✅ ADDED: Filter change announcements for VoiceOver
+//  ✅ ADDED: Clear All button in active filters has VoiceOver label
+//  ✅ ADDED: Active filters section has VoiceOver summary
+//  ✅ ADDED: Undo/restore announced to VoiceOver
+//  ✅ ADDED: Transaction count announced after filter changes
+//  ✅ ADDED: Rotor actions (Edit, Delete) on each row for VoiceOver
+//  ✅ ADDED: Filter badge grouped for VoiceOver
 //
-//  PREVIOUS FIXES:
-//  - Fixed Color(hex:) to Color(flowHex:)
-//  - Fixed compiler timeout by extracting categoryIcon
-//  - Uses centralized Color.brandPrimary
+//  CHANGES v3.1:
+//  - Added account balance reversal when deleting transactions
+//  - Fixed UTF-8 encoding in print statements
+//
+//  CHANGES v3.0:
+//  - Added Undo support for deleted transactions (5-second window)
+//  - Migrated all haptics to centralized HapticService
+//  - Migrated all animations to FLOAnimation presets
+//
 
 import SwiftUI
 import SwiftData
@@ -35,13 +44,17 @@ struct TransactionListView: View {
     @State private var transactionToEdit: Transaction?
     @State private var isRefreshing = false
     @State private var listAppeared = false
+    @State private var isInitialLoad = true
     
-    // Haptic Generators
-                        
+    // Undo support - temporarily hidden transaction
+    @State private var pendingDeleteTransaction: Transaction?
+    
     var body: some View {
         NavigationStack {
             Group {
-                if filteredTransactions.isEmpty {
+                if isInitialLoad && allTransactions.isEmpty {
+                    skeletonLoadingView
+                } else if filteredTransactions.isEmpty {
                     emptyStateView
                 } else {
                     transactionList
@@ -57,6 +70,9 @@ struct TransactionListView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    // v3.2: VoiceOver label
+                    .accessibilityLabel("Add transaction")
+                    .accessibilityHint("Double tap to create a new transaction")
                 }
                 
                 ToolbarItem(placement: .topBarLeading) {
@@ -66,6 +82,9 @@ struct TransactionListView: View {
                         Label("Filter", systemImage: filterIconName)
                             .foregroundStyle(hasActiveFilters ? Color.brandPrimary : .primary)
                     }
+                    // v3.2: VoiceOver label with filter state
+                    .accessibilityLabel(hasActiveFilters ? "Filters active" : "Filter transactions")
+                    .accessibilityHint("Double tap to open filter options by type and category")
                 }
             }
             .sheet(isPresented: $showingAddTransaction) {
@@ -76,21 +95,68 @@ struct TransactionListView: View {
             }
             .onChange(of: selectedCategory) { oldValue, newValue in
                 HapticService.play(.selection)
+                // v3.2: Announce filter change
+                if let cat = newValue {
+                    AccessibilityAnnouncement.announce("Filtered by \(cat.name). \(filteredTransactions.count) transactions.")
+                } else if oldValue != nil {
+                    AccessibilityAnnouncement.announce("Category filter removed. \(filteredTransactions.count) transactions.")
+                }
             }
             .onChange(of: selectedFinanceType) { oldValue, newValue in
                 HapticService.play(.selection)
+                // v3.2: Announce filter change
+                if let type = newValue {
+                    AccessibilityAnnouncement.announce("Filtered by \(type.displayName). \(filteredTransactions.count) transactions.")
+                } else if oldValue != nil {
+                    AccessibilityAnnouncement.announce("Type filter removed. \(filteredTransactions.count) transactions.")
+                }
             }
             .onAppear {
-                                withAnimation(FLOAnimation.standard) {
+                withAnimation(FLOAnimation.standard) {
                     listAppeared = true
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    withAnimation(FLOAnimation.gentle) {
+                        isInitialLoad = false
+                    }
+                    // v3.2: Screen announcement
+                    AccessibilityAnnouncement.screenChanged("Transactions. \(allTransactions.count) total.")
                 }
             }
         }
     }
     
-    // MARK: - Haptic Preparation
+    // MARK: - Skeleton Loading View
     
-        
+    @ViewBuilder
+    private var skeletonLoadingView: some View {
+        List {
+            Section {
+                SkeletonList(count: 3) {
+                    TransactionRowSkeleton()
+                }
+            } header: {
+                SkeletonShape()
+                    .frame(width: 120, height: 14)
+            }
+            
+            Section {
+                SkeletonList(count: 2) {
+                    TransactionRowSkeleton()
+                }
+            } header: {
+                SkeletonShape()
+                    .frame(width: 100, height: 14)
+            }
+        }
+        .listStyle(.insetGrouped)
+        // v3.2: Hide skeleton from VoiceOver
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Loading transactions")
+        .accessibilityAddTraits(.updatesFrequently)
+    }
+    
     // MARK: - Transaction List
 
     @ViewBuilder
@@ -106,24 +172,25 @@ struct TransactionListView: View {
             ForEach(Array(groupedTransactions.keys.sorted(by: >).enumerated()), id: \.element) { sectionIndex, date in
                 Section {
                     ForEach(Array((groupedTransactions[date] ?? []).enumerated()), id: \.element.id) { rowIndex, transaction in
-                        AnimatedRow(
-                            transaction: transaction,
-                            sectionIndex: sectionIndex,
-                            rowIndex: rowIndex,
-                            listAppeared: listAppeared,
-                            onTap: { transaction in
-                                HapticService.play(.light)
-                                transactionToEdit = transaction
-                            },
-                            onDelete: { transaction in
-                                HapticService.play(.heavy)
-                                deleteTransaction(transaction)
-                            },
-                            onEdit: { transaction in
-                                HapticService.play(.light)
-                                transactionToEdit = transaction
-                            }
-                        )
+                        if transaction.id != pendingDeleteTransaction?.id {
+                            AnimatedRow(
+                                transaction: transaction,
+                                sectionIndex: sectionIndex,
+                                rowIndex: rowIndex,
+                                listAppeared: listAppeared,
+                                onTap: { transaction in
+                                    HapticService.play(.light)
+                                    transactionToEdit = transaction
+                                },
+                                onDelete: { transaction in
+                                    deleteTransactionWithUndo(transaction)
+                                },
+                                onEdit: { transaction in
+                                    HapticService.play(.light)
+                                    transactionToEdit = transaction
+                                }
+                            )
+                        }
                     }
                 } header: {
                     sectionHeader(for: date)
@@ -134,17 +201,14 @@ struct TransactionListView: View {
         .refreshable {
             await refresh()
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: filteredTransactions.count)
+        .animation(FLOAnimation.standard, value: filteredTransactions.count)
         .animation(FLOAnimation.quick, value: hasActiveFilters)
     }
 
     private func refresh() async {
         HapticService.play(.light)
         isRefreshing = true
-        
-        // Small delay for visual feedback
         try? await Task.sleep(nanoseconds: 300_000_000)
-        
         isRefreshing = false
         HapticService.play(.success)
     }
@@ -168,11 +232,10 @@ struct TransactionListView: View {
         
         var body: some View {
             rowContent
-                .opacity(listAppeared ? 1 : 0)
+                .opacity(listAppeared ? 1 : 0.001)
                 .offset(x: listAppeared ? 0 : 20)
                 .animation(
-                    .spring(response: 0.4, dampingFraction: 0.8)
-                    .delay(Double(sectionIndex) * 0.05 + Double(rowIndex) * 0.02),
+                    FLOAnimation.staggered(index: sectionIndex * 3 + rowIndex, baseDelay: 0.02),
                     value: listAppeared
                 )
         }
@@ -186,6 +249,15 @@ struct TransactionListView: View {
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     swipeActionsContent
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityHint("Double tap to view details. Swipe left for actions.")
+                // v3.2: Rotor actions for VoiceOver users
+                .accessibilityAction(named: "Edit") {
+                    onEdit(transaction)
+                }
+                .accessibilityAction(named: "Delete") {
+                    onDelete(transaction)
                 }
         }
         
@@ -212,12 +284,41 @@ struct TransactionListView: View {
     
     @ViewBuilder
     private var filterMenu: some View {
-        Section("Classification") {
-            financeTypeButtons
+        Section("Finance Type") {
+            Button {
+                withAnimation(FLOAnimation.quick) {
+                    selectedFinanceType = selectedFinanceType == .business ? nil : .business
+                }
+            } label: {
+                Label("Business", systemImage: selectedFinanceType == .business ? "checkmark.circle.fill" : "briefcase")
+            }
+            
+            Button {
+                withAnimation(FLOAnimation.quick) {
+                    selectedFinanceType = selectedFinanceType == .personal ? nil : .personal
+                }
+            } label: {
+                Label("Personal", systemImage: selectedFinanceType == .personal ? "checkmark.circle.fill" : "person")
+            }
         }
         
-        Section("Category") {
-            categoryButtons
+        if !categories.isEmpty {
+            Section("Category") {
+                ForEach(categories) { category in
+                    Button {
+                        withAnimation(FLOAnimation.quick) {
+                            selectedCategory = selectedCategory?.id == category.id ? nil : category
+                        }
+                    } label: {
+                        Label {
+                            Text(category.name)
+                        } icon: {
+                            Image(systemName: selectedCategory?.id == category.id ? "checkmark.circle.fill" : category.icon)
+                                .foregroundStyle(Color(flowHex: category.colorHex))
+                        }
+                    }
+                }
+            }
         }
         
         if hasActiveFilters {
@@ -232,76 +333,12 @@ struct TransactionListView: View {
         }
     }
     
-    private var financeTypeButtons: some View {
-        Group {
-            Button {
-                selectedFinanceType = nil
-            } label: {
-                Label("All", systemImage: selectedFinanceType == nil ? "checkmark" : "")
-            }
-            
-            Button {
-                selectedFinanceType = .business
-            } label: {
-                Label("Business", systemImage: selectedFinanceType == .business ? "checkmark" : "briefcase.fill")
-            }
-            
-            Button {
-                selectedFinanceType = .personal
-            } label: {
-                Label("Personal", systemImage: selectedFinanceType == .personal ? "checkmark" : "person.fill")
-            }
-        }
-    }
-    
-    private var categoryButtons: some View {
-        Group {
-            Button {
-                selectedCategory = nil
-            } label: {
-                Label("All Categories", systemImage: selectedCategory == nil ? "checkmark" : "")
-            }
-            
-            ForEach(categories) { category in
-                Button {
-                    toggleCategory(category)
-                } label: {
-                    Label {
-                        Text(category.name)
-                    } icon: {
-                        categoryIcon(for: category)
-                    }
-                }
-            }
-        }
-    }
-    
-    private func categoryIcon(for category: Category) -> some View {
-        let isSelected = selectedCategory?.id == category.id
-        let iconName = isSelected ? "checkmark" : category.icon
-        return Image(systemName: iconName)
-            .foregroundStyle(Color(flowHex: category.colorHex))
-    }
-    
-    private func toggleCategory(_ category: Category) {
-        if selectedCategory?.id == category.id {
-            selectedCategory = nil
-        } else {
-            selectedCategory = category
-        }
-    }
-    
-    // MARK: - Active Filters Display
+    // MARK: - Active Filters View
     
     @ViewBuilder
     private var activeFiltersView: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                Text("Active Filters:")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
-                
                 if let financeType = selectedFinanceType {
                     filterBadge(
                         text: financeType.displayName,
@@ -341,6 +378,9 @@ struct TransactionListView: View {
                         .background(Color.red.opacity(0.1))
                         .clipShape(Capsule())
                 }
+                // v3.2: VoiceOver label
+                .accessibilityLabel("Clear all filters")
+                .accessibilityHint("Double tap to remove all active filters")
             }
             .padding(.horizontal, 4)
         }
@@ -351,7 +391,7 @@ struct TransactionListView: View {
     private func filterBadge(text: String, icon: String, color: Color, onRemove: @escaping () -> Void) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
-                .font(.system(size: 10))
+                .font(.caption2)
             Text(text)
                 .font(.caption)
                 .fontWeight(.medium)
@@ -370,6 +410,10 @@ struct TransactionListView: View {
         .padding(.vertical, 4)
         .background(color.opacity(0.15))
         .clipShape(Capsule())
+        // v3.2: Group badge for VoiceOver
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(text) filter active")
+        .accessibilityHint("Contains remove button")
     }
     
     // MARK: - Empty State
@@ -384,7 +428,7 @@ struct TransactionListView: View {
         } actions: {
             emptyStateActions
         }
-        .opacity(listAppeared ? 1 : 0)
+        .opacity(listAppeared ? 1 : 0.001)
         .scaleEffect(listAppeared ? 1 : 0.95)
         .animation(FLOAnimation.standard, value: listAppeared)
     }
@@ -410,6 +454,9 @@ struct TransactionListView: View {
                 }
                 .buttonStyle(.bordered)
                 .tint(Color.brandPrimary)
+                // v3.2: VoiceOver
+                .accessibilityLabel("Clear all filters")
+                .accessibilityHint("Double tap to remove all filters and show all transactions")
             }
             
             Button("Add Transaction") {
@@ -418,6 +465,9 @@ struct TransactionListView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(Color.brandPrimary)
+            // v3.2: VoiceOver
+            .accessibilityLabel("Add transaction")
+            .accessibilityHint("Double tap to create your first transaction")
         }
     }
     
@@ -426,6 +476,10 @@ struct TransactionListView: View {
     private var filteredTransactions: [Transaction] {
         let lowercasedSearch = searchText.lowercased()
         return allTransactions.filter { transaction in
+            if transaction.id == pendingDeleteTransaction?.id {
+                return false
+            }
+            
             let matchesSearch = searchText.isEmpty ||
                 transaction.merchantName.lowercased().contains(lowercasedSearch) ||
                 transaction.note.lowercased().contains(lowercasedSearch) ||
@@ -462,23 +516,90 @@ struct TransactionListView: View {
             selectedCategory = nil
             selectedFinanceType = nil
         }
+        // v3.2: Announce
+        AccessibilityAnnouncement.announce("All filters cleared. \(allTransactions.count) transactions.")
     }
     
-    private func deleteTransaction(_ transaction: Transaction) {
+    private func deleteTransactionWithUndo(_ transaction: Transaction) {
         let transactionName = transaction.displayName
         
         withAnimation(FLOAnimation.quick) {
+            pendingDeleteTransaction = transaction
+        }
+        
+        // v3.2: Announce deletion
+        AccessibilityAnnouncement.announce("\(transactionName) deleted. Shake to undo.")
+        
+        FLOUndoManager.shared.scheduleDelete(
+            message: "\(transactionName) deleted",
+            icon: "trash"
+        ) {
+            performDelete(transaction)
+        } undoAction: {
+            withAnimation(FLOAnimation.standard) {
+                pendingDeleteTransaction = nil
+            }
+            HapticService.play(.success)
+            // v3.2: Announce restore
+            AccessibilityAnnouncement.announce("\(transactionName) restored.")
+        }
+    }
+    
+    private func performDelete(_ transaction: Transaction) {
+        let account = transaction.account
+        let amount = transaction.amount
+        let isIncome = transaction.isIncome
+        
+        if let account = account {
+            if isIncome {
+                account.currentBalance -= amount
+            } else {
+                account.currentBalance += amount
+            }
+            account.lastBalanceUpdate = Date()
+            account.touch()
+        }
+        
+        withAnimation(FLOAnimation.quick) {
             context.delete(transaction)
+            pendingDeleteTransaction = nil
         }
         
         do {
             try context.save()
-            HapticService.play(.success)
-            print("✅ Transaction deleted: \(transactionName)")
+            #if DEBUG
+            print("Transaction deleted")
+            #endif
         } catch {
             HapticService.play(.error)
-            print("❌ Failed to delete transaction: \(error)")
+            #if DEBUG
+            print("Failed to delete transaction: \(error)")
+            #endif
         }
+    }
+}
+
+// MARK: - Transaction Backup (for Undo)
+
+private struct TransactionBackup {
+    let amount: Double
+    let date: Date
+    let note: String
+    let isIncome: Bool
+    let merchantName: String
+    let financeType: Transaction.FinanceType
+    let hasReceipt: Bool
+    let categoryID: UUID?
+    
+    init(from transaction: Transaction) {
+        self.amount = transaction.amount
+        self.date = transaction.date
+        self.note = transaction.note
+        self.isIncome = transaction.isIncome
+        self.merchantName = transaction.merchantName
+        self.financeType = transaction.financeType
+        self.hasReceipt = transaction.hasReceipt
+        self.categoryID = transaction.category?.id
     }
 }
 
@@ -518,6 +639,11 @@ struct TransactionListView: View {
 }
 
 #Preview("Empty State") {
+    TransactionListView()
+        .modelContainer(for: [Transaction.self, Category.self], inMemory: true)
+}
+
+#Preview("Loading State") {
     TransactionListView()
         .modelContainer(for: [Transaction.self, Category.self], inMemory: true)
 }

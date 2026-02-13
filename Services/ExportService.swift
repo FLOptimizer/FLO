@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 3.3 - Perfect 100/100 with Universal CSV Compatibility
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES FROM v3.2:
 //  - CRITICAL: CSV amounts now use en_US_POSIX locale (dot decimals)
@@ -662,7 +662,7 @@ final class ExportService {
         let font = UIFont.systemFont(ofSize: 7)
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor.gray]
         
-        let footer = "©2025 Finch & Poppy Co LLC - FLO v\(ExportService.version) - Page \(page)"
+        let footer = "©2026 Finch & Poppy Co LLC - FLO v\(ExportService.version) - Page \(page)"
         let footerSize = footer.size(withAttributes: attributes)
         
         footer.draw(

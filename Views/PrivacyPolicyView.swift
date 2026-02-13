@@ -1,8 +1,8 @@
 //  PrivacyPolicyView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.2 - Accessibility Audit: Full VoiceOver support
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v1.1:
 //  ✅ Section entrance animations
@@ -31,6 +31,8 @@ struct PrivacyPolicyView: View {
                             .font(.largeTitle)
                             .foregroundStyle(.blue)
                             .symbolEffect(.bounce, value: viewAppeared)
+                            // v1.2: Decorative
+                            .accessibilityHidden(true)
                         
                         VStack(alignment: .leading) {
                             Text("Privacy Policy")
@@ -51,7 +53,7 @@ struct PrivacyPolicyView: View {
                         .background(Color.blue.opacity(0.1))
                         .cornerRadius(8)
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
@@ -87,7 +89,7 @@ struct PrivacyPolicyView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(8)
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
@@ -109,7 +111,7 @@ struct PrivacyPolicyView: View {
                     All this data is stored locally on your device using iOS's secure storage systems.
                     """
                 )
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
@@ -130,7 +132,7 @@ struct PrivacyPolicyView: View {
                     We use Apple's privacy-focused analytics and never see personally identifiable information.
                     """
                 )
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
@@ -153,7 +155,7 @@ struct PrivacyPolicyView: View {
                     Your financial data never leaves your device unless you explicitly export it.
                     """
                 )
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 
@@ -176,7 +178,7 @@ struct PrivacyPolicyView: View {
                     We use industry-standard encryption and security practices.
                     """
                 )
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                 
@@ -197,7 +199,7 @@ struct PrivacyPolicyView: View {
                     .background(Color.green.opacity(0.1))
                     .cornerRadius(8)
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                 
@@ -213,6 +215,8 @@ struct PrivacyPolicyView: View {
                     Link(destination: URL(string: "mailto:flo.financeapp@gmail.com")!) {
                         HStack {
                             Image(systemName: "envelope.fill")
+                                // v1.2: Decorative
+                                .accessibilityHidden(true)
                             Text("flo.financeapp@gmail.com")
                         }
                         .font(.subheadline)
@@ -221,6 +225,9 @@ struct PrivacyPolicyView: View {
                     .simultaneousGesture(TapGesture().onEnded {
                         HapticService.play(.light)
                     })
+                    // v1.2: VoiceOver
+                    .accessibilityLabel("Email support at flo.financeapp@gmail.com")
+                    .accessibilityHint("Double tap to open email")
                     
                     Text("Finch & Poppy Co LLC")
                         .font(.caption)
@@ -229,7 +236,7 @@ struct PrivacyPolicyView: View {
                 .padding()
                 .background(Color(.systemGray6))
                 .cornerRadius(8)
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
                 
@@ -237,9 +244,11 @@ struct PrivacyPolicyView: View {
                 Link(destination: AppConstants.privacyPolicyURL) {
                     HStack {
                         Image(systemName: "safari")
+                            .accessibilityHidden(true)
                         Text("View Full Privacy Policy Online")
                         Spacer()
                         Image(systemName: "arrow.up.right.square")
+                            .accessibilityHidden(true)
                     }
                     .font(.callout)
                     .foregroundStyle(.white)
@@ -250,7 +259,7 @@ struct PrivacyPolicyView: View {
                 .simultaneousGesture(TapGesture().onEnded {
                     HapticService.play(.light)
                 })
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
                 
@@ -269,6 +278,8 @@ struct PrivacyPolicyView: View {
             withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
+            // v1.2: Announce screen
+            AccessibilityAnnouncement.screenChanged("Privacy Policy")
         }
     }
 }
@@ -288,9 +299,13 @@ struct PrivacySection: View {
                     .font(.title3)
                     .foregroundStyle(color)
                     .frame(width: 30)
+                    // v1.2: Decorative
+                    .accessibilityHidden(true)
                 
                 Text(title)
                     .font(.headline)
+                    // v1.2: Header trait
+                    .accessibilityAddTraits(.isHeader)
             }
             
             Text(content)
@@ -315,6 +330,8 @@ struct PrivacyPrinciple: View {
                 .font(.title3)
                 .foregroundStyle(color)
                 .frame(width: 30)
+                // v1.2: Decorative
+                .accessibilityHidden(true)
             
             Text(text)
                 .font(.subheadline)
@@ -333,6 +350,8 @@ struct PrivacyRight: View {
                 .font(.caption)
                 .foregroundStyle(.green)
                 .padding(.top, 2)
+                // v1.2: Decorative
+                .accessibilityHidden(true)
             
             Text(text)
                 .font(.footnote)

@@ -1,27 +1,37 @@
 //  TransactionMatchingService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.1 - Enhanced with receipt matching support
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.2 - Added duplicate receipt detection
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  Elite service for matching both bank imports AND receipts
+//  CHANGES FROM v2.2:
+//  ✅ Added duplicate receipt detection (finds transactions that already have receipts)
+//  ✅ Rebalanced scoring: Amount 40%, Date 25%, Merchant 35% (merchant now weighted higher)
+//  ✅ Added merchant name normalization (handles variations like "Murphy", "Murphy USA", etc.)
+//  ✅ findPotentialMatches now returns both linkable matches AND potential duplicates
+//  ✅ Added MatchCategory enum to distinguish duplicates from linkable matches
 //
-//  CHANGES FROM v2.0:
+//  CHANGES FROM v2.1:
 //  - Added receipt matching support (findPotentialMatches)
 //  - Added receipt linking (linkReceiptToTransaction)
 //  - Added cash purchase marking (markAsCashPurchase)
-//  - Added TransactionMatch struct
-//  - Added MatchType enum
-//  - Fixed ReceiptData property compatibility
-//  - Enhanced documentation
 //
 //  PURPOSE:
 //  1. Match imported bank transactions with manual entries (avoid duplicates)
 //  2. Match scanned receipts with existing transactions (link receipts)
-//  3. Handle cash purchases that won't have bank matches
+//  3. Detect duplicate receipt scans (prevent creating duplicates)
+//  4. Handle cash purchases that won't have bank matches
 
 import Foundation
 import SwiftData
+
+// MARK: - MatchCategory Enum
+
+/// Distinguishes between linkable matches and potential duplicates
+enum MatchCategory {
+    case linkable       // Transaction has no receipt - can be linked
+    case duplicate      // Transaction already has receipt - potential duplicate scan
+}
 
 // MARK: - TransactionMatch Model
 
@@ -30,20 +40,26 @@ struct TransactionMatch {
     let transaction: Transaction
     let score: Double  // 0.0 to 1.0
     let matchType: MatchType
+    let category: MatchCategory
     
     var displayConfidence: String {
+        let prefix = category == .duplicate ? "⚠️ Duplicate? " : ""
         switch matchType {
         case .perfect:
-            return "Perfect Match (100%)"
+            return "\(prefix)Perfect Match (100%)"
         case .veryStrong:
-            return "Very Strong Match (\(Int(score * 100))%)"
+            return "\(prefix)Very Strong Match (\(Int(score * 100))%)"
         case .strong:
-            return "Strong Match (\(Int(score * 100))%)"
+            return "\(prefix)Strong Match (\(Int(score * 100))%)"
         case .moderate:
-            return "Moderate Match (\(Int(score * 100))%)"
+            return "\(prefix)Moderate Match (\(Int(score * 100))%)"
         case .weak:
-            return "Weak Match (\(Int(score * 100))%)"
+            return "\(prefix)Weak Match (\(Int(score * 100))%)"
         }
+    }
+    
+    var isDuplicate: Bool {
+        category == .duplicate
     }
 }
 
@@ -83,15 +99,71 @@ class TransactionMatchingService {
     
     private init() {}
     
-    // MARK: - Bank Import Matching (from v2.0)
+    // MARK: - Merchant Name Normalization
+    
+    /// Common merchant name variations to normalize
+    private let merchantNormalizations: [String: [String]] = [
+        "murphy": ["murphy usa", "murphy oil", "murphyusa"],
+        "walmart": ["walmart+", "wal-mart", "wal mart"],
+        "starbucks": ["starbucks coffee", "sbux"],
+        "amazon": ["amzn", "amazon.com", "amazon prime"],
+        "target": ["target.com"],
+        "costco": ["costco wholesale"],
+        "shell": ["shell oil"],
+        "chevron": ["chevron usa"],
+        "exxon": ["exxonmobil", "exxon mobil"],
+        "mcdonalds": ["mcdonald's", "mcd's"],
+        "verizon": ["verizon wireless", "vzw"],
+        "att": ["at&t", "at & t"],
+    ]
+    
+    /// Normalizes a merchant name for better matching
+    private func normalizeMerchant(_ name: String) -> String {
+        var normalized = name.lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Remove common suffixes
+        let suffixesToRemove = ["#\\d+", "\\d{4,}", "store", "inc", "llc", "corp"]
+        for pattern in suffixesToRemove {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                normalized = regex.stringByReplacingMatches(
+                    in: normalized,
+                    options: [],
+                    range: NSRange(normalized.startIndex..., in: normalized),
+                    withTemplate: ""
+                )
+            }
+        }
+        
+        // Trim again after removals
+        normalized = normalized.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        return normalized
+    }
+    
+    /// Extracts the core brand name from a merchant string
+    private func extractCoreBrand(_ name: String) -> String {
+        let normalized = normalizeMerchant(name)
+        
+        // Check if any known brand is contained in the name
+        for (brand, variations) in merchantNormalizations {
+            if normalized.contains(brand) {
+                return brand
+            }
+            for variation in variations {
+                if normalized.contains(variation) {
+                    return brand
+                }
+            }
+        }
+        
+        // Return first word as fallback (often the brand)
+        return normalized.components(separatedBy: .whitespaces).first ?? normalized
+    }
+    
+    // MARK: - Bank Import Matching
     
     /// Finds a potential match for an imported bank transaction
-    /// - Parameters:
-    ///   - importedAmount: Amount from bank import
-    ///   - importedDate: Date from bank import
-    ///   - importedMerchant: Merchant name from bank import
-    ///   - existingTransactions: Array of existing transactions to search
-    /// - Returns: Matched transaction if found, nil otherwise
     func findMatch(
         importedAmount: Double,
         importedDate: Date,
@@ -101,23 +173,15 @@ class TransactionMatchingService {
         
         let calendar = Calendar.current
         
-        // Match criteria:
-        // 1. Amount must match exactly
-        // 2. Date within ±3 days (accounts for processing delays)
-        // 3. Merchant name similarity > 70%
-        
         for transaction in existingTransactions {
-            // Check amount match
             guard abs(transaction.amount - importedAmount) < 0.01 else { continue }
             
-            // Check date match (within 3 days)
             let daysDiff = calendar.dateComponents([.day], from: transaction.date, to: importedDate).day ?? 999
             guard abs(daysDiff) <= 3 else { continue }
             
-            // Check merchant similarity
-            let similarity = stringSimilarity(
-                transactionMerchant: transaction.merchantName,
-                importedMerchant: importedMerchant
+            let similarity = merchantSimilarity(
+                merchant1: transaction.merchantName,
+                merchant2: importedMerchant
             )
             
             if similarity > 0.7 {
@@ -126,17 +190,11 @@ class TransactionMatchingService {
             }
         }
         
-        print("ℹ️ No bank match found for: $\(importedAmount) at \(importedMerchant) on \(importedDate.formatted(date: .abbreviated, time: .omitted))")
+        print("ℹ️ No bank match found for: $\(importedAmount) at \(importedMerchant)")
         return nil
     }
     
     /// Creates a new transaction from imported bank data
-    /// - Parameters:
-    ///   - amount: Transaction amount (positive for income, negative for expense)
-    ///   - date: Transaction date
-    ///   - merchantName: Merchant name from bank
-    ///   - context: ModelContext to insert transaction into
-    /// - Returns: Newly created Transaction
     func createTransaction(
         from amount: Double,
         date: Date,
@@ -154,7 +212,7 @@ class TransactionMatchingService {
             isIncome: isIncome,
             merchantName: merchantName,
             category: nil,
-            financeType: .business,  // Default to business for imported transactions
+            financeType: .business,
             hasReceipt: false
         )
         
@@ -166,10 +224,6 @@ class TransactionMatchingService {
     }
     
     /// Batch match imported transactions
-    /// - Parameters:
-    ///   - importedTransactions: Array of tuples containing imported transaction data
-    ///   - existingTransactions: Array of existing transactions to match against
-    /// - Returns: Tuple of (matched transactions, unmatched transaction data)
     func batchMatch(
         importedTransactions: [(amount: Double, date: Date, merchant: String)],
         existingTransactions: [Transaction]
@@ -191,98 +245,115 @@ class TransactionMatchingService {
             }
         }
         
-        print("📊 Bank batch match complete: \(matched.count) matched, \(unmatched.count) unmatched out of \(importedTransactions.count) total")
+        print("📊 Bank batch match complete: \(matched.count) matched, \(unmatched.count) unmatched")
         
         return (matched, unmatched)
     }
     
-    // MARK: - Receipt Matching (NEW in v2.1)
+    // MARK: - Receipt Matching (v2.2 Enhanced)
     
     /// Finds potential matches for a scanned receipt
-    /// - Parameters:
-    ///   - receipt: Parsed receipt data
-    ///   - existingTransactions: Array of existing transactions to search
-    /// - Returns: Array of potential matches sorted by confidence
+    /// Returns BOTH linkable transactions (no receipt) AND potential duplicates (has receipt)
+    /// Duplicates are sorted first to alert user of potential duplicate scans
     func findPotentialMatches(
         for receipt: ReceiptData,
         in existingTransactions: [Transaction]
     ) -> [TransactionMatch] {
         
-        // FIXED: Use totalAmount and date directly (not optional)
         let receiptAmount = receipt.totalAmount
         let receiptDate = receipt.date
+        let receiptMerchant = receipt.merchantName
         
         let calendar = Calendar.current
         var matches: [TransactionMatch] = []
         
-        // Search for potential matches
+        // Search ALL transactions (including those with receipts for duplicate detection)
         for transaction in existingTransactions {
-            // Skip if transaction already has a receipt
-            if transaction.hasReceipt {
-                continue
-            }
-            
             var score: Double = 0.0
             
-            // 1. Amount match (50% weight)
+            // 1. Amount match (40% weight) - reduced from 50%
             let amountDiff = abs(transaction.amount - receiptAmount)
-            let amountMatch = max(0, 1.0 - (amountDiff / receiptAmount))
-            score += amountMatch * 0.5
+            let amountMatch: Double
+            if amountDiff < 0.01 {
+                amountMatch = 1.0  // Exact match
+            } else if receiptAmount > 0 {
+                amountMatch = max(0, 1.0 - (amountDiff / receiptAmount))
+            } else {
+                amountMatch = 0.0
+            }
+            score += amountMatch * 0.40
             
-            // 2. Date match (30% weight)
-            // FIXED: Properly get day difference as Int
+            // 2. Date match (25% weight) - reduced from 30%
             let daysDiff = abs(calendar.dateComponents([.day], from: transaction.date, to: receiptDate).day ?? 999)
             let dateMatch: Double
             switch daysDiff {
             case 0:
                 dateMatch = 1.0  // Same day
             case 1:
-                dateMatch = 0.8  // 1 day off
+                dateMatch = 0.85 // 1 day off
             case 2:
-                dateMatch = 0.6  // 2 days off
+                dateMatch = 0.65 // 2 days off
             case 3:
-                dateMatch = 0.4  // 3 days off
+                dateMatch = 0.45 // 3 days off
+            case 4...7:
+                dateMatch = 0.2  // Within a week
             default:
                 dateMatch = 0.0  // Too far apart
             }
-            score += dateMatch * 0.3
+            score += dateMatch * 0.25
             
-            // 3. Merchant match (20% weight)
-            // FIXED: Use merchantName directly (not optional)
-            let merchantSimilarity = stringSimilarity(
-                transactionMerchant: transaction.merchantName,
-                importedMerchant: receipt.merchantName
+            // 3. Merchant match (35% weight) - INCREASED from 20%
+            let merchantScore = merchantSimilarity(
+                merchant1: transaction.merchantName,
+                merchant2: receiptMerchant
             )
-            score += merchantSimilarity * 0.2
+            score += merchantScore * 0.35
             
             // Only include matches with reasonable confidence (>40%)
             if score > 0.4 {
                 let matchType = MatchType(score: score)
+                let category: MatchCategory = transaction.hasReceipt ? .duplicate : .linkable
+                
                 let match = TransactionMatch(
                     transaction: transaction,
                     score: score,
-                    matchType: matchType
+                    matchType: matchType,
+                    category: category
                 )
                 matches.append(match)
             }
         }
         
-        // Sort by score (highest first)
-        matches.sort { $0.score > $1.score }
+        // Sort: duplicates first (highest score), then linkable (highest score)
+        matches.sort { match1, match2 in
+            // Duplicates always come first
+            if match1.isDuplicate && !match2.isDuplicate {
+                return true
+            }
+            if !match1.isDuplicate && match2.isDuplicate {
+                return false
+            }
+            // Within same category, sort by score
+            return match1.score > match2.score
+        }
+        
+        // Log results
+        let duplicates = matches.filter { $0.isDuplicate }
+        let linkable = matches.filter { !$0.isDuplicate }
         
         print("📊 Receipt matching found \(matches.count) potential matches")
+        print("   - \(duplicates.count) potential duplicate(s)")
+        print("   - \(linkable.count) linkable transaction(s)")
+        
         if let best = matches.first {
-            print("   Best match: \(best.transaction.merchantName) with \(Int(best.score * 100))% confidence")
+            let typeStr = best.isDuplicate ? "DUPLICATE" : "linkable"
+            print("   Best match: \(best.transaction.merchantName) (\(typeStr)) with \(Int(best.score * 100))% confidence")
         }
         
         return matches
     }
     
     /// Links a receipt to an existing transaction
-    /// - Parameters:
-    ///   - transaction: Transaction to link receipt to
-    ///   - receipt: Receipt data to link
-    ///   - imagePath: Path to saved receipt image
     func linkReceiptToTransaction(
         _ transaction: Transaction,
         receipt: ReceiptData,
@@ -297,11 +368,6 @@ class TransactionMatchingService {
     }
     
     /// Marks a receipt as a cash purchase (creates new transaction)
-    /// - Parameters:
-    ///   - receipt: Receipt data
-    ///   - imagePath: Path to saved receipt image
-    ///   - context: ModelContext to insert into
-    /// - Returns: Newly created transaction
     @discardableResult
     func markAsCashPurchase(
         receipt: ReceiptData,
@@ -309,7 +375,6 @@ class TransactionMatchingService {
         context: ModelContext
     ) -> Transaction {
         
-        // FIXED: Use totalAmount directly (not optional)
         let transaction = Transaction(
             amount: receipt.totalAmount,
             date: receipt.date,
@@ -317,7 +382,7 @@ class TransactionMatchingService {
             isIncome: false,
             merchantName: receipt.merchantName,
             category: nil,
-            financeType: .business,  // Default to business
+            financeType: .business,
             receiptImagePath: imagePath,
             receiptID: receipt.id.uuidString,
             hasReceipt: true
@@ -330,25 +395,42 @@ class TransactionMatchingService {
         return transaction
     }
     
-    // MARK: - Private Helper Methods
+    // MARK: - Enhanced Merchant Similarity
     
-    /// Calculates similarity between two strings using Levenshtein distance
-    /// - Parameters:
-    ///   - transactionMerchant: Merchant name from existing transaction
-    ///   - importedMerchant: Merchant name from import/receipt
-    /// - Returns: Similarity score between 0.0 and 1.0
-    private func stringSimilarity(transactionMerchant: String, importedMerchant: String) -> Double {
-        let s1 = transactionMerchant.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        let s2 = importedMerchant.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+    /// Calculates similarity between two merchant names with brand awareness
+    private func merchantSimilarity(merchant1: String, merchant2: String) -> Double {
+        let s1 = normalizeMerchant(merchant1)
+        let s2 = normalizeMerchant(merchant2)
         
         // Quick exact match
         if s1 == s2 { return 1.0 }
         
-        // Check if one contains the other (common with bank merchant names)
+        // Check if same core brand
+        let brand1 = extractCoreBrand(merchant1)
+        let brand2 = extractCoreBrand(merchant2)
+        
+        if brand1 == brand2 && !brand1.isEmpty {
+            // Same brand - high similarity even if full names differ
+            // e.g., "Murphy USA 7578" vs "Murphy Walmart +"
+            return 0.85
+        }
+        
+        // Check for brand match in known variations
+        for (brand, variations) in merchantNormalizations {
+            let allVariations = [brand] + variations
+            let s1Matches = allVariations.contains { s1.contains($0) }
+            let s2Matches = allVariations.contains { s2.contains($0) }
+            
+            if s1Matches && s2Matches {
+                return 0.9  // Both match same brand family
+            }
+        }
+        
+        // Check if one contains the other
         if s1.contains(s2) || s2.contains(s1) {
             let shorterLength = Double(min(s1.count, s2.count))
             let longerLength = Double(max(s1.count, s2.count))
-            return shorterLength / longerLength
+            return max(0.7, shorterLength / longerLength)
         }
         
         // Calculate Levenshtein distance
@@ -361,10 +443,6 @@ class TransactionMatchingService {
     }
     
     /// Calculates Levenshtein distance between two strings
-    /// - Parameters:
-    ///   - s1: First string
-    ///   - s2: Second string
-    /// - Returns: Edit distance between the strings
     private func levenshteinDistance(_ s1: String, _ s2: String) -> Int {
         let empty = [Int](repeating: 0, count: s2.count)
         var last = [Int](0...s2.count)
@@ -383,76 +461,22 @@ class TransactionMatchingService {
     }
 }
 
-// MARK: - Usage Examples (Documentation)
-
-/*
- // === BANK IMPORT MATCHING ===
- 
- // Match a single imported transaction
- let match = TransactionMatchingService.shared.findMatch(
-     importedAmount: 125.50,
-     importedDate: Date(),
-     importedMerchant: "STARBUCKS #1234",
-     in: existingTransactions
- )
- 
- if let matched = match {
-     print("Found existing transaction: \(matched.merchantName)")
- } else {
-     // Create new transaction
-     let newTransaction = TransactionMatchingService.shared.createTransaction(
-         from: -125.50,
-         date: Date(),
-         merchantName: "Starbucks",
-         context: context
-     )
- }
- 
- // === RECEIPT MATCHING ===
- 
- // Find potential matches for a scanned receipt
- let matches = TransactionMatchingService.shared.findPotentialMatches(
-     for: receiptData,
-     in: existingTransactions
- )
- 
- if let bestMatch = matches.first, bestMatch.score > 0.8 {
-     // High confidence match - link receipt
-     TransactionMatchingService.shared.linkReceiptToTransaction(
-         bestMatch.transaction,
-         receipt: receiptData,
-         imagePath: "/path/to/receipt.jpg"
-     )
- } else if matches.isEmpty {
-     // No match - mark as cash purchase
-     TransactionMatchingService.shared.markAsCashPurchase(
-         receipt: receiptData,
-         imagePath: "/path/to/receipt.jpg",
-         context: context
-     )
- }
- */
 // MARK: - String Extension for Fuzzy Matching
 
 extension String {
     /// Calculates fuzzy match confidence between two strings
-    /// - Parameter other: String to compare against
-    /// - Returns: Confidence score between 0.0 and 1.0
     func fuzzyMatchConfidence(with other: String) -> Double {
         let s1 = self.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let s2 = other.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         
-        // Quick exact match
         if s1 == s2 { return 1.0 }
         
-        // Check if one contains the other
         if s1.contains(s2) || s2.contains(s1) {
             let shorterLength = Double(min(s1.count, s2.count))
             let longerLength = Double(max(s1.count, s2.count))
             return shorterLength / longerLength
         }
         
-        // Calculate Levenshtein distance
         let distance = levenshteinDistance(s1, s2)
         let maxLength = max(s1.count, s2.count)
         

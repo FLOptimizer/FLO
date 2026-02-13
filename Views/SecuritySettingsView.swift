@@ -1,8 +1,15 @@
 //  SecuritySettingsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.2 - Accessibility audit (Sprint 6b)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.2:
+//  ✅ Full VoiceOver accessibility coverage
+//  ✅ Screen change announcement on appear
+//  ✅ Passcode status row: checkmark hidden, combined with spoken status
+//  ✅ Security status row: combined with spoken protection status
+//  ✅ Fixed garbled UTF-8 characters
 //
 //  CHANGES v1.1:
 //  ✅ Haptic feedback on toggle changes
@@ -70,7 +77,7 @@ struct SecuritySettingsView: View {
                     } footer: {
                         Text("Use \(authService.biometricTypeString) to quickly unlock FLO")
                     }
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 }
@@ -96,7 +103,9 @@ struct SecuritySettingsView: View {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(.green)
                                 .symbolEffect(.bounce, value: viewAppeared)
+                                .accessibilityHidden(true)
                         }
+                        .accessibilityElement(children: .combine)
                         
                         Button {
                             HapticService.play(.medium)
@@ -138,7 +147,7 @@ struct SecuritySettingsView: View {
                         Text("Set a passcode for an alternative unlock method")
                     }
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
@@ -167,13 +176,15 @@ struct SecuritySettingsView: View {
                             }
                         }
                     }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Security status: \(authService.biometricEnabled || passcodeService.hasPasscode() ? "Protected" : "Not protected")")
                 } footer: {
                     if !authService.biometricEnabled && !passcodeService.hasPasscode() {
                         Text("Enable \(authService.biometricTypeString) or set a passcode to protect your financial data")
                             .foregroundStyle(.orange)
                     }
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
             }
@@ -233,6 +244,7 @@ struct SecuritySettingsView: View {
                                 withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
+                AccessibilityAnnouncement.screenChanged("Security settings")
             }
         }
     }

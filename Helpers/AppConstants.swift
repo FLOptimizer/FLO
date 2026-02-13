@@ -1,8 +1,8 @@
 //  AppConstants.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.1 – Production-ready app-wide constants
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.2 - Added EULA URL constant
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Crash-safe URLs, brand colors, and configuration values
 //
@@ -90,6 +90,14 @@ enum AppConstants {
         }
         return url
     }()
+
+    /// End User License Agreement URL - guaranteed to be valid
+    static let eulaURL: URL = {
+        guard let url = URL(string: "https://floptimizer.github.io/FLO/eula.html") else {
+            fatalError("Invalid EULA URL - this should never happen")
+        }
+        return url
+    }()
     
     // MARK: - App Information
     
@@ -165,8 +173,8 @@ enum AppConstants {
     
     // MARK: - Mileage Configuration
     
-    /// Current IRS standard mileage rate (2025)
-    static let currentIRSMileageRate: Double = 0.70
+    /// Current IRS standard mileage rate (2026)
+    static let currentIRSMileageRate: Double = 0.725
     
     /// Minimum trip distance to auto-track (miles)
     static let minimumAutoTrackDistance: Double = 0.5

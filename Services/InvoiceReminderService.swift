@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 1.6 - Updated for InvoiceService v4.0 compatibility
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES FROM v1.5:
 //  - Updated to use getInvoicesNeedingRemindersLegacy() for InvoiceService v4.0

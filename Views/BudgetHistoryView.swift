@@ -1,8 +1,15 @@
 //  BudgetHistoryView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.2 - Accessibility audit (Sprint 8)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.2:
+//  ✅ Screen change announcement on appear
+//  ✅ Month navigator buttons get accessibility labels
+//  ✅ Summary card icon hidden, performance indicator combined
+//  ✅ HistoryBudgetCard status icon hidden, progress bar hidden, card combined
+//  ✅ Fixed garbled UTF-8 emoji
 //
 //  CHANGES v1.1:
 //  ✅ Enhanced month navigation haptics
@@ -207,7 +214,7 @@ struct BudgetHistoryView: View {
                     // Month navigator
                     monthNavigator
                         .padding(.horizontal)
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : -10)
                         .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                     
@@ -217,7 +224,7 @@ struct BudgetHistoryView: View {
                             // Summary card
                             summaryCard
                                 .padding(.horizontal)
-                                .opacity(cardsAppeared ? 1 : 0)
+                                .opacity(cardsAppeared ? 1 : 0.001)
                                 .offset(y: cardsAppeared ? 0 : 20)
                                 .animation(FLOAnimation.standard.delay(0.15), value: cardsAppeared)
                             
@@ -225,7 +232,7 @@ struct BudgetHistoryView: View {
                             if budgetsForSelectedMonth.isEmpty {
                                 noBudgetsForMonth
                                     .padding(.horizontal)
-                                    .opacity(cardsAppeared ? 1 : 0)
+                                    .opacity(cardsAppeared ? 1 : 0.001)
                                     .animation(FLOAnimation.standard.delay(0.2), value: cardsAppeared)
                             } else {
                                 ForEach(Array(budgetsForSelectedMonth.enumerated()), id: \.element.id) { index, budget in
@@ -235,7 +242,7 @@ struct BudgetHistoryView: View {
                                         animateProgress: cardsAppeared
                                     )
                                     .padding(.horizontal)
-                                    .opacity(cardsAppeared ? 1 : 0)
+                                    .opacity(cardsAppeared ? 1 : 0.001)
                                     .offset(x: cardsAppeared ? 0 : 30)
                                     .animation(
                                         FLOAnimation.standard
@@ -270,6 +277,7 @@ struct BudgetHistoryView: View {
                         cardsAppeared = true
                     }
                 }
+                AccessibilityAnnouncement.screenChanged("Budget history")
             }
         }
     }
@@ -289,6 +297,7 @@ struct BudgetHistoryView: View {
                     .foregroundStyle(canGoBack ? Color.brandPrimary : Color.gray.opacity(0.3))
             }
             .disabled(!canGoBack)
+            .accessibilityLabel("Previous month")
             
             Spacer()
             
@@ -307,6 +316,7 @@ struct BudgetHistoryView: View {
                     .foregroundStyle(canGoForward ? Color.brandPrimary : Color.gray.opacity(0.3))
             }
             .disabled(!canGoForward)
+            .accessibilityLabel("Next month")
         }
     }
     
@@ -319,6 +329,7 @@ struct BudgetHistoryView: View {
                     .font(.title2)
                     .foregroundStyle(Color.brandPrimary)
                     .symbolEffect(.bounce, value: cardsAppeared)
+                    .accessibilityHidden(true)
                 
                 Text("Month Summary")
                     .font(.headline)
@@ -458,9 +469,11 @@ struct HistoryBudgetCard: View {
                 
                 Image(systemName: statusIcon)
                     .foregroundStyle(statusColor)
+                    .accessibilityHidden(true)
                 
-                Text(budget.financeType == .business ? "🏢" : "👤")
+                Text(budget.financeType == .business ? "💼" : "👤")
                     .font(.caption)
+                    .accessibilityHidden(true)
             }
             
             // Progress bar
@@ -478,6 +491,7 @@ struct HistoryBudgetCard: View {
                 .cornerRadius(4)
             }
             .frame(height: 8)
+            .accessibilityHidden(true)
             
             // Amounts
             HStack {
@@ -521,6 +535,8 @@ struct HistoryBudgetCard: View {
         .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
         .shadow(radius: 1)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(budget.displayName), \(budget.financeType == .business ? "business" : "personal"), spent \(spent.formatted(.currency(code: "USD"))) of \(budget.totalAvailable.formatted(.currency(code: "USD"))), \(remaining >= 0 ? "under budget by \(abs(remaining).formatted(.currency(code: "USD")))" : "over budget by \(abs(remaining).formatted(.currency(code: "USD")))")")
         .onChange(of: animateProgress) { _, newValue in
             if newValue {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {

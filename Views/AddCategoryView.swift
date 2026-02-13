@@ -1,8 +1,8 @@
 //  AddCategoryView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.2 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.3 - Accessibility Audit Pass
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v2.2:
 //  ✅ Haptic feedback on icon selection
@@ -50,32 +50,32 @@ struct AddCategoryView: View {
         NavigationStack {
             Form {
                 nameSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 typeSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 iconSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
                 colorSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
                 taxDeductibleSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 
                 previewSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
             }
@@ -101,6 +101,7 @@ struct AddCategoryView: View {
                                 withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
+                AccessibilityAnnouncement.screenChanged("New category")
             }
         }
     }
@@ -211,6 +212,7 @@ struct AddCategoryView: View {
                     .frame(width: 40, height: 40)
                     .background(Color(flowHex: selectedColor).opacity(0.1))
                     .cornerRadius(10)
+                    .accessibilityHidden(true)
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(name.isEmpty ? "Category Name" : name)
@@ -241,7 +243,17 @@ struct AddCategoryView: View {
                 }
             }
             .animation(FLOAnimation.quick, value: isTaxDeductible)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(previewAccessibilityLabel)
         }
+    }
+    
+    private var previewAccessibilityLabel: String {
+        var parts = ["Preview"]
+        parts.append(name.isEmpty ? "No name" : name)
+        parts.append(isIncome ? "Income" : "Expense")
+        if isTaxDeductible { parts.append("Tax deductible") }
+        return parts.joined(separator: ", ")
     }
     
     // MARK: - Actions

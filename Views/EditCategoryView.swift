@@ -1,8 +1,8 @@
 //  EditCategoryView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.1 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.2.2 - Accessibility: decorative icon hiding, button labels
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v2.1:
 //  ✅ Comprehensive haptic preparation
@@ -58,30 +58,30 @@ struct EditCategoryView: View {
         NavigationStack {
             Form {
                 nameSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 defaultCategoryWarning
                 
                 iconSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 colorSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
                 taxDeductibleSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
                 if !category.isDefault {
                     deleteSection
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 10)
                         .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 }
@@ -97,6 +97,7 @@ struct EditCategoryView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        // a11y: label from button text
                         HapticService.play(.medium)
                         save()
                     }
@@ -106,6 +107,7 @@ struct EditCategoryView: View {
             .alert("Delete Category", isPresented: $showingDeleteAlert) {
                 Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive) {
+                    // a11y: label from button text
                     deleteCategory()
                 }
             } message: {
@@ -115,6 +117,7 @@ struct EditCategoryView: View {
                                 withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
+                AccessibilityAnnouncement.screenChanged("Edit category")
             }
         }
     }
@@ -137,7 +140,9 @@ struct EditCategoryView: View {
             Section {
                 HStack {
                     Image(systemName: "info.circle.fill")
+                            .accessibilityHidden(true)
                         .foregroundStyle(.orange)
+                        .accessibilityHidden(true)
                     Text("Default categories cannot be renamed")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -226,6 +231,7 @@ struct EditCategoryView: View {
     private var deleteSection: some View {
         Section {
             Button(role: .destructive) {
+                // a11y: Delete category button
                 HapticService.play(.heavy)
                 showingDeleteAlert = true
             } label: {
@@ -257,7 +263,7 @@ struct EditCategoryView: View {
             dismiss()
         } catch {
             HapticService.play(.error)
-            print("❌ Failed to save category: \(error)")
+            print("Ã¢ÂÅ’ Failed to save category: \(error)")
         }
     }
     
@@ -270,7 +276,7 @@ struct EditCategoryView: View {
             dismiss()
         } catch {
             HapticService.play(.error)
-            print("❌ Failed to delete category: \(error)")
+            print("Ã¢ÂÅ’ Failed to delete category: \(error)")
         }
     }
 }

@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 2.3 - Elite Production Quality (Swift 6 Strict Concurrency)
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Thread-safe, async-first receipt image storage manager
 //  All Swift 6 concurrency errors resolved

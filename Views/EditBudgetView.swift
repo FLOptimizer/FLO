@@ -1,17 +1,27 @@
 //  EditBudgetView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.3 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.4 - Accessibility Audit: Full VoiceOver support
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.4:
+//  ✅ ADDED: Category display accessible with combined label + finance type
+//  ✅ ADDED: Month display accessible with spoken date
+//  ✅ ADDED: Budget amount field labeled with $ hidden
+//  ✅ ADDED: Carry over field labeled with explanation hint
+//  ✅ ADDED: Total available summary accessible with spoken currency
+//  ✅ ADDED: Cancel/Save toolbar buttons labeled with dynamic hints
+//  ✅ ADDED: Screen change announcement on appear
+//  ✅ ADDED: Save success/failure announced
+//  ✅ ADDED: Decorative icons hidden
+//  ✅ ADDED: isSummaryElement trait on total
 //
 //  CHANGES v2.3:
-//  ✅ Comprehensive haptic preparation
-//  ✅ Section entrance animations
-//  ✅ Value content transitions
-//  ✅ Cancel/save button haptics
+//  - Comprehensive haptic preparation
+//  - Section entrance animations
+//  - Value content transitions
+//  - Cancel/save button haptics
 //
-//  PREVIOUS (v2.2):
-//  - Positive amount validation, haptic feedback
 
 import SwiftUI
 import SwiftData
@@ -25,8 +35,6 @@ struct EditBudgetView: View {
     @State private var amount: String
     @State private var carryOver: String
     @State private var viewAppeared = false
-    
-    // Haptic Generators
                      
     init(budget: Budget) {
         self.budget = budget
@@ -38,27 +46,27 @@ struct EditBudgetView: View {
         NavigationStack {
             Form {
                 categorySection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 monthSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 amountSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
                 carryOverSection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
                 summarySection
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
             }
@@ -70,6 +78,9 @@ struct EditBudgetView: View {
                         HapticService.play(.light)
                         dismiss()
                     }
+                    // v2.4: VoiceOver
+                    .accessibilityLabel("Cancel")
+                    .accessibilityHint("Double tap to discard changes")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
@@ -77,19 +88,22 @@ struct EditBudgetView: View {
                         save()
                     }
                     .disabled(!isValid)
+                    // v2.4: VoiceOver
+                    .accessibilityLabel("Save budget")
+                    .accessibilityHint(isValid ? "Double tap to save your changes" : "Enter a valid amount greater than zero to enable saving")
                 }
             }
             .onAppear {
-                                withAnimation(FLOAnimation.standard) {
+                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
+                // v2.4: Announce screen
+                let categoryName = budget.category?.name ?? "Unknown"
+                AccessibilityAnnouncement.screenChanged("Edit Budget: \(categoryName)")
             }
         }
     }
     
-    // MARK: - Haptic Preparation
-    
-        
     // MARK: - Sections
     
     private var categorySection: some View {
@@ -99,6 +113,8 @@ struct EditBudgetView: View {
                     Image(systemName: category.icon)
                         .foregroundStyle(Color(flowHex: category.colorHex))
                         .frame(width: 32)
+                        // v2.4: Decorative
+                        .accessibilityHidden(true)
                     
                     Text(category.name)
                         .font(.headline)
@@ -107,6 +123,9 @@ struct EditBudgetView: View {
                     
                     Text(budget.financeType == .business ? "🏢" : "👤")
                 }
+                // v2.4: Combined accessible label
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(category.name), \(budget.financeType == .business ? "Business" : "Personal") budget")
             }
         }
     }
@@ -116,9 +135,15 @@ struct EditBudgetView: View {
             HStack {
                 Image(systemName: "calendar")
                     .foregroundStyle(AppConstants.primaryColor)
+                    // v2.4: Decorative
+                    .accessibilityHidden(true)
+                
                 Text(budget.month, format: .dateTime.month(.wide).year())
                     .font(.headline)
             }
+            // v2.4: VoiceOver
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Budget month: \(budget.month.formatted(.dateTime.month(.wide).year()))")
         }
     }
     
@@ -128,10 +153,15 @@ struct EditBudgetView: View {
                 Text("$")
                     .font(.title2)
                     .foregroundStyle(.secondary)
+                    // v2.4: Decorative
+                    .accessibilityHidden(true)
                 
                 TextField("0.00", text: $amount)
                     .keyboardType(.decimalPad)
                     .font(.title2)
+                    // v2.4: VoiceOver
+                    .accessibilityLabel("Budget amount in dollars")
+                    .accessibilityHint("Enter the monthly spending limit for this category")
             }
             .padding(.vertical, 4)
         }
@@ -142,9 +172,14 @@ struct EditBudgetView: View {
             HStack {
                 Text("$")
                     .foregroundStyle(.secondary)
+                    // v2.4: Decorative
+                    .accessibilityHidden(true)
                 
                 TextField("0.00", text: $carryOver)
                     .keyboardType(.decimalPad)
+                    // v2.4: VoiceOver
+                    .accessibilityLabel("Carry over amount in dollars")
+                    .accessibilityHint("Unused funds rolled over from the previous month")
             }
         } header: {
             Text("Carry Over from Previous Month")
@@ -169,6 +204,10 @@ struct EditBudgetView: View {
                     .foregroundStyle(AppConstants.primaryColor)
                     .contentTransition(.numericText())
             }
+            // v2.4: Total accessible with spoken currency
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Total available budget: \(AccessibilityFormatters.spokenCurrency(total))")
+            .accessibilityAddTraits(.isSummaryElement)
         }
     }
     
@@ -195,10 +234,15 @@ struct EditBudgetView: View {
         do {
             try context.save()
             HapticService.play(.success)
+            // v2.4: Announce save
+            let categoryName = budget.category?.name ?? "budget"
+            AccessibilityAnnouncement.announce("\(categoryName) budget updated")
             dismiss()
         } catch {
             HapticService.play(.error)
-            print("❌ Failed to save budget: \(error)")
+            // v2.4: Announce failure
+            AccessibilityAnnouncement.announce("Failed to save budget")
+            print("Failed to save budget: \(error)")
         }
     }
 }

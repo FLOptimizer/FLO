@@ -1,19 +1,27 @@
 //  MileageTripDetailView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.0 - Enhanced with Haptics & Micro-Animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.2 - Accessibility Audit: Full VoiceOver support
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  Detail view for viewing and editing a mileage trip
+//  CHANGES v2.2:
+//  ✅ ADDED: Map section accessible with route summary label
+//  ✅ ADDED: Business trip toggle hint explaining tax deduction impact
+//  ✅ ADDED: Purpose picker accessible with current value
+//  ✅ ADDED: Classification footer accessible (deductible status)
+//  ✅ ADDED: AnimatedDetailRow accessible (icon hidden, label+value combined)
+//  ✅ ADDED: AddressRow accessible with title + address combined
+//  ✅ ADDED: Notes text editor labeled
+//  ✅ ADDED: Entry type + metadata rows accessible
+//  ✅ ADDED: Delete button labeled with permanence hint
+//  ✅ ADDED: Done toolbar button labeled
+//  ✅ ADDED: Screen change announcement on appear
+//  ✅ ADDED: Save/delete success announced
+//  ✅ ADDED: Saved confirmation banner accessible as live region
+//  ✅ ADDED: Decorative icons hidden throughout
 //
-//  ENHANCEMENTS v2.0:
-//  - Haptic feedback on toggle switches and button interactions
-//  - Animated map entrance with scale effect
-//  - Smooth section reveals with staggered timing
-//  - Business toggle with visual celebration
-//  - Delete button shake animation on tap
-//  - Enhanced detail row hover states
-//  - Save confirmation haptic pattern
+//  CHANGES v2.1:
+//  - Migrated to centralized HapticService
 //
 
 import SwiftUI
@@ -52,6 +60,9 @@ struct MileageTripDetailView: View {
                     .listRowBackground(Color.clear)
                     .scaleEffect(mapScale)
                     .opacity(mapOpacity)
+                    // v2.2: Map accessible with route summary
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(mapAccessibilityLabel)
             }
             
             // Trip Classification
@@ -60,10 +71,8 @@ struct MileageTripDetailView: View {
                     Toggle("Business Trip", isOn: $trip.isBusinessTrip)
                         .tint(.teal)
                         .onChange(of: trip.isBusinessTrip) { oldValue, newValue in
-
                             HapticService.play(.medium)
                             
-                            // Celebration animation when marking as business
                             if newValue {
                                 withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
                                     businessToggleScale = 1.1
@@ -74,7 +83,11 @@ struct MileageTripDetailView: View {
                                     }
                                 }
                             }
+                            // v2.2: Announce classification change
+                            AccessibilityAnnouncement.announce(newValue ? "Marked as business trip, tax deductible" : "Marked as personal trip, not deductible")
                         }
+                        // v2.2: VoiceOver
+                        .accessibilityHint("Business trips are included in your tax deduction. Personal trips are not.")
                 }
                 .scaleEffect(businessToggleScale)
                 
@@ -86,15 +99,20 @@ struct MileageTripDetailView: View {
                 }
                 .pickerStyle(.navigationLink)
                 .onChange(of: trip.purpose) { _, _ in
-                    let generator = UISelectionFeedbackGenerator()
-                    generator.selectionChanged()
+                    HapticService.shared.selection()
                 }
+                // v2.2: VoiceOver
+                .accessibilityLabel("Purpose: \(trip.purpose.displayName)")
             } header: {
                 Text("Classification")
+                    // v2.2: Header trait
+                    .accessibilityAddTraits(.isHeader)
             } footer: {
                 HStack(spacing: 4) {
                     Image(systemName: trip.isBusinessTrip ? "checkmark.circle.fill" : "xmark.circle.fill")
                         .font(.caption2)
+                        // v2.2: Decorative
+                        .accessibilityHidden(true)
                     Text(trip.isBusinessTrip ?
                          "This trip will be included in your tax deduction" :
                          "Personal trips are not tax deductible")
@@ -150,6 +168,9 @@ struct MileageTripDetailView: View {
                 ))
                 .frame(minHeight: 100)
                 .scrollContentBackground(.hidden)
+                // v2.2: VoiceOver
+                .accessibilityLabel("Trip notes")
+                .accessibilityHint("Add notes about this trip")
             }
             .opacity(notesOpacity)
             
@@ -183,7 +204,6 @@ struct MileageTripDetailView: View {
             // Delete Button
             Section {
                 Button(role: .destructive) {
-       
                     HapticService.play(.medium)
                     
                     withAnimation(.easeInOut(duration: 0.05).repeatCount(5, autoreverses: true)) {
@@ -198,6 +218,8 @@ struct MileageTripDetailView: View {
                     HStack {
                         Spacer()
                         Image(systemName: "trash")
+                            // v2.2: Decorative (button label handles it)
+                            .accessibilityHidden(true)
                         Text("Delete Trip")
                         Spacer()
                     }
@@ -205,6 +227,9 @@ struct MileageTripDetailView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .offset(x: deleteButtonShake ? -5 : 0)
+                // v2.2: VoiceOver
+                .accessibilityLabel("Delete trip")
+                .accessibilityHint("Double tap to permanently delete this trip. This action cannot be undone.")
             }
             .listRowBackground(Color(UIColor.systemGroupedBackground))
             .opacity(deleteOpacity)
@@ -217,10 +242,17 @@ struct MileageTripDetailView: View {
                     saveChanges()
                 }
                 .fontWeight(.medium)
+                // v2.2: VoiceOver
+                .accessibilityLabel("Done")
+                .accessibilityHint("Double tap to save changes and go back")
             }
         }
         .onAppear {
             animateEntrance()
+            // v2.2: Announce screen
+            let purpose = trip.purpose.displayName
+            let miles = String(format: "%.1f", trip.distanceMiles)
+            AccessibilityAnnouncement.screenChanged("Trip Details. \(purpose), \(miles) miles.")
         }
         .confirmationDialog(
             "Delete this trip?",
@@ -231,7 +263,6 @@ struct MileageTripDetailView: View {
                 deleteTrip()
             }
             Button("Cancel", role: .cancel) {
-
                 HapticService.play(.medium)
             }
         } message: {
@@ -244,12 +275,29 @@ struct MileageTripDetailView: View {
         }
     }
     
+    // MARK: - Map Accessibility Label
+    
+    // v2.2: Comprehensive map label
+    private var mapAccessibilityLabel: String {
+        var parts = ["Trip route map"]
+        if let start = trip.startAddress {
+            parts.append("From \(start)")
+        }
+        if let end = trip.endAddress {
+            parts.append("to \(end)")
+        }
+        parts.append(String(format: "%.1f miles", trip.distanceMiles))
+        return parts.joined(separator: ", ")
+    }
+    
     // MARK: - Saved Confirmation Banner
     
     private var savedConfirmationBanner: some View {
         HStack(spacing: 8) {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
+                // v2.2: Decorative
+                .accessibilityHidden(true)
             Text("Changes Saved")
                 .font(.subheadline)
                 .fontWeight(.medium)
@@ -263,18 +311,20 @@ struct MileageTripDetailView: View {
         )
         .transition(.move(edge: .top).combined(with: .opacity))
         .padding(.top, 8)
+        // v2.2: Live region for VoiceOver
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Changes saved")
+        .accessibilityAddTraits(.updatesFrequently)
     }
     
     // MARK: - Animations
     
     private func animateEntrance() {
-        // Map animation
         withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
             mapScale = 1.0
             mapOpacity = 1.0
         }
         
-        // Staggered section reveals
         withAnimation(.easeOut(duration: 0.3).delay(0.1)) {
             classificationOpacity = 1.0
         }
@@ -308,11 +358,10 @@ struct MileageTripDetailView: View {
         do {
             try modelContext.save()
             
-            // Success haptic
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
+            HapticService.shared.success()
+            // v2.2: Announce save
+            AccessibilityAnnouncement.announce("Changes saved")
             
-            // Show confirmation banner briefly
             withAnimation(FLOAnimation.quick) {
                 showSavedConfirmation = true
             }
@@ -333,27 +382,22 @@ struct MileageTripDetailView: View {
             
         } catch {
             print("Failed to save trip: \(error)")
-            
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.error)
-            
+            HapticService.shared.error()
+            AccessibilityAnnouncement.announce("Failed to save changes")
             dismiss()
         }
     }
     
     private func deleteTrip() {
-        // Heavy haptic for delete
-
         HapticService.play(.medium)
         
         modelContext.delete(trip)
         
         do {
             try modelContext.save()
-            
-            // Warning haptic after delete
-            let notificationGenerator = UINotificationFeedbackGenerator()
-            notificationGenerator.notificationOccurred(.warning)
+            HapticService.shared.warning()
+            // v2.2: Announce deletion
+            AccessibilityAnnouncement.announce("Trip deleted")
             
             #if DEBUG
             print("✅ Trip deleted")
@@ -361,9 +405,7 @@ struct MileageTripDetailView: View {
             
         } catch {
             print("Failed to delete trip: \(error)")
-            
-            let notificationGenerator = UINotificationFeedbackGenerator()
-            notificationGenerator.notificationOccurred(.error)
+            HapticService.shared.error()
         }
         
         dismiss()
@@ -386,6 +428,8 @@ private struct AnimatedDetailRow: View {
             Image(systemName: icon)
                 .foregroundStyle(Color.teal)
                 .frame(width: 28, alignment: .leading)
+                // v2.2: Decorative
+                .accessibilityHidden(true)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
@@ -397,13 +441,15 @@ private struct AnimatedDetailRow: View {
                     .foregroundStyle(valueColor)
             }
         }
-        .opacity(isVisible ? 1 : 0)
+        .opacity(isVisible ? 1 : 0.001)
         .offset(x: isVisible ? 0 : -10)
         .onAppear {
             withAnimation(.easeOut(duration: 0.3).delay(delay)) {
                 isVisible = true
             }
         }
+        // v2.2: Combined label+value for VoiceOver
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -423,6 +469,8 @@ struct AddressRow: View {
                 .foregroundStyle(color)
                 .font(.title3)
                 .scaleEffect(isHovered ? 1.1 : 1.0)
+                // v2.2: Decorative
+                .accessibilityHidden(true)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -436,7 +484,6 @@ struct AddressRow: View {
             }
         }
         .onTapGesture {
-
             HapticService.play(.medium)
             
             withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
@@ -448,6 +495,9 @@ struct AddressRow: View {
                 }
             }
         }
+        // v2.2: Combined address label
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(address)")
     }
 }
 
@@ -509,7 +559,6 @@ struct TripMapView: View {
             MapScaleView()
         }
         .onAppear {
-            // Delay annotation appearance for dramatic effect
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                     showAnnotations = true

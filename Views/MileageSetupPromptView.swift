@@ -1,20 +1,27 @@
 //  MileageSetupPromptView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - Fixed Always Permission Flow
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.5 - Accessibility Audit Pass (Sprint 10)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v1.1:
-//  ✅ Track if Always permission was already requested
-//  ✅ Direct to Settings if user previously declined Always
-//  ✅ iOS only shows Always prompt once - subsequent taps go to Settings
+//  CHANGES v1.4:
+//  ✅ Decorative header icons hidden from VoiceOver
+//  ✅ Privacy note icon hidden, row combined
+//  ✅ Status indicators combined with spoken labels
+//  ✅ Limited mode rows combined for VoiceOver
 //
-//  PREVIOUS (v1.0):
-//  Shown when user visits Mileage Tracking without completing setup
-//  This is the "Option B" fallback for users who:
-//  - Skipped mileage setup during onboarding
-//  - Upgraded to Premium/Pro after initial onboarding
-//  - Haven't granted location permission yet
+//  CHANGES v1.3:
+//  ✅ FIXED: Multiple sheets presenting simultaneously
+//  ✅ Limited mode explanation now embedded in this view
+//  ✅ Removed showingLimitedModeSheet binding (no longer needed)
+//  ✅ Single sheet handles entire setup flow
+//
+//  PREVIOUS (v1.2):
+//  - Changed "Enable Tracking" button to "Continue" per Apple guideline 5.1.1
+//  - Removed "Maybe Later" skip button
+//
+//  This view is shown when user visits Mileage Tracking without completing setup.
+//  This is now the ONLY entry point for mileage setup (removed from onboarding).
 
 import SwiftUI
 import CoreLocation
@@ -22,16 +29,38 @@ import CoreLocation
 struct MileageSetupPromptView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var locationManager: MileageSetupLocationManager
-    @Binding var showingLimitedModeSheet: Bool
     
     let onSetupComplete: () -> Void
-    let onSkipForNow: () -> Void
     
     @State private var hasRequestedPermission = false
     @State private var hasRequestedAlways = false
+    @State private var showingLimitedModeContent = false
     
-            
     var body: some View {
+        Group {
+            if showingLimitedModeContent {
+                limitedModeContent
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                        removal: .move(edge: .leading).combined(with: .opacity)
+                    ))
+            } else {
+                setupContent
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .leading).combined(with: .opacity),
+                        removal: .move(edge: .trailing).combined(with: .opacity)
+                    ))
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showingLimitedModeContent)
+        .onChange(of: locationManager.authorizationStatus) { oldValue, newValue in
+            handleAuthorizationChange(from: oldValue, to: newValue)
+        }
+    }
+    
+    // MARK: - Setup Content
+    
+    private var setupContent: some View {
         VStack(spacing: 24) {
             // Header
             VStack(spacing: 16) {
@@ -44,6 +73,7 @@ struct MileageSetupPromptView: View {
                         .font(.system(size: 44))
                         .foregroundStyle(.orange)
                 }
+                .accessibilityHidden(true)
                 
                 Text("Set Up Mileage Tracking")
                     .font(.title2.bold())
@@ -56,16 +86,21 @@ struct MileageSetupPromptView: View {
                     .padding(.horizontal, 20)
             }
             .padding(.top, 32)
+            .onAppear {
+                AccessibilityAnnouncement.screenChanged("Mileage tracking setup")
+            }
             
             // Privacy note
             HStack(spacing: 12) {
                 Image(systemName: "lock.shield.fill")
                     .font(.title2)
                     .foregroundStyle(Color(flowHex: "14B8A6"))
+                    .accessibilityHidden(true)
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Privacy First")
                         .font(.headline)
+                        .accessibilityAddTraits(.isHeader)
                     Text("Your location data never leaves your device.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -83,8 +118,10 @@ struct MileageSetupPromptView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "lightbulb.fill")
                         .foregroundStyle(.yellow)
+                        .accessibilityHidden(true)
                     Text("For best results")
                         .font(.subheadline.bold())
+                        .accessibilityAddTraits(.isHeader)
                 }
                 
                 Text("Select \"Always Allow\" when prompted to record trips even when FLO is in the background.")
@@ -103,6 +140,7 @@ struct MileageSetupPromptView: View {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
+                        .accessibilityHidden(true)
                     Text("Full tracking enabled!")
                         .font(.subheadline.bold())
                         .foregroundStyle(.green)
@@ -110,10 +148,12 @@ struct MileageSetupPromptView: View {
                 .padding()
                 .background(Color.green.opacity(0.1))
                 .cornerRadius(12)
+                .accessibilityElement(children: .combine)
             } else if locationManager.authorizationStatus == .authorizedWhenInUse {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
+                        .accessibilityHidden(true)
                     Text("Limited mode - upgrade for background tracking")
                         .font(.subheadline)
                         .foregroundStyle(.orange)
@@ -121,41 +161,143 @@ struct MileageSetupPromptView: View {
                 .padding()
                 .background(Color.orange.opacity(0.1))
                 .cornerRadius(12)
+                .accessibilityElement(children: .combine)
             }
+            
+            // Main action button - NO skip option per Apple guideline 5.1.1
+            Button {
+                HapticService.play(.medium)
+                requestLocationPermission()
+            } label: {
+                HStack {
+                    Image(systemName: buttonIcon)
+                        .accessibilityHidden(true)
+                    Text(buttonTitle)
+                }
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(buttonColor)
+                .cornerRadius(12)
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 32)
+            
+            // Note: "Maybe Later" / skip button removed per Apple guideline 5.1.1
+            // Users must proceed to the iOS permission dialog
+        }
+    }
+    
+    // MARK: - Limited Mode Content (Embedded)
+    
+    private var limitedModeContent: some View {
+        VStack(spacing: 24) {
+            // Header
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.orange.opacity(0.15))
+                        .frame(width: 80, height: 80)
+                    
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.orange)
+                }
+                .accessibilityHidden(true)
+                
+                Text("Limited Tracking Mode")
+                    .font(.title2.bold())
+                    .foregroundStyle(.primary)
+                
+                Text("Without \"Always Allow\", FLO can only track trips while the app is open on your screen.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+            }
+            .padding(.top, 24)
+            .onAppear {
+                AccessibilityAnnouncement.screenChanged("Limited tracking mode")
+            }
+            
+            // What this means
+            VStack(alignment: .leading, spacing: 12) {
+                Text("What this means:")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+                
+                limitedModeRow(
+                    icon: "xmark.circle.fill",
+                    iconColor: .red,
+                    text: "No automatic trip detection"
+                )
+                
+                limitedModeRow(
+                    icon: "xmark.circle.fill",
+                    iconColor: .red,
+                    text: "Tracking stops when app is backgrounded"
+                )
+                
+                limitedModeRow(
+                    icon: "checkmark.circle.fill",
+                    iconColor: .green,
+                    text: "Manual trip entry still works"
+                )
+            }
+            .padding()
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(12)
+            .padding(.horizontal)
+            
+            Spacer()
             
             // Buttons
             VStack(spacing: 12) {
                 Button {
                     HapticService.play(.medium)
-                    requestLocationPermission()
+                    openSettings()
                 } label: {
                     HStack {
-                        Image(systemName: buttonIcon)
-                        Text(buttonTitle)
+                        Image(systemName: "gearshape.fill")
+                            .accessibilityHidden(true)
+                        Text("Open Phone Settings")
                     }
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(buttonColor)
+                    .background(Color(flowHex: "14B8A6"))
                     .cornerRadius(12)
                 }
                 
                 Button {
-                    onSkipForNow()
+                    HapticService.play(.light)
+                    onSetupComplete()
                 } label: {
-                    Text("Maybe Later")
+                    Text("Continue with Limited Mode")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }
             .padding(.horizontal)
-            .padding(.bottom, 32)
-        }
-        .onChange(of: locationManager.authorizationStatus) { oldValue, newValue in
-            handleAuthorizationChange(from: oldValue, to: newValue)
+            .padding(.bottom, 24)
         }
     }
+    
+    private func limitedModeRow(icon: String, iconColor: Color, text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundStyle(iconColor)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+    
+    // MARK: - Button Properties
     
     private var buttonIcon: String {
         switch locationManager.authorizationStatus {
@@ -179,7 +321,8 @@ struct MileageSetupPromptView: View {
         case .denied, .restricted:
             return "Open Phone Settings"
         default:
-            return "Enable Tracking"
+            // Changed from "Enable Tracking" to "Continue" per Apple guideline 5.1.1
+            return "Continue"
         }
     }
     
@@ -193,6 +336,8 @@ struct MileageSetupPromptView: View {
             return Color(flowHex: "14B8A6")
         }
     }
+    
+    // MARK: - Actions
     
     private func requestLocationPermission() {
         let status = locationManager.authorizationStatus
@@ -243,16 +388,20 @@ struct MileageSetupPromptView: View {
                     locationManager.requestAlwaysAuthorization()
                 }
                 
-                // Check after delay if they declined Always
+                // Check after delay if they declined Always - show embedded limited mode content
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     if locationManager.authorizationStatus == .authorizedWhenInUse {
-                        showingLimitedModeSheet = true
+                        withAnimation {
+                            showingLimitedModeContent = true
+                        }
                     }
                 }
             }
             
         case .denied, .restricted:
-            showingLimitedModeSheet = true
+            withAnimation {
+                showingLimitedModeContent = true
+            }
             
         default:
             break
@@ -265,8 +414,6 @@ struct MileageSetupPromptView: View {
 #Preview {
     MileageSetupPromptView(
         locationManager: MileageSetupLocationManager(),
-        showingLimitedModeSheet: .constant(false),
-        onSetupComplete: {},
-        onSkipForNow: {}
+        onSetupComplete: {}
     )
 }

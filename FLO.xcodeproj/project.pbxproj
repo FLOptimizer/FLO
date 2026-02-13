@@ -51,6 +51,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		4318B1A82F250ED300B9389E /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		4318B3F02F2919A100B9389E /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		4318B6CF2F32D79200B9389E /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		4320D9272F0187EC00A758F4 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		4320DA4A2F063B8C00A758F4 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		433FDBCD2EB992B00008DA09 /* FLO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FLO.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -72,6 +75,7 @@
 		43D3D1192EF9E59D00B48C19 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43E3C9582EF6297400CC479E /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43E3CA1F2EF62AF800CC479E /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43E4764D2F3785EC00769F6C /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43EBF35A2EF642B600B5C1DE /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43EBF4392EF6435800B5C1DE /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43EBF5212EF64C2600B5C1DE /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
@@ -80,6 +84,9 @@
 		43FAC9D32F145FCE006A54B9 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43FACAFF2F186F5A006A54B9 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43FACC262F187ADF006A54B9 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43FACF002F1DADEF006A54B9 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43FACFF62F2017F6006A54B9 /* FLOTests.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = FLOTests.xctestplan; sourceTree = "<group>"; };
+		43FAD0E42F21BA50006A54B9 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -114,6 +121,7 @@
 				Models/Invoice.swift,
 				Models/InvoicePayment.swift,
 				Models/InvoiceTypes.swift,
+				Models/PlaidModels.swift,
 				Models/RecurringTransaction.swift,
 				Models/TaxOptimizationModels.swift,
 				Models/Transaction.swift,
@@ -182,6 +190,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		4318B1AC2F250ED300B9389E /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4318B3F42F2919A100B9389E /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4318B6D32F32D79200B9389E /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
 		4320D92F2F0187EC00A758F4 /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
@@ -195,6 +218,7 @@
 		433FDBC42EB992B00008DA09 = {
 			isa = PBXGroup;
 			children = (
+				43FACFF62F2017F6006A54B9 /* FLOTests.xctestplan */,
 				43712E8E2EFF2FD600873FEF /* FLOTests */,
 				433FDBCF2EB992B00008DA09 /* FLO */,
 				433FDBDF2EB992B10008DA09 /* FLOTests */,
@@ -284,6 +308,11 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		43E476512F3785EC00769F6C /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
 		43EBF3622EF642B600B5C1DE /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
@@ -320,6 +349,16 @@
 			sourceTree = "<group>";
 		};
 		43FACC292F187ADF006A54B9 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		43FACF032F1DADEF006A54B9 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		43FAD0E82F21BA50006A54B9 /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
@@ -452,6 +491,7 @@
 			mainGroup = 433FDBC42EB992B00008DA09;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				43FAD1E12F22C841006A54B9 /* XCRemoteSwiftPackageReference "plaid-link-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 433FDBCE2EB992B00008DA09 /* Products */;
@@ -468,6 +508,10 @@
 				{
 					ProductGroup = 43FAC7842F1080D4006A54B9 /* Products */;
 					ProjectRef = 43FAC77C2F1080D4006A54B9 /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 43E476512F3785EC00769F6C /* Products */;
+					ProjectRef = 43E4764D2F3785EC00769F6C /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 438124402EF63A19002EA8A5 /* Products */;
@@ -490,6 +534,10 @@
 					ProjectRef = 43EBF5212EF64C2600B5C1DE /* FLO.xcodeproj */;
 				},
 				{
+					ProductGroup = 4318B3F42F2919A100B9389E /* Products */;
+					ProjectRef = 4318B3F02F2919A100B9389E /* FLO.xcodeproj */;
+				},
+				{
 					ProductGroup = 438126D02EF63F46002EA8A5 /* Products */;
 					ProjectRef = 438126C82EF63F46002EA8A5 /* FLO.xcodeproj */;
 				},
@@ -510,6 +558,10 @@
 					ProjectRef = 43D3D1192EF9E59D00B48C19 /* FLO.xcodeproj */;
 				},
 				{
+					ProductGroup = 43FACF032F1DADEF006A54B9 /* Products */;
+					ProjectRef = 43FACF002F1DADEF006A54B9 /* FLO.xcodeproj */;
+				},
+				{
 					ProductGroup = 43E3CA262EF62AF800CC479E /* Products */;
 					ProjectRef = 43E3CA1F2EF62AF800CC479E /* FLO.xcodeproj */;
 				},
@@ -520,6 +572,10 @@
 				{
 					ProductGroup = 43FACC292F187ADF006A54B9 /* Products */;
 					ProjectRef = 43FACC262F187ADF006A54B9 /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 4318B6D32F32D79200B9389E /* Products */;
+					ProjectRef = 4318B6CF2F32D79200B9389E /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 43B739732EF6521400B32076 /* Products */;
@@ -536,6 +592,14 @@
 				{
 					ProductGroup = 435AF72B2EF6386100B42ECE /* Products */;
 					ProjectRef = 435AF7232EF6386100B42ECE /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 4318B1AC2F250ED300B9389E /* Products */;
+					ProjectRef = 4318B1A82F250ED300B9389E /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 43FAD0E82F21BA50006A54B9 /* Products */;
+					ProjectRef = 43FAD0E42F21BA50006A54B9 /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 438125E72EF63DB9002EA8A5 /* Products */;
@@ -767,7 +831,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = FLO.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -807,7 +871,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = FLO.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -891,7 +955,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = FlowLedger;
+				TEST_TARGET_NAME = FLO;
 			};
 			name = Debug;
 		};
@@ -908,7 +972,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = FlowLedger;
+				TEST_TARGET_NAME = FLO;
 			};
 			name = Release;
 		};
@@ -919,7 +983,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = FLOWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = FLOWidget/Info.plist;
@@ -947,7 +1011,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = FLOWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = FLOWidget/Info.plist;
@@ -1017,6 +1081,17 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		43FAD1E12F22C841006A54B9 /* XCRemoteSwiftPackageReference "plaid-link-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/plaid/plaid-link-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = 433FDBC52EB992B00008DA09 /* Project object */;
 }

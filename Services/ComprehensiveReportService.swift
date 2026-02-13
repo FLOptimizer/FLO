@@ -1,8 +1,12 @@
 //  ComprehensiveReportService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - CPA-Ready Comprehensive Financial Reports (Fixed)
+//  Version 1.2 - Exclude transfers from financial reports
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.2:
+//  ✅ Transfers excluded from P&L, summaries, and category breakdowns
+//  ✅ Owner's draws/contributions tracked separately in reports
 //
 //  CHANGES v1.1:
 //  ✅ Fixed TaxSettings.effectiveTaxRate -> use customFederalRate or default 22%
@@ -196,8 +200,10 @@ final class ComprehensiveReportService {
         return .failure(.pdfGenerationFailed)
         #else
         
-        // Filter data by date range
-        let filteredTransactions = transactions.filter { config.dateRange.contains($0.date) }
+        // Filter data by date range, excluding transfers from financial calculations
+        let filteredTransactions = transactions.filter {
+            config.dateRange.contains($0.date) && !$0.isTransfer
+        }
         let filteredMileage = mileageTrips.filter { config.dateRange.contains($0.startDate) }
         let filteredInvoices = invoices.filter { config.dateRange.contains($0.issueDate) }
         
@@ -273,7 +279,7 @@ final class ComprehensiveReportService {
         let totalDeduction = businessTrips.reduce(0) { $0 + $1.deductionAmount }
         
         // Average rate
-        let avgRate = businessTrips.isEmpty ? 0.70 : businessTrips.reduce(0) { $0 + $1.mileageRate } / Double(businessTrips.count)
+        let avgRate = businessTrips.isEmpty ? 0.725 : businessTrips.reduce(0) { $0 + $1.mileageRate } / Double(businessTrips.count)
         
         // Top purposes
         let purposeGroups = Dictionary(grouping: businessTrips) { $0.purpose.displayName }
@@ -1543,7 +1549,7 @@ final class ComprehensiveReportService {
         }
         
         notes.append("")
-        notes.append("📝 ITEMS TO DISCUSS WITH YOUR CPA")
+        notes.append("🔍 ITEMS TO DISCUSS WITH YOUR CPA")
         
         if summary.businessExpenseRatio < 30 {
             notes.append("• Low business expense ratio (\(String(format: "%.0f%%", summary.businessExpenseRatio))) - review for missed deductions")

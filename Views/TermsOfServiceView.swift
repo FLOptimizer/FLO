@@ -1,17 +1,21 @@
 //  TermsOfServiceView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.2 - Accessibility Audit: Full VoiceOver support
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.2:
+//  ✅ Screen change announcement on appear
+//  ✅ Header decorative icon hidden from VoiceOver
+//  ✅ TermsSection icon hidden, title as header trait
+//  ✅ Free trial icon hidden
+//  ✅ Email link labeled with hint
+//  ✅ Online link labeled with hint
+//  ✅ Acknowledgment section accessible
 //
 //  CHANGES v1.1:
-//  ✅ Section entrance animations
-//  ✅ Icon symbol effects
-//  ✅ Link haptic feedback
-//  ✅ Smooth scroll appearance
-//
-//  PREVIOUS (v1.0):
-//  - Basic in-app terms of service
+//  - Section entrance animations, icon symbol effects
+//  - Link haptic feedback, smooth scroll appearance
 
 import SwiftUI
 
@@ -31,6 +35,8 @@ struct TermsOfServiceView: View {
                             .font(.largeTitle)
                             .foregroundStyle(.teal)
                             .symbolEffect(.bounce, value: viewAppeared)
+                            // v1.2: Decorative
+                            .accessibilityHidden(true)
                         
                         VStack(alignment: .leading) {
                             Text("Terms of Service")
@@ -51,7 +57,7 @@ struct TermsOfServiceView: View {
                         .background(Color.teal.opacity(0.1))
                         .cornerRadius(8)
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
@@ -66,7 +72,7 @@ struct TermsOfServiceView: View {
                     These terms constitute a legal agreement between you and Finch & Poppy Co LLC.
                     """
                 )
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
@@ -89,7 +95,7 @@ struct TermsOfServiceView: View {
                     • Use the app for illegal activities or to violate tax laws
                     """
                 )
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
@@ -123,7 +129,7 @@ struct TermsOfServiceView: View {
                     • Prices subject to change with 30 days notice
                     """
                 )
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
@@ -132,6 +138,8 @@ struct TermsOfServiceView: View {
                     HStack {
                         Image(systemName: "gift.fill")
                             .foregroundStyle(.orange)
+                            // v1.2: Decorative
+                            .accessibilityHidden(true)
                         Text("Free Trial Policy")
                             .font(.headline)
                     }
@@ -143,7 +151,7 @@ struct TermsOfServiceView: View {
                 .padding()
                 .background(Color.orange.opacity(0.1))
                 .cornerRadius(8)
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 
@@ -169,7 +177,7 @@ struct TermsOfServiceView: View {
                     • Use automated tools to access the app
                     """
                 )
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                 
@@ -190,7 +198,7 @@ struct TermsOfServiceView: View {
                     See our separate Tax & Legal Disclaimer for complete details.
                     """
                 )
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                 
@@ -205,7 +213,7 @@ struct TermsOfServiceView: View {
                     You retain ownership of your financial data entered into the app. By using FLO, you grant us no rights to your data except as necessary to provide the service.
                     """
                 )
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
                 
@@ -221,6 +229,8 @@ struct TermsOfServiceView: View {
                     Link(destination: URL(string: "mailto:flo.financeapp@gmail.com")!) {
                         HStack {
                             Image(systemName: "envelope.fill")
+                                // v1.2: Decorative
+                                .accessibilityHidden(true)
                             Text("flo.financeapp@gmail.com")
                         }
                         .font(.subheadline)
@@ -229,6 +239,9 @@ struct TermsOfServiceView: View {
                     .simultaneousGesture(TapGesture().onEnded {
                         HapticService.play(.light)
                     })
+                    // v1.2: VoiceOver
+                    .accessibilityLabel("Email support at flo.financeapp@gmail.com")
+                    .accessibilityHint("Double tap to open email")
                     
                     Text("Finch & Poppy Co LLC")
                         .font(.caption)
@@ -237,7 +250,7 @@ struct TermsOfServiceView: View {
                 .padding()
                 .background(Color(.systemGray6))
                 .cornerRadius(8)
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
                 
@@ -245,9 +258,11 @@ struct TermsOfServiceView: View {
                 Link(destination: AppConstants.termsOfServiceURL) {
                     HStack {
                         Image(systemName: "safari")
+                            .accessibilityHidden(true)
                         Text("View Full Terms Online")
                         Spacer()
                         Image(systemName: "arrow.up.right.square")
+                            .accessibilityHidden(true)
                     }
                     .font(.callout)
                     .foregroundStyle(.white)
@@ -258,7 +273,10 @@ struct TermsOfServiceView: View {
                 .simultaneousGesture(TapGesture().onEnded {
                     HapticService.play(.light)
                 })
-                .opacity(viewAppeared ? 1 : 0)
+                // v1.2: VoiceOver
+                .accessibilityLabel("View full Terms of Service online")
+                .accessibilityHint("Double tap to open in Safari")
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.5), value: viewAppeared)
                 
@@ -272,7 +290,7 @@ struct TermsOfServiceView: View {
                         .background(Color.teal.opacity(0.1))
                         .cornerRadius(8)
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)
                 .animation(FLOAnimation.standard.delay(0.55), value: viewAppeared)
                 
@@ -291,6 +309,8 @@ struct TermsOfServiceView: View {
             withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
+            // v1.2: Announce screen
+            AccessibilityAnnouncement.screenChanged("Terms of Service")
         }
     }
 }
@@ -310,9 +330,13 @@ struct TermsSection: View {
                     .font(.title3)
                     .foregroundStyle(color)
                     .frame(width: 30)
+                    // v1.2: Decorative
+                    .accessibilityHidden(true)
                 
                 Text(title)
                     .font(.headline)
+                    // v1.2: Header trait
+                    .accessibilityAddTraits(.isHeader)
             }
             
             Text(content)

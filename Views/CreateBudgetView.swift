@@ -1,8 +1,8 @@
 //  CreateBudgetView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.2.1 - Fixed FinanceType comparison issues
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.2.3 - Accessibility: decorative hiding, form field labels
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES FROM v1.2:
 //  ✅ FIXED: FinanceType comparison (Account now uses Transaction.FinanceType)
@@ -50,17 +50,21 @@ struct CreateBudgetView: View {
                         HapticService.play(.light)
                         dismiss()
                     }
+                    .accessibilityHint("Discard and go back")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        // Accessibility label via button text
                         save()
                     }
                     .disabled(!isValid)
                     .fontWeight(.semibold)
+                    .accessibilityHint("Creates the new budget")
                 }
             }
             .onAppear {
                 setDefaultAccount()
+                AccessibilityAnnouncement.screenChanged("Create new budget")
             }
             .onChange(of: financeType) { _, newType in
                 updateAccountForFinanceType(newType)
@@ -74,7 +78,8 @@ struct CreateBudgetView: View {
         Section("Month") {
             HStack {
                 Image(systemName: "calendar")
-                    .foregroundStyle(Color.brandPrimary)
+                     .foregroundStyle(Color.brandPrimaryText)
+                     .accessibilityHidden(true)
                 
                 Text(month, format: .dateTime.month(.wide).year())
                     .font(.headline)
@@ -128,7 +133,8 @@ struct CreateBudgetView: View {
                             HapticService.play(.light)
                         }
                         .font(.caption)
-                        .foregroundStyle(Color.brandPrimary)
+                         .foregroundStyle(Color.brandPrimaryText)
+                        .accessibilityHint("Clears account filter, applies budget to all accounts")
                     }
                 }
             } footer: {
@@ -180,18 +186,20 @@ struct CreateBudgetView: View {
                 Text("$")
                     .font(.title2)
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
                 
                 TextField("0.00", text: $amount)
                     .keyboardType(.decimalPad)
                     .font(.title2)
                     .fontWeight(.semibold)
+                    .accessibilityLabel("Budget amount in dollars")
             }
         } header: {
             Text("Budget Amount")
         } footer: {
             if let amt = Double(amount), amt > 0 {
                 Text("Monthly limit: \(amt.formatted(.currency(code: "USD")))")
-                    .foregroundStyle(Color.brandPrimary)
+                     .foregroundStyle(Color.brandPrimaryText)
             }
         }
     }
@@ -264,7 +272,7 @@ struct CreateBudgetView: View {
             HapticService.play(.success)
             dismiss()
         } catch {
-            print("❌ Failed to save budget: \(error)")
+            print("Ã¢ÂÅ’ Failed to save budget: \(error)")
             HapticService.play(.error)
         }
     }
@@ -286,8 +294,8 @@ struct AllAccountsChip: View {
                         .frame(width: 32, height: 32)
                     
                     Image(systemName: "building.columns")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.brandPrimary)
+                        .font(.subheadline)
+                         .foregroundStyle(Color.brandPrimaryText)
                 }
                 
                 VStack(alignment: .leading, spacing: 2) {
@@ -304,7 +312,7 @@ struct AllAccountsChip: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 16))
-                        .foregroundStyle(Color.brandPrimary)
+                         .foregroundStyle(Color.brandPrimaryText)
                 }
             }
             .padding(.horizontal, 12)
@@ -341,7 +349,7 @@ struct BudgetAccountChip: View {
                         .frame(width: 32, height: 32)
                     
                     Image(systemName: account.icon)
-                        .font(.system(size: 14))
+                        .font(.subheadline)
                         .foregroundStyle(Color(hex: account.color))
                 }
                 
@@ -366,7 +374,7 @@ struct BudgetAccountChip: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 16))
-                        .foregroundStyle(Color.brandPrimary)
+                         .foregroundStyle(Color.brandPrimaryText)
                 }
             }
             .padding(.horizontal, 12)

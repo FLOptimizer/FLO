@@ -1,8 +1,8 @@
 //  ClientManagementViews.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.0 - Enhanced with Haptics & Micro-Animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.2 - Accessibility Audit Pass
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  ENHANCEMENTS v3.0:
 //  - Animated locked view with icon bounce
@@ -71,19 +71,21 @@ struct AnimatedLockedClientView: View {
                         )
                     )
                     .scaleEffect(iconVisible ? 1.0 : 0.5)
-                    .opacity(iconVisible ? 1 : 0)
+                    .opacity(iconVisible ? 1 : 0.001)
                     .offset(y: iconBounce ? -5 : 0)
+                    .accessibilityHidden(true)
                 
                 VStack(spacing: 12) {
                     Text("Client Management")
                         .font(.title2.bold())
+                        .accessibilityAddTraits(.isHeader)
                     Text("Upgrade to Pro to manage unlimited clients, track payment history, and build lasting relationships.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 32)
                 }
-                .opacity(textVisible ? 1 : 0)
+                .opacity(textVisible ? 1 : 0.001)
                 .offset(y: textVisible ? 0 : 10)
                 
                 VStack(alignment: .leading, spacing: 16) {
@@ -113,6 +115,7 @@ struct AnimatedLockedClientView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "crown.fill")
+                            .accessibilityHidden(true)
                         Text("Upgrade to Pro")
                     }
                     .font(.headline)
@@ -130,7 +133,7 @@ struct AnimatedLockedClientView: View {
                     .scaleEffect(upgradeButtonScale)
                 }
                 .padding(.horizontal, 32)
-                .opacity(buttonVisible ? 1 : 0)
+                .opacity(buttonVisible ? 1 : 0.001)
                 .offset(y: buttonVisible ? 0 : 20)
                 
                 VStack(spacing: 4) {
@@ -140,7 +143,7 @@ struct AnimatedLockedClientView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .opacity(buttonVisible ? 1 : 0)
+                .opacity(buttonVisible ? 1 : 0.001)
                 
                 Spacer()
             }
@@ -149,6 +152,7 @@ struct AnimatedLockedClientView: View {
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
             animateEntrance()
+            AccessibilityAnnouncement.screenChanged("Client management, upgrade required")
         }
     }
     
@@ -189,11 +193,12 @@ struct AnimatedFeatureRow: View {
                 .font(.title3)
                 .foregroundStyle(Color.brandPrimary)
                 .frame(width: 32)
+                .accessibilityHidden(true)
             Text(text)
                 .font(.subheadline)
             Spacer()
         }
-        .opacity(isVisible ? 1 : 0)
+        .opacity(isVisible ? 1 : 0.001)
         .offset(x: isVisible ? 0 : -20)
         .animation(.spring(response: 0.4, dampingFraction: 0.7).delay(delay), value: isVisible)
     }
@@ -294,8 +299,7 @@ struct ClientListContentView: View {
             presenting: clientToDelete
         ) { client in
             Button("Delete \(client.name)", role: .destructive) {
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.success)
+                HapticService.shared.success()
                 
                 withAnimation {
                     modelContext.delete(client)
@@ -329,7 +333,7 @@ struct AnimatedClientRow: View {
                 
                 Text(client.initials)
                     .font(.headline)
-                    .foregroundStyle(Color.brandPrimary)
+                     .foregroundStyle(Color.brandPrimaryText)
             }
             
             VStack(alignment: .leading, spacing: 4) {
@@ -351,9 +355,18 @@ struct AnimatedClientRow: View {
                 .frame(width: 8, height: 8)
         }
         .padding(.vertical, 4)
-        .opacity(isVisible ? 1 : 0)
+        .opacity(isVisible ? 1 : 0.001)
         .offset(x: isVisible ? 0 : -10)
         .animation(.easeOut(duration: 0.3).delay(delay), value: isVisible)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(clientRowAccessibilityLabel)
+    }
+    
+    private var clientRowAccessibilityLabel: String {
+        var parts = [client.name]
+        if let email = client.email { parts.append(email) }
+        parts.append(client.status == .active ? "Active" : "Inactive")
+        return parts.joined(separator: ", ")
     }
 }
 
@@ -423,6 +436,9 @@ struct ClientDetailView: View {
         .sheet(isPresented: $showingEditSheet) {
             EditClientView(client: client)
         }
+        .onAppear {
+            AccessibilityAnnouncement.screenChanged("Client details, \(client.name)")
+        }
     }
 }
 
@@ -491,8 +507,7 @@ struct CreateClientView: View {
                         Text("Net 60").tag(60)
                     }
                     .onChange(of: defaultPaymentTerms) { _, _ in
-                        let generator = UISelectionFeedbackGenerator()
-                        generator.selectionChanged()
+                        HapticService.shared.selection()
                     }
                 }
                 
@@ -523,6 +538,7 @@ struct CreateClientView: View {
             }
             .onAppear {
                 focusedField = .name
+                AccessibilityAnnouncement.screenChanged("New client")
             }
         }
     }
@@ -557,8 +573,7 @@ struct CreateClientView: View {
         try? modelContext.save()
         
         // Success haptic
-        let successGenerator = UINotificationFeedbackGenerator()
-        successGenerator.notificationOccurred(.success)
+        HapticService.shared.success()
         
         dismiss()
     }
@@ -627,8 +642,7 @@ struct EditClientView: View {
                         Text("Net 60").tag(60)
                     }
                     .onChange(of: client.defaultPaymentTerms) { _, _ in
-                        let generator = UISelectionFeedbackGenerator()
-                        generator.selectionChanged()
+                        HapticService.shared.selection()
                     }
                 }
                 
@@ -639,8 +653,7 @@ struct EditClientView: View {
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: client.status) { _, _ in
-                        let generator = UISelectionFeedbackGenerator()
-                        generator.selectionChanged()
+                        HapticService.shared.selection()
                     }
                 }
                 
@@ -667,14 +680,16 @@ struct EditClientView: View {
                         
                         try? modelContext.save()
                         
-                        let successGenerator = UINotificationFeedbackGenerator()
-                        successGenerator.notificationOccurred(.success)
+                        HapticService.shared.success()
                         
                         dismiss()
                     }
                     .disabled(!isValid)
                     .scaleEffect(saveButtonScale)
                 }
+            }
+            .onAppear {
+                AccessibilityAnnouncement.screenChanged("Edit client")
             }
         }
     }
@@ -692,6 +707,7 @@ struct FeatureCheckmarkRowClient: View {
                 .font(.title3)
                 .foregroundStyle(Color.brandPrimary)
                 .frame(width: 32)
+                .accessibilityHidden(true)
             Text(text)
                 .font(.subheadline)
             Spacer()

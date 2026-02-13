@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger OptimizerWidget
 //
 //
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 
 import ActivityKit

@@ -1,8 +1,8 @@
 //  RecurringListView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.1 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.1.1 - Accessibility: row labels, icon hiding, screen announcement
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES FROM v2.0:
 //  ✅ Haptic feedback on row tap, swipe actions
@@ -41,8 +41,10 @@ struct RecurringListView: View {
                         showingAddRecurring = true
                     } label: {
                         Image(systemName: "plus")
-                            .foregroundStyle(Color.brandPrimary)
+                             .foregroundStyle(Color.brandPrimaryText)
                     }
+                    .accessibilityLabel("Add recurring transaction")
+                    .accessibilityHint("Opens form to create a new recurring bill or income")
                 }
             }
             .overlay {
@@ -64,9 +66,10 @@ struct RecurringListView: View {
                 EditRecurringView(recurringTransaction: recur)
             }
             .onAppear {
-                                withAnimation(FLOAnimation.standard) {
+                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
+                AccessibilityAnnouncement.screenChanged("Recurring transactions")
             }
         }
     }
@@ -103,7 +106,7 @@ struct RecurringListView: View {
                             }
                             .tint(.orange)
                         }
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(x: viewAppeared ? 0 : 20)
                         .animation(
                             FLOAnimation.standard
@@ -139,7 +142,7 @@ struct RecurringListView: View {
                                 Label("Delete", systemImage: "trash")
                             }
                         }
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(x: viewAppeared ? 0 : 20)
                         .animation(
                             FLOAnimation.standard
@@ -172,7 +175,7 @@ struct RecurringListView: View {
                 HapticService.play(.success)
             } catch {
                 HapticService.play(.error)
-                print("❌ Failed to toggle recurring: \(error)")
+                print("âŒ Failed to toggle recurring: \(error)")
             }
         }
     }
@@ -186,7 +189,7 @@ struct RecurringListView: View {
                 HapticService.play(.success)
             } catch {
                 HapticService.play(.error)
-                print("❌ Failed to delete recurring: \(error)")
+                print("âŒ Failed to delete recurring: \(error)")
             }
         }
     }
@@ -206,11 +209,22 @@ struct RecurringRow: View {
             amountView
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(recurringAccessibilityLabel)
+        .accessibilityHint("Double tap to edit. Swipe for more options.")
         .onAppear {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                 iconAppeared = true
             }
         }
+    }
+    
+    private var recurringAccessibilityLabel: String {
+        let type = recurring.isIncome ? "Income" : "Expense"
+        let status = recurring.isActive ? "" : ", paused"
+        let freq = recurring.frequency.displayName
+        let amount = String(format: "$%.2f", recurring.amount)
+        return "\(recurring.displayName), \(type), \(amount), \(freq)\(status)"
     }
     
     private var iconView: some View {
@@ -223,6 +237,7 @@ struct RecurringRow: View {
                     .background(Color(flowHex: category.colorHex).opacity(0.1))
                     .cornerRadius(10)
                     .scaleEffect(iconAppeared ? 1 : 0.5)
+                    .accessibilityHidden(true)
             } else {
                 Image(systemName: "repeat")
                     .font(.title3)
@@ -231,6 +246,7 @@ struct RecurringRow: View {
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(10)
                     .scaleEffect(iconAppeared ? 1 : 0.5)
+                    .accessibilityHidden(true)
             }
         }
     }
@@ -253,7 +269,7 @@ struct RecurringRow: View {
                 }
             }
             
-            Text(recurring.financeType == .business ? "🏢 Business" : "👤 Personal")
+            Text(recurring.financeType == .business ? "ðŸ¢ Business" : "ðŸ‘¤ Personal")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }

@@ -1,16 +1,35 @@
 //  Transaction.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.3 - Added Account relationship for multi-account support
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.0 - Move Money / Transfer support
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Elite Transaction model with Business/Personal classification
 //
+//  CHANGES FROM v2.5:
+//  ✅ Added Move Money / Transfer support
+//  ✅ New isTransfer flag to distinguish transfers from income/expenses
+//  ✅ New linkedTransferID to pair source/destination transactions
+//  ✅ New TransferType enum: ownersDraw, ownerContribution, taxSetAside, reimbursement, internalTransfer
+//  ✅ Added transferType stored property
+//  ✅ Added isTransferPredicate for filtering transfers out of reports
+//  ✅ Added computed properties: isOwnersDraw, isOwnerContribution, transferDescription
+//
+//  CHANGES FROM v2.4:
+//  ✅ Fixed importSource default to use fully qualified type (SwiftData requirement)
+//
+//  CHANGES FROM v2.3:
+//  ✅ Added Plaid integration fields (plaidTransactionId, plaidAccountId)
+//  ✅ Added TransactionSource enum for import tracking
+//  ✅ Added computed properties for Plaid status
+//  ✅ Added helper methods for Plaid transactions
+//  ✅ Maintained all v2.3 functionality
+//
 //  CHANGES FROM v2.2:
-//  ✅ Added account relationship for multi-account tracking
-//  ✅ Added accountName computed property for display
-//  ✅ Added filtering helpers for account-based queries
-//  ✅ Maintained all v2.2 functionality
+//  - Added account relationship for multi-account tracking
+//  - Added accountName computed property for display
+//  - Added filtering helpers for account-based queries
+//  - Maintained all v2.2 functionality
 //
 //  CHANGES FROM v2.1:
 //  - Added validation methods (isValid, validateAmount, validateDate)
@@ -147,6 +166,49 @@ final class Transaction {
         }
     }
     
+    // MARK: - Plaid Integration (Pro tier - NEW in v2.4)
+    
+    /// Plaid's unique transaction ID (for deduplication and updates)
+    /// Format: Plaid transaction IDs are typically alphanumeric strings
+    var plaidTransactionId: String?
+    
+    /// Plaid account ID this transaction belongs to
+    /// Links to Account.plaidAccountId for cross-reference
+    var plaidAccountId: String?
+    
+    /// How this transaction was created/imported
+    /// Tracks provenance for auditing and sync logic
+    var importSource: TransactionSource = Transaction.TransactionSource.manual
+    
+    /// Plaid's category hierarchy (e.g., ["Food and Drink", "Restaurants"])
+    /// Stored as JSON-encoded string for flexibility
+    var plaidCategoryHierarchy: String?
+    
+    /// Whether this transaction is pending in Plaid
+    /// Pending transactions may be updated or removed
+    var plaidPending: Bool = false
+    
+    /// Original Plaid merchant name (before user edits)
+    /// Preserved for sync conflict resolution
+    var plaidOriginalMerchant: String?
+    
+    /// When this transaction was last synced from Plaid
+    var plaidLastSync: Date?
+    
+    // MARK: - Transfer / Move Money Properties (NEW in v3.0)
+    
+    /// Whether this transaction is part of a transfer between accounts.
+    /// Transfer transactions are excluded from P&L, tax estimates, and spending insights.
+    var isTransfer: Bool = false
+    
+    /// UUID of the paired transaction on the other side of the transfer.
+    /// Source transaction links to destination, destination links back to source.
+    var linkedTransferID: UUID?
+    
+    /// The type of transfer, stored as raw value for SwiftData compatibility.
+    /// nil for non-transfer transactions.
+    var transferTypeRaw: String?
+    
     // MARK: - Metadata
     
     /// When transaction was created
@@ -172,6 +234,16 @@ final class Transaction {
         receiptImagePath: String? = nil,
         receiptID: String? = nil,
         hasReceipt: Bool = false,
+        plaidTransactionId: String? = nil,
+        plaidAccountId: String? = nil,
+        importSource: TransactionSource = .manual,
+        plaidCategoryHierarchy: String? = nil,
+        plaidPending: Bool = false,
+        plaidOriginalMerchant: String? = nil,
+        plaidLastSync: Date? = nil,
+        isTransfer: Bool = false,
+        linkedTransferID: UUID? = nil,
+        transferType: TransferType? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -189,6 +261,16 @@ final class Transaction {
         self.receiptImagePath = receiptImagePath
         self.receiptID = receiptID
         self.hasReceipt = hasReceipt
+        self.plaidTransactionId = plaidTransactionId
+        self.plaidAccountId = plaidAccountId
+        self.importSource = importSource
+        self.plaidCategoryHierarchy = plaidCategoryHierarchy
+        self.plaidPending = plaidPending
+        self.plaidOriginalMerchant = plaidOriginalMerchant
+        self.plaidLastSync = plaidLastSync
+        self.isTransfer = isTransfer
+        self.linkedTransferID = linkedTransferID
+        self.transferTypeRaw = transferType?.rawValue
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -210,6 +292,160 @@ final class Transaction {
                 return "briefcase.fill"
             case .personal:
                 return "person.fill"
+            }
+        }
+    }
+    
+    // MARK: - Transaction Source Enum (NEW in v2.4)
+    
+    /// Tracks how the transaction was created/imported
+    /// Used for sync logic, auditing, and UI differentiation
+    enum TransactionSource: String, Codable, CaseIterable {
+        /// Manually entered by user
+        case manual = "manual"
+        
+        /// Imported from Plaid bank sync
+        case plaid = "plaid"
+        
+        /// Created from receipt scan
+        case receipt = "receipt"
+        
+        /// Generated from recurring transaction
+        case recurring = "recurring"
+        
+        /// Imported from CSV/external file
+        case csvImport = "csv_import"
+        
+        /// Created as part of a Move Money transfer (NEW in v3.0)
+        case transfer = "transfer"
+        
+        var displayName: String {
+            switch self {
+            case .manual: return "Manual Entry"
+            case .plaid: return "Bank Sync"
+            case .receipt: return "Receipt Scan"
+            case .recurring: return "Recurring"
+            case .csvImport: return "CSV Import"
+            case .transfer: return "Transfer"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .manual: return "pencil"
+            case .plaid: return "building.columns"
+            case .receipt: return "doc.text.viewfinder"
+            case .recurring: return "repeat"
+            case .csvImport: return "doc.badge.arrow.up"
+            case .transfer: return "arrow.left.arrow.right"
+            }
+        }
+        
+        /// Whether this source allows user editing of core fields
+        var isEditable: Bool {
+            switch self {
+            case .manual, .receipt, .csvImport:
+                return true
+            case .plaid:
+                // Plaid transactions can be edited but original values preserved
+                return true
+            case .recurring:
+                // Recurring instances generally shouldn't be edited
+                return false
+            case .transfer:
+                // Transfer transactions should be voided, not edited
+                return false
+            }
+        }
+        
+        /// Whether this source requires sync consideration
+        var requiresSync: Bool {
+            self == .plaid
+        }
+    }
+    
+    // MARK: - Transfer Type Enum (NEW in v3.0)
+    
+    /// Classifies the purpose of a transfer between accounts.
+    /// Auto-detected from source/destination account finance types.
+    enum TransferType: String, Codable, CaseIterable {
+        /// Business → Personal: Owner takes profit for personal use
+        /// Not a business expense, not personal income. Reduces owner equity.
+        case ownersDraw = "owners_draw"
+        
+        /// Personal → Business: Owner injects capital into the business
+        /// Not business income, not personal expense. Increases owner equity.
+        case ownerContribution = "owner_contribution"
+        
+        /// Any → Tax savings account: Setting aside money for quarterly taxes
+        /// Not an expense. Tracked against quarterly estimate obligation.
+        case taxSetAside = "tax_set_aside"
+        
+        /// Business → Personal: Reimbursing owner for business expense paid personally
+        /// The expense was already logged; this just tracks the payback.
+        case reimbursement = "reimbursement"
+        
+        /// Same type → Same type: Moving money between own accounts
+        /// Zero tax impact, zero P&L impact. Pure balance sheet movement.
+        case internalTransfer = "internal_transfer"
+        
+        var displayName: String {
+            switch self {
+            case .ownersDraw: return "Owner's Draw"
+            case .ownerContribution: return "Owner's Contribution"
+            case .taxSetAside: return "Tax Set-Aside"
+            case .reimbursement: return "Reimbursement"
+            case .internalTransfer: return "Transfer"
+            }
+        }
+        
+        var subtitle: String {
+            switch self {
+            case .ownersDraw: return "Taking profit for personal use"
+            case .ownerContribution: return "Putting personal funds into business"
+            case .taxSetAside: return "Setting aside for quarterly taxes"
+            case .reimbursement: return "Paying back a personal expense"
+            case .internalTransfer: return "Moving between your accounts"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .ownersDraw: return "arrow.right.circle.fill"
+            case .ownerContribution: return "arrow.left.circle.fill"
+            case .taxSetAside: return "building.columns.circle.fill"
+            case .reimbursement: return "arrow.uturn.left.circle.fill"
+            case .internalTransfer: return "arrow.left.arrow.right.circle.fill"
+            }
+        }
+        
+        var colorHex: String {
+            switch self {
+            case .ownersDraw: return "8B5CF6"       // Purple
+            case .ownerContribution: return "3B82F6" // Blue
+            case .taxSetAside: return "F59E0B"       // Amber
+            case .reimbursement: return "10B981"      // Emerald
+            case .internalTransfer: return "6B7280"   // Gray
+            }
+        }
+        
+        /// Auto-detect transfer type from source and destination account finance types
+        static func detect(
+            fromFinanceType: Transaction.FinanceType,
+            toFinanceType: Transaction.FinanceType,
+            isTaxAccount: Bool = false
+        ) -> TransferType {
+            if isTaxAccount {
+                return .taxSetAside
+            }
+            
+            switch (fromFinanceType, toFinanceType) {
+            case (.business, .personal):
+                return .ownersDraw
+            case (.personal, .business):
+                return .ownerContribution
+            case (.business, .business), (.personal, .personal):
+                return .internalTransfer
             }
         }
     }
@@ -241,7 +477,9 @@ final class Transaction {
     
     /// Display name for the transaction (merchant or note)
     var displayName: String {
-        if !merchantName.isEmpty {
+        if isTransfer, let type = transferType {
+            return type.displayName
+        } else if !merchantName.isEmpty {
             return merchantName
         } else if !note.isEmpty {
             return note
@@ -265,9 +503,9 @@ final class Transaction {
         return formatter.string(from: NSNumber(value: amount)) ?? "$\(amount)"
     }
     
-    /// Whether this transaction is tax deductible (business expenses only)
+    /// Whether this transaction is tax deductible (business expenses only, not transfers)
     var isTaxDeductible: Bool {
-        financeType == .business && !isIncome
+        financeType == .business && !isIncome && !isTransfer
     }
     
     /// Month key for grouping transactions (YYYY-MM format)
@@ -282,7 +520,42 @@ final class Transaction {
         recurringParent != nil
     }
     
-    // MARK: - Account Properties (NEW in v2.3)
+    // MARK: - Transfer Properties (v3.0)
+    
+    /// Computed getter/setter for transferType using raw string storage
+    var transferType: TransferType? {
+        get { transferTypeRaw.flatMap { TransferType(rawValue: $0) } }
+        set { transferTypeRaw = newValue?.rawValue }
+    }
+    
+    /// Whether this is an owner's draw (business → personal profit withdrawal)
+    var isOwnersDraw: Bool {
+        isTransfer && transferType == .ownersDraw
+    }
+    
+    /// Whether this is an owner's contribution (personal → business capital injection)
+    var isOwnerContribution: Bool {
+        isTransfer && transferType == .ownerContribution
+    }
+    
+    /// Whether this is a tax set-aside transfer
+    var isTaxSetAside: Bool {
+        isTransfer && transferType == .taxSetAside
+    }
+    
+    /// Human-readable description of the transfer type
+    var transferDescription: String {
+        guard isTransfer else { return "" }
+        return transferType?.displayName ?? "Transfer"
+    }
+    
+    /// The linked partner transaction (for display purposes)
+    /// Requires external lookup since SwiftData can't do self-referencing relationships easily
+    var hasLinkedTransfer: Bool {
+        linkedTransferID != nil
+    }
+    
+    // MARK: - Account Properties (v2.3)
     
     /// Account name for display (or "No Account" if unassigned)
     var accountName: String {
@@ -307,6 +580,59 @@ final class Transaction {
     /// Account color (or default gray)
     var accountColor: String {
         account?.color ?? "#6B7280"
+    }
+    
+    // MARK: - Plaid Computed Properties (NEW in v2.4)
+    
+    /// Whether this transaction was imported from Plaid
+    var isFromPlaid: Bool {
+        importSource == .plaid || plaidTransactionId != nil
+    }
+    
+    /// Whether this transaction has been modified from Plaid original
+    var hasPlaidModifications: Bool {
+        guard isFromPlaid, let original = plaidOriginalMerchant else {
+            return false
+        }
+        return merchantName != original
+    }
+    
+    /// Plaid category as array (decoded from JSON string)
+    var plaidCategories: [String] {
+        guard let hierarchy = plaidCategoryHierarchy,
+              let data = hierarchy.data(using: .utf8),
+              let categories = try? JSONDecoder().decode([String].self, from: data) else {
+            return []
+        }
+        return categories
+    }
+    
+    /// Primary Plaid category (first in hierarchy)
+    var plaidPrimaryCategory: String? {
+        plaidCategories.first
+    }
+    
+    /// Whether this is a pending Plaid transaction that may change
+    var isPendingPlaidTransaction: Bool {
+        isFromPlaid && plaidPending
+    }
+    
+    /// Source badge text for UI display
+    var sourceBadge: String? {
+        switch importSource {
+        case .manual:
+            return nil // Don't show badge for manual entries
+        case .plaid:
+            return plaidPending ? "Pending" : "Synced"
+        case .receipt:
+            return "Scanned"
+        case .recurring:
+            return "Recurring"
+        case .csvImport:
+            return "Imported"
+        case .transfer:
+            return "Transfer"
+        }
     }
     
     // MARK: - Validation Methods
@@ -389,7 +715,15 @@ final class Transaction {
             account: account,
             receiptImagePath: receiptImagePath,
             receiptID: receiptID,
-            hasReceipt: hasReceipt
+            hasReceipt: hasReceipt,
+            // Don't copy Plaid fields - duplicates are manual entries
+            plaidTransactionId: nil,
+            plaidAccountId: nil,
+            importSource: .manual,
+            plaidCategoryHierarchy: nil,
+            plaidPending: false,
+            plaidOriginalMerchant: nil,
+            plaidLastSync: nil
         )
     }
     
@@ -397,6 +731,93 @@ final class Transaction {
     func assignToAccount(_ newAccount: Account?) {
         account = newAccount
         touch()
+    }
+    
+    // MARK: - Plaid Helper Methods (NEW in v2.4)
+    
+    /// Updates transaction from Plaid sync data
+    /// Preserves user modifications where appropriate
+    func updateFromPlaid(
+        amount: Double,
+        date: Date,
+        merchantName: String,
+        pending: Bool,
+        categoryHierarchy: [String]?
+    ) {
+        // Always update amount and date from Plaid (authoritative)
+        self.amount = amount
+        self.date = date
+        self.plaidPending = pending
+        self.plaidLastSync = Date()
+        
+        // Update merchant only if user hasn't modified it
+        if !hasPlaidModifications {
+            self.merchantName = merchantName
+            self.plaidOriginalMerchant = merchantName
+        }
+        
+        // Update category hierarchy
+        if let categories = categoryHierarchy {
+            if let data = try? JSONEncoder().encode(categories),
+               let jsonString = String(data: data, encoding: .utf8) {
+                self.plaidCategoryHierarchy = jsonString
+            }
+        }
+        
+        touch()
+    }
+    
+    /// Resets merchant to original Plaid value
+    func resetToPlaidMerchant() {
+        if let original = plaidOriginalMerchant {
+            merchantName = original
+            touch()
+        }
+    }
+    
+    /// Sets Plaid category hierarchy from array
+    func setPlaidCategories(_ categories: [String]) {
+        if let data = try? JSONEncoder().encode(categories),
+           let jsonString = String(data: data, encoding: .utf8) {
+            plaidCategoryHierarchy = jsonString
+        }
+    }
+    
+    /// Creates a new transaction from Plaid data
+    static func fromPlaid(
+        plaidTransactionId: String,
+        plaidAccountId: String,
+        amount: Double,
+        date: Date,
+        merchantName: String,
+        pending: Bool,
+        categoryHierarchy: [String]?,
+        account: Account? = nil
+    ) -> Transaction {
+        var categoryJson: String?
+        if let categories = categoryHierarchy {
+            if let data = try? JSONEncoder().encode(categories),
+               let jsonString = String(data: data, encoding: .utf8) {
+                categoryJson = jsonString
+            }
+        }
+        
+        return Transaction(
+            amount: abs(amount), // Plaid amounts can be negative
+            date: date,
+            note: "",
+            isIncome: amount > 0, // Positive = income in Plaid
+            merchantName: merchantName,
+            financeType: .personal, // Default, user can change
+            account: account,
+            plaidTransactionId: plaidTransactionId,
+            plaidAccountId: plaidAccountId,
+            importSource: .plaid,
+            plaidCategoryHierarchy: categoryJson,
+            plaidPending: pending,
+            plaidOriginalMerchant: merchantName,
+            plaidLastSync: Date()
+        )
     }
 }
 
@@ -433,6 +854,42 @@ extension Transaction {
     static func dateRangePredicate(from startDate: Date, to endDate: Date) -> Predicate<Transaction> {
         #Predicate<Transaction> { transaction in
             transaction.date >= startDate && transaction.date <= endDate
+        }
+    }
+    
+    /// Filter predicate for Plaid transactions (NEW in v2.4)
+    static func plaidTransactionsPredicate() -> Predicate<Transaction> {
+        #Predicate<Transaction> { transaction in
+            transaction.plaidTransactionId != nil
+        }
+    }
+    
+    /// Filter predicate for import source (NEW in v2.4)
+    static func importSourcePredicate(_ source: TransactionSource) -> Predicate<Transaction> {
+        #Predicate<Transaction> { transaction in
+            transaction.importSource == source
+        }
+    }
+    
+    /// Filter predicate for pending Plaid transactions (NEW in v2.4)
+    static func pendingPlaidPredicate() -> Predicate<Transaction> {
+        #Predicate<Transaction> { transaction in
+            transaction.plaidPending == true
+        }
+    }
+    
+    /// Filter predicate to exclude transfers from financial calculations (NEW in v3.0)
+    /// Use this in tax estimates, P&L reports, spending insights, etc.
+    static func nonTransferPredicate() -> Predicate<Transaction> {
+        #Predicate<Transaction> { transaction in
+            transaction.isTransfer == false
+        }
+    }
+    
+    /// Filter predicate for transfer transactions only (NEW in v3.0)
+    static func transferPredicate() -> Predicate<Transaction> {
+        #Predicate<Transaction> { transaction in
+            transaction.isTransfer == true
         }
     }
 }
@@ -484,4 +941,53 @@ extension Transaction {
      predicate: Transaction.accountPredicate(accountId: account.id)
  )
  let accountTransactions = try context.fetch(descriptor)
+ 
+ // === NEW IN v2.4: Plaid Integration Examples ===
+ 
+ // Creating a transaction from Plaid sync
+ let plaidTransaction = Transaction.fromPlaid(
+     plaidTransactionId: "plaid_txn_abc123",
+     plaidAccountId: "plaid_acc_xyz789",
+     amount: -45.67,  // Negative = expense in Plaid
+     date: Date(),
+     merchantName: "AMAZON.COM",
+     pending: false,
+     categoryHierarchy: ["Shopping", "Online Marketplaces"],
+     account: linkedAccount
+ )
+ 
+ // Check if transaction is from Plaid
+ if plaidTransaction.isFromPlaid {
+     print("Source: \(plaidTransaction.importSource.displayName)")  // "Bank Sync"
+     print("Plaid ID: \(plaidTransaction.plaidTransactionId ?? "none")")
+ }
+ 
+ // Check for user modifications
+ if plaidTransaction.hasPlaidModifications {
+     print("User changed merchant from: \(plaidTransaction.plaidOriginalMerchant ?? "unknown")")
+ }
+ 
+ // Query only Plaid transactions
+ let plaidDescriptor = FetchDescriptor<Transaction>(
+     predicate: Transaction.plaidTransactionsPredicate()
+ )
+ let plaidTransactions = try context.fetch(plaidDescriptor)
+ 
+ // Query pending Plaid transactions
+ let pendingDescriptor = FetchDescriptor<Transaction>(
+     predicate: Transaction.pendingPlaidPredicate()
+ )
+ let pendingTransactions = try context.fetch(pendingDescriptor)
+ 
+ // Update from Plaid sync (preserves user edits)
+ existingTransaction.updateFromPlaid(
+     amount: 46.00,  // Amount corrected by bank
+     date: Date(),
+     merchantName: "Amazon.com",
+     pending: false,
+     categoryHierarchy: ["Shopping", "Online"]
+ )
+ 
+ // Reset merchant to Plaid original
+ transaction.resetToPlaidMerchant()
  */

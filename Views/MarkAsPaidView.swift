@@ -1,18 +1,31 @@
 //  MarkAsPaidView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.0 - Enhanced with Haptics & Micro-Animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.2 - Accessibility Audit: Full VoiceOver support
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  Record payments against invoices with account tracking and income transaction creation
+//  CHANGES v2.2:
+//  ✅ ADDED: Invoice summary header accessible (number, client, status combined)
+//  ✅ ADDED: Amount totals accessible with spoken currency
+//  ✅ ADDED: Payment progress bar accessible with percentage
+//  ✅ ADDED: Status badge accessible (decorative visuals hidden)
+//  ✅ ADDED: Payment history rows accessible (date, method, amount combined)
+//  ✅ ADDED: Payment history info button labeled
+//  ✅ ADDED: Payment amount field labeled with validation state
+//  ✅ ADDED: Quick amount buttons accessible with spoken dollar amounts
+//  ✅ ADDED: Payment date/method pickers with spoken values
+//  ✅ ADDED: Deposit account picker labeled
+//  ✅ ADDED: Create income transaction toggle with hint
+//  ✅ ADDED: Category picker accessible
+//  ✅ ADDED: Notes field labeled
+//  ✅ ADDED: Cancel/Save toolbar buttons with dynamic hints
+//  ✅ ADDED: Screen change announcement on appear
+//  ✅ ADDED: Payment success/failure announced
+//  ✅ ADDED: Partial payment info sheet accessible
+//  ✅ ADDED: Decorative icons hidden throughout
 //
-//  ENHANCEMENTS v2.0:
-//  - Haptic feedback on button taps, payment recording, and validation states
-//  - Animated payment progress bar with spring physics
-//  - Quick amount button press animations with scale effects
-//  - Success celebration with confetti-style feedback
-//  - Smooth section transitions and loading states
-//  - Enhanced status badge animations
+//  CHANGES v2.1:
+//  - Migrated to centralized HapticService
 //
 
 import SwiftUI
@@ -106,7 +119,11 @@ struct MarkAsPaidView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         HapticService.play(.heavy)
+                        dismiss()
                     }
+                    // v2.2: VoiceOver
+                    .accessibilityLabel("Cancel")
+                    .accessibilityHint("Double tap to go back without recording payment")
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
@@ -115,11 +132,18 @@ struct MarkAsPaidView: View {
                     }
                     .disabled(!isValidAmount || isProcessing)
                     .fontWeight(.semibold)
+                    // v2.2: VoiceOver
+                    .accessibilityLabel("Save payment")
+                    .accessibilityHint(saveButtonHint)
                 }
             }
             .onAppear {
                 setupDefaults()
-                animateHeader()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    animateHeader()
+                }
+                // v2.2: Announce screen
+                AccessibilityAnnouncement.screenChanged("Record Payment for \(invoice.invoiceNumber). Remaining balance: \(AccessibilityFormatters.spokenCurrency(invoice.remainingBalance))")
             }
             .alert("Payment Recorded!", isPresented: $showingSuccess) {
                 Button("Done") {
@@ -138,6 +162,21 @@ struct MarkAsPaidView: View {
         }
     }
     
+    // v2.2: Dynamic save button hint
+    private var saveButtonHint: String {
+        if isProcessing {
+            return "Processing payment"
+        } else if parsedAmount == nil {
+            return "Enter a payment amount to enable saving"
+        } else if !isValidAmount {
+            return "Amount exceeds remaining balance"
+        } else if isFullPayment {
+            return "Double tap to record full payment"
+        } else {
+            return "Double tap to record partial payment"
+        }
+    }
+    
     // MARK: - Header Animation
     
     private func animateHeader() {
@@ -146,7 +185,6 @@ struct MarkAsPaidView: View {
             headerOpacity = 1.0
         }
         
-        // Animate progress bar after header
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                 progressBarAnimated = true
@@ -178,8 +216,12 @@ struct MarkAsPaidView: View {
                 }
                 .scaleEffect(headerScale)
                 .opacity(headerOpacity)
+                // v2.2: Combined header label
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(invoice.invoiceNumber), \(invoice.client?.name ?? "No client"), Status: \(invoice.status.displayName)")
                 
                 Divider()
+                    .accessibilityHidden(true)
                 
                 // Amounts
                 HStack {
@@ -215,11 +257,15 @@ struct MarkAsPaidView: View {
                         Text(invoice.remainingBalance.formatted(.currency(code: "USD")))
                             .font(.title3)
                             .fontWeight(.bold)
-                            .foregroundStyle(Color.brandPrimary)
+                             .foregroundStyle(Color.brandPrimaryText)
                     }
                 }
                 .scaleEffect(headerScale)
                 .opacity(headerOpacity)
+                // v2.2: Combined amounts label
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(amountsSummaryLabel)
+                .accessibilityAddTraits(.isSummaryElement)
                 
                 // Progress bar (if partially paid)
                 if invoice.hasPayments {
@@ -236,10 +282,23 @@ struct MarkAsPaidView: View {
                         .cornerRadius(4)
                     }
                     .frame(height: 8)
+                    // v2.2: Progress bar accessible
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Payment progress: \(Int(invoice.paymentProgress * 100)) percent paid")
                 }
             }
             .padding(.vertical, 8)
         }
+    }
+    
+    // v2.2: Amounts summary for VoiceOver
+    private var amountsSummaryLabel: String {
+        var parts = ["Invoice total: \(AccessibilityFormatters.spokenCurrency(invoice.totalAmount))"]
+        if invoice.hasPayments {
+            parts.append("Paid: \(AccessibilityFormatters.spokenCurrency(invoice.amountPaid))")
+        }
+        parts.append("Remaining: \(AccessibilityFormatters.spokenCurrency(invoice.remainingBalance))")
+        return parts.joined(separator: ", ")
     }
     
     private var invoiceStatusBadge: some View {
@@ -252,6 +311,8 @@ struct MarkAsPaidView: View {
             .background(statusColor)
             .clipShape(Capsule())
             .scaleEffect(headerScale)
+            // v2.2: Status handled by parent element
+            .accessibilityHidden(true)
     }
     
     private var statusColor: Color {
@@ -294,6 +355,9 @@ struct MarkAsPaidView: View {
                     insertion: .move(edge: .leading).combined(with: .opacity),
                     removal: .move(edge: .trailing).combined(with: .opacity)
                 ))
+                // v2.2: Payment row accessible
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Payment on \(AccessibilityFormatters.spokenDate(payment.date)), \(payment.paymentMethod.displayName), \(AccessibilityFormatters.spokenCurrency(payment.amount))")
             }
         } header: {
             HStack {
@@ -305,8 +369,11 @@ struct MarkAsPaidView: View {
                 } label: {
                     Image(systemName: "info.circle")
                         .font(.caption)
-                        .foregroundStyle(Color.brandPrimary)
+                         .foregroundStyle(Color.brandPrimaryText)
                 }
+                // v2.2: VoiceOver
+                .accessibilityLabel("About partial payments")
+                .accessibilityHint("Double tap to learn about partial payment tracking")
             }
         }
     }
@@ -321,6 +388,8 @@ struct MarkAsPaidView: View {
                     Text("$")
                         .font(.title2)
                         .foregroundStyle(.secondary)
+                        // v2.2: Decorative
+                        .accessibilityHidden(true)
                     
                     TextField("0.00", text: $paymentAmount)
                         .font(.title2)
@@ -328,6 +397,9 @@ struct MarkAsPaidView: View {
                         .multilineTextAlignment(.leading)
                         .offset(x: amountFieldShake ? -5 : 0)
                         .animation(amountFieldShake ? .easeInOut(duration: 0.05).repeatCount(5, autoreverses: true) : .default, value: amountFieldShake)
+                        // v2.2: VoiceOver
+                        .accessibilityLabel("Payment amount in dollars")
+                        .accessibilityHint("Enter the payment amount. Remaining balance is \(AccessibilityFormatters.spokenCurrency(invoice.remainingBalance))")
                 }
                 
                 // Validation indicator
@@ -335,6 +407,8 @@ struct MarkAsPaidView: View {
                     HStack(spacing: 4) {
                         Image(systemName: isValidAmount ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                             .font(.caption)
+                            // v2.2: Decorative (text conveys status)
+                            .accessibilityHidden(true)
                         
                         Text(isValidAmount ?
                              (isFullPayment ? "Full payment" : "Partial payment - \(remainingAfterPayment.formatted(.currency(code: "USD"))) remaining") :
@@ -371,9 +445,10 @@ struct MarkAsPaidView: View {
             // Date Picker
             DatePicker("Payment Date", selection: $paymentDate, displayedComponents: .date)
                 .onChange(of: paymentDate) { _, _ in
-                    let generator = UISelectionFeedbackGenerator()
-                    generator.selectionChanged()
+                    HapticService.shared.selection()
                 }
+                // v2.2: VoiceOver
+                .accessibilityValue(AccessibilityFormatters.spokenDate(paymentDate))
             
             // Payment Method Picker
             Picker("Payment Method", selection: $paymentMethod) {
@@ -383,9 +458,10 @@ struct MarkAsPaidView: View {
                 }
             }
             .onChange(of: paymentMethod) { _, _ in
-                let generator = UISelectionFeedbackGenerator()
-                generator.selectionChanged()
+                HapticService.shared.selection()
             }
+            // v2.2: VoiceOver
+            .accessibilityValue(paymentMethod.displayName)
         } header: {
             Text("Payment Details")
         }
@@ -407,9 +483,11 @@ struct MarkAsPaidView: View {
                 }
             }
             .onChange(of: selectedAccount) { _, _ in
-                let generator = UISelectionFeedbackGenerator()
-                generator.selectionChanged()
+                HapticService.shared.selection()
             }
+            // v2.2: VoiceOver
+            .accessibilityLabel("Deposit account")
+            .accessibilityValue(selectedAccount?.name ?? "None")
         } header: {
             Text("Deposit To")
         } footer: {
@@ -425,7 +503,11 @@ struct MarkAsPaidView: View {
                 .tint(Color.brandPrimary)
                 .onChange(of: createTransaction) { _, newValue in
                     HapticService.play(.medium)
+                    // v2.2: Announce toggle change
+                    AccessibilityAnnouncement.announce(newValue ? "Income transaction will be created" : "Income transaction will not be created")
                 }
+                // v2.2: VoiceOver
+                .accessibilityHint("When enabled, an income transaction is automatically added to your ledger")
             
             if createTransaction {
                 Picker("Category", selection: $selectedCategory) {
@@ -438,9 +520,11 @@ struct MarkAsPaidView: View {
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
                 .onChange(of: selectedCategory) { _, _ in
-                    let generator = UISelectionFeedbackGenerator()
-                    generator.selectionChanged()
+                    HapticService.shared.selection()
                 }
+                // v2.2: VoiceOver
+                .accessibilityLabel("Income category")
+                .accessibilityValue(selectedCategory?.name ?? "None")
             }
         } header: {
             Text("Bookkeeping")
@@ -460,6 +544,9 @@ struct MarkAsPaidView: View {
         Section("Notes (Optional)") {
             TextField("Check #, reference, etc.", text: $notes, axis: .vertical)
                 .lineLimit(2...4)
+                // v2.2: VoiceOver
+                .accessibilityLabel("Payment notes")
+                .accessibilityHint("Optional. Add check number, reference, or other details")
         }
     }
     
@@ -472,10 +559,14 @@ struct MarkAsPaidView: View {
                     .font(.system(size: 40))
                     .foregroundStyle(Color.brandPrimary)
                     .symbolEffect(.bounce, options: .speed(0.5))
+                    // v2.2: Decorative
+                    .accessibilityHidden(true)
                 
                 Text("About Partial Payments")
                     .font(.title2)
                     .fontWeight(.bold)
+                    // v2.2: Header trait
+                    .accessibilityAddTraits(.isHeader)
                 
                 Text("FLO supports recording multiple payments against a single invoice. This is useful when:")
                     .foregroundStyle(.secondary)
@@ -500,7 +591,13 @@ struct MarkAsPaidView: View {
                         HapticService.play(.medium)
                         showingPartialPaymentInfo = false
                     }
+                    // v2.2: VoiceOver
+                    .accessibilityLabel("Done")
                 }
+            }
+            // v2.2: Announce screen
+            .onAppear {
+                AccessibilityAnnouncement.screenChanged("About Partial Payments")
             }
         }
         .presentationDetents([.medium])
@@ -511,6 +608,8 @@ struct MarkAsPaidView: View {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(Color.incomeGreen)
                 .font(.caption)
+                // v2.2: Decorative
+                .accessibilityHidden(true)
             Text(text)
         }
     }
@@ -518,20 +617,14 @@ struct MarkAsPaidView: View {
     // MARK: - Setup & Actions
     
     private func setupDefaults() {
-        // Set default amount to remaining balance
         paymentAmount = String(format: "%.2f", invoice.remainingBalance)
-        
-        // Set default account to primary
         selectedAccount = primaryAccount
-        
-        // Set default category to first income category (likely "Client Payment")
         selectedCategory = incomeCategories.first { $0.name.contains("Client") || $0.name.contains("Payment") }
             ?? incomeCategories.first
     }
     
     private func recordPayment() {
         guard let amount = parsedAmount, isValidAmount else {
-            // Shake animation for invalid amount
             withAnimation(.easeInOut(duration: 0.05).repeatCount(5, autoreverses: true)) {
                 amountFieldShake = true
             }
@@ -539,16 +632,16 @@ struct MarkAsPaidView: View {
                 amountFieldShake = false
             }
             
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.error)
+            HapticService.shared.error()
+            // v2.2: Announce error
+            AccessibilityAnnouncement.announce("Invalid amount. Please enter an amount within the remaining balance.")
             return
         }
         
         isProcessing = true
         
-        // Processing haptic
         HapticService.play(.heavy)
-        // Create income transaction if requested
+        
         var linkedTransaction: Transaction? = nil
         
         if createTransaction {
@@ -567,7 +660,6 @@ struct MarkAsPaidView: View {
             linkedTransaction = transaction
         }
         
-        // Add payment to invoice
         invoice.addPayment(
             amount: amount,
             date: paymentDate,
@@ -580,13 +672,17 @@ struct MarkAsPaidView: View {
         do {
             try modelContext.save()
             
-            // Success haptic with celebration feel
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
+            HapticService.shared.success()
             
-            // Additional impact for "celebration"
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 HapticService.play(.heavy)
+            }
+            
+            // v2.2: Announce success
+            if isFullPayment {
+                AccessibilityAnnouncement.announce("Payment recorded. Invoice \(invoice.invoiceNumber) paid in full.")
+            } else {
+                AccessibilityAnnouncement.announce("Payment of \(AccessibilityFormatters.spokenCurrency(amount)) recorded. \(AccessibilityFormatters.spokenCurrency(remainingAfterPayment)) remaining.")
             }
             
             showingSuccess = true
@@ -596,10 +692,10 @@ struct MarkAsPaidView: View {
             #endif
             
         } catch {
-            print("❌ Failed to record payment: \(error)")
+            print("Failed to record payment: \(error)")
             
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.error)
+            HapticService.shared.error()
+            AccessibilityAnnouncement.announce("Failed to record payment")
             
             isProcessing = false
         }
@@ -634,7 +730,7 @@ private struct QuickAmountButton: View {
             Text(label)
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundStyle(Color.brandPrimary)
+                 .foregroundStyle(Color.brandPrimaryText)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .background(
@@ -644,6 +740,9 @@ private struct QuickAmountButton: View {
                 .scaleEffect(isPressed ? 0.92 : 1.0)
         }
         .buttonStyle(.plain)
+        // v2.2: VoiceOver
+        .accessibilityLabel("\(label) payment: \(AccessibilityFormatters.spokenCurrency(amount))")
+        .accessibilityHint("Double tap to set payment amount to \(AccessibilityFormatters.spokenCurrency(amount))")
     }
 }
 
@@ -714,7 +813,6 @@ private struct QuickAmountButton: View {
     )
     invoice.items.append(item)
     
-    // Add existing payment
     let existingPayment = InvoicePayment(
         amount: 5000,
         date: Date().addingTimeInterval(-86400 * 7),

@@ -2,10 +2,29 @@
 //  YearEndChecklistView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.3 - Accessibility audit (Sprint 8)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES FROM v1.0:
+//  CHANGES v1.3:
+//  ✅ Screen change announcement on appear
+//  ✅ Lock overlay icon hidden from VoiceOver
+//  ✅ Inactive state icon hidden
+//  ✅ FeatureItem icon hidden, row combined
+//  ✅ Savings summary icon hidden
+//  ✅ Section header icons hidden
+//  ✅ ChecklistItemRow chevron hidden, checkbox state spoken
+//  ✅ Progress bar hidden from VoiceOver
+//  ✅ Snowflake icon hidden
+//  ✅ Fixed garbled UTF-8 print statements
+//
+//  CHANGES v1.2:
+//  ✅ Added Pro tier gating - only Pro subscribers can access
+//  ✅ Free/Premium users see professional upgrade prompt
+//  ✅ Preview of checklist structure visible but blurred
+//  ✅ Clear value proposition for upgrading
+//  ✅ Added SubscriptionManager integration
+//
+//  CHANGES FROM v1.1:
 //  ✅ Haptic feedback on item tap, mark complete
 //  ✅ Section entrance stagger animations
 //  ✅ Progress ring animation
@@ -26,12 +45,19 @@ struct YearEndChecklistView: View {
     @Query private var taxSettings: [TaxSettings]
     @Query private var businessProfiles: [BusinessProfile]
     
+    // v1.2: Add subscription manager for Pro gating
+    @StateObject private var subscriptionManager = SubscriptionManager.shared
+    
     @State private var checklist: TaxYearEndChecklist?
     @State private var isLoading = true
     @State private var selectedItem: TaxChecklistItem?
     @State private var viewAppeared = false
+    @State private var showingSubscriptionView = false
     
-    // Haptic Generators
+    // v1.2: Check if user has Pro access
+    private var hasProAccess: Bool {
+        subscriptionManager.currentTier == .pro
+    }
                 
     private var settings: TaxSettings {
         taxSettings.first ?? TaxSettings()
@@ -44,30 +70,252 @@ struct YearEndChecklistView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if isLoading {
-                    loadingView
-                } else if let checklist = checklist, checklist.isActive {
-                    checklistContent(checklist)
+                // v1.2: Gate content to Pro tier
+                if hasProAccess {
+                    proContent
                 } else {
-                    inactiveView
+                    proFeatureLockedView
                 }
             }
             .navigationTitle("Year-End Tax Planning")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
-                                withAnimation(FLOAnimation.standard) {
+                withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
-                Task {
-                    await generateChecklist()
+                if hasProAccess {
+                    Task {
+                        await generateChecklist()
+                    }
                 }
+                AccessibilityAnnouncement.screenChanged("Year-end tax planning")
+            }
+            .sheet(isPresented: $showingSubscriptionView) {
+                SubscriptionView()
             }
         }
     }
     
-    // MARK: - Haptic Preparation
+    // MARK: - Pro Content (existing functionality)
     
-        
+    private var proContent: some View {
+        Group {
+            if isLoading {
+                loadingView
+            } else if let checklist = checklist, checklist.isActive {
+                checklistContent(checklist)
+            } else {
+                inactiveView
+            }
+        }
+    }
+    
+    // MARK: - Pro Feature Locked View
+    // v1.2: Professional upgrade prompt for Free/Premium users
+    
+    private var proFeatureLockedView: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Blurred preview of what they'd see
+                ZStack {
+                    // Sample checklist preview (blurred)
+                    VStack(spacing: 12) {
+                        // Progress header preview
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text("Year-End Planning 2026")
+                                    .font(.headline)
+                                Text("45% Complete")
+                                    .font(.caption)
+                            }
+                            Spacer()
+                            Circle()
+                                .stroke(Color.gray.opacity(0.3), lineWidth: 6)
+                                .frame(width: 50, height: 50)
+                        }
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(12)
+                        
+                        // Savings preview
+                        HStack {
+                            Image(systemName: "dollarsign.circle.fill")
+                                .foregroundStyle(.green)
+                            VStack(alignment: .leading) {
+                                Text("Potential Savings")
+                                    .font(.caption)
+                                Text("$2,450")
+                                    .font(.title2.bold())
+                            }
+                            Spacer()
+                        }
+                        .padding()
+                        .background(Color.green.opacity(0.1))
+                        .cornerRadius(12)
+                        
+                        // Checklist items preview
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "circle")
+                                Text("Review retirement contributions")
+                                    .font(.subheadline)
+                            }
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                                Text("Gather business receipts")
+                                    .font(.subheadline)
+                                    .strikethrough()
+                            }
+                        }
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(12)
+                    }
+                    .blur(radius: 6)
+                    .opacity(0.6)
+                    
+                    // Lock overlay
+                    VStack(spacing: 16) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.orange.opacity(0.15))
+                                .frame(width: 80, height: 80)
+                            
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 32))
+                                .foregroundStyle(.orange)
+                        }
+                        .opacity(viewAppeared ? 1 : 0.001)
+                        .scaleEffect(viewAppeared ? 1 : 0.5)
+                        .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1), value: viewAppeared)
+                        .accessibilityHidden(true)
+                        
+                        Text("Pro Feature")
+                            .font(.title2.bold())
+                            .opacity(viewAppeared ? 1 : 0.001)
+                            .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
+                        
+                        Text("Year-End Tax Package is available\nexclusively for Pro subscribers")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .opacity(viewAppeared ? 1 : 0.001)
+                            .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
+                    }
+                    .padding(32)
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(16)
+                }
+                .padding()
+                .opacity(viewAppeared ? 1 : 0.001)
+                .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
+                
+                // Feature benefits
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("What You'll Get")
+                        .font(.headline)
+                    
+                    YearEndFeatureBenefit(
+                        icon: "checklist",
+                        title: "Personalized Action Items",
+                        description: "Custom checklist based on your income and expenses"
+                    )
+                    
+                    YearEndFeatureBenefit(
+                        icon: "dollarsign.circle.fill",
+                        title: "Estimated Tax Savings",
+                        description: "See potential savings for each strategy"
+                    )
+                    
+                    YearEndFeatureBenefit(
+                        icon: "calendar.badge.exclamationmark",
+                        title: "Deadline Tracking",
+                        description: "Never miss time-sensitive deductions"
+                    )
+                    
+                    YearEndFeatureBenefit(
+                        icon: "lightbulb.fill",
+                        title: "Advanced Strategies",
+                        description: "Tips like prepaying expenses and retirement contributions"
+                    )
+                    
+                    YearEndFeatureBenefit(
+                        icon: "doc.text.fill",
+                        title: "Professional Reports",
+                        description: "Export summaries for your accountant"
+                    )
+                }
+                .padding()
+                .background(Color(.secondarySystemGroupedBackground))
+                .cornerRadius(12)
+                .padding(.horizontal)
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(y: viewAppeared ? 0 : 20)
+                .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
+                
+                // Seasonal note
+                VStack(spacing: 8) {
+                    HStack {
+                        Image(systemName: "snowflake")
+                            .foregroundStyle(.blue)
+                            .accessibilityHidden(true)
+                        Text("November - December Feature")
+                            .font(.subheadline.bold())
+                    }
+                    
+                    Text("This feature activates during tax planning season to help you maximize deductions before year-end.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding()
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(12)
+                .padding(.horizontal)
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(y: viewAppeared ? 0 : 20)
+                .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
+                
+                // Upgrade button
+                Button {
+                    HapticService.play(.medium)
+                    showingSubscriptionView = true
+                } label: {
+                    HStack {
+                        Image(systemName: "star.fill")
+                        Text("Upgrade to Pro")
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.orange, Color.orange.opacity(0.8)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal)
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(y: viewAppeared ? 0 : 20)
+                .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
+                
+                // Current tier indicator
+                Text("Current plan: \(subscriptionManager.currentTier.displayName)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .opacity(viewAppeared ? 1 : 0.001)
+                    .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
+            }
+            .padding(.vertical)
+        }
+        .background(Color(.systemGroupedBackground))
+    }
+    
     // MARK: - Loading State
     
     private var loadingView: some View {
@@ -80,7 +328,7 @@ struct YearEndChecklistView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
-        .opacity(viewAppeared ? 1 : 0)
+        .opacity(viewAppeared ? 1 : 0.001)
         .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
     }
     
@@ -93,12 +341,13 @@ struct YearEndChecklistView: View {
                     .font(.system(size: 80))
                     .foregroundStyle(.secondary)
                     .symbolEffect(.pulse, options: .repeating.speed(0.5))
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
+                    .accessibilityHidden(true)
                 
                 Text("Year-End Planning Inactive")
                     .font(.title2.bold())
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 
                 Text("This feature activates in November and December to help you maximize tax deductions before year-end.")
@@ -106,7 +355,7 @@ struct YearEndChecklistView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 
                 VStack(alignment: .leading, spacing: 12) {
@@ -134,7 +383,7 @@ struct YearEndChecklistView: View {
                 .background(Color(.secondarySystemGroupedBackground))
                 .cornerRadius(12)
                 .padding(.horizontal)
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
             }
@@ -153,11 +402,13 @@ struct YearEndChecklistView: View {
                     .foregroundColor(.brandPrimary)
                     .frame(width: 24)
                     .symbolEffect(.bounce, value: iconBounce)
+                    .accessibilityHidden(true)
                 
                 Text(text)
                     .font(.subheadline)
                     .foregroundStyle(.primary)
             }
+            .accessibilityElement(children: .combine)
             .onAppear {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     iconBounce = true
@@ -172,19 +423,19 @@ struct YearEndChecklistView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 progressHeader(checklist)
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 15)
                     .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                 
                 savingsSummary(checklist)
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 15)
                     .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                 
                 checklistSections(checklist)
                 
                 disclaimerView
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 15)
                     .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
             }
@@ -224,7 +475,7 @@ struct YearEndChecklistView: View {
                     
                     Text("\(Int(checklist.completionPercentage * 100))%")
                         .font(.caption.bold())
-                        .foregroundColor(.brandPrimary)
+                         .foregroundColor(.brandPrimaryText)
                         .contentTransition(.numericText())
                 }
             }
@@ -242,6 +493,7 @@ struct YearEndChecklistView: View {
                 }
             }
             .frame(height: 8)
+            .accessibilityHidden(true)
         }
         .padding()
         .background(Color(.secondarySystemGroupedBackground))
@@ -257,6 +509,7 @@ struct YearEndChecklistView: View {
                     .font(.title)
                     .foregroundColor(.green)
                     .symbolEffect(.bounce, value: viewAppeared)
+                    .accessibilityHidden(true)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Potential Tax Savings")
@@ -316,7 +569,7 @@ struct YearEndChecklistView: View {
                 color: .red,
                 items: highPriorityItems(checklist)
             )
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 15)
             .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
         }
@@ -328,7 +581,7 @@ struct YearEndChecklistView: View {
                 color: .orange,
                 items: mediumPriorityItems(checklist)
             )
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 15)
             .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
         }
@@ -340,7 +593,7 @@ struct YearEndChecklistView: View {
                 color: .gray,
                 items: lowPriorityItems(checklist)
             )
-            .opacity(viewAppeared ? 1 : 0)
+            .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 15)
             .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
         }
@@ -351,6 +604,7 @@ struct YearEndChecklistView: View {
             HStack {
                 Image(systemName: icon)
                     .foregroundColor(color)
+                    .accessibilityHidden(true)
                 Text(title)
                     .font(.headline)
             }
@@ -360,7 +614,7 @@ struct YearEndChecklistView: View {
                     HapticService.play(.light)
                     selectedItem = item
                 }
-                .opacity(viewAppeared ? 1 : 0)
+                .opacity(viewAppeared ? 1 : 0.001)
                 .offset(x: viewAppeared ? 0 : 20)
                 .animation(
                     FLOAnimation.standard
@@ -415,6 +669,7 @@ struct YearEndChecklistView: View {
                         Image(systemName: "chevron.right")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                            .accessibilityHidden(true)
                     }
                 }
                 .padding(12)
@@ -490,12 +745,38 @@ struct YearEndChecklistView: View {
         
         #if DEBUG
         if let checklist = checklist, checklist.isActive {
-            print("📋 Year-End Checklist: \(checklist.items.count) items")
+            print("🔗 Year-End Checklist: \(checklist.items.count) items")
             print("   Total savings: $\(String(format: "%.0f", checklist.totalPotentialSavings))")
         } else {
-            print("📋 Year-End Checklist: Inactive (not November-December)")
+            print("🔗 Year-End Checklist: Inactive (not November-December)")
         }
         #endif
+    }
+}
+
+// MARK: - Year-End Feature Benefit Row
+// v1.2: New component for upgrade prompt
+
+struct YearEndFeatureBenefit: View {
+    let icon: String
+    let title: String
+    let description: String
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(.orange)
+                .frame(width: 28)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.bold())
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }
 
@@ -505,8 +786,6 @@ struct ChecklistItemDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State var item: TaxChecklistItem
     @State private var viewAppeared = false
-    
-    // Haptic Generators
                 
     var body: some View {
         NavigationStack {
@@ -535,7 +814,7 @@ struct ChecklistItemDetailView: View {
                         
                         Spacer()
                     }
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                     
@@ -551,7 +830,7 @@ struct ChecklistItemDetailView: View {
                     .padding()
                     .background(Color(.secondarySystemGroupedBackground))
                     .cornerRadius(12)
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                     
@@ -576,7 +855,7 @@ struct ChecklistItemDetailView: View {
                             )
                         )
                         .cornerRadius(12)
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 10)
                         .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                     }
@@ -605,7 +884,7 @@ struct ChecklistItemDetailView: View {
                         .padding()
                         .background(Color(.secondarySystemGroupedBackground))
                         .cornerRadius(12)
-                        .opacity(viewAppeared ? 1 : 0)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 10)
                         .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                     }
@@ -630,7 +909,7 @@ struct ChecklistItemDetailView: View {
                     .padding()
                     .background(Color.orange.opacity(0.1))
                     .cornerRadius(12)
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                     
@@ -659,7 +938,7 @@ struct ChecklistItemDetailView: View {
                         .background(item.isCompleted ? Color.gray : Color.green)
                         .cornerRadius(12)
                     }
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                 }
@@ -676,7 +955,6 @@ struct ChecklistItemDetailView: View {
                 }
             }
             .onAppear {
-
                 withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }

@@ -1,8 +1,15 @@
 //  SplitReceiptView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.0 - Enhanced with Haptics & Micro-Animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.2 - Accessibility audit (Sprint 7)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.2:
+//  ✅ Screen change announcement on appear
+//  ✅ Split preview progress bars get accessibility values
+//  ✅ AnimatedLineItemRow selection traits added
+//  ✅ Fixed garbled multiplication character in line item quantity display
+//  ✅ Fixed garbled UTF-8 in print statements
 //
 //  UI for splitting receipts between business and personal expenses
 //
@@ -96,8 +103,7 @@ struct SplitReceiptView: View {
                     .pickerStyle(.segmented)
                     .accessibilityLabel("Select split method: Percentage, Line Items, or Fixed Amount")
                     .onChange(of: splitMode) { _, _ in
-                        let generator = UISelectionFeedbackGenerator()
-                        generator.selectionChanged()
+                        HapticService.shared.selection()
                     }
                 }
                 .opacity(headerOpacity)
@@ -150,6 +156,7 @@ struct SplitReceiptView: View {
             }
             .onAppear {
                 animateEntrance()
+                AccessibilityAnnouncement.screenChanged("Split receipt")
             }
             .onChange(of: splitMode) { oldMode, newMode in
                 handleModeChange(from: oldMode, to: newMode)
@@ -208,8 +215,7 @@ struct SplitReceiptView: View {
                     .tint(AppConstants.primaryColor)
                     .accessibilityLabel("Business percentage slider: \(Int(businessPercentage)) percent")
                     .onChange(of: businessPercentage) { _, _ in
-                        let generator = UISelectionFeedbackGenerator()
-                        generator.selectionChanged()
+                        HapticService.shared.selection()
                         updatePreviewBars()
                     }
                 
@@ -291,7 +297,7 @@ struct SplitReceiptView: View {
                     Button {
 
                         HapticService.play(.medium)
-                        print("📝 Add line items manually")
+                        print("🔗 Add line items manually")
                     } label: {
                         Label("Add Line Items Manually", systemImage: "plus.circle.fill")
                     }
@@ -368,12 +374,16 @@ struct SplitReceiptView: View {
                                     .frame(width: max(4, (geometry.size.width - 130) * businessBarWidth), height: 12)
                             }
                             .cornerRadius(6)
+                            .accessibilityHidden(true)
                             
                             Text(formatCurrency(calculatedBusinessAmount))
                                 .font(.caption)
                                 .fontWeight(.medium)
                                 .frame(width: 60, alignment: .trailing)
                         }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Business: \(formatCurrency(calculatedBusinessAmount))")
+                        .accessibilityValue("\(Int(businessBarWidth * 100)) percent")
                         
                         // Personal bar
                         HStack(spacing: 8) {
@@ -392,15 +402,19 @@ struct SplitReceiptView: View {
                                     .frame(width: max(4, (geometry.size.width - 130) * personalBarWidth), height: 12)
                             }
                             .cornerRadius(6)
+                            .accessibilityHidden(true)
                             
                             Text(formatCurrency(calculatedPersonalAmount))
                                 .font(.caption)
                                 .fontWeight(.medium)
                                 .frame(width: 60, alignment: .trailing)
                         }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Personal: \(formatCurrency(calculatedPersonalAmount))")
+                        .accessibilityValue("\(Int(personalBarWidth * 100)) percent")
                     }
                 }
-                .frame(height: 44)
+                .frame(minHeight: 44)
                 
                 Divider()
                 
@@ -480,7 +494,7 @@ struct SplitReceiptView: View {
         updatePreviewBars()
         
         #if DEBUG
-        print("🔄 Split mode changed: \(oldMode) → \(newMode)")
+        print("🔗 Split mode changed: \(oldMode) → \(newMode)")
         print("   Business: \(formatCurrency(calculatedBusinessAmount))")
         print("   Percentage: \(Int(businessPercentage))%")
         #endif
@@ -538,11 +552,10 @@ struct SplitReceiptView: View {
             try modelContext.save()
             
             // Success haptic
-            let successGenerator = UINotificationFeedbackGenerator()
-            successGenerator.notificationOccurred(.success)
+            HapticService.shared.success()
             
             #if DEBUG
-            print("💰 Receipt split saved:")
+            print("🔗 Receipt split saved:")
             print("   Mode: \(splitMode)")
             print("   Business: \(formatCurrency(calculatedBusinessAmount)) (\(Int(businessPercentage))%)")
             print("   Personal: \(formatCurrency(calculatedPersonalAmount))")
@@ -551,8 +564,7 @@ struct SplitReceiptView: View {
             dismiss()
             
         } catch {
-            let errorGenerator = UINotificationFeedbackGenerator()
-            errorGenerator.notificationOccurred(.error)
+            HapticService.shared.error()
             
             #if DEBUG
             print("❌ Failed to save split: \(error)")
@@ -647,6 +659,7 @@ private struct AnimatedLineItemRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(item.itemDescription), \(formatCurrency(item.totalAmount)), \(isSelected ? "selected as business" : "select for business")")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }
 

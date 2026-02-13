@@ -1,10 +1,33 @@
 // SubscriptionTier.swift
 // FLO - Finance Ledger Optimizer
 //
-// Version 1.1 - Added account management and Plaid integration features
-// Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+// Version 1.4 - Debt Calculator & Money Moves Features
+// Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 // Defines subscription tiers and feature access control
+//
+//  CHANGES v1.4:
+//  ✅ ADDED: hasDebtCalculator (Premium+)
+//  ✅ ADDED: hasPersonalizedTips (Premium+)
+//  ✅ ADDED: hasDebtInsights (Premium+)
+//
+// CHANGES v1.3:
+// ✅ REMOVED: hasCustomBranding (not used in app)
+// ✅ REMOVED: hasPrioritySupport (not used in app)
+// ✅ REMOVED: Feature.customBranding and Feature.prioritySupport
+// ✅ ADDED: hasProfitLossReports (Pro only)
+// ✅ ADDED: hasYearEndTaxPackage (Pro only)
+// ✅ ADDED: hasSmartReceiptScanning (Premium+)
+// ✅ ADDED: Feature.profitLossReports and Feature.yearEndTaxPackage
+// ✅ Updated canAccess() for new features
+// ✅ Updated feature lists to match actual app features
+//
+// CHANGES v1.2:
+// ✅ Added shortDisplayName for compact table headers (fixes "Pre-m" wrap)
+// ✅ Changed hasClientManagement from Pro-only to Premium+ (invoicing requires clients!)
+// ✅ Updated clientLimit: Free=0, Premium/Pro=unlimited
+// ✅ Updated Feature.clientManagement requiredTier to .premium
+// ✅ Updated feature lists to reflect client management in Premium
 //
 // CHANGES v1.1:
 // ✅ Added account management features (hasMultipleAccounts, accountLimit)
@@ -28,10 +51,10 @@ enum SubscriptionPeriod {
 // MARK: - Subscription Tier
 
 enum SubscriptionTier: Int, Codable, Comparable {
-  case free = 0
-  case premium = 1
-  case pro = 2
-  
+    case free = 0
+    case premium = 1
+    case pro = 2
+    
     // MARK: - Display Properties
     
     var displayName: String {
@@ -40,6 +63,19 @@ enum SubscriptionTier: Int, Codable, Comparable {
             return "Free"
         case .premium:
             return "Premium"
+        case .pro:
+            return "Pro"
+        }
+    }
+    
+    /// Short display name for compact spaces like table headers
+    /// v1.2: Fixes "Pre-m" word wrapping in Feature Comparison table
+    var shortDisplayName: String {
+        switch self {
+        case .free:
+            return "Free"
+        case .premium:
+            return "Prem"
         case .pro:
             return "Pro"
         }
@@ -116,7 +152,30 @@ enum SubscriptionTier: Int, Codable, Comparable {
         self >= .premium
     }
     
-    // MARK: - Account Features (NEW in v1.1)
+    /// Smart receipt scanning with AI parsing (Premium+)
+    /// v1.3: Added for tier-aware receipt routing
+    var hasSmartReceiptScanning: Bool {
+        self >= .premium
+    }
+    
+    // MARK: - Debt & Financial Tips Features
+
+    /// Access to the Debt Payoff Calculator (Premium+)
+    var hasDebtCalculator: Bool {
+        self >= .premium
+    }
+
+    /// Access to personalized Money Moves tips (Premium+)
+    var hasPersonalizedTips: Bool {
+        self >= .premium
+    }
+
+    /// Access to debt strategy insights on dashboard (Premium+)
+    var hasDebtInsights: Bool {
+        self >= .premium
+    }
+    
+    // MARK: - Account Features (v1.1)
     
     /// Multiple account support
     var hasMultipleAccounts: Bool {
@@ -160,14 +219,10 @@ enum SubscriptionTier: Int, Codable, Comparable {
         self == .pro
     }
     
-    /// Client management (unlimited clients)
+    /// Client management for invoicing
+    /// v1.2: Changed from Pro-only to Premium+ (invoicing requires clients!)
     var hasClientManagement: Bool {
-        self == .pro
-    }
-    
-    /// Custom invoice branding (logo, colors)
-    var hasCustomBranding: Bool {
-        self == .pro
+        self >= .premium
     }
     
     /// Export to CSV/PDF for accountants
@@ -175,8 +230,15 @@ enum SubscriptionTier: Int, Codable, Comparable {
         self == .pro
     }
     
-    /// Priority customer support
-    var hasPrioritySupport: Bool {
+    /// Professional Profit & Loss reports (Pro only)
+    /// v1.3: Added for Pro tier gating
+    var hasProfitLossReports: Bool {
+        self == .pro
+    }
+    
+    /// Year-End Tax Package with personalized checklist (Pro only)
+    /// v1.3: Added for Pro tier gating
+    var hasYearEndTaxPackage: Bool {
         self == .pro
     }
     
@@ -217,16 +279,17 @@ enum SubscriptionTier: Int, Codable, Comparable {
     }
     
     /// Client limit
+    /// v1.2: Updated - Premium now has client management (required for invoicing)
     var clientLimit: Int? {
         switch self {
-        case .free, .premium:
+        case .free:
             return 0 // No client management
-        case .pro:
-            return nil // Unlimited clients
+        case .premium, .pro:
+            return nil // Unlimited clients (invoice limit is the constraint for Premium)
         }
     }
     
-    /// Account limit (NEW in v1.1)
+    /// Account limit (v1.1)
     var accountLimit: Int? {
         switch self {
         case .free:
@@ -238,7 +301,7 @@ enum SubscriptionTier: Int, Codable, Comparable {
         }
     }
     
-    /// Linked bank account limit (Plaid) (NEW in v1.1)
+    /// Linked bank account limit (Plaid) (v1.1)
     var linkedAccountLimit: Int? {
         switch self {
         case .free, .premium:
@@ -261,7 +324,8 @@ enum SubscriptionTier: Int, Codable, Comparable {
                 "Basic expense tracking",
                 "Simple budgeting tools",
                 "20 receipt storage",
-                "Business/Personal separation"
+                "Business/Personal separation",
+                "Basic receipt scanning"
             ]
         case .premium:
             return [
@@ -271,25 +335,28 @@ enum SubscriptionTier: Int, Codable, Comparable {
                 "Account-based filtering & reports",
                 "Real-time quarterly tax estimates",
                 "Automated GPS mileage tracking",
-                "Professional invoice creation (25/month)",
-                "Receipt scanning with OCR",
+                "Professional invoicing (25/month)",
+                "Client management",
+                "Smart Receipt Scanning with AI",
                 "100 receipt storage",
                 "Advanced budgets with rollover",
                 "Recurring transaction automation",
-                "Dashboard widgets"
+                "Dashboard widgets",
+                "Debt Payoff Calculator",
+                "Personalized Financial Tips"
             ]
         case .pro:
             return [
                 "Everything in Premium",
                 "Unlimited accounts",
+                "Bank sync (coming soon)",
                 "Account reconciliation tools",
                 "Unlimited invoices",
                 "Advanced tax deduction flagging",
-                "Unlimited client management",
-                "Custom invoice branding",
+                "Profit & Loss Reports",
+                "Year-End Tax Package",
                 "Export to CSV/PDF",
                 "Unlimited receipt storage",
-                "Priority support",
                 "Advanced reporting",
                 "Early access to new features"
             ]
@@ -308,16 +375,16 @@ enum SubscriptionTier: Int, Codable, Comparable {
         case .premium:
             return [
                 "5 accounts with balance tracking",
-                "Tax estimates & mileage tracking",
-                "Professional invoicing",
+                "Tax estimates & GPS mileage",
+                "Professional invoicing + clients",
                 "Unlimited transactions"
             ]
         case .pro:
             return [
                 "Unlimited accounts + Bank sync",
-                "Client management",
-                "Custom branding",
-                "Priority support"
+                "Unlimited invoices & clients",
+                "Profit & Loss Reports",
+                "Year-End Tax Package"
             ]
         }
     }
@@ -389,13 +456,23 @@ extension SubscriptionTier {
             return hasAdvancedDeductions
         case .clientManagement:
             return hasClientManagement
-        case .customBranding:
-            return hasCustomBranding
         case .advancedExports:
             return hasAdvancedExports
-        case .prioritySupport:
-            return hasPrioritySupport
-        // NEW in v1.1
+        case .smartReceiptScanning:
+            return hasSmartReceiptScanning
+        // v1.4: New debt/financial tools features
+        case .debtCalculator:
+            return hasDebtCalculator
+        case .personalizedTips:
+            return hasPersonalizedTips
+        case .debtInsights:
+            return hasDebtInsights
+        // v1.3: Pro features
+        case .profitLossReports:
+            return hasProfitLossReports
+        case .yearEndTaxPackage:
+            return hasYearEndTaxPackage
+        // Account features (v1.1)
         case .multipleAccounts:
             return hasMultipleAccounts
         case .accountFiltering:
@@ -487,6 +564,7 @@ enum LimitType {
 }
 
 // MARK: - Feature Enum
+// v1.4: Added debtCalculator, personalizedTips, debtInsights
 
 enum Feature {
     // Premium features
@@ -495,8 +573,13 @@ enum Feature {
     case invoicing
     case advancedBudgets
     case recurringTransactions
+    case clientManagement
+    case smartReceiptScanning
+    case debtCalculator          // v1.4: Debt Payoff Calculator
+    case personalizedTips        // v1.4: Personalized Money Moves tips
+    case debtInsights            // v1.4: Debt optimization insights
     
-    // Premium account features (NEW in v1.1)
+    // Premium account features (v1.1)
     case multipleAccounts
     case accountFiltering
     case balanceTracking
@@ -504,12 +587,11 @@ enum Feature {
     
     // Pro features
     case advancedDeductions
-    case clientManagement
-    case customBranding
     case advancedExports
-    case prioritySupport
+    case profitLossReports
+    case yearEndTaxPackage
     
-    // Pro account features (NEW in v1.1)
+    // Pro account features (v1.1)
     case plaidIntegration
     case bankSync
     case accountReconciliation
@@ -530,13 +612,21 @@ enum Feature {
             return "Advanced Deductions"
         case .clientManagement:
             return "Client Management"
-        case .customBranding:
-            return "Custom Branding"
         case .advancedExports:
             return "Advanced Exports"
-        case .prioritySupport:
-            return "Priority Support"
-        // NEW in v1.1
+        case .smartReceiptScanning:
+            return "Smart Receipt Scanning"
+        case .debtCalculator:
+            return "Debt Payoff Calculator"
+        case .personalizedTips:
+            return "Personalized Financial Tips"
+        case .debtInsights:
+            return "Debt Optimization Insights"
+        case .profitLossReports:
+            return "Profit & Loss Reports"
+        case .yearEndTaxPackage:
+            return "Year-End Tax Package"
+        // Account features (v1.1)
         case .multipleAccounts:
             return "Multiple Accounts"
         case .accountFiltering:
@@ -558,10 +648,11 @@ enum Feature {
         switch self {
         // Premium features
         case .taxEstimates, .automatedMileage, .invoicing, .advancedBudgets, .recurringTransactions,
+             .clientManagement, .smartReceiptScanning, .debtCalculator, .personalizedTips, .debtInsights,
              .multipleAccounts, .accountFiltering, .balanceTracking, .multiAccountReports:
             return .premium
         // Pro features
-        case .advancedDeductions, .clientManagement, .customBranding, .advancedExports, .prioritySupport,
+        case .advancedDeductions, .advancedExports, .profitLossReports, .yearEndTaxPackage,
              .plaidIntegration, .bankSync, .accountReconciliation:
             return .pro
         }
@@ -583,13 +674,21 @@ enum Feature {
             return "sparkles"
         case .clientManagement:
             return "person.2.fill"
-        case .customBranding:
-            return "paintbrush.fill"
         case .advancedExports:
             return "square.and.arrow.up.fill"
-        case .prioritySupport:
-            return "bubble.left.and.bubble.right.fill"
-        // NEW in v1.1
+        case .smartReceiptScanning:
+            return "doc.text.viewfinder"
+        case .debtCalculator:
+            return "function"
+        case .personalizedTips:
+            return "sparkles"
+        case .debtInsights:
+            return "lightbulb.fill"
+        case .profitLossReports:
+            return "doc.text.magnifyingglass"
+        case .yearEndTaxPackage:
+            return "checklist"
+        // Account features (v1.1)
         case .multipleAccounts:
             return "building.columns.fill"
         case .accountFiltering:
@@ -623,13 +722,21 @@ enum Feature {
             return "Smart detection of potential tax deductions"
         case .clientManagement:
             return "Track client details, payment history, and reliability"
-        case .customBranding:
-            return "Add your logo and colors to invoices"
         case .advancedExports:
             return "Export data for your accountant in CSV/PDF format"
-        case .prioritySupport:
-            return "Get faster responses from our support team"
-        // NEW in v1.1
+        case .smartReceiptScanning:
+            return "AI-powered receipt parsing with automatic data extraction"
+        case .debtCalculator:
+            return "Interactive calculator showing payoff strategies and interest savings"
+        case .personalizedTips:
+            return "Financial tips personalized to your spending and debt"
+        case .debtInsights:
+            return "Proactive insights to optimize your debt payments"
+        case .profitLossReports:
+            return "Professional P&L statements for your business"
+        case .yearEndTaxPackage:
+            return "Personalized tax prep checklist with savings estimates"
+        // Account features (v1.1)
         case .multipleAccounts:
             return "Track multiple bank accounts and credit cards"
         case .accountFiltering:

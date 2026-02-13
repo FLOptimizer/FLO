@@ -1,8 +1,8 @@
 //  NumberFormatter+Currency.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.2 - Fully working, no errors, production-ready
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.3 - Added VoiceOver accessibility, no errors, production-ready
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //  Confidential and Proprietary.
 //
 //  CHANGES FROM v2.1:
@@ -54,7 +54,7 @@ extension FormatStyle where Self == Decimal.FormatStyle.Currency {
         let currencyCode = code ?? locale.currency?.identifier ?? "USD"
         var style = Decimal.FormatStyle.Currency(code: currencyCode)
         style = style.precision(.fractionLength(2...2))
-        style = style.locale(locale)  // ← CRITICAL FIX: Respect locale parameter
+        style = style.locale(locale)  // â† CRITICAL FIX: Respect locale parameter
         return style
     }
     
@@ -74,7 +74,7 @@ extension FormatStyle where Self == Decimal.FormatStyle.Currency {
         let currencyCode = code ?? locale.currency?.identifier ?? "USD"
         var style = Decimal.FormatStyle.Currency(code: currencyCode)
         style = style.precision(.fractionLength(0))
-        style = style.locale(locale)  // ← CRITICAL FIX: Respect locale parameter
+        style = style.locale(locale)  // â† CRITICAL FIX: Respect locale parameter
         return style
     }
     
@@ -145,7 +145,7 @@ extension NumberFormatter {
     /// Example:
     /// ```swift
     /// let formatter = NumberFormatter.customCurrency(code: "EUR", locale: Locale(identifier: "de_DE"))
-    /// let formatted = formatter.string(from: 1234.56)  // "1.234,56 €"
+    /// let formatted = formatter.string(from: 1234.56)  // "1.234,56 â‚¬"
     /// ```
     static func customCurrency(
         code: String? = nil,
@@ -182,7 +182,7 @@ extension NumberFormatter {
     /// Example:
     /// ```swift
     /// let amount = NumberFormatter.parseCurrency("$1,234.56")  // 1234.56
-    /// let euros = NumberFormatter.parseCurrency("1.234,56 €", locale: Locale(identifier: "de_DE"))  // 1234.56
+    /// let euros = NumberFormatter.parseCurrency("1.234,56 â‚¬", locale: Locale(identifier: "de_DE"))  // 1234.56
     /// ```
     static func parseCurrency(_ string: String, locale: Locale = .current) -> Decimal? {
         let formatter = NumberFormatter()
@@ -222,7 +222,7 @@ extension Decimal {
     /// ```swift
     /// let price: Decimal = 1234.56
     /// print(price.asCurrency())                      // "$1,234.56"
-    /// print(price.asCurrency(code: "EUR"))           // "€1,234.56"
+    /// print(price.asCurrency(code: "EUR"))           // "â‚¬1,234.56"
     /// print(price.asCurrency(compact: true))         // "$1,235"
     /// print(price.asCurrency(abbreviated: true))     // "$1.2K" (iOS 16+)
     /// ```
@@ -234,7 +234,7 @@ extension Decimal {
     ) -> String {
         // Guard against NaN/Inf
         guard self.isFiniteNumber else {
-            print("⚠️ Attempted to format non-finite Decimal: \(self)")
+            print("âš ï¸ Attempted to format non-finite Decimal: \(self)")
             return "Invalid"
         }
         
@@ -257,7 +257,7 @@ extension Decimal {
             )
             
             guard let formatted = formatter.string(from: self as NSDecimalNumber) else {
-                print("⚠️ NumberFormatter failed to format Decimal: \(self)")
+                print("âš ï¸ NumberFormatter failed to format Decimal: \(self)")
                 return formatter.string(from: 0) ?? (compact ? "0" : "0.00")
             }
             
@@ -314,7 +314,7 @@ extension Double {
     
     /// Formats the double as a currency string.
     ///
-    /// ⚠️ **WARNING**: Doubles have precision issues for financial calculations.
+    /// âš ï¸ **WARNING**: Doubles have precision issues for financial calculations.
     /// Prefer using `Decimal` for monetary values to avoid errors like:
     /// ```swift
     /// 0.1 + 0.2 = 0.30000000000000004  // Double (WRONG!)
@@ -412,7 +412,7 @@ extension Double {
     let tax: Decimal = 0.875  // 8.75%
     let total = price * (1 + tax)  // Exact: 11.41875
  
-    ❌ WRONG:
+    âŒ WRONG:
     let price: Double = 10.50
     let tax: Double = 0.875
     let total = price * (1 + tax)  // May be: 11.418750000000001
@@ -432,7 +432,7 @@ extension Double {
  5. **Multi-currency support with locale:**
     let euros: Decimal = 1000
     let deLocale = Locale(identifier: "de_DE")
-    Text(euros.asCurrency(code: "EUR", locale: deLocale))  // "1.000,00 €"
+    Text(euros.asCurrency(code: "EUR", locale: deLocale))  // "1.000,00 â‚¬"
  
  6. **Income/Expense with signs:**
     let income: Decimal = 500
@@ -457,7 +457,7 @@ extension Double {
  COMMON PITFALLS TO AVOID:
  =========================
  
- ❌ Don't use Double for calculations:
+ âŒ Don't use Double for calculations:
     var subtotal: Double = 0
     for price in prices { subtotal += price }  // Precision loss!
  
@@ -465,7 +465,7 @@ extension Double {
     var subtotal: Decimal = 0
     for price in prices { subtotal += price }  // Exact!
  
- ❌ Don't format in calculations:
+ âŒ Don't format in calculations:
     let total = transaction.amount.asCurrency()  // Wrong! Returns String
  
  ✅ Calculate first, format last:
@@ -473,7 +473,7 @@ extension Double {
     // ... calculations ...
     Text(total.asCurrency())  // Format for display
  
- ❌ Don't ignore NaN/Inf:
+ âŒ Don't ignore NaN/Inf:
     let result = amount / 0  // Inf!
     Text(result.asCurrency())  // Crash or garbage
  
@@ -490,7 +490,7 @@ extension Double {
  
  // Custom currency with locale (FIXED in v2.2)
  let frLocale = Locale(identifier: "fr_FR")
- print(amount.asCurrency(code: "EUR", locale: frLocale))  // "1 234,56 €"
+ print(amount.asCurrency(code: "EUR", locale: frLocale))  // "1 234,56 â‚¬"
  
  // Compact format
  print(amount.asCurrency(compact: true))  // "$1,235"
@@ -513,3 +513,29 @@ extension Double {
  let invalid: Decimal = Decimal.nan
  print(invalid.asCurrency())  // "Invalid" (doesn't crash)
  */
+
+// MARK: - VoiceOver Accessibility Currency Extension
+// Added in v2.3 for accessibility compliance
+
+extension Double {
+    /// Returns currency formatted for VoiceOver (reads naturally)
+    /// Example: 1234.56 -> "$1,234.56" which VoiceOver reads as "one thousand two hundred thirty four dollars and fifty six cents"
+    var accessibilityCurrency: String {
+        guard self.isFiniteNumber else { return "zero dollars" }
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: NSNumber(value: self)) ?? "$\(self)"
+    }
+}
+
+extension Decimal {
+    /// Returns currency formatted for VoiceOver (reads naturally)
+    var accessibilityCurrency: String {
+        guard self.isFiniteNumber else { return "zero dollars" }
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: self as NSDecimalNumber) ?? "$\(self)"
+    }
+}

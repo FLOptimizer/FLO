@@ -1,21 +1,54 @@
 //  AddTransactionView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.5.1 - Fixed FinanceType comparison issues
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.0 - Accessibility Audit: Full VoiceOver support
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES FROM v2.5:
-//  ✅ FIXED: FinanceType comparison (Account now uses Transaction.FinanceType)
-//  ✅ FIXED: Explicit type annotations in sorted closure
+//  CHANGES v3.0:
+//  ✅ ADDED: VoiceOver labels on receipt scan/view/processing states
+//  ✅ ADDED: Account chip accessibility labels
+//  ✅ ADDED: Save/Cancel toolbar button hints
+//  ✅ ADDED: Category picker hint
+//  ✅ ADDED: Date picker accessibility hint
+//  ✅ ADDED: Screen change announcement on appear
+//  ✅ ADDED: Receipt processing announced to VoiceOver
+//  ✅ ADDED: Upgrade button accessibility label
 //
-//  CHANGES FROM v2.4:
-//  ✅ ADDED: Account selection with horizontal chips (Premium+)
-//  ✅ ADDED: Smart account defaults based on financeType
-//  ✅ ADDED: Account auto-switch when financeType changes
+//  CHANGES v2.9:
+//  ✅ ADDED: Transaction limit enforcement (50/month Free tier)
+//  ✅ ADDED: UsageLimitService integration for real-time limit tracking
+//  ✅ ADDED: UsageWarningBanner when approaching/at limit (80%/90%/100%)
+//  ✅ ADDED: LimitReachedOverlay when limit is hit
+//  ✅ ADDED: Disable Save button when limit reached
+//  ✅ ADDED: Monthly reset on 1st of each month
+//  ✅ ADDED: Upgrade prompt via SubscriptionView
+//
+//  CHANGES v2.8:
+//  ✅ ADDED: Camera permission check before showing camera (Apple 5.1.1 compliance)
+//  ✅ ADDED: Settings redirect alert when permission denied
+//  ✅ ADDED: CameraPermissionHelper integration
+//  ✅ No pre-permission screens - permission requested contextually
+//
+//  CHANGES v2.7:
+//  - Added automatic account balance updates when transactions are created
+//  - Income increases account balance, expenses decrease it
+//
+//  CHANGES v2.6:
+//  - Fixed UTF-8 encoding in account chip display (garbled bullet characters)
+//
+//  CHANGES v2.5.1:
+//  - Fixed FinanceType comparison (Account now uses Transaction.FinanceType)
+//  - Fixed explicit type annotations in sorted closure
+//
+//  CHANGES v2.5:
+//  - Added account selection with horizontal chips (Premium+)
+//  - Added smart account defaults based on financeType
+//  - Added account auto-switch when financeType changes
 //
 
 import SwiftUI
 import SwiftData
+import AVFoundation
 
 struct AddTransactionView: View {
     @Environment(\.modelContext) private var context
@@ -42,6 +75,9 @@ struct AddTransactionView: View {
     @State private var isProcessingReceipt = false
     @State private var showingReceiptPreview = false
     
+    // v2.8: Camera permission state
+    @State private var showingCameraPermissionAlert = false
+    
     // Validation & Alerts
     @State private var showingValidationAlert = false
     @State private var validationMessage = ""
@@ -49,6 +85,12 @@ struct AddTransactionView: View {
     
     // Loading state
     @State private var isSaving = false
+    
+    // v2.9: Usage Limit State
+    @State private var usageLimitService: UsageLimitService?
+    @State private var showingSubscription = false
+    @State private var showingLimitReached = false
+    @State private var usageWarning: UsageWarning?
     
     @FocusState private var focusedField: Field?
     
@@ -58,9 +100,27 @@ struct AddTransactionView: View {
     
     private let largeAmountThreshold: Decimal = 10_000
     
+    // v2.9: Check if within transaction limit
+    private var isWithinLimit: Bool {
+        guard let service = usageLimitService else { return true }
+        let (allowed, _) = service.canAddTransaction(tier: subscriptionManager.currentTier)
+        return allowed
+    }
+    
     var body: some View {
         NavigationStack {
             Form {
+                // v2.9: Usage warning banner (shows at 80%+ usage)
+                if let warning = usageWarning {
+                    Section {
+                        UsageWarningBanner(
+                            warning: warning,
+                            showingSubscription: $showingSubscription,
+                            isCompact: true
+                        )
+                    }
+                }
+                
                 receiptScanSection
                 amountSection
                 typeSection
@@ -69,6 +129,18 @@ struct AddTransactionView: View {
                 accountSection
                 dateSection
                 detailsSection
+                
+                // v2.9: Monthly usage indicator for Free tier
+                if subscriptionManager.currentTier.transactionLimit != nil {
+                    Section {
+                        MonthlyUsageIndicator(
+                            current: usageLimitService?.currentMonthTransactionCount ?? 0,
+                            limit: subscriptionManager.currentTier.transactionLimit,
+                            limitType: .transactions,
+                            showingSubscription: $showingSubscription
+                        )
+                    }
+                }
             }
             .navigationTitle("New Transaction")
             .navigationBarTitleDisplayMode(.inline)
@@ -78,6 +150,32 @@ struct AddTransactionView: View {
             }
             .sheet(isPresented: $showingReceiptPreview) {
                 receiptPreviewSheet
+            }
+            // v2.9: Subscription upgrade sheet
+            .sheet(isPresented: $showingSubscription) {
+                SubscriptionView()
+            }
+            // v2.9: Limit reached overlay
+            .fullScreenCover(isPresented: $showingLimitReached) {
+                LimitReachedOverlay(
+                    limitType: .transactions,
+                    currentCount: usageLimitService?.currentMonthTransactionCount ?? 50,
+                    limit: subscriptionManager.currentTier.transactionLimit ?? 50,
+                    showingSubscription: $showingSubscription,
+                    onDismiss: {
+                        showingLimitReached = false
+                        dismiss()
+                    }
+                )
+            }
+            // v2.8: Camera permission denied alert
+            .alert("Camera Access Required", isPresented: $showingCameraPermissionAlert) {
+                Button("Open Settings") {
+                    CameraPermissionHelper.openSettings()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("FLO needs camera access to scan receipts. Please enable it in Settings.")
             }
             .onChange(of: capturedImage) {
                 if let image = capturedImage {
@@ -103,11 +201,28 @@ struct AddTransactionView: View {
             }
             .onAppear {
                 setDefaultAccount()
+                setupLimitService()
+                // v3.0: Screen announcement
+                AccessibilityAnnouncement.screenChanged("New Transaction form")
             }
             .onDisappear {
                 cleanupOnCancel()
             }
         }
+    }
+    
+    // MARK: - v2.9: Limit Service Setup
+    
+    private func setupLimitService() {
+        usageLimitService = UsageLimitService(modelContext: context)
+        updateUsageWarning()
+    }
+    
+    private func updateUsageWarning() {
+        usageWarning = usageLimitService?.getUsageWarning(
+            for: .transactions,
+            tier: subscriptionManager.currentTier
+        )
     }
 
     // MARK: - Form Sections
@@ -157,187 +272,202 @@ struct AddTransactionView: View {
             Text("Classification")
         } footer: {
             Text(financeType == .business ?
-                 "Business expenses are tax deductible" :
-                 "Personal expenses are for your records only")
-                .font(.caption)
+                 "This expense may be tax deductible" :
+                 "Personal expenses are not tax deductible")
         }
     }
-
+    
     private var categorySection: some View {
         Section("Category") {
             Picker("Category", selection: $selectedCategory) {
-                Text("None").tag(Category?.none)
+                Text("None")
+                    .tag(nil as Category?)
                 
-                if isIncome {
-                    ForEach(organizedIncomeCategories) { cat in
-                        categoryLabel(for: cat)
-                    }
-                } else {
-                    Section(header: Text("BUSINESS")) {
-                        ForEach(organizedBusinessCategories) { cat in
-                            categoryLabel(for: cat)
-                        }
-                    }
-                    
-                    Section(header: Text("PERSONAL")) {
-                        ForEach(organizedPersonalCategories) { cat in
-                            categoryLabel(for: cat)
-                        }
-                    }
+                let filtered = isIncome ?
+                    categories.filter { $0.isIncome } :
+                    categories.filter { !$0.isIncome }
+                
+                ForEach(filtered, id: \.id) { category in
+                    Label(category.name, systemImage: category.icon)
+                        .tag(category as Category?)
                 }
             }
             .disabled(isProcessingReceipt)
+            // v3.0: VoiceOver hint
+            .accessibilityHint("Select a category for this transaction")
         }
     }
     
-    // MARK: - Account Section
-    
-    @ViewBuilder
     private var accountSection: some View {
-        if subscriptionManager.currentTier.hasMultipleAccounts && !accounts.isEmpty {
-            Section {
-                accountChipsView
-            } header: {
-                HStack {
-                    Text("Account")
-                    Spacer()
-                    if selectedAccount != nil {
-                        Button("Clear") {
-                            withAnimation(FLOAnimation.quick) {
-                                selectedAccount = nil
-                            }
-                            HapticService.play(.light)
-                        }
-                        .font(.caption)
-                        .foregroundStyle(Color.brandPrimary)
-                    }
-                }
-            } footer: {
-                accountFooterText
-            }
-        }
-    }
-    
-    @ViewBuilder
-    private var accountChipsView: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(sortedAccounts) { account in
-                    AccountChipView(
-                        account: account,
-                        isSelected: selectedAccount?.id == account.id,
-                        showBalance: subscriptionManager.currentTier.hasBalanceTracking
-                    ) {
-                        withAnimation(FLOAnimation.quick) {
-                            if selectedAccount?.id == account.id {
-                                selectedAccount = nil
-                            } else {
+        Section {
+            if subscriptionManager.currentTier.hasMultipleAccounts {
+                // Premium+ users see all accounts
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(filteredAccounts, id: \.id) { account in
+                            AccountChipView(
+                                account: account,
+                                isSelected: selectedAccount?.id == account.id,
+                                showBalance: true
+                            ) {
+                                HapticService.play(.light)
                                 selectedAccount = account
                             }
                         }
-                        HapticService.play(.medium)
                     }
+                    .padding(.vertical, 4)
+                }
+            } else {
+                // Free users see single account picker
+                if let account = accounts.first {
+                    HStack {
+                        Image(systemName: account.icon)
+                            .foregroundStyle(Color.brandPrimaryText)
+                        Text(account.name)
+                        Spacer()
+                        Text("Default")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text("No accounts created")
+                        .foregroundStyle(.secondary)
                 }
             }
-            .padding(.vertical, 4)
-        }
-        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
-    }
-    
-    @ViewBuilder
-    private var accountFooterText: some View {
-        if selectedAccount == nil {
-            Text("Select an account to track where this money flows")
-        } else if let account = selectedAccount, account.financeType != financeType {
-            Label("Account type differs from transaction classification", systemImage: "exclamationmark.triangle")
+        } header: {
+            Text("Account")
+        } footer: {
+            if !subscriptionManager.currentTier.hasMultipleAccounts && accounts.count > 1 {
+                Button("Upgrade for multiple accounts") {
+                    HapticService.play(.light)
+                    showingSubscription = true
+                }
                 .font(.caption)
-                .foregroundStyle(.orange)
+                // v3.0: VoiceOver label
+                .accessibilityLabel("Upgrade to Premium for multiple account support")
+                .accessibilityHint("Double tap to view subscription options")
+            }
         }
     }
     
-    /// Accounts sorted: matching financeType first, then primary, then others
-    private var sortedAccounts: [Account] {
+    private var filteredAccounts: [Account] {
         let active = accounts.filter { $0.isActive }
         
+        // Sort: matching financeType first, then by name
         return active.sorted { (a: Account, b: Account) -> Bool in
-            // First: match financeType
-            if a.financeType == financeType && b.financeType != financeType { return true }
-            if b.financeType == financeType && a.financeType != financeType { return false }
+            let aMatches = a.financeType == financeType
+            let bMatches = b.financeType == financeType
             
-            // Second: primary accounts
-            if a.isPrimary && !b.isPrimary { return true }
-            if b.isPrimary && !a.isPrimary { return false }
-            
-            // Third: alphabetical
+            if aMatches != bMatches {
+                return aMatches
+            }
             return a.name < b.name
         }
     }
     
-    // MARK: - Category Organization Helpers
-    
-    private var organizedIncomeCategories: [Category] {
-        categories
-            .filter { $0.isIncome == true }
-            .sorted { $0.name < $1.name }
-    }
-    
-    private var organizedBusinessCategories: [Category] {
-        categories
-            .filter { $0.isIncome == false && isBusinessCategory($0) }
-            .sorted { $0.name < $1.name }
-    }
-    
-    private var organizedPersonalCategories: [Category] {
-        categories
-            .filter { $0.isIncome == false && !isBusinessCategory($0) }
-            .sorted { $0.name < $1.name }
-    }
-    
-    private func isBusinessCategory(_ category: Category) -> Bool {
-        let businessKeywords = ["(Business)", "Business Travel", "Office", "Professional",
-                               "Contract Labor", "Marketing", "Advertising", "Software & Subscriptions"]
-        return businessKeywords.contains { category.name.contains($0) }
-    }
-    
-    private func categoryLabel(for category: Category) -> some View {
-        Label {
-            Text(category.name)
-        } icon: {
-            Image(systemName: category.icon)
-                .foregroundStyle(Color(flowHex: category.colorHex))
-        }
-        .tag(Optional(category))
-    }
-
     private var dateSection: some View {
         Section("Date") {
-            DatePicker("", selection: $date, displayedComponents: .date)
+            DatePicker("Transaction Date", selection: $date, displayedComponents: .date)
                 .disabled(isProcessingReceipt)
-            
-            if isFutureDate {
-                Label("Future date selected", systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-            }
+                // v3.0: VoiceOver hint
+                .accessibilityHint("Select the date this transaction occurred")
         }
     }
-
+    
     private var detailsSection: some View {
         Section("Details") {
-            TextField("Merchant (optional)", text: $merchantName)
+            TextField("Merchant Name", text: $merchantName)
                 .focused($focusedField, equals: .merchant)
                 .disabled(isProcessingReceipt)
                 .accessibilityLabel("Merchant name")
             
-            TextField("Note (optional)", text: $note)
+            TextField("Notes (optional)", text: $note, axis: .vertical)
+                .lineLimit(3...6)
                 .focused($focusedField, equals: .note)
                 .disabled(isProcessingReceipt)
-                .accessibilityLabel("Transaction note")
+                .accessibilityLabel("Transaction notes")
         }
     }
-
+    
+    private var receiptScanSection: some View {
+        Section {
+            if receiptImagePath != nil {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Receipt attached")
+                    Spacer()
+                    Button("View") {
+                        showingReceiptPreview = true
+                    }
+                    .buttonStyle(.borderless)
+                    // v3.0: VoiceOver label
+                    .accessibilityLabel("View receipt")
+                    .accessibilityHint("Double tap to see the attached receipt image")
+                }
+                // v3.0: Group for VoiceOver
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Receipt attached")
+                .accessibilityHint("View button available")
+            } else {
+                Button {
+                    checkCameraPermissionAndScan()
+                } label: {
+                    HStack {
+                        Image(systemName: "camera.fill")
+                        Text("Scan Receipt")
+                    }
+                }
+                .disabled(isProcessingReceipt)
+                // v3.0: VoiceOver label
+                .accessibilityLabel("Scan receipt")
+                .accessibilityHint("Double tap to open camera and scan a receipt")
+            }
+            
+            if isProcessingReceipt {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Processing receipt...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                // v3.0: Announce processing
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Processing receipt, please wait")
+                .accessibilityAddTraits(.updatesFrequently)
+            }
+        } header: {
+            Text("Receipt")
+        } footer: {
+            Text("Scan a receipt to auto-fill amount and merchant")
+        }
+    }
+    
+    @ViewBuilder
+    private var receiptPreviewSheet: some View {
+        if let path = receiptImagePath {
+            NavigationStack {
+                ReceiptImageView(imagePath: path)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") {
+                                showingReceiptPreview = false
+                            }
+                        }
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Remove", role: .destructive) {
+                                receiptImagePath = nil
+                                showingReceiptPreview = false
+                            }
+                        }
+                    }
+            }
+        }
+    }
+    
     // MARK: - Toolbar
-
+    
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
@@ -345,16 +475,23 @@ struct AddTransactionView: View {
                 dismiss()
             }
             .disabled(isProcessingReceipt || isSaving)
+            // v3.0: VoiceOver hint
+            .accessibilityHint("Double tap to discard and close")
         }
         
         ToolbarItem(placement: .confirmationAction) {
             if isSaving {
                 ProgressView()
+                    .accessibilityLabel("Saving transaction")
             } else {
                 Button("Save") {
                     validateAndSave()
                 }
-                .disabled(!canSave || isProcessingReceipt)
+                // v2.9: Disable if limit reached
+                .disabled(!canSave || isProcessingReceipt || !isWithinLimit)
+                // v3.0: VoiceOver hint
+                .accessibilityLabel(isWithinLimit ? "Save transaction" : "Transaction limit reached")
+                .accessibilityHint(canSave && isWithinLimit ? "Double tap to save this transaction" : "")
             }
         }
         
@@ -395,212 +532,7 @@ struct AddTransactionView: View {
         )
     }
     
-    // MARK: - Receipt Scan Section
-    
-    @ViewBuilder
-    private var receiptScanSection: some View {
-        Section {
-            scanReceiptButton
-            
-            if let image = capturedImage {
-                receiptPreviewRow(image: image)
-            }
-        }
-    }
-
-    private var scanReceiptButton: some View {
-        Button {
-            focusedField = nil
-            showingCamera = true
-        } label: {
-            scanReceiptButtonLabel
-        }
-        .disabled(isProcessingReceipt)
-        .accessibilityLabel("Scan receipt with camera")
-        .accessibilityHint(isProcessingReceipt ? "Processing receipt" : "Double tap to scan")
-    }
-    
-    private var scanReceiptButtonLabel: some View {
-        HStack {
-            Image(systemName: isProcessingReceipt ? "doc.text.magnifyingglass" : "doc.text.viewfinder")
-                .font(.title2)
-                .foregroundStyle(Color.brandPrimary)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(isProcessingReceipt ? "Processing..." : "Scan Receipt")
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                
-                Text("Auto-fill from receipt")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            
-            Spacer()
-            
-            if isProcessingReceipt {
-                ProgressView()
-            } else {
-                Image(systemName: "camera.fill")
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-    
-    private func receiptPreviewRow(image: UIImage) -> some View {
-        HStack {
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(height: 60)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Receipt Captured")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                if isProcessingReceipt {
-                    Text("Extracting data...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Tap to view full size")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            
-            Spacer()
-            
-            Button {
-                showingReceiptPreview = true
-            } label: {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(Color.brandPrimary)
-            }
-            .disabled(isProcessingReceipt)
-        }
-    }
-    
-    @ViewBuilder
-    private var receiptPreviewSheet: some View {
-        if let image = capturedImage {
-            NavigationStack {
-                ZStack {
-                    Color.black.ignoresSafeArea()
-                    
-                    Image(uiImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                }
-                .navigationTitle("Receipt Preview")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Done") {
-                            showingReceiptPreview = false
-                        }
-                        .foregroundStyle(.white)
-                    }
-                }
-            }
-        }
-    }
-    
-    // MARK: - Process Receipt
-    
-    private func processReceipt(image: UIImage) {
-        isProcessingReceipt = true
-        focusedField = nil
-
-        if let imagePath = PhotoStorageManager.shared.saveReceiptSync(image: image) {
-            receiptImagePath = imagePath
-        }
-
-        Task {
-            do {
-                let scannedText = try await ReceiptScannerService.shared.scanReceiptSafe(from: image)
-                let parsedData = ReceiptParser.shared.parseReceipt(text: scannedText)
-
-                await MainActor.run {
-                    if let parsedAmount = parsedData.amount {
-                        let roundedAmount = (parsedAmount * 100).rounded() / 100
-                        amountValue = Decimal(string: String(format: "%.2f", roundedAmount)) ?? Decimal(roundedAmount)
-                        announceAccessibilityChange("Amount filled from receipt: \(formattedAmount)")
-                    }
-                    if let parsedDate = parsedData.date {
-                        date = parsedDate
-                        announceAccessibilityChange("Date filled from receipt")
-                    }
-                    if let merchant = parsedData.merchantName {
-                        merchantName = merchant
-                        if note.isEmpty { note = merchant }
-                        announceAccessibilityChange("Merchant filled from receipt: \(merchant)")
-                    }
-                    if let suggested = parsedData.suggestedCategory,
-                       let cat = categories.first(where: { $0.name == suggested }) {
-                        selectedCategory = cat
-                        announceAccessibilityChange("Category suggested: \(suggested)")
-                    }
-
-                    isProcessingReceipt = false
-                }
-            } catch {
-                await MainActor.run {
-                    print("Receipt scanning failed: \(error)")
-                    isProcessingReceipt = false
-                }
-            }
-        }
-    }
-    
-    // MARK: - Account Helpers
-    
-    private func setDefaultAccount() {
-        guard subscriptionManager.currentTier.hasMultipleAccounts else { return }
-        guard selectedAccount == nil else { return }
-        
-        let active = accounts.filter { $0.isActive }
-        
-        // First: Primary account matching financeType
-        if let primary = active.first(where: { $0.isPrimary && $0.financeType == financeType }) {
-            selectedAccount = primary
-            return
-        }
-        
-        // Second: Any account matching financeType
-        if let matching = active.first(where: { $0.financeType == financeType }) {
-            selectedAccount = matching
-            return
-        }
-        
-        // Third: Any primary account
-        if let primary = active.first(where: { $0.isPrimary }) {
-            selectedAccount = primary
-        }
-    }
-    
-    private func updateAccountForFinanceType(_ newType: Transaction.FinanceType) {
-        guard subscriptionManager.currentTier.hasMultipleAccounts else { return }
-        
-        if let current = selectedAccount, current.financeType != newType {
-            let active = accounts.filter { $0.isActive }
-            
-            if let matching = active.first(where: { $0.financeType == newType && $0.isPrimary }) {
-                withAnimation(FLOAnimation.quick) {
-                    selectedAccount = matching
-                }
-            } else if let matching = active.first(where: { $0.financeType == newType }) {
-                withAnimation(FLOAnimation.quick) {
-                    selectedAccount = matching
-                }
-            }
-        }
-    }
-    
-    // MARK: - Validation & Save
+    // MARK: - Validation
     
     private var canSave: Bool {
         amountValue > 0
@@ -618,6 +550,13 @@ struct AddTransactionView: View {
     }
     
     private func validateAndSave() {
+        // v2.9: Check transaction limit first
+        if !isWithinLimit {
+            HapticService.play(.error)
+            showingLimitReached = true
+            return
+        }
+        
         if amountValue <= 0 {
             validationMessage = "Amount must be greater than zero"
             showingValidationAlert = true
@@ -639,8 +578,10 @@ struct AddTransactionView: View {
     private func saveTransaction() {
         isSaving = true
         
+        let amount = Double(truncating: amountValue as NSDecimalNumber)
+        
         let transaction = Transaction(
-            amount: Double(truncating: amountValue as NSDecimalNumber),
+            amount: amount,
             date: date,
             note: note,
             isIncome: isIncome,
@@ -653,6 +594,17 @@ struct AddTransactionView: View {
         )
         
         context.insert(transaction)
+        
+        // Update account balance
+        if let account = selectedAccount {
+            if isIncome {
+                account.currentBalance += amount
+            } else {
+                account.currentBalance -= amount
+            }
+            account.lastBalanceUpdate = Date()
+            account.touch()
+        }
         
         do {
             try context.save()
@@ -685,6 +637,94 @@ struct AddTransactionView: View {
         UIAccessibility.post(notification: .announcement, argument: message)
         #endif
     }
+    
+    private func setDefaultAccount() {
+        if selectedAccount == nil {
+            // Try to find an account matching the finance type
+            let matching = accounts.filter { $0.isActive && $0.financeType == financeType }
+            selectedAccount = matching.first ?? accounts.filter { $0.isActive }.first
+        }
+    }
+    
+    private func updateAccountForFinanceType(_ newType: Transaction.FinanceType) {
+        // When finance type changes, try to switch to a matching account
+        let matching = accounts.filter { $0.isActive && $0.financeType == newType }
+        if let matchingAccount = matching.first {
+            selectedAccount = matchingAccount
+        }
+    }
+    
+    // MARK: - v2.8: Camera Permission Check
+    
+    private func checkCameraPermissionAndScan() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            showingCamera = true
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                DispatchQueue.main.async {
+                    if granted {
+                        showingCamera = true
+                    }
+                }
+            }
+        case .denied, .restricted:
+            showingCameraPermissionAlert = true
+        @unknown default:
+            showingCameraPermissionAlert = true
+        }
+    }
+    
+    // MARK: - Receipt Processing
+    
+    private func processReceipt(image: UIImage) {
+        isProcessingReceipt = true
+        focusedField = nil
+        
+        // Save image
+        if let imagePath = PhotoStorageManager.shared.saveReceiptSync(image: image) {
+            receiptImagePath = imagePath
+        }
+        
+        Task {
+            do {
+                // Scan the receipt image to extract text
+                let scannedText = try await ReceiptScannerService.shared.scanReceiptSafe(from: image)
+                // Parse the extracted text
+                let parsedData = ReceiptParser.shared.parseReceipt(text: scannedText)
+                
+                await MainActor.run {
+                    if let parsedAmount = parsedData.amount {
+                        let roundedAmount = (parsedAmount * 100).rounded() / 100
+                        amountValue = Decimal(string: String(format: "%.2f", roundedAmount)) ?? Decimal(roundedAmount)
+                        announceAccessibilityChange("Amount filled from receipt: \(formattedAmount)")
+                    }
+                    if let parsedDate = parsedData.date {
+                        date = parsedDate
+                        announceAccessibilityChange("Date filled from receipt")
+                    }
+                    if let merchant = parsedData.merchantName {
+                        merchantName = merchant
+                        if note.isEmpty { note = merchant }
+                        announceAccessibilityChange("Merchant filled from receipt: \(merchant)")
+                    }
+                    if let suggested = parsedData.suggestedCategory,
+                       let cat = categories.first(where: { $0.name == suggested }) {
+                        selectedCategory = cat
+                        announceAccessibilityChange("Category suggested: \(suggested)")
+                    }
+                    
+                    isProcessingReceipt = false
+                    HapticService.play(.success)
+                }
+            } catch {
+                await MainActor.run {
+                    print("Receipt scanning failed: \(error)")
+                    isProcessingReceipt = false
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Account Chip View
@@ -697,73 +737,53 @@ struct AccountChipView: View {
     
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 8) {
-                // Icon
-                ZStack {
-                    Circle()
-                        .fill(Color(hex: account.color).opacity(isSelected ? 0.3 : 0.15))
-                        .frame(width: 32, height: 32)
-                    
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
                     Image(systemName: account.icon)
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color(hex: account.color))
-                }
-                
-                // Account Info
-                VStack(alignment: .leading, spacing: 2) {
+                        .font(.caption)
                     Text(account.name)
                         .font(.subheadline)
-                        .fontWeight(isSelected ? .semibold : .regular)
-                        .foregroundStyle(isSelected ? Color.primary : Color.secondary)
                         .lineLimit(1)
-                    
-                    if let digits = account.lastFourDigits, !digits.isEmpty {
-                        Text("•••• \(digits)")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    } else if showBalance {
-                        Text(formatCurrency(account.currentBalance))
-                            .font(.caption2)
-                            .foregroundStyle(account.currentBalance >= 0 ? .green : .red)
-                    }
                 }
                 
-                // Checkmark if selected
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(Color.brandPrimary)
+                if showBalance {
+                    Text(account.currentBalance.formatted(.currency(code: "USD")))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? Color.brandPrimary.opacity(0.1) : Color(UIColor.secondarySystemGroupedBackground))
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isSelected ? Color.brandPrimary.opacity(0.15) : Color(.secondarySystemBackground))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 20)
+                RoundedRectangle(cornerRadius: 8)
                     .stroke(isSelected ? Color.brandPrimary : Color.clear, lineWidth: 1.5)
             )
         }
-        .buttonStyle(PlainButtonStyle())
-        .scaleEffect(isSelected ? 1.02 : 1.0)
-        .animation(FLOAnimation.quick, value: isSelected)
-    }
-    
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "$0"
+        .buttonStyle(.plain)
+        .foregroundStyle(isSelected ? Color.brandPrimary : .primary)
+        // v3.0: VoiceOver label for account chip
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(account.name)\(showBalance ? ", balance \(AccessibilityFormatters.spokenCurrency(account.currentBalance))" : "")")
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityHint("Double tap to \(isSelected ? "deselect" : "select") this account")
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }
 
 // MARK: - Preview
 
 #Preview {
-    AddTransactionView()
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(
+        for: Transaction.self, Category.self, Account.self,
+        configurations: config
+    )
+    
+    return AddTransactionView()
+        .modelContainer(container)
         .environmentObject(SubscriptionManager.shared)
-        .modelContainer(for: [Transaction.self, Category.self, Account.self], inMemory: true)
 }

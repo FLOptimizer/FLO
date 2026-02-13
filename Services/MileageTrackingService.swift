@@ -1,18 +1,16 @@
 //  MileageTrackingService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.3 - Needs Review status for tax compliance
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.4 - Control Widget + Quick Actions Integration
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v3.3:
-//  ✅ Auto-tracked trips now default to purpose: .needsReview (not .other)
-//  ✅ Auto-tracked trips now default to isBusinessTrip: false (not business)
-//  ✅ Trips require user classification before counting as deductions
-//  ✅ Notification shows "potential deduction" and prompts review
-//  ✅ Recovered trips also default to needsReview status
-//  ✅ Added tripsNeedingReview computed property for UI badge
-//  ✅ Manual trips still use user's selected purpose (unchanged)
+//  CHANGES v3.4:
+//  ✅ Added Control Widget notification handlers
+//  ✅ Added widget timer state sync on start/stop
+//  ✅ Control Widget now actually controls tracking
+//  ✅ State properly syncs between app and widgets
 //
+//  v3.3: Needs Review status for tax compliance
 //  v3.2: Background task fix
 //  v3.1: Enhanced notification permission flow
 //
@@ -41,7 +39,7 @@ import os.log
 class MileageTrackingService: NSObject, ObservableObject {
     
     // MARK: - Version
-    static let version = "3.3"
+    static let version = "3.4"
     
     // MARK: - Singleton
     static let shared = MileageTrackingService()
@@ -227,6 +225,76 @@ class MileageTrackingService: NSObject, ObservableObject {
             name: UIApplication.didEnterBackgroundNotification,
             object: nil
         )
+        
+        // Control Widget notification observers
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleControlWidgetStart),
+            name: .mileageTimerStartRequested,
+            object: nil
+        )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleControlWidgetStop),
+            name: .mileageTimerStopRequested,
+            object: nil
+        )
+        
+        logger.info("Control Widget observers registered")
+    }
+    
+    // MARK: - Control Widget Handlers
+    
+    @objc private func handleControlWidgetStart(_ notification: Notification) {
+        logger.info("📱 Control Widget requested START")
+        
+        guard !isTracking else {
+            logger.info("   Already tracking, ignoring")
+            return
+        }
+        
+        // Update user preference
+        UserDefaults.standard.set(true, forKey: "mileageTrackingEnabled")
+        
+        // Start tracking
+        startTracking()
+    }
+    
+    @objc private func handleControlWidgetStop(_ notification: Notification) {
+        logger.info("📱 Control Widget requested STOP")
+        
+        guard isTracking else {
+            logger.info("   Not tracking, ignoring")
+            return
+        }
+        
+        // Update user preference
+        UserDefaults.standard.set(false, forKey: "mileageTrackingEnabled")
+        
+        // Stop tracking
+        stopTracking()
+    }
+    
+    // MARK: - Widget State Sync
+    
+    /// Syncs mileage tracking state with Control Widget
+    private func syncWidgetTimerState(isRunning: Bool) {
+        Task {
+            let state = WidgetTimerState(
+                isRunning: isRunning,
+                startTime: isRunning ? Date() : nil,
+                elapsedSeconds: 0,
+                tripId: currentTrip?.id
+            )
+            
+            do {
+                try await WidgetDataService.shared.updateTimerState(state)
+                logger.info("📱 Widget timer state synced: \(isRunning ? "Running" : "Stopped")")
+            } catch {
+                logger.error("📱 Failed to sync widget timer state: \(error.localizedDescription)")
+            }
+        }
     }
     
     // MARK: - App Lifecycle Handlers
@@ -400,6 +468,9 @@ class MileageTrackingService: NSObject, ObservableObject {
         logger.info("   Battery: \(batteryStr)")
         
         requestNotificationPermission()
+        
+        // Sync state with Control Widget
+        syncWidgetTimerState(isRunning: true)
     }
     
     func stopTracking() {
@@ -422,6 +493,9 @@ class MileageTrackingService: NSObject, ObservableObject {
         
         // Clear persisted state
         clearPersistedTripState()
+        
+        // Sync state with Control Widget
+        syncWidgetTimerState(isRunning: false)
         
         logger.info("Tracking STOPPED")
     }
@@ -1199,4 +1273,8 @@ extension Notification.Name {
     static let mileageTripCompleted = Notification.Name("com.finchandpoppy.flo.mileageTripCompleted")
     static let mileageTrackingStarted = Notification.Name("com.finchandpoppy.flo.mileageTrackingStarted")
     static let mileageTrackingStopped = Notification.Name("com.finchandpoppy.flo.mileageTrackingStopped")
+    
+    // Control Widget notifications
+    static let mileageTimerStartRequested = Notification.Name("com.finchandpoppy.flo.mileageTimerStart")
+    static let mileageTimerStopRequested = Notification.Name("com.finchandpoppy.flo.mileageTimerStop")
 }

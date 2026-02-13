@@ -2,7 +2,7 @@
 //  FLO - Finance Ledger Optimizer
 //
 //  Version 1.0 - Shared Models for Tax Optimization
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Shared data models used by TaxOptimizationEngine and related views.
 //  Extracted to separate file to avoid naming conflicts and improve clarity.

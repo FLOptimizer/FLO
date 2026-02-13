@@ -1,8 +1,13 @@
 //  TaxDisclaimerView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.0 - In-App Tax and Financial Disclaimer
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 1.2 - Accessibility audit (Sprint 8)
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.1:
+//  ✅ Added hidden debug menu access (DEBUG builds only)
+//  ✅ Triple-tap on version info reveals debug menu
+//  ✅ Counter resets after 2 seconds of inactivity
 //
 //  Displays comprehensive tax and financial disclaimers within the app
 //  Provides link to full online version
@@ -11,6 +16,13 @@ import SwiftUI
 
 struct TaxDisclaimerView: View {
     @Environment(\.dismiss) private var dismiss
+    
+    // Debug menu access (triple-tap on version)
+    #if DEBUG
+    @State private var tapCount = 0
+    @State private var showingDebugMenu = false
+    @State private var lastTapTime = Date()
+    #endif
     
     var body: some View {
         ScrollView {
@@ -21,6 +33,9 @@ struct TaxDisclaimerView: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.largeTitle)
                             .foregroundStyle(.orange)
+                            .accessibilityHidden(true)
+                            // v1.2: Decorative
+                            .accessibilityHidden(true)
                         
                         VStack(alignment: .leading) {
                             Text("Important Disclaimer")
@@ -129,6 +144,8 @@ struct TaxDisclaimerView: View {
                     Text("Your Responsibilities")
                         .font(.headline)
                         .foregroundStyle(.primary)
+                        // v1.2: Header trait
+                        .accessibilityAddTraits(.isHeader)
                     
                     VStack(alignment: .leading, spacing: 8) {
                         ResponsibilityItem(text: "Verify all calculations with qualified professionals before filing taxes")
@@ -148,6 +165,8 @@ struct TaxDisclaimerView: View {
                     Text("Limitation of Liability")
                         .font(.headline)
                         .foregroundStyle(.red)
+                        // v1.2: Header trait
+                        .accessibilityAddTraits(.isHeader)
                     
                     Text("Finch & Poppy Co LLC and FLO explicitly disclaim all liability for tax calculation errors, missed deadlines, IRS audits, financial decisions based on app outputs, or any financial losses resulting from use of the app. Our total liability shall not exceed the amount you paid for the app (or $50 if free).")
                         .font(.footnote)
@@ -162,6 +181,8 @@ struct TaxDisclaimerView: View {
                     Text("We Recommend Working With:")
                         .font(.headline)
                         .foregroundStyle(.primary)
+                        // v1.2: Header trait
+                        .accessibilityAddTraits(.isHeader)
                     
                     ProfessionalRecommendation(
                         icon: "briefcase.fill",
@@ -192,9 +213,13 @@ struct TaxDisclaimerView: View {
                 Link(destination: AppConstants.disclaimerURL) {
                     HStack {
                         Image(systemName: "safari")
+                            // v1.2: Decorative
+                            .accessibilityHidden(true)
                         Text("View Full Disclaimer Online")
                         Spacer()
                         Image(systemName: "arrow.up.right.square")
+                            // v1.2: Decorative
+                            .accessibilityHidden(true)
                     }
                     .font(.callout)
                     .foregroundStyle(.white)
@@ -202,19 +227,80 @@ struct TaxDisclaimerView: View {
                     .background(Color.orange)
                     .cornerRadius(10)
                 }
+                // v1.2: VoiceOver
+                .accessibilityLabel("View full disclaimer online")
+                .accessibilityHint("Double tap to open in Safari")
                 
-                // Version Info
-                Text("FLO v\(AppConstants.appVersion) (\(AppConstants.buildNumber))")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top, 8)
+                // Version Info - Hidden Debug Access
+                versionInfoView
             }
             .padding()
         }
         .navigationTitle("Tax & Legal Disclaimer")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            // v1.2: Announce screen
+            AccessibilityAnnouncement.screenChanged("Tax and Legal Disclaimer")
+        }
+        #if DEBUG
+        .sheet(isPresented: $showingDebugMenu) {
+            DebugMenuView()
+        }
+        #endif
     }
+    
+    // MARK: - Version Info View (with hidden debug access)
+    
+    private var versionInfoView: some View {
+        #if DEBUG
+        // Debug build - tappable version info
+        Text("FLO v\(AppConstants.appVersion) (\(AppConstants.buildNumber))")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, 8)
+            .padding(.bottom, 20)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                handleDebugTap()
+            }
+        #else
+        // Release build - static version info
+        Text("FLO v\(AppConstants.appVersion) (\(AppConstants.buildNumber))")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, 8)
+        #endif
+    }
+    
+    // MARK: - Debug Tap Handler
+    
+    #if DEBUG
+    private func handleDebugTap() {
+        let now = Date()
+        
+        // Reset counter if more than 2 seconds since last tap
+        if now.timeIntervalSince(lastTapTime) > 2.0 {
+            tapCount = 0
+        }
+        
+        lastTapTime = now
+        tapCount += 1
+        
+        // Provide subtle haptic feedback
+        if tapCount < 3 {
+            HapticService.play(.light)
+        }
+        
+        // Show debug menu on triple-tap
+        if tapCount >= 3 {
+            HapticService.play(.success)
+            tapCount = 0
+            showingDebugMenu = true
+        }
+    }
+    #endif
 }
 
 // MARK: - Supporting Views
@@ -232,9 +318,13 @@ struct DisclaimerSection: View {
                     .font(.title3)
                     .foregroundStyle(color)
                     .frame(width: 30)
+                    // v1.2: Decorative
+                    .accessibilityHidden(true)
                 
                 Text(title)
                     .font(.headline)
+                    // v1.2: Header trait
+                    .accessibilityAddTraits(.isHeader)
             }
             
             Text(content)
@@ -257,6 +347,8 @@ struct ResponsibilityItem: View {
                 .font(.caption)
                 .foregroundStyle(.green)
                 .padding(.top, 2)
+                // v1.2: Decorative
+                .accessibilityHidden(true)
             
             Text(text)
                 .font(.footnote)
@@ -276,6 +368,8 @@ struct ProfessionalRecommendation: View {
                 .font(.title3)
                 .foregroundStyle(.blue)
                 .frame(width: 30)
+                // v1.2: Decorative
+                .accessibilityHidden(true)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)

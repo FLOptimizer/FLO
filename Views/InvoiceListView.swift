@@ -1,8 +1,15 @@
 //  InvoiceListView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.3 - Enhanced haptics and micro-animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.5 - Accessibility Audit Pass - Added VoiceOver Accessibility Support
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.4:
+//  ✅ Added VoiceOver labels to InvoiceRow (full invoice details)
+//  ✅ Added accessibility hints to SummaryCards
+//  ✅ Added accessibility to filter picker
+//  ✅ Added accessibility to Aging Report button
+//  ✅ Added accessibility to locked view elements
 //
 //  CHANGES v2.3:
 //  ✅ Haptic feedback on filter changes
@@ -32,8 +39,6 @@ struct InvoiceListView: View {
     @State private var showingLimitAlert = false
     @State private var viewAppeared = false
     
-    // Haptic Generators
-                    
     var filteredInvoices: [Invoice] {
         var invoices = allInvoices
         
@@ -95,15 +100,12 @@ struct InvoiceListView: View {
             HapticService.play(.selection)
         }
         .onAppear {
-                        withAnimation(FLOAnimation.standard) {
+            withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
         }
     }
     
-    // MARK: - Haptic Preparation
-    
-        
     // MARK: - Invoice List Content
     
     private var invoiceListContent: some View {
@@ -122,7 +124,8 @@ struct InvoiceListView: View {
                             HapticService.play(.light)
                             filterStatus = .unpaid
                         }
-                        .opacity(viewAppeared ? 1 : 0)
+                        .accessibilityHint("Double tap to filter to unpaid invoices")
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(x: viewAppeared ? 0 : -20)
                         .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                         
@@ -136,7 +139,8 @@ struct InvoiceListView: View {
                             HapticService.play(.light)
                             filterStatus = .overdue
                         }
-                        .opacity(viewAppeared ? 1 : 0)
+                        .accessibilityHint("Double tap to filter to overdue invoices")
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(x: viewAppeared ? 0 : -20)
                         .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                         
@@ -146,6 +150,7 @@ struct InvoiceListView: View {
                         } label: {
                             HStack {
                                 Image(systemName: "chart.bar.fill")
+                                    .accessibilityHidden(true)
                                 Text("Aging Report")
                             }
                             .font(.subheadline.weight(.medium))
@@ -155,7 +160,9 @@ struct InvoiceListView: View {
                             .background(Color.businessColor)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
-                        .opacity(viewAppeared ? 1 : 0)
+                        .accessibilityLabel("Aging Report")
+                        .accessibilityHint("Double tap to view invoice aging report")
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .offset(x: viewAppeared ? 0 : -20)
                         .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                     }
@@ -171,7 +178,9 @@ struct InvoiceListView: View {
                 }
                 .pickerStyle(.segmented)
                 .padding()
-                .opacity(viewAppeared ? 1 : 0)
+                .accessibilityLabel("Invoice status filter")
+                .accessibilityHint("Select to filter invoices by status")
+                .opacity(viewAppeared ? 1 : 0.001)
                 .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
                 
                 // Invoice list
@@ -182,7 +191,9 @@ struct InvoiceListView: View {
                     } description: {
                         Text(emptyStateMessage)
                     }
-                    .opacity(viewAppeared ? 1 : 0)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("No invoices. \(emptyStateMessage)")
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
                 } else {
                     List {
@@ -190,7 +201,7 @@ struct InvoiceListView: View {
                             NavigationLink(value: invoice) {
                                 InvoiceRow(invoice: invoice)
                             }
-                            .opacity(viewAppeared ? 1 : 0)
+                            .opacity(viewAppeared ? 1 : 0.001)
                             .offset(x: viewAppeared ? 0 : 20)
                             .animation(
                                 .spring(response: 0.4, dampingFraction: 0.8)
@@ -216,6 +227,8 @@ struct InvoiceListView: View {
                     } label: {
                         Image(systemName: "plus.circle.fill")
                     }
+                    .accessibilityLabel("Create new invoice")
+                    .accessibilityHint("Double tap to create a new invoice")
                 }
             }
             .sheet(isPresented: $showingCreateInvoice) {
@@ -245,20 +258,23 @@ struct InvoiceListView: View {
                             )
                         )
                         .symbolEffect(.pulse, value: viewAppeared)
-                        .opacity(viewAppeared ? 1 : 0)
+                        .accessibilityHidden(true)
+                        .opacity(viewAppeared ? 1 : 0.001)
                         .scaleEffect(viewAppeared ? 1 : 0.8)
                         .animation(.spring(response: 0.6, dampingFraction: 0.7), value: viewAppeared)
+                        .accessibilityHidden(true)
                     
                     VStack(spacing: 12) {
                         Text("Professional Invoicing")
                             .font(.title2.bold())
+                            .accessibilityAddTraits(.isHeader)
                         Text("Upgrade to Premium to create professional invoices and get paid faster.")
                             .font(.body)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 32)
                     }
-                    .opacity(viewAppeared ? 1 : 0)
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 20)
                     .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                     
@@ -269,6 +285,8 @@ struct InvoiceListView: View {
                         FeatureCheckmarkRow(icon: "dollarsign.circle.fill", text: "Automatic late fees", delay: 0.3, appeared: viewAppeared)
                     }
                     .padding(.horizontal, 32)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Features included: Professional PDF invoices, Payment tracking and reminders, Client management, Automatic late fees")
                     
                     VStack(spacing: 16) {
                         TierComparisonRow(tier: "Premium", price: "$12.99/mo", limit: "25 invoices/month", delay: 0.35, appeared: viewAppeared)
@@ -282,6 +300,7 @@ struct InvoiceListView: View {
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "star.fill")
+                                .accessibilityHidden(true)
                             Text("Upgrade Now")
                         }
                         .font(.headline)
@@ -292,7 +311,9 @@ struct InvoiceListView: View {
                         .cornerRadius(12)
                     }
                     .padding(.horizontal, 32)
-                    .opacity(viewAppeared ? 1 : 0)
+                    .accessibilityLabel("Upgrade Now")
+                    .accessibilityHint("Double tap to view subscription options")
+                    .opacity(viewAppeared ? 1 : 0.001)
                     .scaleEffect(viewAppeared ? 1 : 0.9)
                     .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
                     
@@ -378,7 +399,8 @@ struct SummaryCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(color.opacity(0.3), lineWidth: 1)
         )
-        .accessibilityLabel("\(title) amount: \(amount.formatted(.currency(code: "USD")))")
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(amount.formatted(.currency(code: "USD")))")
     }
 }
 
@@ -394,8 +416,9 @@ struct InvoiceRow: View {
             Circle()
                 .fill(statusColor)
                 .frame(width: 10, height: 10)
-                .scaleEffect(appeared ? 1 : 0)
+                .scaleEffect(appeared ? 1 : 0.001)
                 .animation(.spring(response: 0.4, dampingFraction: 0.6).delay(0.1), value: appeared)
+                .accessibilityHidden(true)
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
@@ -437,35 +460,55 @@ struct InvoiceRow: View {
             }
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(invoiceAccessibilityLabel)
+        .accessibilityHint("Double tap to view invoice details")
         .onAppear {
             appeared = true
         }
     }
     
-    private var statusColor: Color {
-        switch invoice.status {
-        case .draft: return .gray
-        case .sent, .viewed: return invoice.isOverdue ? .red : .blue
-        case .paid: return .green
-        case .partiallyPaid: return .orange
-        case .overdue: return .red
-        case .cancelled: return .orange
+    // MARK: - Accessibility
+    
+    private var invoiceAccessibilityLabel: String {
+        var label = "Invoice \(invoice.invoiceNumber)"
+        if let client = invoice.client {
+            label += " for \(client.name)"
         }
+        label += ", \(invoice.totalAmount.formatted(.currency(code: "USD")))"
+        label += ", status: \(statusText)"
+        if invoice.isOverdue {
+            label += ", overdue"
+        }
+        return label
     }
     
+    // MARK: - Computed Properties
+    
     private var statusText: String {
+        invoice.status.displayName
+    }
+    
+    private var statusColor: Color {
         switch invoice.status {
-        case .draft: return "Draft"
-        case .sent: return "Sent"
-        case .viewed: return "Viewed"
-        case .paid: return "Paid"
-        case .partiallyPaid: return "Partially Paid"
-        case .overdue: return "Overdue"
-        case .cancelled: return "Cancelled"
+        case .draft:
+            return .gray
+        case .sent:
+            return .blue
+        case .viewed:
+            return .orange
+        case .paid:
+            return .green
+        case .partiallyPaid:
+                return .orange
+        case .overdue:
+            return .red
+        case .cancelled:
+            return .secondary
         }
     }
 }
-
+    
 // MARK: - Supporting Types
 
 enum InvoiceFilterStatus: String, CaseIterable {
@@ -490,11 +533,12 @@ struct FeatureCheckmarkRow: View {
                 .font(.title3)
                 .foregroundColor(.primaryTeal)
                 .frame(width: 32)
+                .accessibilityHidden(true)
             Text(text)
                 .font(.subheadline)
             Spacer()
         }
-        .opacity(appeared ? 1 : 0)
+        .opacity(appeared ? 1 : 0.001)
         .offset(x: appeared ? 0 : -10)
         .animation(FLOAnimation.standard.delay(delay), value: appeared)
     }
@@ -531,12 +575,14 @@ struct TierComparisonRow: View {
             Spacer()
             Text(price)
                 .font(.subheadline.bold())
-                .foregroundColor(.primaryTeal)
+                 .foregroundColor(.brandPrimaryText)
         }
         .padding()
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(12)
-        .opacity(appeared ? 1 : 0)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(tier) plan, \(price), \(limit)\(isRecommended ? ", Best value" : "")")
+        .opacity(appeared ? 1 : 0.001)
         .offset(y: appeared ? 0 : 10)
         .animation(FLOAnimation.standard.delay(delay), value: appeared)
     }

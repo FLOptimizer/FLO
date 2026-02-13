@@ -1,8 +1,8 @@
 //  InvoiceSupplementaryViews.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.0 - Enhanced with Haptics & Micro-Animations
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.1 - Accessibility Audit Pass
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Mark as paid and aging report views
 //
@@ -70,6 +70,7 @@ struct AgingReportView: View {
                         Text("Total Outstanding")
                             .font(.headline)
                             .foregroundStyle(.secondary)
+                            .accessibilityAddTraits(.isHeader)
                         
                         Text(amountAnimated.formatted(.currency(code: "USD")))
                             .font(.system(size: 36, weight: .bold))
@@ -86,7 +87,7 @@ struct AgingReportView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .shadow(color: .black.opacity(0.05), radius: 8)
                     .scaleEffect(headerVisible ? 1.0 : 0.95)
-                    .opacity(headerVisible ? 1 : 0)
+                    .opacity(headerVisible ? 1 : 0.001)
                     
                     // Aging buckets
                     VStack(spacing: 12) {
@@ -146,6 +147,7 @@ struct AgingReportView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Distribution")
                                 .font(.headline)
+                                .accessibilityAddTraits(.isHeader)
                             
                             AnimatedAgingChartView(report: agingBuckets, isVisible: chartVisible)
                         }
@@ -154,7 +156,7 @@ struct AgingReportView: View {
                         .background(Color(.systemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .shadow(color: .black.opacity(0.05), radius: 8)
-                        .opacity(chartVisible ? 1 : 0)
+                        .opacity(chartVisible ? 1 : 0.001)
                         .offset(y: chartVisible ? 0 : 20)
                     }
                     
@@ -163,6 +165,7 @@ struct AgingReportView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Insights")
                                 .font(.headline)
+                                .accessibilityAddTraits(.isHeader)
                             
                             ForEach(Array(insights.enumerated()), id: \.offset) { index, insight in
                                 AnimatedInsightRow(
@@ -177,7 +180,7 @@ struct AgingReportView: View {
                         .background(Color(.systemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .shadow(color: .black.opacity(0.05), radius: 8)
-                        .opacity(insightsVisible ? 1 : 0)
+                        .opacity(insightsVisible ? 1 : 0.001)
                         .offset(y: insightsVisible ? 0 : 20)
                     }
                 }
@@ -188,6 +191,7 @@ struct AgingReportView: View {
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 animateEntrance()
+                AccessibilityAnnouncement.screenChanged("Aging report")
             }
         }
     }
@@ -301,9 +305,11 @@ struct AnimatedAgingBucketRow: View {
                 .stroke(color.opacity(0.3), lineWidth: 2)
         )
         .scaleEffect(isPressed ? 0.98 : 1.0)
-        .opacity(isVisible ? 1 : 0)
+        .opacity(isVisible ? 1 : 0.001)
         .offset(x: isVisible ? 0 : -20)
         .animation(FLOAnimation.quick.delay(delay), value: isVisible)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title), \(subtitle). \(count) invoice\(count == 1 ? "" : "s"), \(amount.formatted(.currency(code: "USD")))")
         .onTapGesture {
             HapticService.play(.medium)
             
@@ -352,6 +358,7 @@ struct AnimatedChartBar: View {
                 .font(.caption)
                 .frame(width: 50, alignment: .leading)
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
@@ -378,7 +385,10 @@ struct AnimatedChartBar: View {
             Text(amount.formatted(.currency(code: "USD")))
                 .font(.caption)
                 .frame(width: 80, alignment: .trailing)
+                .accessibilityHidden(true)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label): \(amount.formatted(.currency(code: "USD")))")
     }
     
     private func animateBar(maxWidth: CGFloat) {
@@ -404,12 +414,13 @@ struct AnimatedInsightRow: View {
                 .foregroundStyle(.yellow)
                 .font(.caption)
                 .scaleEffect(lightbulbPulse ? 1.1 : 1.0)
+                .accessibilityHidden(true)
             
             Text(insight)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
-        .opacity(isVisible ? 1 : 0)
+        .opacity(isVisible ? 1 : 0.001)
         .offset(x: isVisible ? 0 : -10)
         .animation(.easeOut(duration: 0.3).delay(delay), value: isVisible)
         .onAppear {

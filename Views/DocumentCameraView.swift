@@ -1,10 +1,18 @@
 //  DocumentCameraView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.0 - Enhanced with Haptic Feedback
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.2.2 - Accessibility: VisionKit provides native a11y; UTF-8 cleanup
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Document camera wrapper for VisionKit scanner
+//
+//  CHANGES v2.2:
+//  - Fixed MainActor isolation for HapticService calls (Swift 6 compliance)
+//  - Wrapped haptic calls in Task { @MainActor in } for delegate methods
+//
+//  CHANGES v2.1:
+//  - Migrated all haptic feedback to HapticService singleton
+//  - Removed local UINotificationFeedbackGenerator instances
 //
 //  ENHANCEMENTS v2.0:
 //  - Success haptic feedback on scan completion
@@ -46,19 +54,21 @@ struct DocumentCameraView: UIViewControllerRepresentable {
                 #endif
                 
                 // Light haptic for empty scan
-                HapticService.play(.medium)
+                Task { @MainActor in
+                    HapticService.shared.mediumImpact()
+                }
                 
                 parent.dismiss()
                 return
             }
             
             // Success haptic
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
-            
-            // Secondary celebration haptic
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                HapticService.play(.medium)
+            Task { @MainActor in
+                HapticService.shared.success()
+                
+                // Secondary celebration haptic
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                HapticService.shared.mediumImpact()
             }
             
             // Get the first scanned page
@@ -75,7 +85,9 @@ struct DocumentCameraView: UIViewControllerRepresentable {
         
         func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
             // Light haptic for cancel
-            HapticService.play(.medium)
+            Task { @MainActor in
+                HapticService.shared.mediumImpact()
+            }
             
             #if DEBUG
             print("📷 Document scan cancelled by user")
@@ -86,11 +98,12 @@ struct DocumentCameraView: UIViewControllerRepresentable {
         
         func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFailWithError error: Error) {
             // Error haptic
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.error)
+            Task { @MainActor in
+                HapticService.shared.error()
+            }
             
             #if DEBUG
-            print("❌ Document Camera Error: \(error.localizedDescription)")
+            print("âŒ Document Camera Error: \(error.localizedDescription)")
             #endif
             
             parent.dismiss()

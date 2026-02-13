@@ -1,16 +1,28 @@
 //  RecurringTransaction.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.6 - Added Account relationship for recurring transactions
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 2.8 - Account balance update on instance creation
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES FROM v2.5:
-//  ✅ ADDED: Account relationship - recurring transactions tied to specific accounts
-//  ✅ ADDED: Account passed to generated transaction instances
-//  ✅ ADDED: accountName computed property
-//  ✅ Maintained all v2.5 functionality
+//  CHANGES v2.8:
+//  - CRITICAL FIX: Account balance now updates when recurring instances are created
+//  - Income instances increase account balance
+//  - Expense instances decrease account balance
+//  - account.lastBalanceUpdate and account.touch() called properly
+//  - This fixes the discrepancy between summaries and account balances
 //
-//  Previous (v2.5):
+//  CHANGES v2.7:
+//  - FIXED: Recurring expenses were stored with negative amounts
+//  - Transaction amounts are now always positive (per Transaction model spec)
+//  - The isIncome flag determines direction, not the amount sign
+//  - This fixes Net Income showing green for expenses on dashboard
+//
+//  CHANGES v2.6:
+//  - Added Account relationship - recurring transactions tied to specific accounts
+//  - Account passed to generated transaction instances
+//  - Added accountName computed property
+//
+//  CHANGES v2.5:
 //  - Fixed month skipping bug (Feb, Apr, Jun when starting on day 31)
 //  - Correctly uses last day of month when intended day doesn't exist
 
@@ -64,7 +76,7 @@ final class RecurringTransaction {
     @Relationship(deleteRule: .nullify)
     var category: Category?
     
-    /// Optional account for generated transactions (NEW in v2.6 - Premium feature)
+    /// Optional account for generated transactions (Premium feature)
     @Relationship(deleteRule: .nullify)
     var account: Account?
     
@@ -84,7 +96,7 @@ final class RecurringTransaction {
         startDate: Date = .now,
         endDate: Date? = nil,
         category: Category? = nil,
-        account: Account? = nil,  // NEW in v2.6
+        account: Account? = nil,
         isActive: Bool = true
     ) {
         self.id = UUID()
@@ -112,18 +124,18 @@ final class RecurringTransaction {
         return merchantName
     }
     
-    /// Account name for display (NEW in v2.6)
+    /// Account name for display
     var accountName: String {
         account?.name ?? "No Account"
     }
     
-    /// Whether this recurring transaction has an assigned account (NEW in v2.6)
+    /// Whether this recurring transaction has an assigned account
     var hasAccount: Bool {
         account != nil
     }
     
     /// The next date when an instance should be created.
-    /// ✅ FIXED in v2.5: Properly handles all months including those without the intended day
+    /// Properly handles all months including those without the intended day
     var nextOccurrence: Date? {
         guard isActive else { return nil }
         
@@ -233,7 +245,8 @@ final class RecurringTransaction {
     }
     
     /// Create the next transaction instance if due.
-    /// v2.6: Now includes account in generated transaction
+    /// v2.8: Now updates account balance when instance is created
+    /// v2.7: Fixed - amounts are always positive, isIncome determines direction
     @discardableResult
     func createNextInstance(in context: ModelContext, on date: Date = .now) -> Transaction? {
         guard shouldCreateInstance(today: date) else { return nil }
@@ -244,8 +257,9 @@ final class RecurringTransaction {
             return nil
         }
         
-        // Use correct signed amount (negative for expenses)
-        let transactionAmount = isIncome ? amount : -amount
+        // v2.7 FIX: Amount is ALWAYS positive - isIncome determines direction
+        // This matches Transaction model spec: "Transaction amount (always positive, use isIncome to determine direction)"
+        let transactionAmount = abs(amount)  // Ensure positive
         
         let transaction = Transaction(
             amount: transactionAmount,
@@ -255,13 +269,34 @@ final class RecurringTransaction {
             merchantName: merchantName,
             category: category,
             financeType: financeType,
-            account: account  // NEW in v2.6: Pass account to generated transaction
+            account: account
         )
         
         transaction.recurringParent = self
         transactions.append(transaction)
         context.insert(transaction)
+        
+        // v2.8 FIX: Update account balance when recurring instance is created
+        // This ensures account balances stay in sync with transaction summaries
+        if let account = account {
+            if isIncome {
+                account.currentBalance += transactionAmount
+            } else {
+                account.currentBalance -= transactionAmount
+            }
+            account.lastBalanceUpdate = Date()
+            account.touch()
+            
+            #if DEBUG
+            print("[Recurring] Updated \(account.name) balance: \(account.formattedBalance)")
+            #endif
+        }
+        
         lastCreated = date
+        
+        #if DEBUG
+        print("[Recurring] Created instance: \(merchantName) - $\(transactionAmount) (\(isIncome ? "income" : "expense")) on \(date.formatted(date: .abbreviated, time: .omitted))")
+        #endif
         
         return transaction
     }
@@ -276,7 +311,7 @@ final class RecurringTransaction {
         isActive = true
     }
     
-    /// Update the account for this recurring transaction (NEW in v2.6)
+    /// Update the account for this recurring transaction
     func assignToAccount(_ newAccount: Account?) {
         account = newAccount
     }
@@ -337,7 +372,7 @@ enum RecurrenceFrequency: String, Codable, CaseIterable {
         }
     }
     
-    /// ⚠️ DEPRECATED: Use nextDate(from:) instead for accurate calendar calculations
+    /// DEPRECATED: Use nextDate(from:) instead for accurate calendar calculations
     @available(*, deprecated, message: "Use nextDate(from:) for accurate calendar-based calculations")
     var daysInterval: Int {
         switch self {

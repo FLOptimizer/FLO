@@ -1,18 +1,25 @@
 //  SmartReceiptService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.1 - Fixed Threading Crash
-//  Copyright © 2025 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.2 - Fixed Storage Architecture
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v3.1:
-//  ✅ FIXED: Threading crash - ModelContext operations now on MainActor
-//  ✅ Uses ReceiptParser for text parsing (proven accuracy)
-//  ✅ Keeps intelligent category suggestion with learning
+//  CHANGES v3.2:
+//  ✅ FIXED: Images now stored as FILES via PhotoStorageManager
+//  ✅ FIXED: Only filename stored in database (imageURL field)
+//  ✅ FIXED: imageData field no longer used (prevents database bloat)
+//  ✅ ADDED: loadReceiptImage() helper for retrieving images
+//  ✅ ADDED: migrateEmbeddedImages() for converting legacy receipts
 //
-//  Architecture:
-//  - Vision framework → Raw OCR text (background thread OK)
-//  - ReceiptParser → Parse amount, date, merchant (background thread OK)
-//  - SmartReceiptService → Database ops on MainActor
+//  PREVIOUS (v3.1):
+//  - Threading crash fix - ModelContext operations on MainActor
+//  - Uses ReceiptParser for text parsing
+//  - Intelligent category suggestion with learning
+//
+//  STORAGE ARCHITECTURE:
+//  - Images stored in: Documents/Receipts/*.jpg (via PhotoStorageManager)
+//  - Database stores: filename reference only (imageURL field)
+//  - Benefit: Prevents database bloat, faster queries, easy backup/export
 //
 
 import Foundation
@@ -29,7 +36,7 @@ class SmartReceiptService {
     // MARK: - Receipt Processing
     
     /// Process a scanned receipt with intelligence layer
-    /// Uses ReceiptParser for text parsing, adds learning and matching
+    /// Images are stored as FILES, not embedded in database
     func processReceipt(
         image: UIImage,
         context: ModelContext
@@ -41,7 +48,7 @@ class SmartReceiptService {
             throw ReceiptError.noDataExtracted
         }
         
-        // Step 2: Use ReceiptParser for accurate parsing (the proven approach)
+        // Step 2: Use ReceiptParser for accurate parsing
         let parsed = ReceiptParser.shared.parseReceipt(text: rawText)
         
         let merchantName = parsed.merchantName ?? "Unknown Merchant"
@@ -49,24 +56,34 @@ class SmartReceiptService {
         let date = parsed.date ?? Date()
         
         #if DEBUG
-        print("🧠 SmartReceiptService using ReceiptParser results:")
+        print("🧠 SmartReceiptService Processing:")
         print("   Merchant: \(merchantName)")
         print("   Amount: $\(String(format: "%.2f", amount))")
         print("   Date: \(date.formatted(date: .abbreviated, time: .omitted))")
-        print("   ReceiptParser Category: \(parsed.suggestedCategory ?? "None")")
         #endif
         
-        // Step 3: Create receipt data object
+        // Step 3: Save image to FILE SYSTEM (not database!)
+        // This is the critical fix for storage architecture
+        let imageFilename = try await PhotoStorageManager.shared.saveReceipt(image: image)
+        
+        #if DEBUG
+        print("   📁 Image saved: \(imageFilename)")
+        #endif
+        
+        // Step 4: Create receipt data
+        // NOTE: imageData is nil - we use imageURL for file reference
         let receiptData = ReceiptData(
             merchantName: merchantName,
             totalAmount: amount,
             date: date,
             rawOCRText: rawText,
-            imageData: image.jpegData(compressionQuality: 0.7)
+            imageData: nil  // ← CRITICAL: Don't store image in database!
         )
         
-        // Step 4: Smart category suggestion (with learning from past choices)
-        // First try our learned mappings, then fall back to ReceiptParser's suggestion
+        // Store filename reference
+        receiptData.imageURL = imageFilename
+        
+        // Step 5: Smart category suggestion
         if let suggestion = suggestCategoryWithLearning(
             for: merchantName,
             amount: amount,
@@ -77,35 +94,139 @@ class SmartReceiptService {
             receiptData.suggestedCategoryName = suggestion.categoryName
             receiptData.categorySuggestionConfidence = suggestion.confidence
             
-            #if DEBUG
-            print("   Smart Category: \(suggestion.categoryName ?? "None") (\(String(format: "%.0f%%", suggestion.confidence * 100)))")
-            #endif
-            
-            // Update tax deductible status
             receiptData.updateDeductibleStatus(categoryName: suggestion.categoryName)
+            
+            #if DEBUG
+            print("   Category: \(suggestion.categoryName ?? "None") (\(Int(suggestion.confidence * 100))%)")
+            #endif
         }
         
-        // Step 5: Extract line items for detailed view
+        // Step 6: Extract line items
         receiptData.lineItems = extractLineItems(from: rawText)
         
-        #if DEBUG
-        print("   Line Items: \(receiptData.lineItems.count)")
-        #endif
-        
-        // Step 6: Insert into database
+        // Step 7: Insert into database (small footprint - no image data)
         context.insert(receiptData)
         try context.save()
         
         #if DEBUG
-        print("✅ Receipt processed: \(merchantName) - $\(String(format: "%.2f", amount))")
+        print("✅ Receipt saved: \(merchantName) - $\(String(format: "%.2f", amount))")
         #endif
         
         return receiptData
     }
     
-    // MARK: - Raw OCR Extraction (Vision Framework)
+    // MARK: - Load Receipt Image
     
-    /// Extract raw text from image using Vision framework
+    /// Load receipt image from file storage
+    /// Use this instead of accessing imageData directly
+    func loadReceiptImage(for receipt: ReceiptData) async -> UIImage? {
+        // Primary: Load from file storage
+        if let filename = receipt.imageURL, !filename.isEmpty {
+            do {
+                return try await PhotoStorageManager.shared.loadReceipt(filename: filename)
+            } catch {
+                #if DEBUG
+                print("⚠️ Failed to load image file \(filename): \(error)")
+                #endif
+            }
+        }
+        
+        // Fallback: Legacy embedded data
+        if let imageData = receipt.imageData {
+            #if DEBUG
+            print("⚠️ Loading from embedded data (legacy receipt)")
+            #endif
+            return UIImage(data: imageData)
+        }
+        
+        return nil
+    }
+    
+    // MARK: - Migration: Embedded → File Storage
+    
+    /// Migrate legacy receipts from embedded imageData to file storage
+    /// Call this once to convert old receipts - frees up database space
+    func migrateEmbeddedImages(
+        receipts: [ReceiptData],
+        context: ModelContext
+    ) async -> (migrated: Int, failed: Int, spaceFreed: Int64) {
+        var migrated = 0
+        var failed = 0
+        var spaceFreed: Int64 = 0
+        
+        // Find receipts with embedded images but no file reference
+        let needsMigration = receipts.filter { receipt in
+            receipt.imageData != nil && (receipt.imageURL == nil || receipt.imageURL!.isEmpty)
+        }
+        
+        guard !needsMigration.isEmpty else {
+            #if DEBUG
+            print("✅ No receipts need migration")
+            #endif
+            return (0, 0, 0)
+        }
+        
+        #if DEBUG
+        print("🔄 Migrating \(needsMigration.count) receipts to file storage...")
+        #endif
+        
+        for receipt in needsMigration {
+            guard let imageData = receipt.imageData,
+                  let image = UIImage(data: imageData) else {
+                failed += 1
+                continue
+            }
+            
+            do {
+                // Save to file
+                let filename = try await PhotoStorageManager.shared.saveReceipt(image: image)
+                
+                // Update receipt to use file reference
+                let originalSize = Int64(imageData.count)
+                receipt.imageURL = filename
+                receipt.imageData = nil  // Clear embedded data
+                
+                migrated += 1
+                spaceFreed += originalSize
+                
+                #if DEBUG
+                print("   ✓ Migrated: \(receipt.merchantName)")
+                #endif
+            } catch {
+                failed += 1
+                #if DEBUG
+                print("   ✗ Failed: \(receipt.merchantName) - \(error)")
+                #endif
+            }
+        }
+        
+        // Save all changes
+        if migrated > 0 {
+            do {
+                try context.save()
+                #if DEBUG
+                print("✅ Migration complete: \(migrated) migrated, \(failed) failed")
+                print("   Space freed: \(ByteCountFormatter.string(fromByteCount: spaceFreed, countStyle: .file))")
+                #endif
+            } catch {
+                #if DEBUG
+                print("❌ Failed to save migration: \(error)")
+                #endif
+            }
+        }
+        
+        return (migrated, failed, spaceFreed)
+    }
+    
+    /// Check how many receipts have embedded images (need migration)
+    func countEmbeddedImages(receipts: [ReceiptData]) -> Int {
+        receipts.filter { receipt in
+            receipt.imageData != nil && (receipt.imageURL == nil || receipt.imageURL!.isEmpty)
+        }.count
+    }
+    
+    // MARK: - Raw OCR Extraction
+    
     private func extractRawOCRText(from image: UIImage) async throws -> String {
         guard let cgImage = image.cgImage else {
             throw ReceiptError.invalidImage
@@ -123,7 +244,6 @@ class SmartReceiptService {
                     return
                 }
                 
-                // Extract all recognized text and join with newlines
                 let recognizedStrings = observations.compactMap { observation in
                     observation.topCandidates(1).first?.string
                 }
@@ -133,8 +253,7 @@ class SmartReceiptService {
                     return
                 }
                 
-                let fullText = recognizedStrings.joined(separator: "\n")
-                continuation.resume(returning: fullText)
+                continuation.resume(returning: recognizedStrings.joined(separator: "\n"))
             }
             
             request.recognitionLevel = .accurate
@@ -150,9 +269,8 @@ class SmartReceiptService {
         }
     }
     
-    // MARK: - Smart Category Suggestion (with Learning)
+    // MARK: - Smart Category Suggestion
     
-    /// Suggest category using learned mappings first, then ReceiptParser's suggestion
     private func suggestCategoryWithLearning(
         for merchantName: String,
         amount: Double,
@@ -161,15 +279,11 @@ class SmartReceiptService {
     ) -> CategorySuggestion? {
         let normalizedMerchant = merchantName.lowercased().trimmingCharacters(in: .whitespaces)
         
-        // Priority 1: Check if we have a LEARNED mapping for this merchant
-        // This is the "intelligence" - it learns from user corrections
+        // Priority 1: Learned mappings
         let descriptor = FetchDescriptor<MerchantCategoryMapping>()
         if let allMappings = try? context.fetch(descriptor) {
             for mapping in allMappings {
                 if mapping.matches(merchantName) {
-                    #if DEBUG
-                    print("   📚 Using learned mapping: \(merchantName) → \(mapping.categoryName ?? "?")")
-                    #endif
                     return CategorySuggestion(
                         categoryID: mapping.categoryID,
                         categoryName: mapping.categoryName,
@@ -179,11 +293,10 @@ class SmartReceiptService {
             }
         }
         
-        // Priority 2: Check common merchant patterns from MerchantCategoryMapping
+        // Priority 2: Common merchant patterns
         for mapping in MerchantCategoryMapping.commonMappings {
             for pattern in mapping.patterns {
                 if normalizedMerchant.contains(pattern) {
-                    // Try to find this category in the database
                     let categoryDescriptor = FetchDescriptor<Category>()
                     
                     if let categories = try? context.fetch(categoryDescriptor),
@@ -204,9 +317,8 @@ class SmartReceiptService {
             }
         }
         
-        // Priority 3: Use ReceiptParser's suggestion (keyword-based)
+        // Priority 3: ReceiptParser suggestion
         if let parserSuggestion = receiptParserSuggestion {
-            // Try to find this category in the database
             let categoryDescriptor = FetchDescriptor<Category>()
             
             if let categories = try? context.fetch(categoryDescriptor),
@@ -225,19 +337,11 @@ class SmartReceiptService {
             }
         }
         
-        // Priority 4: Amount-based heuristics (low confidence fallback)
+        // Priority 4: Amount-based heuristics
         if amount < 10.0 {
-            return CategorySuggestion(
-                categoryID: nil,
-                categoryName: "Office Supplies",
-                confidence: 0.3
-            )
+            return CategorySuggestion(categoryID: nil, categoryName: "Office Supplies", confidence: 0.3)
         } else if amount < 50.0 {
-            return CategorySuggestion(
-                categoryID: nil,
-                categoryName: "Meals & Entertainment",
-                confidence: 0.3
-            )
+            return CategorySuggestion(categoryID: nil, categoryName: "Meals & Entertainment", confidence: 0.3)
         }
         
         return nil
@@ -245,24 +349,20 @@ class SmartReceiptService {
     
     // MARK: - Learning
     
-    /// Learn from user's category selection - improves future suggestions
     func learnFromUserChoice(
         merchantName: String,
         categoryID: UUID,
         categoryName: String,
         context: ModelContext
     ) throws {
-        // Check if mapping already exists
         let descriptor = FetchDescriptor<MerchantCategoryMapping>()
         let allMappings = try context.fetch(descriptor)
         
         if let existing = allMappings.first(where: { $0.matches(merchantName) }) {
-            // Update existing mapping
             existing.categoryID = categoryID
             existing.categoryName = categoryName
             existing.reinforceMapping()
         } else {
-            // Create new mapping
             let newMapping = MerchantCategoryMapping(
                 merchantName: merchantName,
                 categoryID: categoryID,
@@ -282,29 +382,21 @@ class SmartReceiptService {
     
     // MARK: - Line Item Extraction
     
-    /// Extract individual line items from receipt for detailed view
     private func extractLineItems(from text: String) -> [ReceiptLineItem] {
         var items: [ReceiptLineItem] = []
-        
         let lines = text.components(separatedBy: .newlines)
         
         for line in lines {
-            // Look for lines with both a description and an amount
             if let amount = extractAmountFromLine(line), amount > 0 && amount < 10000 {
                 let description = extractDescription(from: line, amount: amount)
                 
-                // Skip total/subtotal lines and empty descriptions
                 let lowerDesc = description.lowercased()
                 if !description.isEmpty &&
                    !lowerDesc.contains("total") &&
                    !lowerDesc.contains("subtotal") &&
                    !lowerDesc.contains("tax") &&
                    !lowerDesc.contains("tip") {
-                    let item = ReceiptLineItem(
-                        description: description,
-                        amount: amount
-                    )
-                    items.append(item)
+                    items.append(ReceiptLineItem(description: description, amount: amount))
                 }
             }
         }
@@ -312,20 +404,15 @@ class SmartReceiptService {
         return items
     }
     
-    /// Extract amount from a single line
     private func extractAmountFromLine(_ line: String) -> Double? {
-        // Pattern to match currency amounts like $12.34, 12.34, $12,345.67
         let pattern = #/\$?\s?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/#
-        
         if let match = line.firstMatch(of: pattern) {
             let amountString = String(match.1).replacingOccurrences(of: ",", with: "")
             return Double(amountString)
         }
-        
         return nil
     }
     
-    /// Extract clean description from line item
     private func extractDescription(from line: String, amount: Double) -> String {
         let amountStr = String(format: "%.2f", amount)
         
@@ -333,7 +420,6 @@ class SmartReceiptService {
             .replacingOccurrences(of: "$\(amountStr)", with: "")
             .replacingOccurrences(of: amountStr, with: "")
         
-        // Remove any remaining dollar amounts using regex
         cleaned = cleaned.replacing(#/\$\d+\.\d{2}/#, with: "")
                          .replacing(#/\d+\.\d{2}/#, with: "")
                          .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -354,15 +440,14 @@ enum ReceiptError: Error, LocalizedError {
     case invalidImage
     case ocrFailed
     case noDataExtracted
+    case imageStorageFailed
     
     var errorDescription: String? {
         switch self {
-        case .invalidImage:
-            return "Could not process the image"
-        case .ocrFailed:
-            return "Text recognition failed"
-        case .noDataExtracted:
-            return "No text found in image"
+        case .invalidImage: return "Could not process the image"
+        case .ocrFailed: return "Text recognition failed"
+        case .noDataExtracted: return "No text found in image"
+        case .imageStorageFailed: return "Failed to save receipt image"
         }
     }
 }
