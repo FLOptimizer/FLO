@@ -122,6 +122,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"Extensions/Color+Extensions.swift",
+				Extensions/ColorSchemeSystem.swift,
 				"Extensions/Date+Extensions.swift",
 				FLOWidget/Assets.xcassets,
 				FLOWidget/FLOWidget.swift,
@@ -136,7 +137,7 @@
 				Models/Invoice.swift,
 				Models/InvoicePayment.swift,
 				Models/InvoiceTypes.swift,
-				Models/PlaidModels.swift,
+				Models/MileageLiveActivityAttributes.swift,
 				Models/RecurringTransaction.swift,
 				Models/TaxOptimizationModels.swift,
 				Models/Transaction.swift,
