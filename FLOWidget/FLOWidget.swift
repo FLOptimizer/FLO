@@ -1,8 +1,29 @@
 //  FLOWidget.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.0 - Compatible with WidgetDataService v1.3
+//  Version 2.2 - VoiceOver Audit: Widget accessibility for home screen
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.2 - VoiceOver Audit:
+//  ✅ ADDED: SmallWidgetView combines into single spoken element "FLO: Balance five thousand dollars"
+//  ✅ ADDED: MediumWidgetView combines with summary "FLO: Balance five thousand dollars. 42 transactions today"
+//  ✅ ADDED: LargeWidgetView combines with detailed summary including income, expenses, and quick stats
+//  ✅ ADDED: All decorative icons hidden (chart icons, arrow icons, calendar icons, document icons)
+//  ✅ VERIFIED: Widget color constants widgetTeal and widgetTealDark unchanged
+//  ✅ VERIFIED: Each widget size provides contextually appropriate spoken summary
+//
+//  CHANGES v2.1 - Dark Mode Optimization:
+//  ✅ ADDED: widgetTeal and widgetTealDark color constants at file scope
+//  ✅ FIXED: Replaced 5 instances of Color(red: 0.078, green: 0.722, blue: 0.651) with widgetTeal
+//  ✅ FIXED: Replaced 2 instances of Color(red: 0.051, green: 0.580, blue: 0.533) with widgetTealDark
+//  ✅ NOTE: Widgets use local constants (cannot access ColorSchemeManager in extension process)
+//
+//  CHANGES FROM v2.0:
+//  - Updated to use WidgetDataService v1.3 data structure
+//  - Changed to async data loading with fetchWidgetData()
+//  - Uses actual data: balance, income, expenses, quickStats
+//  - Removed mock data structures (topCategories, recentTransactions)
+//  - Simplified to display real financial data
 //
 //  CHANGES FROM v1.0:
 //  - Updated to use WidgetDataService v1.3 data structure
@@ -14,6 +35,11 @@
 
 import WidgetKit
 import SwiftUI
+
+// MARK: - Widget Color Constants
+
+private let widgetTeal = Color(red: 0.078, green: 0.722, blue: 0.651)
+private let widgetTealDark = Color(red: 0.051, green: 0.580, blue: 0.533)
 
 // MARK: - Timeline Provider
 
@@ -89,6 +115,7 @@ struct SmallWidgetView: View {
             HStack {
                 Image(systemName: "chart.bar.fill")
                     .font(.caption)
+                    .accessibilityHidden(true)
                 Text("FLO")
                     .font(.caption)
                     .fontWeight(.semibold)
@@ -117,11 +144,23 @@ struct SmallWidgetView: View {
         .padding()
         .background(
             LinearGradient(
-                colors: [Color(red: 0.078, green: 0.722, blue: 0.651), Color(red: 0.051, green: 0.580, blue: 0.533)],
+                colors: [widgetTeal, widgetTealDark],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+    }
+    
+    private var accessibilityLabel: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        formatter.maximumFractionDigits = 0
+        
+        let balanceSpoken = formatter.string(from: NSNumber(value: entry.data.balance)) ?? "zero dollars"
+        return "FLO: Balance \(balanceSpoken)"
     }
 }
 
@@ -137,6 +176,7 @@ struct MediumWidgetView: View {
                 HStack {
                     Image(systemName: "chart.bar.fill")
                         .font(.caption2)
+                        .accessibilityHidden(true)
                     Text("FLO")
                         .font(.caption)
                         .fontWeight(.semibold)
@@ -165,7 +205,7 @@ struct MediumWidgetView: View {
             .foregroundStyle(.white)
             .background(
                 LinearGradient(
-                    colors: [Color(red: 0.078, green: 0.722, blue: 0.651), Color(red: 0.051, green: 0.580, blue: 0.533)],
+                    colors: [widgetTeal, widgetTealDark],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -179,6 +219,7 @@ struct MediumWidgetView: View {
                         Image(systemName: "arrow.up.circle.fill")
                             .foregroundStyle(.green)
                             .font(.caption)
+                            .accessibilityHidden(true)
                         Text("Income")
                             .font(.caption)
                         Spacer()
@@ -191,6 +232,7 @@ struct MediumWidgetView: View {
                         Image(systemName: "arrow.down.circle.fill")
                             .foregroundStyle(.red)
                             .font(.caption)
+                            .accessibilityHidden(true)
                         Text("Expenses")
                             .font(.caption)
                         Spacer()
@@ -212,6 +254,7 @@ struct MediumWidgetView: View {
                     HStack {
                         Image(systemName: "calendar")
                             .font(.caption2)
+                            .accessibilityHidden(true)
                         Text("Spent")
                             .font(.caption2)
                         Spacer()
@@ -224,6 +267,7 @@ struct MediumWidgetView: View {
                         HStack {
                             Image(systemName: "doc.text")
                                 .font(.caption2)
+                                .accessibilityHidden(true)
                             Text("Pending")
                                 .font(.caption2)
                             Spacer()
@@ -239,6 +283,24 @@ struct MediumWidgetView: View {
             .padding()
             .frame(maxWidth: .infinity)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+    }
+    
+    private var accessibilityLabel: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        formatter.maximumFractionDigits = 0
+        
+        let balanceSpoken = formatter.string(from: NSNumber(value: entry.data.balance)) ?? "zero dollars"
+        var label = "FLO: Balance \(balanceSpoken). \(entry.data.transactionCount) transactions"
+        
+        if entry.data.quickStats.pendingInvoicesCount > 0 {
+            label += ". \(entry.data.quickStats.pendingInvoicesCount) pending invoice\(entry.data.quickStats.pendingInvoicesCount == 1 ? "" : "s")"
+        }
+        
+        return label
     }
 }
 
@@ -253,7 +315,8 @@ struct LargeWidgetView: View {
             HStack {
                 Image(systemName: "chart.bar.fill")
                     .font(.title3)
-                    .foregroundStyle(Color(red: 0.078, green: 0.722, blue: 0.651))
+                    .foregroundStyle(widgetTeal)
+                    .accessibilityHidden(true)
                 
                 Text("FLO")
                     .font(.headline)
@@ -277,6 +340,7 @@ struct LargeWidgetView: View {
                     HStack {
                         Image(systemName: "arrow.up.circle.fill")
                             .foregroundStyle(.green)
+                            .accessibilityHidden(true)
                         Text("Income")
                             .font(.subheadline)
                     }
@@ -289,6 +353,7 @@ struct LargeWidgetView: View {
                     HStack {
                         Image(systemName: "arrow.down.circle.fill")
                             .foregroundStyle(.red)
+                            .accessibilityHidden(true)
                         Text("Expenses")
                             .font(.subheadline)
                     }
@@ -335,14 +400,15 @@ struct LargeWidgetView: View {
                 if entry.data.quickStats.pendingInvoicesCount > 0 {
                     HStack {
                         Image(systemName: "doc.text.fill")
-                            .foregroundStyle(Color(red: 0.078, green: 0.722, blue: 0.651))
+                            .foregroundStyle(widgetTeal)
+                            .accessibilityHidden(true)
                         Text("\(entry.data.quickStats.pendingInvoicesCount) pending invoice\(entry.data.quickStats.pendingInvoicesCount == 1 ? "" : "s")")
                             .font(.caption)
                         Spacer()
                     }
                     .padding(.vertical, 4)
                     .padding(.horizontal, 8)
-                    .background(Color(red: 0.078, green: 0.722, blue: 0.651).opacity(0.1))
+                    .background(widgetTeal.opacity(0.1))
                     .cornerRadius(6)
                 }
                 
@@ -350,6 +416,7 @@ struct LargeWidgetView: View {
                     HStack {
                         Image(systemName: "calendar.badge.exclamationmark")
                             .foregroundStyle(.orange)
+                            .accessibilityHidden(true)
                         Text("Tax deadline: \(taxDeadline, style: .date)")
                             .font(.caption)
                         Spacer()
@@ -375,6 +442,36 @@ struct LargeWidgetView: View {
             }
         }
         .padding()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+    }
+    
+    private var accessibilityLabel: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        formatter.maximumFractionDigits = 0
+        
+        let balanceSpoken = formatter.string(from: NSNumber(value: entry.data.balance)) ?? "zero dollars"
+        let incomeSpoken = formatter.string(from: NSNumber(value: entry.data.income)) ?? "zero dollars"
+        let expensesSpoken = formatter.string(from: NSNumber(value: entry.data.expenses)) ?? "zero dollars"
+        let weekSpoken = formatter.string(from: NSNumber(value: entry.data.quickStats.thisWeekExpenses)) ?? "zero dollars"
+        let monthSpoken = formatter.string(from: NSNumber(value: entry.data.quickStats.thisMonthExpenses)) ?? "zero dollars"
+        
+        var label = "FLO: Balance \(balanceSpoken). Income \(incomeSpoken), Expenses \(expensesSpoken). This week spent \(weekSpoken), this month spent \(monthSpoken)"
+        
+        if entry.data.quickStats.pendingInvoicesCount > 0 {
+            label += ". \(entry.data.quickStats.pendingInvoicesCount) pending invoice\(entry.data.quickStats.pendingInvoicesCount == 1 ? "" : "s")"
+        }
+        
+        if let taxDeadline = entry.data.quickStats.upcomingTaxDeadline {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateStyle = .medium
+            let deadlineSpoken = dateFormatter.string(from: taxDeadline)
+            label += ". Tax deadline \(deadlineSpoken)"
+        }
+        
+        return label
     }
 }
 

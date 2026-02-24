@@ -4,4 +4,43 @@
    <FileRef
       location = "self:">
    </FileRef>
+   <FileRef
+      location = "group:ACCESSIBILITY_AUDIT_MileageTrackingService.md">
+   </FileRef>
+   <FileRef
+      location = "group:ACCESSIBILITY_AUDIT_FULL_PROJECT.md">
+   </FileRef>
+   <FileRef
+      location = "group:ACCESSIBILITY_FIXES_SPRINT_1.md">
+   </FileRef>
+   <FileRef
+      location = "group:ACCESSIBILITY_AUDIT_SUMMARY.md">
+   </FileRef>
+   <FileRef
+      location = "group:ACCESSIBILITY_CHECKLIST.md">
+   </FileRef>
+   <FileRef
+      location = "group:SPRINT_1_COMPLETION_REPORT.md">
+   </FileRef>
+   <FileRef
+      location = "group:SPRINT_1_FINAL_COMPLETION_REPORT.md">
+   </FileRef>
+   <FileRef
+      location = "group:SPRINT_2_IMPLEMENTATION_GUIDE.md">
+   </FileRef>
+   <FileRef
+      location = "group:SPRINT_2_COMPLETION_REPORT.md">
+   </FileRef>
+   <FileRef
+      location = "group:SPRINT_3_IMPLEMENTATION_PLAN.md">
+   </FileRef>
+   <FileRef
+      location = "group:SPRINT_3_ANALYSIS_AND_PLAN.md">
+   </FileRef>
+   <FileRef
+      location = "group:SPRINT_3_FINAL_ANALYSIS.md">
+   </FileRef>
+   <FileRef
+      location = "group:SPRINT_3_COMPLETION_REPORT.md">
+   </FileRef>
 </Workspace>

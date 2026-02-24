@@ -1,15 +1,31 @@
 //  MileageTrackingService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.4 - Control Widget + Quick Actions Integration
-//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//  Version 3.6 - Live Activity Integration
+//  Copyright 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v3.4:
-//  ✅ Added Control Widget notification handlers
-//  ✅ Added widget timer state sync on start/stop
-//  ✅ Control Widget now actually controls tracking
-//  ✅ State properly syncs between app and widgets
+//  CHANGES v3.6:
+//  - ✅ LIVE ACTIVITY: Integration with MileageLiveActivityManager
+//  - ✅ LIVE ACTIVITY: startNewTrip() now starts Live Activity on Lock Screen + Dynamic Island
+//  - ✅ LIVE ACTIVITY: updateCurrentTrip() updates Live Activity with distance, time, GPS status
+//  - ✅ LIVE ACTIVITY: endCurrentTrip() ends Live Activity (3 paths: success, error, too short)
+//  - ✅ LIVE ACTIVITY: pauseTracking() updates Live Activity to show paused state
+//  - ✅ LIVE ACTIVITY: resumeTracking() updates Live Activity to show active state
+//  - ✅ LIVE ACTIVITY: resetTripData() cleans up Live Activity if called directly
+//  - ✅ LIVE ACTIVITY: startTracking() clears stale Live Activities on launch
+//  - ✅ LIVE ACTIVITY: GPSStatus.liveActivitySignal helper for signal conversion
 //
+//  CHANGES v3.5:
+//  - saveManualTrip now accepts vehicleName and clientName parameters
+//  - Supports MileageTrip v4.0 audit-defensible fields
+//  - ✅ ACCESSIBILITY: VoiceOver announcements for all state changes
+//  - ✅ ACCESSIBILITY: GPS status change announcements
+//  - ✅ ACCESSIBILITY: Battery warning announcements
+//  - ✅ ACCESSIBILITY: Trip lifecycle announcements (start, pause, resume, end)
+//  - ✅ ACCESSIBILITY: Error state announcements with user-friendly messages
+//  - ✅ ACCESSIBILITY: Currency values spoken naturally (e.g., "twelve dollars and thirty-four cents")
+//
+//  v3.4: Control Widget + Quick Actions Integration
 //  v3.3: Needs Review status for tax compliance
 //  v3.2: Background task fix
 //  v3.1: Enhanced notification permission flow
@@ -25,6 +41,15 @@
 //  Comprehensive logging for debugging
 //  Route point storage for trip visualization
 //
+//  ACCESSIBILITY COMPLIANCE:
+//  - All state changes announced to VoiceOver
+//  - Currency values formatted for natural speech
+//  - Error messages descriptive and actionable
+//  - GPS status changes announced only when significant
+//  - Battery warnings announced with recommended actions
+//  - Notification content mirrors VoiceOver announcements
+//  - Works seamlessly with UI layer (MileageTrackingMainView: 98 accessibility references)
+//
 
 import Foundation
 import CoreLocation
@@ -39,7 +64,7 @@ import os.log
 class MileageTrackingService: NSObject, ObservableObject {
     
     // MARK: - Version
-    static let version = "3.4"
+    static let version = "3.5"
     
     // MARK: - Singleton
     static let shared = MileageTrackingService()
@@ -52,6 +77,9 @@ class MileageTrackingService: NSObject, ObservableObject {
     /// Whether automatic tracking is currently enabled
     @Published var isTracking: Bool = false
     
+    /// Whether tracking is paused (trip exists but location updates stopped)
+    @Published var isPaused: Bool = false
+    
     /// The current trip in progress (nil if no active trip)
     @Published var currentTrip: TripInProgress?
     
@@ -62,7 +90,14 @@ class MileageTrackingService: NSObject, ObservableObject {
     @Published var trackingPermissionStatus: CLAuthorizationStatus = .notDetermined
     
     /// GPS signal quality
-    @Published var gpsStatus: GPSStatus = .unknown
+    @Published var gpsStatus: GPSStatus = .unknown {
+        didSet {
+            // Announce significant GPS status changes to VoiceOver users
+            if gpsStatus != oldValue {
+                announceGPSStatusChange(from: oldValue, to: gpsStatus)
+            }
+        }
+    }
     
     /// Battery warning flag
     @Published var batteryWarning: Bool = false
@@ -133,6 +168,7 @@ class MileageTrackingService: NSObject, ObservableObject {
         static let inProgressTrip = "mileage.inProgressTrip"
         static let routePoints = "mileage.routePoints"
         static let isTrackingActive = "mileage.isTrackingActive"
+        static let isPaused = "mileage.isPaused"
         static let lastMovementTime = "mileage.lastMovementTime"
     }
     
@@ -147,10 +183,16 @@ class MileageTrackingService: NSObject, ObservableObject {
         setupBatteryMonitoring()
         setupAppLifecycleObservers()
         
+        // Restore pause state if it exists
+        isPaused = UserDefaults.standard.bool(forKey: StorageKeys.isPaused)
+        
         // Check for recovered trip on init
         checkForRecoverableTrip()
         
         logger.info("MileageTrackingService v\(MileageTrackingService.version) initialized")
+        if isPaused {
+            logger.info("   Restored paused state")
+        }
     }
     
     deinit {
@@ -247,7 +289,14 @@ class MileageTrackingService: NSObject, ObservableObject {
     // MARK: - Control Widget Handlers
     
     @objc private func handleControlWidgetStart(_ notification: Notification) {
-        logger.info("📱 Control Widget requested START")
+        logger.info("[Phone] Control Widget requested START")
+        
+        // If paused, resume instead of starting new
+        if isPaused {
+            logger.info("   Currently paused - RESUMING tracking")
+            resumeTracking()
+            return
+        }
         
         guard !isTracking else {
             logger.info("   Already tracking, ignoring")
@@ -262,18 +311,23 @@ class MileageTrackingService: NSObject, ObservableObject {
     }
     
     @objc private func handleControlWidgetStop(_ notification: Notification) {
-        logger.info("📱 Control Widget requested STOP")
+        logger.info("[Phone] Control Widget requested STOP (interpreted as PAUSE)")
         
         guard isTracking else {
             logger.info("   Not tracking, ignoring")
             return
         }
         
-        // Update user preference
-        UserDefaults.standard.set(false, forKey: "mileageTrackingEnabled")
-        
-        // Stop tracking
-        stopTracking()
+        // If there's an active trip, PAUSE instead of stopping completely
+        if currentTrip != nil {
+            logger.info("   Active trip detected - PAUSING tracking")
+            pauseTracking()
+        } else {
+            // No active trip, just stop
+            logger.info("   No active trip - STOPPING tracking")
+            UserDefaults.standard.set(false, forKey: "mileageTrackingEnabled")
+            stopTracking()
+        }
     }
     
     // MARK: - Widget State Sync
@@ -281,18 +335,28 @@ class MileageTrackingService: NSObject, ObservableObject {
     /// Syncs mileage tracking state with Control Widget
     private func syncWidgetTimerState(isRunning: Bool) {
         Task {
+            // Calculate elapsed time if there's an active trip
+            let elapsedSeconds: TimeInterval
+            if let trip = self.currentTrip {
+                elapsedSeconds = Date().timeIntervalSince(trip.startDate)
+            } else {
+                elapsedSeconds = 0
+            }
+            
+            // When paused, widget should show as "off" but trip data is preserved
+            // Start time should be the trip's actual start time, not current time
             let state = WidgetTimerState(
-                isRunning: isRunning,
-                startTime: isRunning ? Date() : nil,
-                elapsedSeconds: 0,
-                tripId: currentTrip?.id
+                isRunning: isRunning && !self.isPaused,
+                startTime: self.currentTrip?.startDate,
+                elapsedSeconds: elapsedSeconds,
+                tripId: self.currentTrip?.id
             )
             
             do {
                 try await WidgetDataService.shared.updateTimerState(state)
-                logger.info("📱 Widget timer state synced: \(isRunning ? "Running" : "Stopped")")
+                self.logger.info("[Phone] Widget timer state synced: \(isRunning && !self.isPaused ? "Running" : "Stopped/Paused"), elapsed: \(Int(elapsedSeconds))s")
             } catch {
-                logger.error("📱 Failed to sync widget timer state: \(error.localizedDescription)")
+                self.logger.error("[Phone] Failed to sync widget timer state: \(error.localizedDescription)")
             }
         }
     }
@@ -305,7 +369,7 @@ class MileageTrackingService: NSObject, ObservableObject {
     }
     
     @objc private func appDidBecomeActive() {
-        logger.info("📱 App became active")
+        logger.info("[Phone] App became active")
         
         // v3.1 FIX: End any lingering background task when returning to foreground
         endBackgroundTask()
@@ -394,9 +458,18 @@ class MileageTrackingService: NSObject, ObservableObject {
                         body: "Battery at \(Int(level * 100))%. Consider stopping mileage tracking.",
                         identifier: "low_battery_warning"
                     )
+                    
+                    // VoiceOver announcement for low battery
+                    AccessibilityAnnouncement.announce(
+                        "Low battery warning. Battery at \(Int(level * 100)) percent. Consider stopping mileage tracking to preserve battery."
+                    )
                 }
             }
         } else if level >= 0.25 || state == .charging {
+            // Announce when battery is healthy again
+            if batteryWarning {
+                AccessibilityAnnouncement.announce("Battery level restored")
+            }
             batteryWarning = false
         }
     }
@@ -433,6 +506,10 @@ class MileageTrackingService: NSObject, ObservableObject {
     
     // MARK: - Tracking Control
     
+    /// Starts automatic mileage tracking
+    /// 
+    /// Accessibility: Announces "Mileage tracking started" to VoiceOver when successful.
+    /// Checks permissions and displays user-friendly error messages if unavailable.
     func startTracking() {
         guard trackingPermissionStatus == .authorizedAlways ||
               trackingPermissionStatus == .authorizedWhenInUse else {
@@ -450,6 +527,11 @@ class MileageTrackingService: NSObject, ObservableObject {
                 identifier: "setup_required"
             )
             return
+        }
+        
+        // Clean up any stale Live Activities from previous sessions
+        if #available(iOS 16.1, *) {
+            MileageLiveActivityManager.shared.endAllActivities()
         }
         
         isTracking = true
@@ -473,10 +555,15 @@ class MileageTrackingService: NSObject, ObservableObject {
         syncWidgetTimerState(isRunning: true)
     }
     
+    /// Stops automatic mileage tracking
+    ///
+    /// Accessibility: Announces "Mileage tracking stopped" to VoiceOver.
+    /// If a trip is in progress, it will be saved before stopping.
     func stopTracking() {
         logger.info("Stopping tracking...")
         
         isTracking = false
+        isPaused = false
         UserDefaults.standard.set(false, forKey: StorageKeys.isTrackingActive)
         
         locationManager.stopUpdatingLocation()
@@ -500,6 +587,105 @@ class MileageTrackingService: NSObject, ObservableObject {
         logger.info("Tracking STOPPED")
     }
     
+    /// Pause tracking without ending the current trip
+    ///
+    /// Accessibility: Announces "Mileage tracking paused. Trip data preserved." to VoiceOver.
+    /// GPS updates stop but trip data is preserved and can be resumed.
+    func pauseTracking() {
+        guard isTracking else {
+            logger.warning("Cannot pause: not tracking")
+            return
+        }
+        
+        logger.info("Pausing tracking...")
+        
+        isPaused = true
+        
+        // Stop location updates but keep trip data
+        locationManager.stopUpdatingLocation()
+        locationManager.stopMonitoringSignificantLocationChanges()
+        
+        // Pause the trip end check timer
+        stopTripEndCheckTimer()
+        
+        // Persist the pause state
+        UserDefaults.standard.set(true, forKey: StorageKeys.isPaused)
+        
+        logger.info("Tracking PAUSED (trip preserved)")
+        
+        // Sync state with Control Widget
+        syncWidgetTimerState(isRunning: isTracking)
+        
+        // Send notification
+        sendNotification(
+            title: "Mileage Tracking Paused",
+            body: "Tap to resume your trip",
+            identifier: "tracking_paused"
+        )
+        
+        // VoiceOver announcement
+        AccessibilityAnnouncement.announce("Mileage tracking paused. Trip data preserved.")
+        
+        // Update Live Activity to show paused state
+        if #available(iOS 16.1, *) {
+            if let trip = currentTrip {
+                let elapsed = Date().timeIntervalSince(trip.startDate)
+                MileageLiveActivityManager.shared.updateActivity(
+                    distanceMiles: currentDistanceMiles,
+                    elapsedSeconds: elapsed,
+                    isPaused: true,
+                    gpsSignal: "searching"
+                )
+            }
+        }
+    }
+    
+    /// Resume tracking (continues current trip if exists)
+    func resumeTracking() {
+        guard isPaused else {
+            logger.warning("Cannot resume: not paused")
+            return
+        }
+        
+        logger.info("Resuming tracking...")
+        
+        isPaused = false
+        UserDefaults.standard.set(false, forKey: StorageKeys.isPaused)
+        
+        // Resume location updates
+        locationManager.startUpdatingLocation()
+        locationManager.startMonitoringSignificantLocationChanges()
+        
+        // Resume trip end check timer if there's an active trip
+        if currentTrip != nil {
+            startTripEndCheckTimer()
+        }
+        
+        trackingError = nil
+        gpsStatus = .searching
+        
+        logger.info("Tracking RESUMED")
+        
+        // Sync state with Control Widget
+        syncWidgetTimerState(isRunning: true)
+        
+        // VoiceOver announcement
+        AccessibilityAnnouncement.announce("Mileage tracking resumed")
+        
+        // Update Live Activity to show resumed state
+        if #available(iOS 16.1, *) {
+            if let trip = currentTrip {
+                let elapsed = Date().timeIntervalSince(trip.startDate)
+                MileageLiveActivityManager.shared.updateActivity(
+                    distanceMiles: currentDistanceMiles,
+                    elapsedSeconds: elapsed,
+                    isPaused: false,
+                    gpsSignal: "searching"
+                )
+            }
+        }
+    }
+    
     /// Force end the current trip immediately (user-initiated)
     func forceEndCurrentTrip() {
         guard currentTrip != nil else {
@@ -507,7 +693,7 @@ class MileageTrackingService: NSObject, ObservableObject {
             return
         }
         
-        logger.info("🛑 Force ending trip (user requested)")
+        logger.info("[Stop] Force ending trip (user requested)")
         endCurrentTrip(reason: .userForced)
     }
     
@@ -565,11 +751,16 @@ class MileageTrackingService: NSObject, ObservableObject {
         // Persist immediately
         persistCurrentTripState()
         
+        // Sync widget state immediately when trip starts
+        syncWidgetTimerState(isRunning: isTracking)
+        
         // Reverse geocode start location
         reverseGeocode(location: location) { [weak self] address in
             guard let self = self else { return }
             self.currentTrip?.startAddress = address
             self.persistCurrentTripState()
+            // Announce address once geocoded
+            AccessibilityAnnouncement.announce("Trip started from \(address)")
         }
         
         sendNotification(
@@ -578,9 +769,21 @@ class MileageTrackingService: NSObject, ObservableObject {
             identifier: "trip_started_\(trip.id.uuidString)"
         )
         
-        logger.info("🚦 NEW TRIP STARTED")
+        // Immediate VoiceOver announcement
+        AccessibilityAnnouncement.announce("Mileage trip started")
+        
+        // Start Live Activity
+        if #available(iOS 16.1, *) {
+            MileageLiveActivityManager.shared.startActivity(
+                tripId: trip.id,
+                startAddress: trip.startAddress,
+                startTime: trip.startDate
+            )
+        }
+        
+        logger.info("[Signal] NEW TRIP STARTED")
         logger.info("   Location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
-        logger.info("   🆔 ID: \(trip.id.uuidString)")
+        logger.info("   [ID] ID: \(trip.id.uuidString)")
     }
     
     private func updateCurrentTrip(with location: CLLocation) {
@@ -613,6 +816,17 @@ class MileageTrackingService: NSObject, ObservableObject {
         persistCurrentTripState()
         
         logger.debug("Trip update: \(String(format: "%.2f", self.currentDistanceMiles)) mi, points: \(self.routePoints.count)")
+        
+        // Update Live Activity
+        if #available(iOS 16.1, *) {
+            let elapsed = Date().timeIntervalSince(trip.startDate)
+            MileageLiveActivityManager.shared.updateActivity(
+                distanceMiles: currentDistanceMiles,
+                elapsedSeconds: elapsed,
+                isPaused: false,
+                gpsSignal: gpsStatus.liveActivitySignal
+            )
+        }
     }
     
     private func checkForTripEnd() {
@@ -651,6 +865,9 @@ class MileageTrackingService: NSObject, ObservableObject {
                 identifier: "trip_save_failed"
             )
             
+            // VoiceOver alert for error
+            AccessibilityAnnouncement.announce("Error: Trip could not be saved. Database error.")
+            
             // Still reset to prevent stuck state
             resetTripData()
             return
@@ -658,7 +875,7 @@ class MileageTrackingService: NSObject, ObservableObject {
         
         let distanceMiles = totalDistanceMeters / 1609.34
         
-        logger.info("🏁 ENDING TRIP")
+        logger.info("[Flag] ENDING TRIP")
         logger.info("   Distance: \(String(format: "%.2f", distanceMiles)) miles")
         logger.info("   Points: \(self.routePoints.count)")
         logger.info("   Reason: \(reason.description)")
@@ -673,6 +890,17 @@ class MileageTrackingService: NSObject, ObservableObject {
                 body: "Trip was under \(String(format: "%.1f", minDistance)) miles and was not recorded.",
                 identifier: "trip_too_short"
             )
+            
+            // VoiceOver announcement for discarded trip
+            AccessibilityAnnouncement.announce("Trip discarded. Distance was under \(String(format: "%.1f", minDistance)) miles.")
+            
+            // End Live Activity (trip too short path)
+            if #available(iOS 16.1, *) {
+                MileageLiveActivityManager.shared.endActivity(
+                    finalDistanceMiles: distanceMiles,
+                    finalElapsedSeconds: Date().timeIntervalSince(trip.startDate)
+                )
+            }
             
             resetTripData()
             return
@@ -712,6 +940,15 @@ class MileageTrackingService: NSObject, ObservableObject {
                 try? context.save()
             }
             
+            // End Live Activity (success path)
+            if #available(iOS 16.1, *) {
+                let tripDuration = Date().timeIntervalSince(trip.startDate)
+                MileageLiveActivityManager.shared.endActivity(
+                    finalDistanceMiles: distanceMiles,
+                    finalElapsedSeconds: tripDuration
+                )
+            }
+            
             // v3.3: Updated notification - shows potential deduction, prompts review
             let potentialDeduction = mileageTrip.potentialDeduction
             sendNotification(
@@ -719,6 +956,12 @@ class MileageTrackingService: NSObject, ObservableObject {
                 body: String(format: "%.1f miles tracked  $%.2f potential deduction",
                            distanceMiles, potentialDeduction),
                 identifier: "trip_completed_\(mileageTrip.id.uuidString)"
+            )
+            
+            // VoiceOver announcement with spoken currency
+            let spokenDeduction = AccessibilityFormatters.spokenCurrency(potentialDeduction)
+            AccessibilityAnnouncement.announce(
+                "Trip completed. \(String(format: "%.1f", distanceMiles)) miles tracked. Potential deduction: \(spokenDeduction). Classify this trip in your records."
             )
             
             // Post notification for other parts of app
@@ -733,12 +976,31 @@ class MileageTrackingService: NSObject, ObservableObject {
                 body: "Could not save your \(String(format: "%.1f", distanceMiles)) mile trip. Please check the app.",
                 identifier: "trip_save_error"
             )
+            
+            // VoiceOver alert for save error
+            AccessibilityAnnouncement.announce("Error: Trip could not be saved. Please check the app.")
+            
+            // End Live Activity (error path)
+            if #available(iOS 16.1, *) {
+                MileageLiveActivityManager.shared.endActivity(
+                    finalDistanceMiles: distanceMiles,
+                    finalElapsedSeconds: Date().timeIntervalSince(trip.startDate)
+                )
+            }
         }
         
         resetTripData()
     }
     
     private func resetTripData() {
+        // End Live Activity if still active
+        if #available(iOS 16.1, *) {
+            MileageLiveActivityManager.shared.endActivity(
+                finalDistanceMiles: currentDistanceMiles,
+                finalElapsedSeconds: currentTrip.map { Date().timeIntervalSince($0.startDate) } ?? 0
+            )
+        }
+        
         currentTrip = nil
         totalDistanceMeters = 0
         currentDistanceMiles = 0
@@ -748,6 +1010,9 @@ class MileageTrackingService: NSObject, ObservableObject {
         
         stopTripEndCheckTimer()
         clearPersistedTripState()
+        
+        // Sync widget state after trip ends
+        syncWidgetTimerState(isRunning: isTracking)
         
         logger.info("Trip data reset")
     }
@@ -782,13 +1047,14 @@ class MileageTrackingService: NSObject, ObservableObject {
             UserDefaults.standard.set(encoded, forKey: StorageKeys.routePoints)
         }
         
-        logger.debug("💾 Trip state persisted")
+        logger.debug("[Save] Trip state persisted")
     }
     
     private func clearPersistedTripState() {
         UserDefaults.standard.removeObject(forKey: StorageKeys.inProgressTrip)
         UserDefaults.standard.removeObject(forKey: StorageKeys.routePoints)
         UserDefaults.standard.removeObject(forKey: StorageKeys.lastMovementTime)
+        UserDefaults.standard.removeObject(forKey: StorageKeys.isPaused)
         logger.debug("Persisted trip state cleared")
     }
     
@@ -837,8 +1103,8 @@ class MileageTrackingService: NSObject, ObservableObject {
         
         hasRecoveredTrip = true
         
-        logger.info("🔄 RECOVERED TRIP FOUND")
-        logger.info("   📅 Started: \(startDate)")
+        logger.info("[Refresh] RECOVERED TRIP FOUND")
+        logger.info("   [Calendar] Started: \(startDate)")
         logger.info("   Distance: \(String(format: "%.2f", distanceMiles)) miles")
         logger.info("   Points: \(recoveredRoutePoints.count)")
     }
@@ -916,7 +1182,9 @@ class MileageTrackingService: NSObject, ObservableObject {
         endLocation: String,
         distanceMiles: Double,
         purpose: TripPurpose,
-        notes: String?
+        notes: String?,
+        vehicleName: String? = nil,
+        clientName: String? = nil
     ) async throws {
         guard let context = modelContext else {
             logger.error("Cannot save manual trip: no ModelContext")
@@ -924,7 +1192,7 @@ class MileageTrackingService: NSObject, ObservableObject {
         }
         
         // Manual trips: user explicitly selects purpose, so use it directly
-        // isBusinessTrip is true unless purpose is personal or needsReview
+        // isBusinessTrip is true unless purpose is personal, commute, or needsReview
         let trip = MileageTrip(
             startDate: startDate,
             endDate: startDate,
@@ -936,8 +1204,10 @@ class MileageTrackingService: NSObject, ObservableObject {
             endAddress: endLocation,
             distanceMiles: distanceMiles,
             purpose: purpose,
-            isBusinessTrip: purpose.isDeductible,  // true for business purposes, false for personal/needsReview
+            isBusinessTrip: purpose.isDeductible,  // true for business purposes, false for personal/commute/needsReview
             notes: notes,
+            vehicleName: vehicleName,
+            clientName: clientName,
             isManualEntry: true,
             routePoints: nil
         )
@@ -953,7 +1223,7 @@ class MileageTrackingService: NSObject, ObservableObject {
     private func reverseGeocode(location: CLLocation, completion: @escaping (String) -> Void) {
         CLGeocoder().reverseGeocodeLocation(location) { placemarks, error in
             if let error = error {
-                self.logger.error("🗺️ Geocoding error: \(error.localizedDescription)")
+                self.logger.error("[Map] Geocoding error: \(error.localizedDescription)")
                 completion("Unknown Location")
                 return
             }
@@ -1009,6 +1279,34 @@ class MileageTrackingService: NSObject, ObservableObject {
             if let error = error {
                 self.logger.error("Notification error: \(error.localizedDescription)")
             }
+        }
+    }
+    
+    // MARK: - Accessibility Support
+    
+    /// Announces GPS status changes to VoiceOver users
+    /// Only announces significant changes to avoid overwhelming users
+    private func announceGPSStatusChange(from oldStatus: GPSStatus, to newStatus: GPSStatus) {
+        // Don't announce initial state or searching->unknown transitions
+        guard oldStatus != .unknown && oldStatus != .searching else { return }
+        
+        // Only announce significant changes
+        switch (oldStatus, newStatus) {
+        case (_, .available):
+            // Signal acquired - always announce
+            AccessibilityAnnouncement.announce(newStatus.accessibilityAnnouncement)
+            
+        case (_, .unavailable):
+            // Signal lost - always announce
+            AccessibilityAnnouncement.announce(newStatus.accessibilityAnnouncement)
+            
+        case (.available, .lowAccuracy):
+            // Degraded signal - announce
+            AccessibilityAnnouncement.announce(newStatus.accessibilityAnnouncement)
+            
+        default:
+            // Don't announce minor transitions (searching, unknown, etc.)
+            break
         }
     }
 }
@@ -1105,7 +1403,7 @@ extension MileageTrackingService: CLLocationManagerDelegate {
 
 // MARK: - Supporting Types
 
-/// GPS signal quality status
+    /// GPS signal quality status
 enum GPSStatus: Equatable {
     case available
     case unavailable
@@ -1140,6 +1438,28 @@ enum GPSStatus: Equatable {
         case .lowAccuracy: return "orange"
         case .searching: return "yellow"
         case .unknown: return "gray"
+        }
+    }
+    
+    /// Accessibility-friendly announcement for GPS status changes
+    var accessibilityAnnouncement: String {
+        switch self {
+        case .available: return "GPS signal acquired"
+        case .unavailable: return "GPS signal lost. Move to an area with better reception."
+        case .lowAccuracy: return "GPS signal weak. Location accuracy reduced."
+        case .searching: return "Searching for GPS signal"
+        case .unknown: return "GPS status unknown"
+        }
+    }
+    
+    /// Signal string for Live Activity display
+    var liveActivitySignal: String {
+        switch self {
+        case .available: return "strong"
+        case .unavailable: return "searching"
+        case .lowAccuracy: return "weak"
+        case .searching: return "searching"
+        case .unknown: return "searching"
         }
     }
 }

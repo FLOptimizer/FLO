@@ -1,8 +1,20 @@
 //  NavigationService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - Added Move Money navigation
+//  Version 1.4 - Sonnet 4.5 Corruption Fix
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.4:
+//  ✅ FIXED: Removed duplicate code blocks introduced by Sonnet 4.5
+//  ✅ FIXED: Removed duplicate openTransaction/openBudget/openClient methods
+//  ✅ FIXED: Removed duplicate "Deep Link Handling" MARK section
+//  ✅ FIXED: Restored all mojibake characters to proper Unicode
+//
+//  CHANGES v1.3:
+//  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters
+//
+//  CHANGES v1.2:
+//  - Added client + accounts deep link routes for Spotlight
 //
 //  Centralized navigation service for programmatic navigation,
 //  deep linking, and push notification handling.
@@ -187,6 +199,16 @@ struct DeepLink {
                 destination = .settings
             case (.more, "receipts"):
                 destination = .receiptScanner
+            case (.more, "clients"):
+                // flo://more/clients or flo://more/clients/detail?id=xxx
+                if pathComponents.count > 2 && pathComponents[2].lowercased() == "detail",
+                   let id = entityId {
+                    destination = .clientDetail(id: id)
+                } else {
+                    destination = .clientList
+                }
+            case (.more, "accounts"):
+                destination = .accounts
             default:
                 break
             }
@@ -398,7 +420,7 @@ final class NavigationService: ObservableObject {
         #endif
     }
     
-    /// Show receipt scanner
+    /// Show receipt scanner sheet
     func showReceiptScanner() {
         showingReceiptScanner = true
         HapticService.play(.medium)
@@ -428,7 +450,7 @@ final class NavigationService: ObservableObject {
         #endif
     }
     
-    /// Show Move Money sheet (v1.1)
+    /// Show move money sheet
     func showMoveMoney() {
         showingMoveMoney = true
         HapticService.play(.medium)
@@ -586,6 +608,9 @@ extension View {
  // flo://budgets/create
  // flo://more/mileage
  // flo://more/settings
+ // flo://more/clients
+ // flo://more/clients/detail?id=xxx
+ // flo://more/accounts
  
  // === PUSH NOTIFICATION ===
  

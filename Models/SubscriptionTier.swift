@@ -1,10 +1,16 @@
 // SubscriptionTier.swift
 // FLO - Finance Ledger Optimizer
 //
-// Version 1.4 - Debt Calculator & Money Moves Features
+// Version 1.5 - CSV Bank Statement Import Feature
 // Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 // Defines subscription tiers and feature access control
+//
+//  CHANGES v1.5:
+//  ✅ ADDED: hasCSVImport (Premium+) - CSV bank statement import
+//  ✅ ADDED: Feature.csvImport case
+//  ✅ Updated canAccess() for CSV import feature
+//  ✅ Updated Premium feature list to include CSV import
 //
 //  CHANGES v1.4:
 //  ✅ ADDED: hasDebtCalculator (Premium+)
@@ -155,6 +161,12 @@ enum SubscriptionTier: Int, Codable, Comparable {
     /// Smart receipt scanning with AI parsing (Premium+)
     /// v1.3: Added for tier-aware receipt routing
     var hasSmartReceiptScanning: Bool {
+        self >= .premium
+    }
+    
+    /// CSV bank statement import (Premium+)
+    /// v1.5: Added for CSV import feature
+    var hasCSVImport: Bool {
         self >= .premium
     }
     
@@ -338,6 +350,7 @@ enum SubscriptionTier: Int, Codable, Comparable {
                 "Professional invoicing (25/month)",
                 "Client management",
                 "Smart Receipt Scanning with AI",
+                "CSV Bank Statement Import",
                 "100 receipt storage",
                 "Advanced budgets with rollover",
                 "Recurring transaction automation",
@@ -460,6 +473,8 @@ extension SubscriptionTier {
             return hasAdvancedExports
         case .smartReceiptScanning:
             return hasSmartReceiptScanning
+        case .csvImport:
+            return hasCSVImport
         // v1.4: New debt/financial tools features
         case .debtCalculator:
             return hasDebtCalculator
@@ -564,6 +579,7 @@ enum LimitType {
 }
 
 // MARK: - Feature Enum
+// v1.5: Added csvImport
 // v1.4: Added debtCalculator, personalizedTips, debtInsights
 
 enum Feature {
@@ -575,6 +591,7 @@ enum Feature {
     case recurringTransactions
     case clientManagement
     case smartReceiptScanning
+    case csvImport              // v1.5: CSV bank statement import
     case debtCalculator          // v1.4: Debt Payoff Calculator
     case personalizedTips        // v1.4: Personalized Money Moves tips
     case debtInsights            // v1.4: Debt optimization insights
@@ -616,6 +633,8 @@ enum Feature {
             return "Advanced Exports"
         case .smartReceiptScanning:
             return "Smart Receipt Scanning"
+        case .csvImport:
+            return "CSV Bank Statement Import"
         case .debtCalculator:
             return "Debt Payoff Calculator"
         case .personalizedTips:
@@ -648,7 +667,7 @@ enum Feature {
         switch self {
         // Premium features
         case .taxEstimates, .automatedMileage, .invoicing, .advancedBudgets, .recurringTransactions,
-             .clientManagement, .smartReceiptScanning, .debtCalculator, .personalizedTips, .debtInsights,
+             .clientManagement, .smartReceiptScanning, .csvImport, .debtCalculator, .personalizedTips, .debtInsights,
              .multipleAccounts, .accountFiltering, .balanceTracking, .multiAccountReports:
             return .premium
         // Pro features
@@ -678,6 +697,8 @@ enum Feature {
             return "square.and.arrow.up.fill"
         case .smartReceiptScanning:
             return "doc.text.viewfinder"
+        case .csvImport:
+            return "doc.badge.arrow.up"
         case .debtCalculator:
             return "function"
         case .personalizedTips:
@@ -726,6 +747,8 @@ enum Feature {
             return "Export data for your accountant in CSV/PDF format"
         case .smartReceiptScanning:
             return "AI-powered receipt parsing with automatic data extraction"
+        case .csvImport:
+            return "Import bank statement CSV files for automatic transaction creation"
         case .debtCalculator:
             return "Interactive calculator showing payoff strategies and interest savings"
         case .personalizedTips:

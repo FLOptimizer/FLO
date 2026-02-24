@@ -19,6 +19,14 @@
         "identifier" : "433FDBDB2EB992B10008DA09",
         "name" : "FLOTests"
       }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:FLO.xcodeproj",
+        "identifier" : "433FDBE52EB992B10008DA09",
+        "name" : "FLOUITests"
+      }
     }
   ],
   "version" : 1

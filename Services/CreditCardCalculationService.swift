@@ -1,8 +1,11 @@
 //  CreditCardCalculationService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.2.1 - Interest Trap Fix
+//  Version 1.3
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.3:
+//  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters (multiplication symbols)
 //
 //  CHANGES v1.2.1:
 //  ✅ FIXED: Restored maxMonths to 600 (min payments can legitimately take 50 years)
@@ -43,7 +46,7 @@ final class CreditCardCalculationService {
     
     /// Calculate monthly interest charge for a credit card
     ///
-    /// Formula: `|balance| Ã— (APR / 100 / 12)`
+    /// Formula: `|balance| × (APR / 100 / 12)`
     ///
     /// - Parameters:
     ///   - balance: Current balance (should be negative for owed amount)
@@ -57,7 +60,7 @@ final class CreditCardCalculationService {
     
     /// Calculate daily interest charge
     ///
-    /// Formula: `|balance| Ã— (APR / 100 / 365)`
+    /// Formula: `|balance| × (APR / 100 / 365)`
     ///
     /// - Parameters:
     ///   - balance: Current balance (should be negative for owed amount)
@@ -95,7 +98,7 @@ final class CreditCardCalculationService {
     
     /// Calculate minimum payment due
     ///
-    /// Formula: `max(balance Ã— percent, min(floor, balance))`
+    /// Formula: `max(balance × percent, min(floor, balance))`
     /// Most cards require 2% of balance or $25, whichever is greater
     ///
     /// - Parameters:
@@ -306,7 +309,7 @@ final class CreditCardCalculationService {
     
     /// Calculate credit utilization percentage
     ///
-    /// Formula: `(|balance| / limit) Ã— 100`
+    /// Formula: `(|balance| / limit) × 100`
     ///
     /// - Parameters:
     ///   - balance: Current balance (negative)

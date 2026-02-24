@@ -1,11 +1,16 @@
 //  AddAccountView_Accounts.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.0 - Extracted from AccountsView.swift + Accessibility Audit
+//  Version 1.1 - Dynamic Type verification: all text reviewed
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  NOTE: Named AddAccountView_Accounts to avoid collision with any other
 //  AddAccountView if one exists elsewhere. Contains AddAccountView struct.
+//
+//  CHANGES v1.1 - Dynamic Type Verification:
+//  ✅ VERIFIED: All text elements are within SwiftUI Form controls (system-managed)
+//  ✅ VERIFIED: No standalone Text() elements require manual protection
+//  ✅ VERIFIED: TextField, Picker, Toggle, Section headers all handle Dynamic Type automatically
 //
 //  CHANGES v1.0:
 //  ✅ EXTRACTED: From AccountsView.swift for better architecture

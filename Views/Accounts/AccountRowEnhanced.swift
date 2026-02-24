@@ -1,8 +1,25 @@
 //  AccountRowEnhanced.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.0 - Extracted from AccountsView.swift + Accessibility Audit
+//  Version 1.2 - VoiceOver Audit: Decorative status icons hidden
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.2 - VoiceOver Audit:
+//  ✅ ADDED: Star icon (isPrimary) hidden from VoiceOver (accessibilityLabel already says "Primary")
+//  ✅ ADDED: Eye slash icon (hidden from dashboard) hidden from VoiceOver (label already says "Hidden from dashboard")
+//  ✅ ADDED: Link icon (isLinked) hidden from VoiceOver (label already says "Bank linked")
+//  ✅ ADDED: Finance type icon (briefcase/person) hidden from VoiceOver (label already says "Business" or "Personal")
+//  ✅ VERIFIED: Main account icon already hidden
+//  ✅ VERIFIED: Row already combines children with spoken currency format
+//
+//  CHANGES v1.1 - Dynamic Type Verification:
+//  ✅ FIXED: Account name text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Last four digits text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Account type text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Credit utilization text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Balance amount text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Payment status "OVERDUE" badge text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Payment due "Due in Xd" text missing lineLimit + minimumScaleFactor
 //
 //  CHANGES v1.0:
 //  ✅ EXTRACTED: From AccountsView.swift for better architecture
@@ -41,23 +58,28 @@ struct AccountRowEnhanced: View {
                     Text(account.name)
                         .font(.body)
                         .fontWeight(.medium)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                     
                     if account.isPrimary {
                         Image(systemName: "star.fill")
                             .font(.caption2)
                             .foregroundStyle(.orange)
+                            .accessibilityHidden(true)
                     }
                     
                     if !account.showOnDashboard {
                         Image(systemName: "eye.slash")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
                     }
                     
                     if account.isLinked {
                         Image(systemName: "link.circle.fill")
                             .font(.caption2)
                             .foregroundStyle(Color(hex: account.plaidStatus.color))
+                            .accessibilityHidden(true)
                     }
                 }
                 
@@ -65,14 +87,19 @@ struct AccountRowEnhanced: View {
                     Image(systemName: account.financeType == .business ? "briefcase.fill" : "person.fill")
                         .font(.caption2)
                         .foregroundStyle(account.financeType == .business ? Color.businessColor : Color.personalColor)
+                        .accessibilityHidden(true)
                     
                     if let digits = account.lastFourDigits, !digits.isEmpty {
                         Text("**** \(digits)")
                             .font(.caption)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                             .foregroundStyle(.secondary)
                     } else {
                         Text(account.accountType.displayName)
                             .font(.caption)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -86,6 +113,8 @@ struct AccountRowEnhanced: View {
                         
                         Text("\(Int(utilization))% used")
                             .font(.caption2)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                             .foregroundStyle(Color(hex: account.utilizationStatus.color))
                     }
                     // v1.0: Utilization accessible
@@ -102,6 +131,8 @@ struct AccountRowEnhanced: View {
                     Text(formatCurrency(account.currentBalance))
                         .font(.subheadline)
                         .fontWeight(.semibold)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                         .foregroundStyle(balanceColor)
                     
                     if account.accountType == .creditCard && account.currentBalance < 0 {
@@ -109,6 +140,8 @@ struct AccountRowEnhanced: View {
                             Text("OVERDUE")
                                 .font(.caption2)
                                 .fontWeight(.bold)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1)
@@ -117,6 +150,8 @@ struct AccountRowEnhanced: View {
                         } else if account.isPaymentDueSoon, let days = account.daysUntilPaymentDue {
                             Text("Due in \(days)d")
                                 .font(.caption2)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
                                 .foregroundStyle(.orange)
                         }
                     }

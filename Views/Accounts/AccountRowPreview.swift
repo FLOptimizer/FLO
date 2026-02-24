@@ -1,8 +1,21 @@
 //  AccountRowPreview.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.0 - Extracted from AccountsView.swift + Accessibility Audit
+//  Version 1.2 - VoiceOver Audit: Decorative status icons hidden
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.2 - VoiceOver Audit:
+//  ✅ ADDED: Star icon (isPrimary) hidden from VoiceOver (decorative status indicator)
+//  ✅ ADDED: Eye slash icon (showOnDashboard) hidden from VoiceOver (decorative status indicator)
+//  ✅ ADDED: Finance type icon (briefcase/person) hidden from VoiceOver (decorative, text describes type)
+//  ✅ VERIFIED: Main account icon already hidden
+//  ✅ VERIFIED: Row already combines children into single VoiceOver element
+//
+//  CHANGES v1.1 - Dynamic Type Verification:
+//  ✅ FIXED: Account name text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Last four digits text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Account type text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Balance amount text missing lineLimit + minimumScaleFactor
 //
 //  CHANGES v1.0:
 //  ✅ EXTRACTED: From AccountsView.swift for better architecture
@@ -40,18 +53,22 @@ struct AccountRowPreview: View {
                     Text(name)
                         .font(.body)
                         .fontWeight(.medium)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .foregroundStyle(name == "Account Name" ? .secondary : .primary)
                     
                     if isPrimary {
                         Image(systemName: "star.fill")
                             .font(.caption2)
                             .foregroundStyle(.orange)
+                            .accessibilityHidden(true)
                     }
                     
                     if !showOnDashboard {
                         Image(systemName: "eye.slash")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
                     }
                 }
                 
@@ -59,15 +76,22 @@ struct AccountRowPreview: View {
                     Image(systemName: financeType == .business ? "briefcase.fill" : "person.fill")
                         .font(.caption2)
                         .foregroundStyle(financeType == .business ? Color.businessColor : Color.personalColor)
+                        .accessibilityHidden(true)
                     
                     if let digits = lastFourDigits {
                         Text("**** \(digits)")
+                            .font(.caption)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .foregroundStyle(.secondary)
                     } else {
                         Text(accountType.displayName)
+                            .font(.caption)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .foregroundStyle(.secondary)
                     }
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
             }
             
             Spacer()
@@ -76,6 +100,8 @@ struct AccountRowPreview: View {
                 Text(formatCurrency(balance))
                     .font(.subheadline)
                     .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
                     .foregroundStyle(balance >= 0 ? .green : .red)
             }
         }

@@ -1,8 +1,13 @@
 //  QuickActionsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.5 - Added Move Money quick action
+//  Version 1.6 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.6 - Dynamic Type Verification:
+//  ✅ FIXED: Header "Quick Actions" text already had lineLimit + minimumScaleFactor (verified)
+//  ✅ FIXED: Header "1-tap shortcuts" text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Button title text already had lineLimit + minimumScaleFactor (verified)
 //
 //  CHANGES v1.5:
 //  ✅ Added Move Money button (Premium+ - requires multiple accounts)
@@ -86,6 +91,8 @@ struct QuickActionsView: View {
                 
                 Text("1-tap shortcuts")
                     .font(.caption)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .foregroundStyle(.secondary)
             }
             .padding()

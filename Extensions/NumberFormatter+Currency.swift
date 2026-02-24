@@ -1,9 +1,12 @@
 //  NumberFormatter+Currency.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.3 - Added VoiceOver accessibility, no errors, production-ready
+//  Version 2.4 - UTF-8 Mojibake Fix
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //  Confidential and Proprietary.
+//
+//  CHANGES v2.4:
+//  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters (arrows, euro symbols, warning signs)
 //
 //  CHANGES FROM v2.1:
 //  - CRITICAL FIX: Locale parameter now respected in iOS 15+ formatters

@@ -1,7 +1,7 @@
 //  ContentView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.9 - Accessibility Audit: VoiceOver labels + screen announcements
+//  Version 4.0 - Spotlight deep link handling for CoreSpotlight search results
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  TAB ORDER:
@@ -24,6 +24,7 @@
 
 import SwiftUI
 import SwiftData
+import CoreSpotlight
 
 @MainActor
 struct ContentView: View {
@@ -91,6 +92,10 @@ struct ContentView: View {
         // Deep link handling
         .onOpenURL { url in
             handleDeepLink(url)
+        }
+        // Spotlight search result handling
+        .onContinueUserActivity(CSSearchableItemActionType) { activity in
+            handleSpotlightActivity(activity)
         }
         // Quick action sheets
         .sheet(isPresented: $navigation.showingAddTransaction) {
@@ -183,6 +188,33 @@ struct ContentView: View {
         }
         
         navigation.handleDeepLink(url)
+    }
+    
+    // MARK: - Spotlight Handler
+    
+    /// Handle tap on a Spotlight search result.
+    /// Resolves the CSSearchableItem identifier to a deep link URL
+    /// and navigates to the corresponding detail view.
+    private func handleSpotlightActivity(_ activity: NSUserActivity) {
+        guard let identifier = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String else {
+            #if DEBUG
+            print("[Spotlight] No identifier in activity")
+            #endif
+            return
+        }
+        
+        #if DEBUG
+        print("[Spotlight] Tapped result: \(identifier)")
+        #endif
+        
+        guard let url = SpotlightIndexingService.shared.deepLinkURL(for: identifier) else {
+            #if DEBUG
+            print("[Spotlight] Could not resolve deep link for: \(identifier)")
+            #endif
+            return
+        }
+        
+        handleDeepLink(url)
     }
     
     // MARK: - Scene Phase Handler

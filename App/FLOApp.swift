@@ -1,10 +1,14 @@
 //  FLOApp.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.3 - Added subscription check for mileage auto-start
+//  Version 3.5 - UTF-8 mojibake fix
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
+//  CHANGES v3.5:
+//  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters
+//
 // VERSION HISTORY:
+// v3.4: Spotlight indexing on app launch
 // v3.3: ✅ FIXED: Mileage tracking auto-start now checks subscription tier
 //       ✅ FIXED: QuickActionService now checks subscription for mileage actions
 //       - Free tier users won't have GPS tracking enabled
@@ -474,19 +478,28 @@ struct FLOApp: App {
     // MARK: - Initialization
     
     init() {
-        // CRITICAL: Purge any legacy Core Data store first
-        Self.purgeLegacyCoreDataStoreIfNeeded()
-        
-        do {
-            // Use ModelContainer.shared() which has ALL 13 models including BusinessProfile
-            container = try ModelContainer.shared()
-            print("✅ ModelContainer created with custom store URL")
-            print("✅ Using: FLOSwiftData.store (NOT default.store)")
-        } catch {
-            print("❌ CRITICAL: Failed to create ModelContainer: \(error)")
-            fatalError("Failed to create ModelContainer: \(error)")
+            // CRITICAL: Purge any legacy Core Data store first
+            Self.purgeLegacyCoreDataStoreIfNeeded()
+            
+            // In UI testing / demo mode, use in-memory container to avoid App Group issues
+            let isTestingMode = ProcessInfo.processInfo.arguments.contains("UI_TESTING") ||
+                                ProcessInfo.processInfo.arguments.contains("DEMO_MODE")
+            
+            if isTestingMode {
+                container = ModelContainer.preview()
+                print("🎬 Using in-memory ModelContainer for testing/demo mode")
+                return
+            }
+            
+            do {
+                container = try ModelContainer.shared()
+                print("✅ ModelContainer created with custom store URL")
+                print("✅ Using: FLOSwiftData.store (NOT default.store)")
+            } catch {
+                print("❌ CRITICAL: Failed to create ModelContainer: \(error)")
+                fatalError("Failed to create ModelContainer: \(error)")
+            }
         }
-    }
     
     // MARK: - Body
     
@@ -518,6 +531,9 @@ struct FLOApp: App {
                     
                     // Update home screen quick actions
                     QuickActionService.shared.updateShortcuts()
+                    
+                    // Index entities for Spotlight search
+                    SpotlightIndexingService.shared.reindexAll(modelContext: container.mainContext)
                 }
                 .onChange(of: authService.isAuthenticated) { oldValue, newValue in
                     if newValue {
@@ -580,6 +596,14 @@ struct FLOApp: App {
     private func setupApp() {
         let context = ModelContext(container)
         
+        // NEW: Demo mode configuration (video recording)
+        if DemoConfiguration.isDemoMode {
+            Task { @MainActor in
+                await DemoConfiguration.configure(context: context)
+            }
+            return  // Skip normal setup when in demo mode
+        }
+        
         // Seed default categories
         let seedResult = SeedData.seedDefaultCategories(in: context)
         switch seedResult {
@@ -604,28 +628,25 @@ struct FLOApp: App {
     }
     
     private func updateWidgetData() {
-        Task.detached { [container] in
+        Task { @MainActor in
             let context = ModelContext(container)
             
             do {
+                // Fetch all data needed for widget
                 let transactions = try context.fetch(FetchDescriptor<Transaction>())
-                let budgets = try context.fetch(FetchDescriptor<Budget>())
+                let invoices = try context.fetch(FetchDescriptor<Invoice>())
                 
-                // EXTRACT SENDABLE DATA FIRST
-                let balance = transactions.reduce(0.0) { $0 + $1.amount }
-                let txCount = transactions.count
-                _ = budgets.count
+                // Call the widget service with the fetched data
+                // WidgetDataService.updateWidgetData is nonisolated and handles thread safety
+                try await WidgetDataService.shared.updateWidgetData(
+                    transactions: transactions,
+                    invoices: invoices
+                )
                 
-                // NOW SAFE TO PASS
-                await MainActor.run {
-                    print("✅ Widget updated: \(balance) balance, \(txCount) transactions")
-                    // Update your widget service here with primitives only
-                }
+                print("✅ Widget data updated: \(transactions.count) transactions, \(invoices.count) invoices")
                 
             } catch {
-                await MainActor.run {
-                    print("❌ Widget update failed: \(error)")
-                }
+                print("❌ Widget update failed: \(error.localizedDescription)")
             }
         }
     }
@@ -683,11 +704,11 @@ struct FLOApp: App {
         if !trackingService.isTracking {
             trackingService.startTracking()
             print("✅ Mileage tracking AUTO-STARTED on app launch")
-            print("   - Subscription: \(subscriptionManager.currentTier.displayName) ✓")
-            print("   - Setup completed: ✓")
+            print("   - Subscription: \(subscriptionManager.currentTier.displayName) ✔")
+            print("   - Setup completed: ✔")
             print("   - User enabled: \(mileageTrackingEnabled)")
             print("   - Was active: \(wasTrackingActive)")
-            print("   - Permission: Always Allow ✓")
+            print("   - Permission: Always Allow ✔")
         } else {
             print("ℹ️ Mileage tracking: Already running")
         }

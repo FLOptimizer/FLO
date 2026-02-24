@@ -31,7 +31,7 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <TestPlans>
          <TestPlanReference
-            reference = "container:../FLOTests"
+            reference = "container:FLOTests.xctestplan"
             default = "YES">
          </TestPlanReference>
       </TestPlans>

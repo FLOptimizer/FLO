@@ -1,11 +1,16 @@
 //  EditAccountView_Accounts.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.0 - Extracted from AccountsView.swift + Accessibility Audit
+//  Version 1.1 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  NOTE: Named EditAccountView_Accounts to avoid collision with any other
 //  EditAccountView if one exists elsewhere. Contains EditAccountView struct.
+//
+//  CHANGES v1.1 - Dynamic Type Verification:
+//  ✅ FIXED: Next payment due date text missing lineLimit + minimumScaleFactor
+//  ✅ VERIFIED: All other text elements are within SwiftUI Form controls (system-managed)
+//  ✅ VERIFIED: HStack label-value pairs use system Form styling (no manual protection needed)
 //
 //  CHANGES v1.0:
 //  ✅ EXTRACTED: From AccountsView.swift for better architecture
@@ -371,6 +376,8 @@ struct EditAccountView: View {
                     Text("Next Payment Due")
                     Spacer()
                     Text(dueDate, style: .date)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .foregroundStyle(account.isPaymentDueSoon ? .orange : .secondary)
                 }
                 .accessibilityElement(children: .combine)

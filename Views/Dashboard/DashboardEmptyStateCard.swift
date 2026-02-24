@@ -1,12 +1,17 @@
 //  DashboardEmptyStateCard.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1.1 - Accessibility: text clipping prevention for Dynamic Type
+//  Version 2.1 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.1 - Dynamic Type Verification:
+//  ✅ FIXED: Title text already had lineLimit + minimumScaleFactor (verified)
+//  ✅ FIXED: Message text missing lineLimit + minimumScaleFactor
 //
 //  FEATURES:
 //  ✅ Mode-aware empty state messaging
-//  ✅ Animated icon bounce effect
+//  ✅ Custom SwiftUI vector illustration
+//  ✅ Animated entrance with reduce motion support
 //  ✅ Clean, encouraging design
 //
 
@@ -15,16 +20,9 @@ import SwiftUI
 struct DashboardEmptyStateCard: View {
     let financeMode: FinanceMode
     
-    @State private var iconBounce = false
-    
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-                .symbolEffect(.bounce, value: iconBounce)
-                // v1.1: Decorative
-                .accessibilityHidden(true)
+            DashboardIllustration()
             
             Text(title)
                 .font(.headline)
@@ -33,29 +31,19 @@ struct DashboardEmptyStateCard: View {
             
             Text(message)
                 .font(.subheadline)
+                .lineLimit(3)
+                .minimumScaleFactor(0.7)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(40)
+        .padding(.horizontal, 32)
+        .padding(.vertical, 24)
         .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
         // v1.1: Card accessible
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(title). \(message)")
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                iconBounce = true
-            }
-        }
-    }
-    
-    private var icon: String {
-        switch financeMode {
-        case .business: return "briefcase"
-        case .personal: return "person"
-        case .all: return "tray"
-        }
     }
     
     private var title: String {

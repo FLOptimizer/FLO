@@ -1,8 +1,13 @@
 //  DashboardSkeletonView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1.1 - Accessibility: verified VoiceOver hiding + loading announcement
+//  Version 1.2 - Dynamic Type verification: confirmed no user-visible text
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.2 - Dynamic Type Verification:
+//  ✅ VERIFIED: File contains only skeleton shapes (SkeletonShape, SkeletonCircle)
+//  ✅ VERIFIED: No user-visible Text() elements requiring lineLimit/minimumScaleFactor
+//  ✅ VERIFIED: "Loading dashboard" accessibility label is system announcement (no lineLimit needed)
 //
 //  CHANGES v1.1:
 //  ✅ Entire skeleton hidden from VoiceOver

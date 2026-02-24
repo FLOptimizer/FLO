@@ -1,25 +1,38 @@
 //  MileageTrip.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.2 - Added Needs Review status for tax compliance
+//  Version 4.1 - UTF-8 Mojibake Fix
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
+//  CHANGES v4.1:
+//  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters
+//
+//  CHANGES v4.0:
+//  - Audit-Defensible Mileage Logs
+//
 //  FEATURES:
-//  ✅ Full IRS compliance with historical rates
-//  ✅ Automatic rate assignment based on trip year
-//  ✅ Route point storage for trip visualization
-//  ✅ CSV export for tax filing
-//  ✅ Comprehensive computed properties
-//  ✅ Needs Review status for unclassified trips
+//  - Full IRS compliance with historical rates
+//  - Automatic rate assignment based on trip year
+//  - Route point storage for trip visualization
+//  - CSV export for tax filing
+//  - Comprehensive computed properties
+//  - Needs Review status for unclassified trips
+//
+//  CHANGES v4.0:
+//  - Added vehicleName field for multi-vehicle households
+//  - Added clientName field for CPA-readable structured records
+//  - Added .commute case to TripPurpose for explicit commute flagging
+//  - CSV export now includes createdDate, modifiedDate, vehicleName, clientName
+//  - CSV header updated with audit trail columns
+//  - Enhanced audit defensibility per IRS contemporaneous log requirements
 //
 //  CHANGES v3.2:
-//  ✅ Added .needsReview case to TripPurpose for unclassified auto-tracked trips
-//  ✅ Added potentialDeduction computed property (always calculates IRS rate)
-//  ✅ deductionAmount returns 0 for needsReview trips (only confirmed business counts)
-//  ✅ needsReview is NOT deductible until user confirms business purpose
+//  - Added .needsReview case to TripPurpose for unclassified auto-tracked trips
+//  - Added potentialDeduction computed property
+//  - deductionAmount returns 0 for needsReview trips
 //
 //  CHANGES v3.1:
-//  ✅ Added 2026 IRS rate: 72.5 cents per mile
+//  - Added 2026 IRS rate: 72.5 cents per mile
 //
 
 import Foundation
@@ -54,6 +67,14 @@ final class MileageTrip {
     var isBusinessTrip: Bool
     var notes: String?
     
+    // MARK: - Vehicle Tracking (v4.0)
+    /// Vehicle name for multi-vehicle households (e.g. "2022 Honda Civic")
+    var vehicleName: String?
+    
+    // MARK: - Client Tracking (v4.0)
+    /// Structured client name for CPA-readable records
+    var clientName: String?
+    
     // MARK: - Entry Tracking
     var isManualEntry: Bool
     
@@ -81,6 +102,8 @@ final class MileageTrip {
         purpose: TripPurpose,
         isBusinessTrip: Bool = true,
         notes: String? = nil,
+        vehicleName: String? = nil,
+        clientName: String? = nil,
         isManualEntry: Bool = false,
         routePoints: [RoutePoint]? = nil
     ) {
@@ -102,6 +125,8 @@ final class MileageTrip {
         self.purpose = purpose
         self.isBusinessTrip = isBusinessTrip
         self.notes = notes
+        self.vehicleName = vehicleName
+        self.clientName = clientName
         
         self.isManualEntry = isManualEntry
         self.routePoints = routePoints
@@ -149,10 +174,10 @@ final class MileageTrip {
         distanceMiles * mileageRate
     }
     
-    /// Actual tax deduction amount (0 for personal or unreviewed trips)
-    /// Only counts for CONFIRMED business trips - not needsReview
+    /// Actual tax deduction amount (0 for personal, commute, or unreviewed trips)
+    /// Only counts for CONFIRMED business trips - not needsReview or commute
     var deductionAmount: Double {
-        guard isBusinessTrip && purpose != .needsReview && purpose != .personal else {
+        guard isBusinessTrip && purpose != .needsReview && purpose != .personal && purpose != .commute else {
             return 0
         }
         return distanceMiles * mileageRate
@@ -161,6 +186,11 @@ final class MileageTrip {
     /// Whether this trip needs user review/classification
     var needsClassification: Bool {
         purpose == .needsReview
+    }
+    
+    /// Whether this trip is a commute (non-deductible even if marked business)
+    var isCommute: Bool {
+        purpose == .commute
     }
     
     /// Start location as CLLocationCoordinate2D
@@ -195,9 +225,9 @@ final class MileageTrip {
         }
     }
     
-    /// Full trip summary (start → end)
+    /// Full trip summary (start -> end)
     var displaySummary: String {
-        "\(startAddress ?? "Unknown") → \(endAddress ?? "Unknown")"
+        "\(startAddress ?? "Unknown") \u{2192} \(endAddress ?? "Unknown")"
     }
     
     /// Abbreviated start address (first component only)
@@ -228,7 +258,7 @@ final class MileageTrip {
     
     /// Classify this trip as business with a specific purpose
     func classifyAsBusiness(purpose: TripPurpose, notes: String? = nil) {
-        guard purpose != .personal && purpose != .needsReview else {
+        guard purpose != .personal && purpose != .needsReview && purpose != .commute else {
             return
         }
         self.purpose = purpose
@@ -242,6 +272,16 @@ final class MileageTrip {
     /// Classify this trip as personal (non-deductible)
     func classifyAsPersonal(notes: String? = nil) {
         self.purpose = .personal
+        self.isBusinessTrip = false
+        if let notes = notes {
+            self.notes = notes
+        }
+        self.touch()
+    }
+    
+    /// Classify this trip as a commute (non-deductible)
+    func classifyAsCommute(notes: String? = nil) {
+        self.purpose = .commute
         self.isBusinessTrip = false
         if let notes = notes {
             self.notes = notes
@@ -263,7 +303,7 @@ final class MileageTrip {
         tripYear == year
     }
     
-    // MARK: - CSV Export
+    // MARK: - CSV Export (v4.0 - Audit-Defensible)
     
     /// Escapes a string for CSV output
     private static func csvEscape(_ value: String) -> String {
@@ -276,6 +316,7 @@ final class MileageTrip {
     }
     
     /// Generates a single CSV row for this trip
+    /// v4.0: Now includes createdDate, modifiedDate, vehicleName, clientName for audit defense
     func toCSVRow() -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
@@ -286,10 +327,17 @@ final class MileageTrip {
         let startTime = timeFormatter.string(from: startDate)
         let endTime = timeFormatter.string(from: endDate)
         
+        let auditDateFormatter = DateFormatter()
+        auditDateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        let created = auditDateFormatter.string(from: createdDate)
+        let modified = auditDateFormatter.string(from: modifiedDate)
+        
         // For CSV, show review status clearly
         let businessStatus: String
         if purpose == .needsReview {
             businessStatus = "Needs Review"
+        } else if purpose == .commute {
+            businessStatus = "Commute"
         } else if isBusinessTrip {
             businessStatus = "Yes"
         } else {
@@ -301,19 +349,25 @@ final class MileageTrip {
             Self.csvEscape(startAddress ?? "Unknown"),
             Self.csvEscape(endAddress ?? "Unknown"),
             Self.csvEscape(purpose.displayName),
+            Self.csvEscape(clientName ?? ""),
             String(format: "%.2f", distanceMiles),
             businessStatus,
+            Self.csvEscape(vehicleName ?? ""),
             Self.csvEscape(notes ?? ""),
             startTime,
             endTime,
             String(format: "%.3f", mileageRate),
-            String(format: "%.2f", deductionAmount)
+            String(format: "%.2f", deductionAmount),
+            Self.csvEscape(created),
+            Self.csvEscape(modified),
+            isManualEntry ? "Manual" : "Auto-Tracked"
         ].joined(separator: ",")
     }
     
     /// CSV header row
+    /// v4.0: Added Client, Vehicle, Created, Modified, Entry Type columns
     static var csvHeader: String {
-        "Date,Start Location,End Location,Purpose,Miles,Business,Notes,Start Time,End Time,IRS Rate,Deduction"
+        "Date,Start Location,End Location,Purpose,Client,Miles,Business,Vehicle,Notes,Start Time,End Time,IRS Rate,Deduction,Created,Modified,Entry Type"
     }
     
     // MARK: - Update Modified Date
@@ -371,7 +425,7 @@ struct RoutePoint: Codable, Equatable, Hashable {
 
 /// IRS-compliant trip purpose categories
 enum TripPurpose: String, Codable, CaseIterable, Identifiable {
-    case needsReview = "needsReview"      // NEW: Unclassified auto-tracked trip
+    case needsReview = "needsReview"        // Unclassified auto-tracked trip
     case clientVisit = "clientVisit"
     case clientMeeting = "clientMeeting"
     case businessMeeting = "businessMeeting"
@@ -379,6 +433,7 @@ enum TripPurpose: String, Codable, CaseIterable, Identifiable {
     case deliveryDropoff = "deliveryDropoff"
     case bankingErrand = "bankingErrand"
     case other = "other"
+    case commute = "commute"                // v4.0: Explicit commute (non-deductible)
     case personal = "personal"
     
     var id: String { rawValue }
@@ -393,6 +448,7 @@ enum TripPurpose: String, Codable, CaseIterable, Identifiable {
         case .deliveryDropoff: return "Delivery/Dropoff"
         case .bankingErrand: return "Banking/Business Errand"
         case .other: return "Other Business"
+        case .commute: return "Commute (Non-Deductible)"
         case .personal: return "Personal (Non-Deductible)"
         }
     }
@@ -407,22 +463,23 @@ enum TripPurpose: String, Codable, CaseIterable, Identifiable {
         case .deliveryDropoff: return "shippingbox.and.arrow.backward"
         case .bankingErrand: return "building.columns.fill"
         case .other: return "ellipsis.circle.fill"
+        case .commute: return "house.and.flag.fill"
         case .personal: return "house.fill"
         }
     }
     
     /// Whether this purpose is tax deductible
-    /// NOTE: needsReview is NOT deductible until user confirms
+    /// NOTE: needsReview and commute are NOT deductible
     var isDeductible: Bool {
         switch self {
-        case .needsReview, .personal:
+        case .needsReview, .personal, .commute:
             return false
         default:
             return true
         }
     }
     
-    /// Business purposes only (excludes personal and needsReview)
+    /// Business purposes only (excludes personal, commute, and needsReview)
     /// Use this for purpose picker when classifying trips
     static var businessPurposes: [TripPurpose] {
         allCases.filter { $0.isDeductible }
@@ -456,7 +513,9 @@ extension MileageTrip {
             distanceMiles: 24.5,
             purpose: .clientVisit,
             isBusinessTrip: true,
-            notes: "Q4 strategy meeting with Acme Corp"
+            notes: "Q4 strategy meeting with Acme Corp",
+            vehicleName: "2023 Toyota Camry",
+            clientName: "Acme Corp"
         )
     }
     
@@ -473,7 +532,8 @@ extension MileageTrip {
             distanceMiles: 8.3,
             purpose: .suppliesPickup,
             isBusinessTrip: true,
-            notes: "Office supplies for new project"
+            notes: "Office supplies for new project",
+            vehicleName: "2023 Toyota Camry"
         )
     }
     
@@ -508,6 +568,23 @@ extension MileageTrip {
             purpose: .needsReview,
             isBusinessTrip: false,
             notes: nil
+        )
+    }
+    
+    @MainActor static var previewCommute: MileageTrip {
+        MileageTrip(
+            startDate: Date.now.addingTimeInterval(-2400),
+            endDate: Date.now.addingTimeInterval(-1800),
+            startLatitude: 37.7749,
+            startLongitude: -122.4194,
+            endLatitude: 37.7949,
+            endLongitude: -122.4294,
+            startAddress: "Home",
+            endAddress: "Office",
+            distanceMiles: 9.1,
+            purpose: .commute,
+            isBusinessTrip: false,
+            notes: "Daily commute"
         )
     }
 }

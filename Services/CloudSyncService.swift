@@ -1,8 +1,16 @@
 //  CloudSyncService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.2 - Fixed unnecessary await warnings
+//  Version 1.3 - VoiceOver Audit: Sync status UI accessibility
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.3 - VoiceOver Audit:
+//  ✅ ADDED: CloudSyncStatusView icon hidden, combines with spoken label "iCloud sync: up to date"
+//  ✅ ADDED: CloudSyncDetailsView status icon hidden, status row combines
+//  ✅ ADDED: "Sync Now" button has explicit hint describing action
+//  ✅ ADDED: "Reset Sync State" button has explicit hint warning about full re-sync
+//  ✅ ADDED: Account/Network status rows combine into single spoken elements
+//  ✅ VERIFIED: All buttons have clear labels from visible text
 //
 //  PURPOSE:
 //  Manages iCloud synchronization for FLO data including:
@@ -602,6 +610,7 @@ struct CloudSyncStatusView: View {
                 Image(systemName: syncStatus.icon)
                     .symbolEffect(.pulse, isActive: syncStatus.isActive)
                     .foregroundStyle(Color(hex: syncStatus.color))
+                    .accessibilityHidden(true)
                 
                 if syncStatus.isActive {
                     Text("Syncing...")
@@ -614,8 +623,33 @@ struct CloudSyncStatusView: View {
                 }
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityStatusLabel)
+        .accessibilityHint(canSync ? "Double tap to sync now" : "")
         .task {
             loadState()
+        }
+    }
+    
+    private var accessibilityStatusLabel: String {
+        switch syncStatus {
+        case .idle:
+            if let lastSync = lastSyncDate {
+                let formatter = RelativeDateTimeFormatter()
+                formatter.unitsStyle = .full
+                let timeAgo = formatter.localizedString(for: lastSync, relativeTo: Date())
+                return "iCloud sync: up to date, last synced \(timeAgo)"
+            }
+            return "iCloud sync: not synced yet"
+            
+        case .syncing:
+            return "iCloud sync: syncing now"
+            
+        case .error(let message):
+            return "iCloud sync: error, \(message)"
+            
+        case .disabled(let reason):
+            return "iCloud sync: disabled, \(reason)"
         }
     }
     
@@ -652,6 +686,7 @@ struct CloudSyncDetailsView: View {
                             .font(.title2)
                             .foregroundStyle(Color(hex: syncStatus.color))
                             .frame(width: 40)
+                            .accessibilityHidden(true)
                         
                         VStack(alignment: .leading, spacing: 4) {
                             Text(statusDescription)
@@ -664,6 +699,8 @@ struct CloudSyncDetailsView: View {
                         }
                     }
                     .padding(.vertical, 8)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("iCloud sync status: \(statusDescription)")
                 } header: {
                     Text("Status")
                 }
@@ -684,6 +721,8 @@ struct CloudSyncDetailsView: View {
                             Text(accountStatusText)
                                 .foregroundStyle(.secondary)
                         }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("iCloud Account: \(accountStatusText)")
                         
                         HStack {
                             Text("Network")
@@ -691,6 +730,8 @@ struct CloudSyncDetailsView: View {
                             Text(isNetworkAvailable ? "Available" : "Unavailable")
                                 .foregroundStyle(isNetworkAvailable ? .green : Color.red)
                         }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Network: \(isNetworkAvailable ? "Available" : "Unavailable")")
                     }
                 } header: {
                     Text("Settings")
@@ -709,10 +750,12 @@ struct CloudSyncDetailsView: View {
                         } label: {
                             HStack {
                                 Image(systemName: "arrow.triangle.2.circlepath")
+                                    .accessibilityHidden(true)
                                 Text("Sync Now")
                             }
                         }
                         .disabled(!canSync)
+                        .accessibilityHint(canSync ? "Immediately syncs your data with iCloud" : "Sync is not available right now")
                         
                         Button(role: .destructive) {
                             Task { @MainActor in
@@ -722,9 +765,11 @@ struct CloudSyncDetailsView: View {
                         } label: {
                             HStack {
                                 Image(systemName: "arrow.counterclockwise")
+                                    .accessibilityHidden(true)
                                 Text("Reset Sync State")
                             }
                         }
+                        .accessibilityHint("Clears sync history and triggers a full re-sync of all data")
                     } header: {
                         Text("Actions")
                     } footer: {
@@ -745,6 +790,7 @@ struct CloudSyncDetailsView: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
+                        .accessibilityElement(children: .combine)
                     } header: {
                         Text("Error")
                     }

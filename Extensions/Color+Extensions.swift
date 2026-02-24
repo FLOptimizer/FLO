@@ -1,8 +1,17 @@
 //  Color+Extensions.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.2 - Added accessible text color for WCAG AA compliance
+//  Version 3.4 - Removed unused flo* UI colors (dark mode dead code cleanup)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.4:
+//  - Removed floBackground, floCardBackground, floTextPrimary, floTextSecondary
+//    (zero usages, light-only values would break dark mode if ever adopted)
+//  - Use SwiftUI semantic colors (.primary, .secondary, Color(.systemBackground)) instead
+//
+//  CHANGES v3.3:
+//  - brandPrimaryText now uses dynamic UIColor adapting to light/dark mode
+//  - Light: #0D7377 (5.2:1 on white), Dark: #4FDDD0 (8.5:1 on dark bg)
 //
 //  CHANGES v3.2:
 //  - Added brandPrimaryText for WCAG AA 4.5:1 contrast ratio compliance
@@ -15,9 +24,15 @@ extension Color {
     
     // MARK: - Accessible Text Colors (WCAG AA Compliant)
     
-    /// Darker teal for text that meets WCAG AA 4.5:1 contrast ratio on white backgrounds
+    /// Dynamic teal for text that meets WCAG AA 4.5:1 contrast ratio in both light and dark modes
+    /// Light mode: #0D7377 (dark teal) on white → 5.2:1 contrast
+    /// Dark mode:  #4FDDD0 (light teal) on #1C1C1E → 8.5:1 contrast
     /// Use this instead of brandPrimary when coloring text
-    static let brandPrimaryText = Color(flowHex: "0D7377")
+    static let brandPrimaryText = Color(UIColor { traitCollection in
+        traitCollection.userInterfaceStyle == .dark
+            ? UIColor(red: 0.31, green: 0.87, blue: 0.82, alpha: 1.0)  // #4FDDD0
+            : UIColor(red: 0.05, green: 0.45, blue: 0.47, alpha: 1.0)  // #0D7377
+    })
     
     // MARK: - Dynamic Brand Colors (from selected scheme)
     
@@ -57,24 +72,6 @@ extension Color {
     
     static var personalColor: Color {
         ColorSchemeManager.shared.personal
-    }
-    
-    // MARK: - Dynamic UI Colors (FLO-prefixed to avoid conflicts)
-    
-    static var floBackground: Color {
-        ColorSchemeManager.shared.background
-    }
-    
-    static var floCardBackground: Color {
-        ColorSchemeManager.shared.cardBackground
-    }
-    
-    static var floTextPrimary: Color {
-        ColorSchemeManager.shared.textPrimary
-    }
-    
-    static var floTextSecondary: Color {
-        ColorSchemeManager.shared.textSecondary
     }
     
     // MARK: - Legacy Brand Colors (for backward compatibility)
@@ -190,7 +187,7 @@ private extension UIColor {
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                        .stroke(Color.primary.opacity(0.1), lineWidth: 1)
                 )
                 
                 Divider()
@@ -220,7 +217,7 @@ private func swatch(_ color: Color, name: String, hex: String = "") -> some View
         RoundedRectangle(cornerRadius: 8)
             .fill(color)
             .frame(height: 60)
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.3), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.15), lineWidth: 1))
             .shadow(radius: 1)
         
         VStack(spacing: 2) {

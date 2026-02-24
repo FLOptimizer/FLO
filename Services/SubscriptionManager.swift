@@ -38,10 +38,32 @@ class SubscriptionManager: ObservableObject {
     
     // MARK: - Published State
     
+    /// Backing storage for currentTier
+    @Published private var _currentTier: SubscriptionTier = .free
+    
     /// Current subscription tier
-    /// - DEBUG: Defaults to Pro but can be overridden via debug menu
+    /// - DEBUG: Defaults to Pro but can be overridden via debug menu or demo mode
     /// - RELEASE: Determined by StoreKit entitlements
-    @Published private(set) var currentTier: SubscriptionTier = .free
+    var currentTier: SubscriptionTier {
+        get {
+            #if DEBUG
+            // Demo mode tier overrides (for video recording)
+            if ProcessInfo.processInfo.arguments.contains("DEMO_PRO_TIER") {
+                return .pro
+            }
+            if ProcessInfo.processInfo.arguments.contains("DEMO_PREMIUM_TIER") {
+                return .premium
+            }
+            if ProcessInfo.processInfo.arguments.contains("DEMO_FREE_TIER") {
+                return .free
+            }
+            #endif
+            return _currentTier
+        }
+        set {
+            _currentTier = newValue
+        }
+    }
     
     @Published private(set) var availableProducts: [Product] = []
     @Published private(set) var isLoading = false
@@ -85,7 +107,7 @@ class SubscriptionManager: ObservableObject {
         // In debug, revert to debug tier or default
         loadDebugTier()
         #else
-        currentTier = .free
+        _currentTier = .free
         #endif
         print("🔒 Pro unlock reset")
     }
@@ -115,7 +137,7 @@ class SubscriptionManager: ObservableObject {
         #else
         // Production: Check for permanent unlock
         let unlocked = UserDefaults.standard.bool(forKey: "FLO_ProUnlockedPermanently")
-        currentTier = unlocked ? .pro : .free
+        _currentTier = unlocked ? .pro : .free
         #endif
         
         // Start listening for transaction updates
@@ -133,11 +155,11 @@ class SubscriptionManager: ObservableObject {
     private func loadDebugTier() {
         if let savedTierRaw = UserDefaults.standard.object(forKey: Self.debugTierKey) as? Int,
            let savedTier = SubscriptionTier(rawValue: savedTierRaw) {
-            currentTier = savedTier
+            _currentTier = savedTier
             print("🔧 DEBUG: Loaded saved tier override: \(savedTier.displayName)")
         } else {
             // Default to Pro in debug for convenience
-            currentTier = .pro
+            _currentTier = .pro
             print("🔧 DEBUG: Using default Pro tier (no override set)")
         }
     }
@@ -146,14 +168,14 @@ class SubscriptionManager: ObservableObject {
     /// Call this from the debug menu to test different tiers
     func debugSetTier(_ tier: SubscriptionTier) {
         UserDefaults.standard.set(tier.rawValue, forKey: Self.debugTierKey)
-        currentTier = tier
+        _currentTier = tier
         print("🔧 DEBUG: Tier changed to \(tier.displayName)")
     }
     
     /// Clear debug tier override and revert to default (Pro)
     func debugClearTierOverride() {
         UserDefaults.standard.removeObject(forKey: Self.debugTierKey)
-        currentTier = .pro
+        _currentTier = .pro
         print("🔧 DEBUG: Tier override cleared, reverted to Pro")
     }
     

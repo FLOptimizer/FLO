@@ -1,8 +1,18 @@
 //  View_Modifiers.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.1 - Fixed duplicate declarations
+//  Version 2.2 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.2 - Dynamic Type Verification:
+//  ✅ FIXED: floLoading message text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: floEmptyState title text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: floEmptyState message text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: floEmptyState action button text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: floBadge count text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Preview card labels missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Preview button labels missing lineLimit + minimumScaleFactor
+//  ✅ VERIFIED: Text modifiers (floSectionHeader, floCaption, etc.) are applied TO views, not inside modifier bodies
 //
 //  CHANGES v2.1:
 //  ✅ Removed duplicate brandPrimary (exists in Color_Extensions.swift)
@@ -309,6 +319,8 @@ extension View {
                             if let message = message {
                                 Text(message)
                                     .font(.caption)
+                                    .lineLimit(2)
+                                    .minimumScaleFactor(0.7)
                                     .foregroundStyle(.secondary)
                             }
                         }
@@ -348,20 +360,26 @@ extension View {
             if isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: icon)
-                        .font(.system(size: 48))
+                        .font(.largeTitle)
                         .foregroundStyle(.secondary)
                     
                     Text(title)
                         .font(.headline)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.7)
                     
                     Text(message)
                         .font(.subheadline)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.7)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                     
                     if let actionTitle = actionTitle, let action = action {
                         Button(action: action) {
                             Text(actionTitle)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
                                 .floPillButton()
                         }
                         .padding(.top, 8)
@@ -411,6 +429,8 @@ extension View {
             if count > 0 {
                 Text(count > 99 ? "99+" : "\(count)")
                     .font(.caption2.bold())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -500,15 +520,23 @@ extension View {
     ScrollView {
         VStack(spacing: 20) {
             Text("floCard()")
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .floCard()
             
             Text("floOutlineCard()")
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .floOutlineCard()
             
             Text("floGlassCard()")
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .floGlassCard()
             
             Text("floAccentCard()")
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .floAccentCard()
         }
         .padding()
@@ -519,20 +547,32 @@ extension View {
 #Preview("Button Styles") {
     VStack(spacing: 16) {
         Text("Primary Button")
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
             .floPrimaryButton()
         
         Text("Secondary Button")
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
             .floSecondaryButton()
         
         Text("Destructive Button")
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
             .floDestructiveButton()
         
         HStack {
             Text("Pill")
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .floPillButton()
             Text("Outline")
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .floOutlinePillButton()
             Text("Selected")
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .floOutlinePillButton(isSelected: true)
         }
         

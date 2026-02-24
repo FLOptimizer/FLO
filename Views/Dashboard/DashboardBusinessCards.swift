@@ -1,7 +1,7 @@
 //  DashboardBusinessCards.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - Accessibility audit (Sprint 8)
+//  Version 1.2 - Dynamic Type verification
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v1.1:
@@ -34,6 +34,8 @@ struct BusinessDeductionsSummaryCard: View {
                 
                 Text("Tax Deductions")
                     .font(.headline)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 
                 Spacer()
                 
@@ -54,8 +56,12 @@ struct BusinessDeductionsSummaryCard: View {
                     .foregroundStyle(.secondary)
                 
                 Text(displayedDeductions, format: .currency(code: "USD"))
-                    .font(.system(size: 28, weight: .bold))
+                    // v1.2: Replaced .system(size: 28) with .title2 for Dynamic Type scaling
+                    .font(.title2)
+                    .fontWeight(.bold)
                     .foregroundStyle(Color.businessColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                     .contentTransition(.numericText(value: displayedDeductions))
                 
                 Text("Reducing taxable income")

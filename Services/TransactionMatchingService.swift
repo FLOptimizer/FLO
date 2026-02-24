@@ -1,8 +1,14 @@
 //  TransactionMatchingService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.2 - Added duplicate receipt detection
+//  Version 2.3 - CSV Import Duplicate Detection
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES FROM v2.3:
+//  ✅ Added findCSVDuplicates for CSV import duplicate detection
+//  ✅ Uses date window optimization (±3 days) for performance with large imports
+//  ✅ Scoring: Date 30pts, Amount 35pts, Merchant 25pts, Finance Type 10pts
+//  ✅ Score >= 80 flags as duplicate
 //
 //  CHANGES FROM v2.2:
 //  ✅ Added duplicate receipt detection (finds transactions that already have receipts)
@@ -248,6 +254,117 @@ class TransactionMatchingService {
         print("📊 Bank batch match complete: \(matched.count) matched, \(unmatched.count) unmatched")
         
         return (matched, unmatched)
+    }
+    
+    // MARK: - CSV Import Duplicate Detection (v2.3)
+    
+    /// Checks a batch of parsed CSV transactions against existing transactions for duplicates
+    ///
+    /// Matching criteria (weighted scoring):
+    /// - Exact date match: 30 points
+    /// - Amount within $0.01: 35 points
+    /// - Merchant name fuzzy match: 25 points
+    /// - Same finance type: 10 points
+    ///
+    /// Score >= 80 = flagged as duplicate
+    ///
+    /// Uses date window optimization (±3 days) for performance with large imports
+    ///
+    /// - Parameters:
+    ///   - parsed: Array of CSV parsed transactions to check
+    ///   - existing: Array of existing Transaction objects from SwiftData
+    /// - Returns: Updated array of CSVParsedTransaction with duplicate flags set
+    func findCSVDuplicates(
+        parsed: [CSVParsedTransaction],
+        existing: [Transaction]
+    ) -> [CSVParsedTransaction] {
+        
+        var updatedParsed = parsed
+        let calendar = Calendar.current
+        
+        print("🔍 CSV Duplicate detection: checking \(parsed.count) parsed vs \(existing.count) existing")
+        
+        for (index, parsedTx) in updatedParsed.enumerated() {
+            var bestMatchScore: Double = 0.0
+            var bestMatchID: UUID?
+            
+            // Date window optimization: only compare transactions within ±3 days
+            let relevantExisting = existing.filter { existingTx in
+                let daysDiff = abs(calendar.dateComponents([.day], from: parsedTx.date, to: existingTx.date).day ?? 999)
+                return daysDiff <= 3
+            }
+            
+            for existingTx in relevantExisting {
+                var score: Double = 0.0
+                
+                // 1. Date match (30 points)
+                let daysDiff = abs(calendar.dateComponents([.day], from: parsedTx.date, to: existingTx.date).day ?? 999)
+                let dateScore: Double
+                switch daysDiff {
+                case 0:
+                    dateScore = 30.0  // Same day = full points
+                case 1:
+                    dateScore = 15.0  // ±1 day = half points
+                case 2...3:
+                    dateScore = 5.0   // ±2-3 days = minimal points
+                default:
+                    dateScore = 0.0
+                }
+                score += dateScore
+                
+                // 2. Amount match (35 points)
+                let amountDiff = abs(parsedTx.amount - existingTx.amount)
+                let amountScore: Double
+                if amountDiff < 0.01 {
+                    amountScore = 35.0  // Exact match
+                } else if amountDiff <= 0.50 {
+                    amountScore = 20.0  // Within 50 cents
+                } else if amountDiff <= 2.00 {
+                    amountScore = 10.0  // Within $2
+                } else {
+                    amountScore = 0.0
+                }
+                score += amountScore
+                
+                // 3. Merchant fuzzy match (25 points)
+                let merchantSimilarity = merchantSimilarity(
+                    merchant1: parsedTx.merchantName,
+                    merchant2: existingTx.merchantName
+                )
+                score += merchantSimilarity * 25.0
+                
+                // 4. Finance type match (10 points)
+                if parsedTx.suggestedFinanceType == existingTx.financeType {
+                    score += 10.0
+                }
+                
+                // 5. Income/Expense direction match (bonus consideration)
+                // If amounts match but direction is opposite, reduce score
+                if parsedTx.isIncome != existingTx.isIncome {
+                    score *= 0.5  // Significant penalty for opposite direction
+                }
+                
+                // Track best match
+                if score > bestMatchScore {
+                    bestMatchScore = score
+                    bestMatchID = existingTx.id
+                }
+            }
+            
+            // Flag as duplicate if score >= 80
+            if bestMatchScore >= 80.0 {
+                updatedParsed[index].isDuplicate = true
+                updatedParsed[index].duplicateMatchScore = bestMatchScore
+                updatedParsed[index].duplicateMatchID = bestMatchID
+                
+                print("⚠️ Duplicate detected: \(parsedTx.merchantName) (\(bestMatchScore) points)")
+            }
+        }
+        
+        let duplicateCount = updatedParsed.filter { $0.isDuplicate }.count
+        print("📊 CSV Duplicate check complete: \(duplicateCount) duplicates found out of \(parsed.count) transactions")
+        
+        return updatedParsed
     }
     
     // MARK: - Receipt Matching (v2.2 Enhanced)

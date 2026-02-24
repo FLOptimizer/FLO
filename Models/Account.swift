@@ -1,8 +1,11 @@
 //  Account.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.3 - UTF-8 Encoding Fix
+//  Version 3.4
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.4:
+//  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters (multiplication symbols)
 //
 //  CHANGES v3.3:
 //  - Fixed UTF-8 encoding in displayNameWithDigits (garbled bullet characters)
@@ -378,14 +381,14 @@ final class Account {
     }
     
     /// Estimated monthly interest charge based on APR
-    /// Formula: balance Ã— (APR / 12 / 100)
+    /// Formula: balance × (APR / 12 / 100)
     /// Returns nil if not a credit card or no APR set
     var estimatedMonthlyInterest: Double? {
         guard accountType == .creditCard,
               let apr = apr,
               apr > 0,
               currentBalance < 0 else { return nil }
-        // Monthly interest = Balance Ã— (APR / 12 / 100)
+        // Monthly interest = Balance × (APR / 12 / 100)
         return abs(currentBalance) * (apr / 100.0 / 12.0)
     }
     
@@ -405,7 +408,7 @@ final class Account {
     
     /// Minimum payment due based on percentage and floor
     ///
-    /// Formula: max(balance Ã— percent, min(floor, balance))
+    /// Formula: max(balance × percent, min(floor, balance))
     ///
     /// This calculation ensures:
     /// 1. At least the percentage of balance is paid (e.g., 2%)
@@ -429,7 +432,7 @@ final class Account {
     }
     
     /// Credit utilization percentage (can exceed 100% for over-limit accounts)
-    /// Formula: (balance / limit) Ã— 100
+    /// Formula: (balance / limit) × 100
     /// Returns 0 for overpaid cards (positive balance) since utilization doesn't apply
     var creditUtilization: Double? {
         guard accountType == .creditCard,

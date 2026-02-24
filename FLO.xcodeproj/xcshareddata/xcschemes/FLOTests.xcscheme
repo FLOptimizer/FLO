@@ -14,11 +14,14 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <TestPlans>
          <TestPlanReference
-            reference = "container:FLOTests.xctestplan"
-            default = "YES">
+            reference = "container:FLOTests.xctestplan">
          </TestPlanReference>
          <TestPlanReference
             reference = "container:../FLOUITests.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../FLOUITests/FLOUITestPlan.xctestplan"
+            default = "YES">
          </TestPlanReference>
       </TestPlans>
       <Testables>
@@ -62,6 +65,15 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "433FDBCC2EB992B00008DA09"
+            BuildableName = "FLO.app"
+            BlueprintName = "FLO"
+            ReferencedContainer = "container:FLO.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

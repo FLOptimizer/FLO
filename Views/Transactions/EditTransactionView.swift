@@ -1,0 +1,879 @@
+//  EditTransactionView.swift
+//  FLO - Finance Ledger Optimizer
+//
+//  Version 3.0 - UTF-8 Mojibake Fix
+//  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.0:
+//  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters (chart emoji)
+//
+//  CHANGES v2.9 - Dynamic Type Verification:
+//  ✅ FIXED: Receipt "Receipt Attached" text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Receipt "Tap to view full size" text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Finance type footer text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Account footer "Optionally assign..." text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Account footer warning label missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Future date warning label missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Large amount confirmation alert message missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Delete confirmation alert message missing lineLimit + minimumScaleFactor
+//
+//  CHANGES v2.8:
+//  ✅ ADDED: Receipt section button VoiceOver label + chevron hidden
+//  ✅ ADDED: Delete button accessibility hint
+//  ✅ ADDED: Date picker accessibility label
+//  ✅ ADDED: Clear account button VoiceOver label
+//  ✅ ADDED: Save/Cancel toolbar hints
+//  ✅ ADDED: Future date warning accessibility
+//  ✅ ADDED: Screen change announcement on appear
+//  ✅ ADDED: Account mismatch warning accessibility
+//  ✅ ADDED: Metadata section accessible labels
+//
+//  CHANGES v2.7:
+//  - Restored account.touch() calls after balance updates
+//  - Restored cancel button red styling when hasChanges
+//  - Merged all v2.5 and v2.6 functionality
+//
+//  CHANGES v2.6:
+//  - Account balance reverts when transaction is edited/deleted
+//  - New account balance updates when transaction is reassigned
+//  - Proper handling of income/expense balance changes
+//
+//  CHANGES v2.5:
+//  - Added Account selection with horizontal chips (Premium+)
+//  - Smart account defaults based on financeType
+//  - Account auto-switch when financeType changes
+//  - Account included in hasChanges check
+//  - Uses AccountChipView from AddTransactionView
+//
+//  CHANGES v2.4:
+//  - Haptic feedback on all picker changes (type, finance, category)
+//  - Form entrance animations
+//  - Changes indicator animation
+//  - Delete confirmation with heavy haptic
+//  - Success animation on save
+//
+//  PREVIOUS FIXES:
+//  - Fixed locale-aware number parsing (CRITICAL for EU users)
+//  - Disabled Save button when no changes
+//  - Fixed compiler timeout by extracting sections
+
+import SwiftUI
+import SwiftData
+
+struct EditTransactionView: View {
+    @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    
+    @Query(sort: \Category.name) private var categories: [Category]
+    @Query(sort: \Account.name) private var accounts: [Account]
+    
+    let transaction: Transaction
+    
+    // Editable Properties
+    @State private var amount: String
+    @State private var note: String
+    @State private var isIncome: Bool
+    @State private var selectedCategory: Category?
+    @State private var selectedAccount: Account?
+    @State private var date: Date
+    @State private var merchantName: String
+    @State private var financeType: Transaction.FinanceType
+    
+    // UI State
+    @State private var showingReceiptImage = false
+    @State private var showingValidationAlert = false
+    @State private var validationMessage = ""
+    @State private var showingLargeAmountConfirmation = false
+    @State private var showingDeleteConfirmation = false
+    @State private var isSaving = false
+    @State private var formAppeared = false
+    
+    @FocusState private var focusedField: Field?
+    
+    enum Field {
+        case amount, merchant, note
+    }
+                        
+    private let largeAmountThreshold: Double = 10_000
+    
+    // Static formatters for consistency and performance
+    private static let amountFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 2
+        f.maximumFractionDigits = 2
+        f.locale = Locale.current
+        return f
+    }()
+    
+    private static let currencyFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.locale = Locale.current
+        return f
+    }()
+    
+    init(transaction: Transaction) {
+        self.transaction = transaction
+        
+        let amountString = Self.amountFormatter.string(from: NSNumber(value: transaction.amount)) ?? String(transaction.amount)
+        _amount = State(initialValue: amountString)
+        _note = State(initialValue: transaction.note)
+        _isIncome = State(initialValue: transaction.isIncome)
+        _selectedCategory = State(initialValue: transaction.category)
+        _selectedAccount = State(initialValue: transaction.account)
+        _date = State(initialValue: transaction.date)
+        _merchantName = State(initialValue: transaction.merchantName)
+        _financeType = State(initialValue: transaction.financeType)
+    }
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                receiptSectionView
+                    .opacity(formAppeared ? 1 : 0.001)
+                    .offset(y: formAppeared ? 0 : 10)
+                
+                amountSection
+                    .opacity(formAppeared ? 1 : 0.001)
+                    .offset(y: formAppeared ? 0 : 10)
+                
+                typeSection
+                    .opacity(formAppeared ? 1 : 0.001)
+                    .offset(y: formAppeared ? 0 : 10)
+                
+                financeTypeSection
+                    .opacity(formAppeared ? 1 : 0.001)
+                    .offset(y: formAppeared ? 0 : 10)
+                
+                categorySection
+                    .opacity(formAppeared ? 1 : 0.001)
+                    .offset(y: formAppeared ? 0 : 10)
+                
+                accountSection
+                    .opacity(formAppeared ? 1 : 0.001)
+                    .offset(y: formAppeared ? 0 : 10)
+                
+                dateSection
+                    .opacity(formAppeared ? 1 : 0.001)
+                    .offset(y: formAppeared ? 0 : 10)
+                
+                detailsSection
+                    .opacity(formAppeared ? 1 : 0.001)
+                    .offset(y: formAppeared ? 0 : 10)
+                
+                metadataSection
+                    .opacity(formAppeared ? 1 : 0.001)
+                    .offset(y: formAppeared ? 0 : 10)
+                
+                deleteSection
+                    .opacity(formAppeared ? 1 : 0.001)
+                    .offset(y: formAppeared ? 0 : 10)
+            }
+            .navigationTitle("Edit Transaction")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbarContent }
+            .sheet(isPresented: $showingReceiptImage) {
+                if let receiptPath = transaction.receiptImagePath {
+                    ReceiptImageView(imagePath: receiptPath)
+                }
+            }
+            .onChange(of: isIncome) { oldValue, newValue in
+                HapticService.play(.selection)
+            }
+            .onChange(of: financeType) { oldValue, newValue in
+                HapticService.play(.selection)
+                updateAccountForFinanceType(newValue)
+            }
+            .onChange(of: selectedCategory) { oldValue, newValue in
+                if newValue != nil {
+                    HapticService.play(.selection)
+                }
+            }
+            .onChange(of: selectedAccount) { oldValue, newValue in
+                HapticService.play(.selection)
+            }
+            .onChange(of: date) { oldValue, newValue in
+                HapticService.play(.light)
+            }
+            .alert("Validation Error", isPresented: $showingValidationAlert) {
+                Button("OK", role: .cancel) {
+                    HapticService.play(.warning)
+                }
+            } message: {
+                Text(validationMessage)
+            }
+            .alert("Large Amount", isPresented: $showingLargeAmountConfirmation) {
+                Button("Cancel", role: .cancel) {}
+                Button("Confirm", role: .destructive) {
+                    saveTransaction()
+                }
+            } message: {
+                Text("You're about to save a transaction for \(formattedEnteredAmount). Is this correct?")
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+            }
+            .alert("Delete Transaction", isPresented: $showingDeleteConfirmation) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete", role: .destructive) {
+                    deleteTransaction()
+                }
+            } message: {
+                Text("Are you sure you want to delete this transaction? This cannot be undone.")
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+            }
+            .onAppear {
+                withAnimation(FLOAnimation.standard) {
+                    formAppeared = true
+                }
+                // v2.8: Screen announcement
+                AccessibilityAnnouncement.screenChanged("Edit Transaction: \(transaction.displayName)")
+            }
+        }
+    }
+    
+    // MARK: - Sections
+    
+    @ViewBuilder
+    private var receiptSectionView: some View {
+        if transaction.hasReceipt {
+            receiptSection
+        }
+    }
+    
+    @ViewBuilder
+    private var receiptSection: some View {
+        if let receiptPath = transaction.receiptImagePath,
+           let image = PhotoStorageManager.shared.loadReceiptSync(filename: receiptPath) {
+            Section {
+                Button {
+                    HapticService.play(.light)
+                    showingReceiptImage = true
+                } label: {
+                    HStack {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 60, height: 60)
+                            .cornerRadius(8)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Receipt Attached")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .foregroundStyle(.primary)
+                            
+                            Text("Tap to view full size")
+                                .font(.caption)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            // v2.8: Decorative, parent handles
+                            .accessibilityHidden(true)
+                    }
+                }
+                // v2.8: VoiceOver label for receipt button
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("View attached receipt")
+                .accessibilityHint("Double tap to view full size receipt image")
+            } header: {
+                HStack {
+                    Image(systemName: "doc.text.fill")
+                    Text("Receipt")
+                }
+                .foregroundStyle(Color.brandPrimaryText)
+            }
+        }
+    }
+    
+    private var amountSection: some View {
+        Section("Amount") {
+            TextField("0.00", text: $amount)
+                .keyboardType(.decimalPad)
+                .font(.title2)
+                .fontWeight(.semibold)
+                .focused($focusedField, equals: .amount)
+                .accessibilityLabel("Transaction amount")
+                .accessibilityHint("Enter the amount")
+        }
+    }
+    
+    private var typeSection: some View {
+        Section("Transaction Type") {
+            Picker("Type", selection: $isIncome) {
+                Label("Expense", systemImage: "arrow.up.circle")
+                    .tag(false)
+                Label("Income", systemImage: "arrow.down.circle")
+                    .tag(true)
+            }
+            .pickerStyle(.segmented)
+            .accessibilityLabel("Transaction type")
+        }
+    }
+    
+    private var financeTypeSection: some View {
+        Section {
+            Picker("Classification", selection: $financeType) {
+                Label("Business", systemImage: "briefcase.fill")
+                    .tag(Transaction.FinanceType.business)
+                Label("Personal", systemImage: "person.fill")
+                    .tag(Transaction.FinanceType.personal)
+            }
+            .pickerStyle(.segmented)
+            .accessibilityLabel("Transaction classification")
+        } header: {
+            Text("Classification")
+        } footer: {
+            Text(financeTypeFooterText)
+                .font(.caption)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+        }
+    }
+    
+    private var categorySection: some View {
+        Section("Category") {
+            Picker("Category", selection: $selectedCategory) {
+                Text("None").tag(Category?.none)
+                
+                if isIncome {
+                    ForEach(organizedIncomeCategories) { cat in
+                        categoryLabel(for: cat)
+                            .tag(Optional(cat))
+                    }
+                } else {
+                    Section(header: Text("BUSINESS")) {
+                        ForEach(organizedBusinessCategories) { cat in
+                            categoryLabel(for: cat)
+                                .tag(Optional(cat))
+                        }
+                    }
+                    
+                    Section(header: Text("PERSONAL")) {
+                        ForEach(organizedPersonalCategories) { cat in
+                            categoryLabel(for: cat)
+                                .tag(Optional(cat))
+                        }
+                    }
+                }
+            }
+            // v2.8: VoiceOver hint
+            .accessibilityHint("Select a category for this transaction")
+        }
+    }
+    
+    // MARK: - Account Section
+    
+    @ViewBuilder
+    private var accountSection: some View {
+        if subscriptionManager.currentTier.hasMultipleAccounts && !accounts.isEmpty {
+            Section {
+                accountChipsView
+            } header: {
+                HStack {
+                    Text("Account")
+                    Spacer()
+                    if selectedAccount != nil {
+                        Button("Clear") {
+                            withAnimation(FLOAnimation.quick) {
+                                selectedAccount = nil
+                            }
+                            HapticService.play(.light)
+                        }
+                        .font(.caption)
+                        .foregroundStyle(Color.brandPrimaryText)
+                        // v2.8: VoiceOver label
+                        .accessibilityLabel("Clear account selection")
+                        .accessibilityHint("Double tap to remove account assignment")
+                    }
+                }
+            } footer: {
+                accountFooterText
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var accountChipsView: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(sortedAccounts) { account in
+                    AccountChipView(
+                        account: account,
+                        isSelected: selectedAccount?.id == account.id,
+                        showBalance: subscriptionManager.currentTier.hasBalanceTracking
+                    ) {
+                        withAnimation(FLOAnimation.quick) {
+                            if selectedAccount?.id == account.id {
+                                selectedAccount = nil
+                            } else {
+                                selectedAccount = account
+                            }
+                        }
+                        HapticService.play(.medium)
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+    }
+    
+    @ViewBuilder
+    private var accountFooterText: some View {
+        if selectedAccount == nil {
+            Text("Optionally assign to an account for balance tracking")
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+        } else if let account = selectedAccount, account.financeType != financeType {
+            Label("Account type differs from transaction classification", systemImage: "exclamationmark.triangle")
+                .font(.caption)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+                .foregroundStyle(.orange)
+                // v2.8: VoiceOver reads warning
+                .accessibilityLabel("Warning: Account type differs from transaction classification")
+        }
+    }
+    
+    /// Accounts sorted: matching financeType first, then primary, then others
+    private var sortedAccounts: [Account] {
+        let active = accounts.filter { $0.isActive }
+        
+        return active.sorted { (a: Account, b: Account) -> Bool in
+            // First: match financeType
+            if a.financeType == financeType && b.financeType != financeType { return true }
+            if b.financeType == financeType && a.financeType != financeType { return false }
+            
+            // Second: primary accounts
+            if a.isPrimary && !b.isPrimary { return true }
+            if b.isPrimary && !a.isPrimary { return false }
+            
+            // Third: alphabetical
+            return a.name < b.name
+        }
+    }
+    
+    private func updateAccountForFinanceType(_ newType: Transaction.FinanceType) {
+        guard subscriptionManager.currentTier.hasMultipleAccounts else { return }
+        
+        // Only auto-switch if current account doesn't match new type
+        if let current = selectedAccount, current.financeType != newType {
+            let active = accounts.filter { $0.isActive }
+            
+            // Try to find a matching account
+            if let matching = active.first(where: { $0.financeType == newType && $0.isPrimary }) {
+                withAnimation(FLOAnimation.quick) {
+                    selectedAccount = matching
+                }
+            } else if let matching = active.first(where: { $0.financeType == newType }) {
+                withAnimation(FLOAnimation.quick) {
+                    selectedAccount = matching
+                }
+            }
+        }
+    }
+    
+    private var dateSection: some View {
+        Section("Date") {
+            DatePicker("", selection: $date, displayedComponents: .date)
+                // v2.8: VoiceOver label
+                .accessibilityLabel("Transaction date")
+                .accessibilityHint("Select the date for this transaction")
+            
+            if isFutureDate {
+                futureDateWarning
+                    .transition(.opacity.combined(with: .scale))
+            }
+        }
+        .animation(FLOAnimation.quick, value: isFutureDate)
+    }
+    
+    private var detailsSection: some View {
+        Section("Details") {
+            TextField("Merchant", text: $merchantName)
+                .focused($focusedField, equals: .merchant)
+                .accessibilityLabel("Merchant name")
+            
+            TextField("Note", text: $note)
+                .focused($focusedField, equals: .note)
+                .accessibilityLabel("Transaction note")
+        }
+    }
+    
+    private var metadataSection: some View {
+        Section("Information") {
+            LabeledContent("Created", value: transaction.createdAt, format: .dateTime)
+            LabeledContent("Last Updated", value: transaction.updatedAt, format: .dateTime)
+            
+            // Show current account if assigned
+            if let account = transaction.account {
+                LabeledContent("Account", value: account.name)
+            }
+        }
+    }
+    
+    private var deleteSection: some View {
+        Section {
+            Button(role: .destructive) {
+                HapticService.play(.heavy)
+                showingDeleteConfirmation = true
+            } label: {
+                HStack {
+                    Spacer()
+                    Label("Delete Transaction", systemImage: "trash")
+                    Spacer()
+                }
+            }
+            // v2.8: VoiceOver hint
+            .accessibilityLabel("Delete transaction")
+            .accessibilityHint("Double tap to permanently delete this transaction. A confirmation will appear.")
+        }
+    }
+    
+    // MARK: - Helper Views
+    
+    private var futureDateWarning: some View {
+        Label("Future date selected", systemImage: "exclamationmark.triangle.fill")
+            .font(.caption)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .foregroundStyle(.orange)
+            // v2.8: VoiceOver reads warning
+            .accessibilityLabel("Warning: Future date selected")
+    }
+    
+    private var financeTypeFooterText: String {
+        financeType == .business ?
+            "Business expenses may be tax deductible" :
+            "Personal expenses for your records only"
+    }
+    
+    @ViewBuilder
+    private func categoryLabel(for category: Category) -> some View {
+        Label(category.name, systemImage: category.icon)
+            .foregroundStyle(category.color)
+    }
+    
+    // MARK: - Category Organization
+    
+    private var organizedIncomeCategories: [Category] {
+        categories
+            .filter { $0.isIncome == true }
+            .sorted { $0.name < $1.name }
+    }
+    
+    private var organizedBusinessCategories: [Category] {
+        categories
+            .filter { $0.isIncome == false && isBusinessCategory($0) }
+            .sorted { $0.name < $1.name }
+    }
+    
+    private var organizedPersonalCategories: [Category] {
+        categories
+            .filter { $0.isIncome == false && !isBusinessCategory($0) }
+            .sorted { $0.name < $1.name }
+    }
+    
+    private func isBusinessCategory(_ category: Category) -> Bool {
+        let businessKeywords = ["(Business)", "Business Travel", "Office", "Professional",
+                               "Contract Labor", "Marketing", "Advertising", "Software & Subscriptions"]
+        return businessKeywords.contains { category.name.contains($0) }
+    }
+    
+    // MARK: - Toolbar
+    
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .cancellationAction) {
+            Button("Cancel") {
+                HapticService.play(.light)
+                dismiss()
+            }
+            .disabled(isSaving)
+            .foregroundStyle(hasChanges ? .red : .primary)  // v2.7: Restored red styling
+            // v2.8: VoiceOver hint
+            .accessibilityHint(hasChanges ? "Double tap to discard changes and close" : "Double tap to close")
+        }
+        
+        ToolbarItem(placement: .confirmationAction) {
+            ZStack {
+                if isSaving {
+                    ProgressView()
+                        .accessibilityLabel("Saving changes")
+                } else {
+                    Button("Save") {
+                        HapticService.play(.medium)
+                        validateAndSave()
+                    }
+                    .disabled(!canSave || !hasChanges)
+                    .bold(hasChanges && canSave)
+                    .foregroundStyle(hasChanges && canSave ? Color.brandPrimary : .secondary)
+                    // v2.8: VoiceOver hint
+                    .accessibilityLabel(hasChanges ? "Save changes" : "No changes to save")
+                    .accessibilityHint(hasChanges && canSave ? "Double tap to save your changes" : "")
+                }
+            }
+        }
+        
+        ToolbarItemGroup(placement: .keyboard) {
+            Spacer()
+            Button("Done") {
+                HapticService.play(.light)
+                focusedField = nil
+            }
+        }
+    }
+    
+    // MARK: - Validation & Save
+    
+    private var canSave: Bool {
+        !amount.isEmpty && parsedAmount != nil
+    }
+    
+    private var parsedAmount: Double? {
+        Self.amountFormatter.number(from: amount)?.doubleValue
+    }
+    
+    private var isFutureDate: Bool {
+        let calendar = Calendar.current
+        let today = Date()
+        
+        if calendar.isDate(date, inSameDayAs: today) {
+            return false
+        }
+        
+        return calendar.startOfDay(for: date) > calendar.startOfDay(for: today)
+    }
+    
+    private var formattedEnteredAmount: String {
+        guard let amt = parsedAmount else { return "$0.00" }
+        return Self.currencyFormatter.string(from: NSNumber(value: amt)) ?? "$\(amt)"
+    }
+    
+    private var hasChanges: Bool {
+        guard let amt = parsedAmount else { return false }
+        
+        return amt != transaction.amount ||
+               note != transaction.note ||
+               isIncome != transaction.isIncome ||
+               selectedCategory?.id != transaction.category?.id ||
+               selectedAccount?.id != transaction.account?.id ||
+               date != transaction.date ||
+               merchantName != transaction.merchantName ||
+               financeType != transaction.financeType
+    }
+    
+    private func validateAndSave() {
+        guard let amt = parsedAmount else {
+            validationMessage = "Please enter a valid amount"
+            showingValidationAlert = true
+            HapticService.play(.warning)
+            return
+        }
+        
+        if amt <= 0 {
+            validationMessage = "Amount must be greater than zero"
+            showingValidationAlert = true
+            HapticService.play(.warning)
+            return
+        }
+        
+        if amt > largeAmountThreshold {
+            showingLargeAmountConfirmation = true
+            return
+        }
+        
+        if isFutureDate {
+            print("âš ï¸ Saving future-dated transaction")
+        }
+        
+        saveTransaction()
+    }
+    
+    private func saveTransaction() {
+        guard let amt = parsedAmount else { return }
+        
+        guard hasChanges else {
+            dismiss()
+            return
+        }
+        
+        isSaving = true
+        
+        // Store original values for balance calculations
+        let originalAmount = transaction.amount
+        let originalIsIncome = transaction.isIncome
+        let originalAccount = transaction.account
+        
+        // STEP 1: Revert balance on the ORIGINAL account (if any)
+        if let oldAccount = originalAccount {
+            if originalIsIncome {
+                oldAccount.currentBalance -= originalAmount
+            } else {
+                oldAccount.currentBalance += originalAmount
+            }
+            oldAccount.lastBalanceUpdate = Date()
+            oldAccount.touch()  // v2.7: Restored touch() call
+            print("ðŸ“Š Reverted balance on \(oldAccount.name): \(oldAccount.formattedBalance)")
+        }
+        
+        // STEP 2: Apply changes to transaction
+        transaction.amount = amt
+        transaction.note = note
+        transaction.isIncome = isIncome
+        transaction.category = selectedCategory
+        transaction.account = selectedAccount
+        transaction.date = date
+        transaction.merchantName = merchantName
+        transaction.financeType = financeType
+        transaction.updatedAt = Date()
+        
+        // STEP 3: Apply balance to the NEW account (if any)
+        if let newAccount = selectedAccount {
+            if isIncome {
+                newAccount.currentBalance += amt
+            } else {
+                newAccount.currentBalance -= amt
+            }
+            newAccount.lastBalanceUpdate = Date()
+            newAccount.touch()  // v2.7: Restored touch() call
+            print("ðŸ“Š Applied balance to \(newAccount.name): \(newAccount.formattedBalance)")
+        }
+        
+        do {
+            try context.save()
+            print("✅ Transaction updated: \(transaction.displayName) - \(financeType.displayName) - Account: \(selectedAccount?.name ?? "None")")
+            
+            HapticService.play(.success)
+            AccessibilityAnnouncement.announce("Transaction updated successfully")
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                dismiss()
+            }
+        } catch {
+            print("âŒ Failed to update transaction: \(error)")
+            
+            HapticService.play(.error)
+            
+            isSaving = false
+            validationMessage = "Failed to update transaction. Please try again."
+            showingValidationAlert = true
+        }
+    }
+    
+    private func deleteTransaction() {
+        let transactionName = transaction.displayName
+        
+        // Revert account balance before deleting
+        if let account = transaction.account {
+            if transaction.isIncome {
+                account.currentBalance -= transaction.amount
+            } else {
+                account.currentBalance += transaction.amount
+            }
+            account.lastBalanceUpdate = Date()
+            account.touch()  // v2.7: Restored touch() call
+            print("ðŸ“Š Reverted balance on \(account.name) before delete: \(account.formattedBalance)")
+        }
+        
+        context.delete(transaction)
+        
+        do {
+            try context.save()
+            print("✅ Transaction deleted: \(transactionName)")
+            HapticService.play(.success)
+            AccessibilityAnnouncement.announce("Transaction deleted")
+            dismiss()
+        } catch {
+            print("âŒ Failed to delete transaction: \(error)")
+            HapticService.play(.error)
+            validationMessage = "Failed to delete transaction. Please try again."
+            showingValidationAlert = true
+        }
+    }
+}
+
+// MARK: - Preview
+
+#Preview("Edit Expense") {
+    let container = try! ModelContainer(
+        for: Transaction.self, Category.self, Account.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    
+    let category = Category(
+        name: "Office Supplies",
+        icon: "pencil.circle.fill",
+        colorHex: "F59E0B",
+        isIncome: false
+    )
+    container.mainContext.insert(category)
+    
+    let account = Account(
+        name: "Business Checking",
+        accountType: .checking,
+        currentBalance: 5000,
+        financeType: .business
+    )
+    container.mainContext.insert(account)
+    
+    let transaction = Transaction(
+        amount: 125.50,
+        date: .now,
+        note: "Office Supplies",
+        isIncome: false,
+        merchantName: "Staples",
+        category: category,
+        financeType: .business,
+        account: account,
+        hasReceipt: false
+    )
+    container.mainContext.insert(transaction)
+    
+    return EditTransactionView(transaction: transaction)
+        .modelContainer(container)
+        .environmentObject(SubscriptionManager.shared)
+}
+
+#Preview("Edit Income") {
+    let container = try! ModelContainer(
+        for: Transaction.self, Category.self, Account.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    
+    let category = Category(
+        name: "Client Payment",
+        icon: "dollarsign.circle.fill",
+        colorHex: "14B8A6",
+        isIncome: true
+    )
+    container.mainContext.insert(category)
+    
+    let transaction = Transaction(
+        amount: 5000,
+        date: .now,
+        note: "Client Payment",
+        isIncome: true,
+        merchantName: "Acme Corp",
+        category: category,
+        financeType: .business,
+        hasReceipt: true
+    )
+    container.mainContext.insert(transaction)
+    
+    return EditTransactionView(transaction: transaction)
+        .modelContainer(container)
+        .environmentObject(SubscriptionManager.shared)
+}

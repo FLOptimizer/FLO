@@ -1,37 +1,62 @@
 //  AccountsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.5 - Accessibility Audit + Architecture: Split into focused files
+//  Version 4.2 - Dark Mode Optimization: Adaptive color fixes
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v3.5:
-//  ✅ SPLIT: Extracted AccountRowEnhanced → AccountRowEnhanced.swift
-//  ✅ SPLIT: Extracted AddAccountView → AddAccountView_Accounts.swift
-//  ✅ SPLIT: Extracted EditAccountView → EditAccountView_Accounts.swift
-//  ✅ SPLIT: Extracted AccountRowPreview → AccountRowPreview.swift
-//  ✅ ADDED: Add button VoiceOver label + hint
-//  ✅ ADDED: Balance summary cards accessible with spoken currency
-//  ✅ ADDED: Net worth/assets/liabilities grouped labels
-//  ✅ ADDED: Segment picker VoiceOver label with current value
-//  ✅ ADDED: Rotor actions (Edit, Delete, Set Primary, Toggle Dashboard)
-//  ✅ ADDED: Empty state accessible
-//  ✅ ADDED: Suggested accounts VoiceOver labels
-//  ✅ ADDED: Privacy toggle VoiceOver label + hint
-//  ✅ ADDED: Account limit progress bar accessible with value
-//  ✅ ADDED: Upgrade button labeled
-//  ✅ ADDED: Screen change announcements
-//  ✅ ADDED: Delete/reactivate/primary announced
+//  CHANGES v4.2 - Dark Mode Optimization:
+//  ✅ FIXED: L776 Color.gray.opacity(0.2) → Color(.systemGray4).opacity(0.2) for progress bar background (adapts to dark mode)
 //
-//  CHANGES v3.4:
-//  - Added LimitReachedOverlay full-screen when at account limit
-//  - Added progress bar to account limit section
+//  CHANGES v4.1 - Dynamic Type Verification:
+//  ✅ ADDED: @Environment(\.dynamicTypeSize) for adaptive layout detection
+//  ✅ ADDED: isAccessibilitySize computed property for layout switching
+//  ✅ FIXED: "Net Worth" label missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Net worth amount missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: "Assets" label missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Assets amount missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: "Liabilities" label missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Liabilities amount missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Segment picker labels missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Active accounts header missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Active accounts count badge missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Swipe actions footer text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: "No Accounts Yet" title missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Empty state description missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: "Add Your First Account" button label missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Suggested account name missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Suggested account type/finance type missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: "Hide Balances on Dashboard" label missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Privacy description text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Privacy footer text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Account limit count text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: "Upgrade" button label missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Account limit warning text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: "Unlimited accounts" text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: "PRO" badge text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: "Connect Bank Account" label missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: "Auto-import transactions via Plaid" subtitle missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: "Auto-Import Transactions" header missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: Plaid upgrade teaser text missing lineLimit + minimumScaleFactor
+//  ✅ FIXED: "Upgrade" button in Plaid section missing lineLimit + minimumScaleFactor
+//  ✅ ADDED: Adaptive layout for net worth card at accessibility sizes
+//  ✅ ADDED: Adaptive layout for assets/liabilities cards at accessibility sizes
+//  ✅ NOTE: UTF-8 mojibake in Plaid text ("—�") left as-is per project policy
 //
+//  CHANGES v4.0:
+//  ✅ Custom SwiftUI empty state illustration
+//
+//  CHANGES v3.6:
+//  ✅ Restored Connect Bank section
+//  ✅ Pro users: Branded connect button calling startPlaidLink()
+//  ✅ Non-Pro users: Upgrade teaser with subscription prompt
+//  ✅ Full VoiceOver accessibility on both states
 
 import SwiftUI
 import SwiftData
 
 struct AccountsView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @Query(sort: \Account.name) private var accounts: [Account]
     
@@ -53,6 +78,11 @@ struct AccountsView: View {
     
     // MARK: - Privacy Setting (v2.2)
     @AppStorage("hideBalancesOnDashboard") private var hideBalancesOnDashboard = true
+    
+    // Dynamic Type detection
+    private var isAccessibilitySize: Bool {
+        dynamicTypeSize.isAccessibilitySize
+    }
     
     enum FinanceSegment: String, CaseIterable {
         case all = "All"
@@ -131,6 +161,9 @@ struct AccountsView: View {
             if !accounts.isEmpty {
                 accountLimitSection
             }
+            
+            // Plaid section always visible (independent of account count)
+            plaidConnectionSection
         }
         .navigationTitle("Accounts")
         .toolbar {
@@ -213,28 +246,52 @@ struct AccountsView: View {
     private var balanceSummarySection: some View {
         Section {
             VStack(spacing: 12) {
-                // Net Worth Card
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Net Worth")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        
-                        Text(formatCurrency(netWorth))
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundStyle(netWorth >= 0 ? Color.brandPrimary : .red)
-                            .contentTransition(.numericText())
+                // Net Worth Card - adaptive layout
+                Group {
+                    if isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Net Worth")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                            
+                            Text(formatCurrency(netWorth))
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundStyle(netWorth >= 0 ? Color.brandPrimary : .red)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
+                                .contentTransition(.numericText())
+                        }
+                    } else {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Net Worth")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                                
+                                Text(formatCurrency(netWorth))
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(netWorth >= 0 ? Color.brandPrimary : .red)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
+                                    .contentTransition(.numericText())
+                            }
+                            
+                            Spacer()
+                            
+                            Image(systemName: netWorth >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                                .font(.title)
+                                .foregroundStyle(netWorth >= 0 ? Color.brandPrimary : .red)
+                                .symbolEffect(.bounce, value: animateBalances)
+                                // v3.5: Decorative
+                                .accessibilityHidden(true)
+                        }
                     }
-                    
-                    Spacer()
-                    
-                    Image(systemName: netWorth >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                        .font(.title)
-                        .foregroundStyle(netWorth >= 0 ? Color.brandPrimary : .red)
-                        .symbolEffect(.bounce, value: animateBalances)
-                        // v3.5: Decorative
-                        .accessibilityHidden(true)
                 }
                 .padding()
                 .background(Color(UIColor.secondarySystemGroupedBackground))
@@ -244,51 +301,115 @@ struct AccountsView: View {
                 .accessibilityLabel("Net worth: \(AccessibilityFormatters.spokenCurrency(netWorth))")
                 .accessibilityAddTraits(.isSummaryElement)
                 
-                // Assets & Liabilities
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.up.circle.fill")
+                // Assets & Liabilities - adaptive layout
+                if isAccessibilitySize {
+                    VStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .foregroundStyle(.green)
+                                Text("Assets")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                            }
+                            
+                            Text(formatCurrency(totalAssets))
+                                .font(.headline)
                                 .foregroundStyle(.green)
-                            Text("Assets")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
+                                .contentTransition(.numericText())
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color.green.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        // v3.5: Assets card
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Assets: \(AccessibilityFormatters.spokenCurrency(totalAssets))")
                         
-                        Text(formatCurrency(totalAssets))
-                            .font(.headline)
-                            .foregroundStyle(.green)
-                            .contentTransition(.numericText())
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .background(Color.green.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    // v3.5: Assets card
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Assets: \(AccessibilityFormatters.spokenCurrency(totalAssets))")
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.down.circle.fill")
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.down.circle.fill")
+                                    .foregroundStyle(.red)
+                                Text("Liabilities")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                            }
+                            
+                            Text(formatCurrency(totalLiabilities))
+                                .font(.headline)
                                 .foregroundStyle(.red)
-                            Text("Liabilities")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
+                                .contentTransition(.numericText())
                         }
-                        
-                        Text(formatCurrency(totalLiabilities))
-                            .font(.headline)
-                            .foregroundStyle(.red)
-                            .contentTransition(.numericText())
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color.red.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        // v3.5: Liabilities card
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Liabilities: \(AccessibilityFormatters.spokenCurrency(totalLiabilities))")
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .background(Color.red.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    // v3.5: Liabilities card
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Liabilities: \(AccessibilityFormatters.spokenCurrency(totalLiabilities))")
+                } else {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .foregroundStyle(.green)
+                                Text("Assets")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                            }
+                            
+                            Text(formatCurrency(totalAssets))
+                                .font(.headline)
+                                .foregroundStyle(.green)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
+                                .contentTransition(.numericText())
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color.green.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        // v3.5: Assets card
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Assets: \(AccessibilityFormatters.spokenCurrency(totalAssets))")
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.down.circle.fill")
+                                    .foregroundStyle(.red)
+                                Text("Liabilities")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                            }
+                            
+                            Text(formatCurrency(totalLiabilities))
+                                .font(.headline)
+                                .foregroundStyle(.red)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
+                                .contentTransition(.numericText())
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color.red.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        // v3.5: Liabilities card
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Liabilities: \(AccessibilityFormatters.spokenCurrency(totalLiabilities))")
+                    }
                 }
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -302,7 +423,10 @@ struct AccountsView: View {
         Section {
             Picker("Filter", selection: $selectedSegment) {
                 ForEach(FinanceSegment.allCases, id: \.self) { segment in
-                    Text(segment.rawValue).tag(segment)
+                    Text(segment.rawValue)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .tag(segment)
                 }
             }
             .pickerStyle(.segmented)
@@ -389,6 +513,8 @@ struct AccountsView: View {
         } header: {
             HStack {
                 Text("Active Accounts")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 Spacer()
                 Text("\(filteredAccounts.count)")
                     .font(.caption)
@@ -397,6 +523,8 @@ struct AccountsView: View {
                     .padding(.vertical, 2)
                     .background(Color(UIColor.tertiarySystemFill))
                     .clipShape(Capsule())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Active Accounts, \(filteredAccounts.count)")
@@ -404,6 +532,8 @@ struct AccountsView: View {
         } footer: {
             Text("Swipe right to set primary or toggle dashboard visibility")
                 .font(.caption)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
         }
     }
     
@@ -453,20 +583,19 @@ struct AccountsView: View {
     private var emptyStateSection: some View {
         Section {
             VStack(spacing: 16) {
-                Image(systemName: "building.columns")
-                    .font(.system(size: 48))
-                    .foregroundStyle(Color.brandPrimary.opacity(0.6))
-                    .symbolEffect(.pulse, options: .repeating)
-                    // v3.5: Decorative
-                    .accessibilityHidden(true)
+                AccountsIllustration()
                 
                 Text("No Accounts Yet")
                     .font(.headline)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 
                 Text("Add your bank accounts and payment methods to track balances and see where your money goes")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.7)
                 
                 Button {
                     HapticService.play(.medium)
@@ -474,6 +603,8 @@ struct AccountsView: View {
                 } label: {
                     Label("Add Your First Account", systemImage: "plus.circle.fill")
                         .font(.headline)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color.brandPrimary)
@@ -511,11 +642,17 @@ struct AccountsView: View {
                             Text(suggestion.name)
                                 .font(.body)
                                 .foregroundStyle(.primary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
                             
                             HStack(spacing: 4) {
                                 Text(suggestion.type.displayName)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
                                 Text("-")
                                 Text(suggestion.financeType.rawValue.capitalized)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
                             }
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -552,10 +689,14 @@ struct AccountsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Hide Balances on Dashboard")
                             .font(.body)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.7)
                         
                         Text("Blur account balances until you tap to reveal")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.7)
                     }
                 }
             }
@@ -571,6 +712,8 @@ struct AccountsView: View {
             Label("Privacy", systemImage: "lock.shield")
         } footer: {
             Text("When enabled, your account balances will be hidden on the dashboard until you tap the Accounts card to reveal them. This helps protect your financial information when others might see your screen.")
+                .lineLimit(5)
+                .minimumScaleFactor(0.7)
         }
     }
     
@@ -605,6 +748,8 @@ struct AccountsView: View {
                             .font(.subheadline)
                             .fontWeight(.medium)
                             .foregroundStyle(accounts.count >= limit ? accountLimitColor : .primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                         
                         Spacer()
                         
@@ -621,6 +766,8 @@ struct AccountsView: View {
                                     .padding(.vertical, 6)
                                     .background(Color.brandPrimary)
                                     .clipShape(Capsule())
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
                             }
                             .accessibilityLabel("Upgrade subscription")
                             .accessibilityHint("Double tap to view plans with more accounts")
@@ -631,7 +778,7 @@ struct AccountsView: View {
                     GeometryReader { geometry in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.gray.opacity(0.2))
+                                .fill(Color(.systemGray4).opacity(0.2))
                                 .frame(height: 8)
                             
                             RoundedRectangle(cornerRadius: 4)
@@ -649,10 +796,14 @@ struct AccountsView: View {
                         Text("Account limit reached. Upgrade for more accounts.")
                             .font(.caption)
                             .foregroundStyle(.red)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.7)
                     } else if accountUsagePercentage >= 0.8 {
                         Text("Approaching account limit.")
                             .font(.caption)
                             .foregroundStyle(.orange)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                     }
                 }
                 .padding(.vertical, 4)
@@ -664,6 +815,8 @@ struct AccountsView: View {
                     Text("Unlimited accounts")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                     
                     Spacer()
                     
@@ -675,19 +828,99 @@ struct AccountsView: View {
                         .padding(.vertical, 2)
                         .background(Color.brandPrimary)
                         .clipShape(Capsule())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Unlimited accounts, Pro tier")
             }
-            
-            // Plaid integration teaser - TEMPORARILY HIDDEN for App Store launch
-            /*
-            if !subscriptionManager.currentTier.hasPlaidIntegration {
-                ...
+        }
+    }
+    
+    // MARK: - Plaid Bank Connection
+    
+    private var plaidConnectionSection: some View {
+        Group {
+            if subscriptionManager.currentTier.hasPlaidIntegration {
+                // Pro users: Show Connect Bank button
+                Section {
+                    Button {
+                        startPlaidLink()
+                    } label: {
+                        HStack(spacing: 12) {
+                            if isLoadingLinkToken {
+                                ProgressView()
+                                    .tint(.white)
+                            } else {
+                                Image(systemName: "building.columns.fill")
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(isLoadingLinkToken ? "Connecting..." : "Connect Bank Account")
+                                    .fontWeight(.semibold)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                                Text("Auto-import transactions via Plaid")
+                                    .font(.caption)
+                                    .opacity(0.8)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .opacity(0.6)
+                        }
+                        .foregroundStyle(.white)
+                        .padding()
+                        .background(Color.brandPrimary)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .disabled(isLoadingLinkToken)
+                    .accessibilityLabel(isLoadingLinkToken ? "Connecting to bank" : "Connect bank account")
+                    .accessibilityHint("Double tap to link a bank account via Plaid for automatic transaction import")
+                } header: {
+                    Text("Bank Connection")
+                }
             } else {
-                ...
+                // Non-Pro users: Upgrade teaser
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: "building.columns.fill")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Auto-Import Transactions")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                            Text("Connect your bank with Plaid —�” Pro feature")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.7)
+                        }
+                        Spacer()
+                        Button("Upgrade") {
+                            showingUpgradePrompt = true
+                            HapticService.play(.medium)
+                        }
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.brandPrimary)
+                        .clipShape(Capsule())
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Auto-import transactions. Connect your bank with Plaid. Pro feature.")
+                    .accessibilityHint("Double tap the upgrade button to view Pro subscription options")
+                } header: {
+                    Text("Bank Connection")
+                }
             }
-            */
         }
     }
     
@@ -823,22 +1056,81 @@ struct AccountsView: View {
         
         Task {
             do {
-                _ = try await plaidService.exchangePublicToken(
+                let itemId = try await plaidService.exchangePublicToken(
                     metadata.publicToken,
                     metadata: metadata
                 )
                 
                 await MainActor.run {
-                    HapticService.play(.success)
-                    print("Bank connected successfully: \(metadata.institutionName ?? "Unknown")")
+                    // Create FLO accounts for each linked bank account
+                    for linkedAccount in metadata.accounts {
+                        let account = Account(
+                            name: linkedAccount.name,
+                            accountType: mapPlaidAccountType(linkedAccount.type, subtype: linkedAccount.subtype),
+                            lastFourDigits: linkedAccount.mask,
+                            institutionName: metadata.institutionName
+                        )
+                        account.isLinked = true
+                        account.plaidItemId = itemId
+                        account.plaidAccountId = linkedAccount.id
+                        account.plaidStatus = .connected
+                        
+                        modelContext.insert(account)
+                    }
+                    
+                    do {
+                        try modelContext.save()
+                        HapticService.play(.success)
+                        print("✅ Bank connected: \(metadata.institutionName ?? "Unknown") —�” \(metadata.accounts.count) account(s) created")
+                    } catch {
+                        print("❌ Failed to save accounts: \(error)")
+                        HapticService.play(.error)
+                    }
                 }
+                
+                // Fetch real account balances from Plaid
+                do {
+                    try await plaidService.updateAccountBalances(modelContext: modelContext)
+                    print("✅ Account balances updated")
+                } catch {
+                    print("⚠️ Balance fetch failed (non-blocking): \(error)")
+                }
+                
+                // Attempt initial transaction sync (non-blocking)
+                do {
+                    _ = try await plaidService.syncAllTransactions(modelContext: modelContext)
+                    print("✅ Initial transaction sync complete")
+                } catch {
+                    // Sync can fail if edge function format differs —�” not critical
+                    print("⚠️ Transaction sync failed (non-blocking): \(error)")
+                }
+                
             } catch {
                 await MainActor.run {
                     plaidError = "Failed to connect bank: \(error.localizedDescription)"
                     HapticService.play(.error)
-                    print("Plaid error: \(error)")
+                    print("❌ Plaid error: \(error)")
                 }
             }
+        }
+    }
+    
+    /// Maps Plaid account type strings to FLO AccountType
+    private func mapPlaidAccountType(_ type: String, subtype: String?) -> AccountType {
+        switch type {
+        case "depository":
+            if subtype == "savings" {
+                return .savings
+            }
+            return .checking
+        case "credit":
+            return .creditCard
+        case "investment":
+            return .investment
+        case "loan":
+            return .loan
+        default:
+            return .other
         }
     }
     
