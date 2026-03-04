@@ -1,9 +1,9 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-itunes-app" content="app-id=6756789373">
     <title>End User License Agreement - FLO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -25,7 +25,6 @@
             line-height: 1.6;
             color: var(--dark);
         }
-        /* Navigation */
         nav {
             background: white;
             padding: 1rem 0;
@@ -34,6 +33,338 @@
             top: 0;
             z-index: 100;
         }
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .logo-icon {
+            height: 40px;
+            margin-right: 0.5rem;
+            border-radius: 8px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+        .nav-links a {
+            color: var(--dark);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+        .page-hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        .page-hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .page-hero p {
+            opacity: 0.9;
+        }
+        .content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+        .content h2 {
+            font-size: 1.5rem;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+        .content h3 {
+            font-size: 1.2rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--dark);
+        }
+        .content p {
+            margin-bottom: 1rem;
+            color: #4B5563;
+        }
+        .content ul {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+        }
+        .content li {
+            margin-bottom: 0.5rem;
+            color: #4B5563;
+        }
+        .content a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .content a:hover {
+            text-decoration: underline;
+        }
+        .content pre {
+            background: var(--light);
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border);
+        }
+        .callout-warning {
+            background: #FFF3CD;
+            border-left: 4px solid #FFA500;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .callout-danger {
+            background: #FFE5E5;
+            border-left: 4px solid #DC3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        footer {
+            background: var(--dark);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+        .social-links {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+        .social-links a {
+            color: white;
+            font-size: 1.5rem;
+            transition: color 0.3s;
+        }
+        .social-links a:hover {
+            color: var(--primary);
+        }
+        @media (max-width: 768px) {
+            .page-hero h1 {
+                font-size: 2rem;
+            }
+            .nav-links {
+                display: none;
+            }
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="logo"><img src="FLO-icon.png" alt="FLO Icon" class="logo-icon"> FLO</a>
+            <ul class="nav-links">
+                <li><a href="index.html#features">Features</a></li>
+                <li><a href="index.html#technology">Technology</a></li>
+                <li><a href="index.html#pricing">Pricing</a></li>
+                <li><a href="index.html#security">Security</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li><a href="privacy.html">Privacy</a></li>
+                <li><a href="terms.html">Terms</a></li>
+                <li><a href="eula.html">EULA</a></li>
+                <li><a href="legal.html">Disclaimer</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="page-hero">
+        <h1>End User License Agreement (EULA)</h1>
+        <p>Last updated: January 13, 2026</p>
+    </section>
+
+    <div class="content">
+        <div class="callout-warning">
+            <strong>⚠️ Please Read Carefully:</strong> This End User License Agreement ("EULA") governs your use of the FLO mobile application software. By downloading, installing, or using FLO, you agree to be bound by this EULA. If you do not agree, do not download, install, or use the software.
+        </div>
+
+        <h2>1. Acceptance of Agreement</h2>
+        <p>By downloading, installing, or using FLO ("the Software"), provided by FINCH & POPPY CO. LLC ("Licensor", "we", "us", "our"), you ("Licensee" or "you") accept and agree to be bound by this EULA, our <a href="privacy.html">Privacy Policy</a>, and our <a href="terms.html">Terms of Service</a>. This EULA applies to all users of the Software.</p>
+
+        <h2>2. Description of Software</h2>
+        <p>FLO is a financial management software application for iOS devices, designed for freelancers, gig workers, and small business owners. The Software includes features such as:</p>
+        <ul>
+            <li>Transaction tracking and categorization</li>
+            <li>Budget creation and monitoring</li>
+            <li>Invoice generation and payment tracking</li>
+            <li>Receipt scanning and storage</li>
+            <li>Business mileage tracking</li>
+            <li>Tax estimate calculations</li>
+            <li>Financial reports and analytics</li>
+        </ul>
+        <p>These features are provided as software tools. They are <strong>not</strong> professional financial, tax, accounting, or legal advice. The Software is designed with privacy as a core principle, storing data locally on your device without servers collecting your information.</p>
+
+        <h2>3. Eligibility</h2>
+        <p>You must be at least 18 years old to download or use the Software. By agreeing to this EULA, you represent and warrant that you meet this age requirement.</p>
+
+        <h2>4. Scope of License</h2>
+        <p>Licensor grants to you a nontransferable license to use the Licensed Application on any Apple-branded products that you own or control and as permitted by the Usage Rules. The terms of this EULA will govern any content, materials, or services accessible from or purchased within the Licensed Application as well as upgrades provided by Licensor that replace or supplement the original Licensed Application, unless such upgrade is accompanied by a Custom EULA. Except as provided in the Usage Rules, you may not distribute or make the Licensed Application available over a network where it could be used by multiple devices at the same time. You may not transfer, redistribute or sublicense the Licensed Application and, if you sell your Apple Device to a third party, you must remove the Licensed Application from the Apple Device before doing so. You may not copy (except as permitted by this license and the Usage Rules), reverse-engineer, disassemble, attempt to derive the source code of, modify, or create derivative works of the Licensed Application, any updates, or any part thereof (except as and only to the extent that any foregoing restriction is prohibited by applicable law or to the extent as may be permitted by the licensing terms governing use of any open-sourced components included with the Licensed Application).</p>
+
+        <h2>5. License Restrictions</h2>
+        <p>You agree not to, and not to permit others to:</p>
+        <ul>
+            <li>Copy, modify, adapt, translate, reverse engineer, decompile, disassemble, or create derivative works of the Software</li>
+            <li>Rent, lease, lend, sell, sublicense, assign, distribute, or transfer the Software</li>
+            <li>Remove, alter, or obscure any copyright, trademark, or proprietary notices in the Software</li>
+            <li>Use the Software for any illegal purpose or in violation of any applicable laws</li>
+            <li>Access or attempt to access the Software's source code or underlying algorithms</li>
+            <li>Use the Software to develop competing products or services</li>
+            <li>Interfere with the Software's security features or functionality</li>
+            <li>Use automated systems (e.g., bots) to access or extract data from the Software</li>
+        </ul>
+        <p>Violation of these restrictions may result in immediate termination of your license.</p>
+
+        <h2>6. Ownership and Intellectual Property</h2>
+        <p>The Software, including all code, graphics, user interfaces, and documentation, is owned by FINCH & POPPY CO. LLC and protected by copyright, trademark, and other intellectual property laws. This EULA does not transfer any ownership rights to you. All rights not expressly granted are reserved by us.</p>
+        <p>"FLO" and associated logos are our trademarks. You may not use them without prior written permission. The Software may include open-source components governed by their respective licenses.</p>
+        <p>Portions of the Software are licensed under the MIT License:</p>
+        <pre>
+MIT License
+Copyright (c) 2025 Finch & Poppy Co. LLC
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+        </pre>
+
+        <h2>7. Consent to Use of Data</h2>
+        <p>You agree that Licensor may collect and use technical data and related information—including but not limited to technical information about your device, system and application software, and peripherals—that is gathered periodically to facilitate the provision of software updates, product support, and other services to you (if any) related to the Licensed Application. Licensor may use this information, as long as it is in a form that does not personally identify you, to improve its products or to provide services or technologies to you.</p>
+        <p>You retain ownership of data you enter into the Software ("User Data"). By using the Software, you grant us a limited license to process and store User Data solely to provide the Software's functionality.</p>
+        <p>All User Data is stored locally on your device by default. Optional iCloud sync and Plaid bank connections may transmit data securely when enabled by you. We do not collect or transmit your financial data to our servers. You are responsible for the accuracy of User Data and for backing it up. We are not liable for data loss. For details on data types (e.g., location for mileage, camera for receipts), see our <a href="privacy.html">Privacy Policy</a>.</p>
+
+        <h2>8. Updates and Modifications</h2>
+        <p>We may provide updates to the Software. You must install updates to continue using it. We reserve the right to modify or discontinue features without notice.</p>
+
+        <h2>9. Third-Party Components and External Services</h2>
+        <p>The Software may include third-party software (e.g., open-source libraries) governed by their own licenses. Apple iOS terms also apply.</p>
+        <p>The Licensed Application may enable access to Licensor's and/or third-party services and websites (collectively and individually, "External Services"). You agree to use the External Services at your sole risk. Licensor is not responsible for examining or evaluating the content or accuracy of any third-party External Services, and shall not be liable for any such third-party External Services. Data displayed by any Licensed Application or External Service, including but not limited to financial, medical and location information, is for general informational purposes only and is not guaranteed by Licensor or its agents. You will not use the External Services in any manner that is inconsistent with the terms of this Standard EULA or that infringes the intellectual property rights of Licensor or any third party. You agree not to use the External Services to harass, abuse, stalk, threaten or defame any person or entity, and that Licensor is not responsible for any such use. External Services may not be available in all languages or in your Home Country, and may not be appropriate or available for use in any particular location. To the extent you choose to use such External Services, you are solely responsible for compliance with any applicable laws. Licensor reserves the right to change, suspend, remove, disable or impose access restrictions or limits on any External Services at any time without notice or liability to you.</p>
+        <h3>Bank Sync (Plaid)</h3>
+        <p>The Software includes optional bank account linking using Plaid Inc.'s secure platform. This feature allows Pro tier users to connect their bank accounts to automate transaction imports and balance updates. It is completely optional, and financial data is processed through a secure encrypted relay — no personal banking information is stored on our servers.</p>
+        <p>When using Plaid:</p>
+        <ul>
+            <li>User consent is required for all connections.</li>
+            <li>Bank credentials are handled transiently and not stored long-term by Plaid.</li>
+            <li>Data is encrypted in transit and at rest, with bank-level security measures.</li>
+            <li>Users have rights to access, rectify, erase, and port their data.</li>
+            <li>Plaid does not sell user data and shares it only as necessary for the service (e.g., with financial institutions and the integrating app).</li>
+            <li>Transaction data is used for services like fraud prevention and insights but remains under user control.</li>
+            <li>Users can manage connections and delete data via Plaid's portal.</li>
+        </ul>
+        <p>You will be subject to Plaid's terms (<a href="https://plaid.com/legal" target="_blank">plaid.com/legal</a>). We are not responsible for Plaid's services or data handling.</p>
+
+        <h2>10. Disclaimers</h2>
+        <div class="callout-danger">
+            <h3 style="margin-top: 0;">⚠️ Critical Disclaimer</h3>
+            <p><strong>The Software is provided "AS IS" without warranties. It is NOT professional advice.</strong></p>
+        </div>
+        <p>YOU EXPRESSLY ACKNOWLEDGE AND AGREE THAT USE OF THE LICENSED APPLICATION IS AT YOUR SOLE RISK. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSED APPLICATION AND ANY SERVICES PERFORMED OR PROVIDED BY THE LICENSED APPLICATION ARE PROVIDED "AS IS" AND "AS AVAILABLE," WITH ALL FAULTS AND WITHOUT WARRANTY OF ANY KIND, AND LICENSOR HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS WITH RESPECT TO THE LICENSED APPLICATION AND ANY SERVICES, EITHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES AND/OR CONDITIONS OF MERCHANTABILITY, OF SATISFACTORY QUALITY, OF FITNESS FOR A PARTICULAR PURPOSE, OF ACCURACY, OF QUIET ENJOYMENT, AND OF NONINFRINGEMENT OF THIRD-PARTY RIGHTS. NO ORAL OR WRITTEN INFORMATION OR ADVICE GIVEN BY LICENSOR OR ITS AUTHORIZED REPRESENTATIVE SHALL CREATE A WARRANTY. SHOULD THE LICENSED APPLICATION OR SERVICES PROVE DEFECTIVE, YOU ASSUME THE ENTIRE COST OF ALL NECESSARY SERVICING, REPAIR, OR CORRECTION. SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OF IMPLIED WARRANTIES OR LIMITATIONS ON APPLICABLE STATUTORY RIGHTS OF A CONSUMER, SO THE ABOVE EXCLUSION AND LIMITATIONS MAY NOT APPLY TO YOU.</p>
+        <p>No warranties of merchantability, fitness, accuracy, or non-infringement. Use at your own risk. For tax, mileage, and receipt limitations, see our <a href="legal.html">Tax & Legal Disclaimer</a>.</p>
+
+        <h2>11. Limitation of Liability</h2>
+        <p>TO THE EXTENT NOT PROHIBITED BY LAW, IN NO EVENT SHALL LICENSOR BE LIABLE FOR PERSONAL INJURY OR ANY INCIDENTAL, SPECIAL, INDIRECT, OR CONSEQUENTIAL DAMAGES WHATSOEVER, INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOSS OF PROFITS, LOSS OF DATA, BUSINESS INTERRUPTION, OR ANY OTHER COMMERCIAL DAMAGES OR LOSSES, ARISING OUT OF OR RELATED TO YOUR USE OF OR INABILITY TO USE THE LICENSED APPLICATION, HOWEVER CAUSED, REGARDLESS OF THE THEORY OF LIABILITY (CONTRACT, TORT, OR OTHERWISE) AND EVEN IF LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. SOME JURISDICTIONS DO NOT ALLOW THE LIMITATION OF LIABILITY FOR PERSONAL INJURY, OR OF INCIDENTAL OR CONSEQUENTIAL DAMAGES, SO THIS LIMITATION MAY NOT APPLY TO YOU. In no event shall Licensor's total liability to you for all damages (other than as may be required by applicable law in cases involving personal injury) exceed the amount of fifty dollars ($50.00). The foregoing limitations will apply even if the above stated remedy fails of its essential purpose.</p>
+        <p>We are not liable for any damages, including indirect, consequential, or punitive damages. Our total liability is limited to amounts paid for the Software (or $50 if free).</p>
+
+        <h2>12. Indemnification</h2>
+        <p>You agree to indemnify us from claims arising from your use of the Software or violation of this EULA.</p>
+
+        <h2>13. Termination</h2>
+        <p>This Standard EULA is effective until terminated by you or Licensor. Your rights under this Standard EULA will terminate automatically if you fail to comply with any of its terms.</p>
+        <p>This license terminates if you violate the EULA. Upon termination, you must delete the Software.</p>
+
+        <h2>14. Export Restrictions</h2>
+        <p>You may not use or otherwise export or re-export the Licensed Application except as authorized by United States law and the laws of the jurisdiction in which the Licensed Application was obtained. In particular, but without limitation, the Licensed Application may not be exported or re-exported (a) into any U.S.-embargoed countries or (b) to anyone on the U.S. Treasury Department's Specially Designated Nationals List or the U.S. Department of Commerce Denied Persons List or Entity List. By using the Licensed Application, you represent and warrant that you are not located in any such country or on any such list. You also agree that you will not use these products for any purposes prohibited by United States law, including, without limitation, the development, design, manufacture, or production of nuclear, missile, or chemical or biological weapons.</p>
+
+        <h2>15. U.S. Government Restricted Rights</h2>
+        <p>The Licensed Application and related documentation are "Commercial Items", as that term is defined at 48 C.F.R. §2.101, consisting of "Commercial Computer Software" and "Commercial Computer Software Documentation", as such terms are used in 48 C.F.R. §12.212 or 48 C.F.R. §227.7202, as applicable. Consistent with 48 C.F.R. §12.212 or 48 C.F.R. §227.7202-1 through 227.7202-4, as applicable, the Commercial Computer Software and Commercial Computer Software Documentation are being licensed to U.S. Government end users (a) only as Commercial Items and (b) with only those rights as are granted to all other end users pursuant to the terms and conditions herein. Unpublished-rights reserved under the copyright laws of the United States.</p>
+
+        <h2>16. Governing Law</h2>
+        <p>This Agreement and the relationship between you and Licensor shall be governed by the laws of the State of Kentucky, USA, without regard to conflict of law provisions. You agree to submit to the personal and exclusive jurisdiction of the courts located within the Commonwealth of Kentucky to resolve any dispute or claim arising from this Agreement.</p>
+        <p>If (a) you are not a U.S. citizen; (b) you do not reside in the U.S.; (c) you are not accessing the Service from the U.S.; and (d) you are a citizen of a European Union country, Switzerland, Norway, or Iceland, the governing law and forum shall be the laws and courts of your usual place of residence.</p>
+        <p>Specifically excluded from application to this Agreement is that law known as the United Nations Convention on the International Sale of Goods.</p>
+
+        <h2>17. Changes to EULA</h2>
+        <p>We may update this EULA. Continued use constitutes acceptance.</p>
+
+        <h2>18. No Professional Relationship</h2>
+        <p>Use of the Software does not create a professional relationship between you and FINCH & POPPY CO. LLC, its employees, or any tax professionals. The Software is a self-service tool for personal financial organization. We do not provide tax preparation services, represent you before tax authorities, or assume responsibility for your tax filings or financial decisions.</p>
+
+        <h2>19. Contact</h2>
+        <p>Email: <a href="mailto:flo.financeapp@gmail.com">flo.financeapp@gmail.com</a></p>
+
+        <h2>Related Documents</h2>
+        <ul>
+            <li><a href="privacy.html">Privacy Policy</a></li>
+            <li><a href="terms.html">Terms of Service</a></li>
+            <li><a href="legal.html">Tax & Legal Disclaimer</a></li>
+        </ul>
+    </div>
+
+    <footer>
+        <div class="footer-links">
+            <a href="index.html">Home</a>
+            <a href="contact.html">Contact</a>
+            <a href="privacy.html">Privacy Policy</a>
+            <a href="terms.html">Terms of Service</a>
+            <a href="eula.html">EULA</a>
+            <a href="legal.html">Legal Disclaimer</a>
+        </div>
+        <div class="social-links">
+            <a href="https://www.instagram.com/flo.financeapp" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="mailto:flo.financeapp@gmail.com" title="Email"><i class="fas fa-envelope"></i></a>
+        </div>
+        <p style="margin-top: 2rem; opacity: 0.7;">&copy; 2026 Finch & Poppy Co LLC. All rights reserved.</p>
+        <p style="opacity: 0.7;">Made with &#10084;&#65039; by Finch & Poppy Co LLC</p>
+    </footer>
+</body>
+</html>
         .nav-container {
             max-width: 1200px;
             margin: 0 auto;
