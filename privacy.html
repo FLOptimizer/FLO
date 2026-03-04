@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-itunes-app" content="app-id=6756789373">
     <title>Privacy Policy - FLO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -24,7 +25,6 @@
             line-height: 1.6;
             color: var(--dark);
         }
-        /* Navigation */
         nav {
             background: white;
             padding: 1rem 0;
@@ -34,6 +34,368 @@
             z-index: 100;
         }
         .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .logo-icon {
+            height: 40px;
+            margin-right: 0.5rem;
+            border-radius: 8px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+        .nav-links a {
+            color: var(--dark);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+        .page-hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        .page-hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .page-hero p {
+            opacity: 0.9;
+        }
+        .content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+        .content h2 {
+            font-size: 1.5rem;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+        .content h3 {
+            font-size: 1.2rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--dark);
+        }
+        .content p {
+            margin-bottom: 1rem;
+            color: #4B5563;
+        }
+        .content ul {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+        }
+        .content li {
+            margin-bottom: 0.5rem;
+            color: #4B5563;
+        }
+        .content a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .content a:hover {
+            text-decoration: underline;
+        }
+        .callout {
+            background: #FFF3CD;
+            border-left: 4px solid #FFA500;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        footer {
+            background: var(--dark);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+        .social-links {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+        .social-links a {
+            color: white;
+            font-size: 1.5rem;
+            transition: color 0.3s;
+        }
+        .social-links a:hover {
+            color: var(--primary);
+        }
+        @media (max-width: 768px) {
+            .page-hero h1 {
+                font-size: 2rem;
+            }
+            .nav-links {
+                display: none;
+            }
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="logo"><img src="FLO-icon.png" alt="FLO Icon" class="logo-icon"> FLO</a>
+            <ul class="nav-links">
+                <li><a href="index.html#features">Features</a></li>
+                <li><a href="index.html#technology">Technology</a></li>
+                <li><a href="index.html#pricing">Pricing</a></li>
+                <li><a href="index.html#security">Security</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li><a href="privacy.html">Privacy</a></li>
+                <li><a href="terms.html">Terms</a></li>
+                <li><a href="eula.html">EULA</a></li>
+                <li><a href="legal.html">Disclaimer</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="page-hero">
+        <h1>Privacy Policy</h1>
+        <p>Last updated: December 16, 2025</p>
+    </section>
+
+    <div class="content">
+        <p>FINCH & POPPY CO. LLC ("us", "we", or "our") operates the FLO mobile application (the "Service"). This page informs you of our policies regarding the collection, use, and disclosure of personal data when you use our Service and the choices you have associated with that data.</p>
+
+        <div class="callout">
+            <strong>Privacy First:</strong> FLO is designed with privacy as a core principle. Your financial data stays on YOUR device by default. We don't have servers collecting your transactions, and we can't see your financial information.
+        </div>
+
+        <h2>Information Collection and Use</h2>
+        <p>We collect several different types of information for various purposes to provide and improve our Service to you. FLO is designed to keep your data local on your device. We do not collect or transmit your financial data to our servers unless explicitly shared by you (e.g., via exports or optional features like bank sync).</p>
+
+        <h3>Types of Data Collected</h3>
+        <ul>
+            <li><strong>Personal Data:</strong> While using our Service, we may ask you to provide us with certain personally identifiable information that can be used to contact or identify you ("Personal Data"). This may include:
+                <ul>
+                    <li>Email addresses for invoicing or contact purposes (optional)</li>
+                    <li>Client information you enter for invoice generation</li>
+                    <li>Business name and tax information you provide in settings</li>
+                </ul>
+            </li>
+            <li><strong>Financial Data:</strong> The app stores transaction details, budgets, invoices, receipts, mileage logs, and tax estimates <strong>locally on your device only</strong>. This includes:
+                <ul>
+                    <li>Amounts, dates, merchants, categories, and notes</li>
+                    <li>Budget allocations and spending limits</li>
+                    <li>Invoice details and payment tracking</li>
+                    <li>Tax estimate calculations and quarterly reminders</li>
+                    <li>Receipt images and extracted data</li>
+                </ul>
+                All financial data is secured with optional biometric (Face ID/Touch ID) or passcode protection.
+            </li>
+            <li><strong>Location Data:</strong> For mileage tracking features, we collect location data (with your explicit permission) to:
+                <ul>
+                    <li>Calculate distances traveled for business purposes</li>
+                    <li>Track GPS coordinates during trips</li>
+                    <li>Calculate IRS-compliant mileage deductions</li>
+                </ul>
+                Location data is stored <strong>locally on your device only</strong> and is never transmitted to our servers. Background location is only used when you actively enable mileage tracking.
+            </li>
+            <li><strong>Camera/Photos Data:</strong> For receipt scanning features, we access your camera or photo library (with your permission) to:
+                <ul>
+                    <li>Capture receipt images</li>
+                    <li>Extract transaction data via on-device OCR (Optical Character Recognition)</li>
+                </ul>
+                Images are stored locally in the app's secure container and are not uploaded to any server.
+            </li>
+            <li><strong>Notification Data:</strong> If you enable notifications, we use Apple's local notification system to send:
+                <ul>
+                    <li>Quarterly tax deadline reminders</li>
+                    <li>Invoice payment due alerts</li>
+                    <li>Budget threshold warnings</li>
+                    <li>Mileage tracking status updates</li>
+                </ul>
+                These notifications are generated locally on your device.
+            </li>
+            <li><strong>Usage Data:</strong> We may collect non-identifiable information on how the Service is accessed and used, such as:
+                <ul>
+                    <li>App version and build number</li>
+                    <li>Device type and iOS version</li>
+                    <li>Crash logs (anonymized) for diagnostics</li>
+                </ul>
+                This helps us improve app performance and fix bugs.
+            </li>
+        </ul>
+
+        <h3>Use of Data</h3>
+        <p>FLO uses the collected data for:</p>
+        <ul>
+            <li>Providing core financial tracking features (transactions, budgets, reports, tax estimates)</li>
+            <li>Automating tasks like recurring transactions and notifications</li>
+            <li>Calculating tax estimates based on IRS guidelines</li>
+            <li>Generating invoices and tracking payments</li>
+            <li>Recording business mileage for tax deductions</li>
+            <li>On-device machine learning for spending predictions and anomaly detection (Pro tier)</li>
+            <li>Improving app performance, security, and user experience</li>
+        </ul>
+        <p><strong>We do not share your data with third parties</strong> except as required by law or with your explicit consent (e.g., when you export reports or share invoices).</p>
+
+        <h2>Data Storage and Sync</h2>
+        <h3>Local Storage</h3>
+        <p>All your data is stored locally on your device using Apple's SwiftData framework. This means:</p>
+        <ul>
+            <li>Your financial information never leaves your device unless you explicitly export it or enable optional sync features</li>
+            <li>We cannot access your data - we don't have the keys or infrastructure to do so</li>
+            <li>Data is isolated within the app's secure container</li>
+            <li>If you delete the app, all data is permanently removed from your device</li>
+        </ul>
+
+        <h3>iCloud Sync (Optional)</h3>
+        <p>If you enable iCloud sync, your data will be stored in your personal iCloud account. This means:</p>
+        <ul>
+            <li>Data is synced across your devices signed in with the same Apple ID</li>
+            <li>Data is encrypted by Apple in transit and at rest</li>
+            <li>We still cannot access your data - it's stored in YOUR iCloud, not ours</li>
+            <li>You can disable iCloud sync at any time in Settings</li>
+        </ul>
+
+        <h2>Bank Account Linking (Plaid)</h2>
+        <p>Pro tier users can optionally link bank accounts using Plaid Inc.'s secure platform to access transaction data with explicit permission. This involves:</p>
+        <ul>
+            <li><strong>Data Retrieved:</strong> Account balances, transaction history, account holder information</li>
+            <li><strong>Security:</strong> Your bank credentials are NEVER stored by FLO - they remain securely with Plaid using bank-level encryption</li>
+            <li><strong>Processing:</strong> Data is routed through a secure encrypted backend relay. No banking information is stored on our servers.</li>
+            <li><strong>Control:</strong> You can disconnect linked accounts at any time in Settings</li>
+            <li><strong>Third Party:</strong> Review Plaid's privacy policy at <a href="https://plaid.com/legal" target="_blank">plaid.com/legal</a></li>
+        </ul>
+
+        <h2>On-Device Machine Learning</h2>
+        <p>FLO uses Apple's CreateML framework for spending predictions and anomaly detection. All ML processing occurs entirely on your device:</p>
+        <ul>
+            <li>No financial data is transmitted to external servers for ML purposes</li>
+            <li>ML models are trained locally using only your data</li>
+            <li>Predictions and insights are generated on-device</li>
+            <li>ML features are available to Premium and Pro tier subscribers</li>
+        </ul>
+
+        <h2>Security</h2>
+        <p>We value your trust in providing us your Personal Data, thus we are striving to use commercially acceptable means of protecting it:</p>
+        <ul>
+            <li><strong>Local Storage:</strong> Data is stored securely on your device using Apple's SwiftData framework with iOS sandboxing</li>
+            <li><strong>Encryption:</strong> Optional biometric (Face ID/Touch ID) or passcode protection adds an additional layer of security</li>
+            <li><strong>No Cloud Storage:</strong> By default, we don't transmit your financial data to any servers</li>
+            <li><strong>App Lock:</strong> Require Face ID, Touch ID, or passcode to access the app</li>
+            <li><strong>Secure Exports:</strong> When you export data, files are encrypted and shared only via iOS secure sharing methods</li>
+        </ul>
+        <p>However, remember that no method of transmission over the internet, or method of electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your Personal Data, we cannot guarantee its absolute security.</p>
+
+        <h2>Your Rights and Choices</h2>
+        <p>You have control over your data:</p>
+        <ul>
+            <li><strong>Access:</strong> View all your data within the app at any time</li>
+            <li><strong>Export:</strong> Export your data as CSV or PDF from Settings > Export Data</li>
+            <li><strong>Delete:</strong> Delete individual transactions or all data from Settings > Data Management</li>
+            <li><strong>Permissions:</strong> Manage location, camera, and notification permissions in iOS Settings > FLO</li>
+            <li><strong>App Deletion:</strong> Deleting the app permanently removes all data from your device</li>
+        </ul>
+
+        <h2>Children's Privacy</h2>
+        <p>Our Service does not address anyone under the age of 13. We do not knowingly collect personally identifiable information from children under 13. If you are a parent or guardian and you are aware that your child has provided us with Personal Data, please contact us.</p>
+
+        <h2>California Privacy Rights (CCPA)</h2>
+        <p>If you are a California resident, you have the right to:</p>
+        <ul>
+            <li>Know what personal information we collect and how we use it</li>
+            <li>Request deletion of your personal information</li>
+            <li>Opt-out of the sale of personal information (we don't sell your data)</li>
+        </ul>
+        <p>To exercise these rights, contact us at <a href="mailto:flo.financeapp@gmail.com">flo.financeapp@gmail.com</a>.</p>
+
+        <h2>European Privacy Rights (GDPR)</h2>
+        <p>If you are in the European Economic Area (EEA), you have rights including:</p>
+        <ul>
+            <li>Access to your personal data</li>
+            <li>Rectification of inaccurate data</li>
+            <li>Erasure ("right to be forgotten")</li>
+            <li>Data portability (via our export features)</li>
+        </ul>
+
+        <h2>Tax Estimates Disclaimer</h2>
+        <p><strong>Important:</strong> FLO provides tax estimation features for informational purposes only. These are NOT official tax advice. See our <a href="legal.html">Legal Disclaimer</a> for full details. Always consult a qualified tax professional before filing taxes or making financial decisions.</p>
+
+        <h2>Changes to This Privacy Policy</h2>
+        <p>We may update our Privacy Policy from time to time. We will notify you of any changes by:</p>
+        <ul>
+            <li>Posting the new Privacy Policy on this page</li>
+            <li>Updating the "Last updated" date at the top</li>
+            <li>Notifying you via in-app alert for significant changes</li>
+        </ul>
+        <p>You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.</p>
+
+        <h2>Contact Information</h2>
+        <p>For questions about this Privacy Policy, please contact us:</p>
+        <ul>
+            <li><strong>Email:</strong> <a href="mailto:flo.financeapp@gmail.com">flo.financeapp@gmail.com</a></li>
+            <li><strong>Website:</strong> <a href="https://floptimizer.github.io/FLO">floptimizer.github.io/FLO</a></li>
+            <li><strong>Company:</strong> FINCH & POPPY CO. LLC</li>
+        </ul>
+
+        <h2>Related Documents</h2>
+        <ul>
+            <li><a href="terms.html">Terms of Service</a></li>
+            <li><a href="eula.html">End User License Agreement</a></li>
+            <li><a href="legal.html">Tax & Legal Disclaimer</a></li>
+        </ul>
+    </div>
+
+    <footer>
+        <div class="footer-links">
+            <a href="index.html">Home</a>
+            <a href="contact.html">Contact</a>
+            <a href="privacy.html">Privacy Policy</a>
+            <a href="terms.html">Terms of Service</a>
+            <a href="eula.html">EULA</a>
+            <a href="legal.html">Legal Disclaimer</a>
+        </div>
+        <div class="social-links">
+            <a href="https://www.instagram.com/flo.financeapp" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="mailto:flo.financeapp@gmail.com" title="Email"><i class="fas fa-envelope"></i></a>
+        </div>
+        <p style="margin-top: 2rem; opacity: 0.7;">&copy; 2026 Finch & Poppy Co LLC. All rights reserved.</p>
+        <p style="opacity: 0.7;">Made with &#10084;&#65039; by Finch & Poppy Co LLC</p>
+    </footer>
+</body>
+</html>
             max-width: 1200px;
             margin: 0 auto;
             padding: 0 2rem;
