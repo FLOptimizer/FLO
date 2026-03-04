@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="FLO - Comprehensive financial management for freelancers and small businesses. Track income/expenses, budgets, invoices, mileage, taxes, and more with business/personal separation.">
-    <title>FLO - Financial Management for Freelancers</title>
+    <meta name="description" content="FLO — Smart finance and tax tracker for self-employed professionals. Quarterly tax estimates, invoicing, mileage tracking, AI insights, Apple Watch, and more. Privacy-first, on-device.">
+    <meta name="apple-itunes-app" content="app-id=6756789373">
+    <title>FLO: Smart Finance & Tax Tracker</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
@@ -83,6 +84,9 @@
             font-size: 1.25rem;
             margin-bottom: 2rem;
             opacity: 0.9;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
         }
         .cta-buttons {
             display: flex;
@@ -127,13 +131,22 @@
         section h2 {
             font-size: 2.5rem;
             text-align: center;
-            margin-bottom: 3rem;
+            margin-bottom: 1rem;
             color: var(--dark);
+        }
+        .section-subtitle {
+            text-align: center;
+            color: #6B7280;
+            font-size: 1.1rem;
+            margin-bottom: 3rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
         }
         /* Features Grid */
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 2rem;
         }
         .feature-card {
@@ -153,12 +166,31 @@
             margin-bottom: 1rem;
         }
         .feature-card h3 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
             color: var(--dark);
         }
         .feature-card p {
             color: #6B7280;
+            font-size: 0.95rem;
+        }
+        .feature-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.75rem;
+        }
+        .badge-new {
+            background: #DBEAFE;
+            color: #1D4ED8;
+        }
+        .badge-pro {
+            background: #FEF3C7;
+            color: #92400E;
         }
         /* Integration Section */
         .integration {
@@ -193,7 +225,7 @@
         .integration-image {
             text-align: center;
         }
-        .plaid-badge {
+        .platform-badge {
             display: inline-block;
             padding: 1rem 2rem;
             background: white;
@@ -206,7 +238,7 @@
         .tech-stack {
             display: flex;
             flex-wrap: wrap;
-            gap: 1rem;
+            gap: 0.75rem;
             justify-content: center;
             margin-top: 2rem;
         }
@@ -217,6 +249,7 @@
             border-radius: 8px;
             font-weight: 600;
             color: var(--dark);
+            font-size: 0.9rem;
         }
         /* Security Section */
         .security-grid {
@@ -235,6 +268,101 @@
         .security-item i {
             color: var(--secondary);
             margin-right: 0.5rem;
+        }
+        /* Pricing Section */
+        .pricing {
+            background: var(--light);
+        }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .pricing-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2.5rem 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
+            transition: transform 0.3s;
+        }
+        .pricing-card:hover {
+            transform: translateY(-4px);
+        }
+        .pricing-card.featured {
+            border: 2px solid var(--primary);
+        }
+        .pricing-card.featured::before {
+            content: "Most Popular";
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 1rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .pricing-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .pricing-card .price {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 0.25rem;
+        }
+        .pricing-card .price-period {
+            color: #6B7280;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+        .pricing-card ul {
+            list-style: none;
+            margin-bottom: 2rem;
+        }
+        .pricing-card li {
+            padding: 0.4rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            color: #4B5563;
+            font-size: 0.95rem;
+        }
+        .pricing-card li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--secondary);
+            font-weight: bold;
+        }
+        .pricing-cta {
+            display: block;
+            text-align: center;
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .pricing-cta-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .pricing-cta-primary:hover {
+            background: var(--primary-dark);
+        }
+        .pricing-cta-secondary {
+            background: var(--light);
+            color: var(--dark);
+            border: 2px solid var(--border);
+        }
+        .pricing-cta-secondary:hover {
+            border-color: var(--primary);
+            color: var(--primary);
         }
         /* CTA Section */
         .cta-section {
@@ -305,6 +433,12 @@
             section h2 {
                 font-size: 2rem;
             }
+            .pricing-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin-left: auto;
+                margin-right: auto;
+            }
         }
         /* Smooth Scroll */
         html {
@@ -319,32 +453,37 @@
             <a href="index.html" class="logo"><img src="FLO-icon.png" alt="FLO Icon" class="logo-icon"> FLO</a>
             <ul class="nav-links">
                 <li><a href="#features">Features</a></li>
-                <li><a href="#integration">Technology</a></li>
+                <li><a href="#technology">Technology</a></li>
+                <li><a href="#pricing">Pricing</a></li>
                 <li><a href="#security">Security</a></li>
                 <li><a href="contact.html">Contact</a></li>
                 <li><a href="privacy.html">Privacy</a></li>
                 <li><a href="terms.html">Terms</a></li>
-                <li><a href="eula.html">EULA</a></li>  <!-- Insert this new line here -->
+                <li><a href="eula.html">EULA</a></li>
                 <li><a href="legal.html">Disclaimer</a></li>
-                <li><a href="https://github.com/FLOco/FLO" target="_blank">GitHub</a></li>
             </ul>
         </div>
     </nav>
+
     <!-- Hero Section -->
     <section class="hero">
-        <h1>Financial Management for Freelancers</h1>
-        <p>Your all-in-one iOS app for tracking income/expenses, budgets, invoices, mileage, taxes, and more—with seamless business/personal separation.</p>
+        <h1>Smart Finance & Tax Tracker</h1>
+        <p>Take control of irregular income, maximize deductions, and stay ahead of quarterly taxes — all from your phone. Built for self-employed professionals.</p>
         <div class="cta-buttons">
-            <a href="#features" class="btn btn-primary">Learn More</a>
-            <a href="https://github.com/FLOco/FLO" class="btn btn-secondary" target="_blank">
-                <i class="fab fa-github"></i> View on GitHub
+            <a href="https://apps.apple.com/us/app/finance-ledger-optimizer/id6756789373" class="btn btn-primary">
+                <i class="fab fa-apple"></i> Download on the App Store
+            </a>
+            <a href="#features" class="btn btn-secondary">
+                Learn More
             </a>
         </div>
     </section>
+
     <!-- Features Section -->
     <section id="features">
         <div class="container">
-            <h2>Everything You Need to Manage Your Finances</h2>
+            <h2>Everything You Need in One App</h2>
+            <p class="section-subtitle">Proactive tax planning, professional invoicing, and smart expense management — no accounting degree required.</p>
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon"><i class="fas fa-chart-pie"></i></div>
@@ -352,126 +491,217 @@
                     <p>Real-time summaries of income, expenses, budgets, invoices, mileage, and tax estimates with business/personal filtering.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon"><i class="fas fa-exchange-alt"></i></div>
-                    <h3>Transactions Management</h3>
-                    <p>Add/edit/list transactions with auto-categorization, receipt matching, and recurring automation for business/personal finances.</p>
+                    <div class="feature-icon"><i class="fas fa-calculator"></i></div>
+                    <h3>Proactive Tax Planning</h3>
+                    <p>Real-time quarterly tax estimates using current IRS rates. See exactly what you'll owe before it's due — not after.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <h3>Professional Invoicing</h3>
+                    <p>Create and send branded PDF invoices in seconds. Track payments, send reminders, and manage aging reports.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon"><i class="fas fa-receipt"></i></div>
-                    <h3>Receipts & Scanning</h3>
-                    <p>OCR scanning, intelligent splitting, matching to transactions, and tax deduction suggestions—all stored securely on-device.</p>
+                    <h3>Smart Receipt Scanning</h3>
+                    <p>Instant OCR scanning with intelligent data extraction. Auto-categorize expenses and flag tax deductions.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon"><i class="fas fa-wallet"></i></div>
-                    <h3>Budgets Management</h3>
-                    <p>Create/track budgets by type (envelope, zero-based) with rollovers, warnings, and integration with recurring transactions.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon"><i class="fas fa-file-invoice"></i></div>
-                    <h3>Invoices & Clients</h3>
-                    <p>Generate invoices, manage clients, send reminders, track payments, and generate aging reports with stats.</p>
+                    <h3>Envelope Budgets</h3>
+                    <p>Create envelope-style budgets with rollover. Track spending in real-time with automatic business/personal separation.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon"><i class="fas fa-car"></i></div>
-                    <h3>Mileage & Taxes</h3>
-                    <p>Auto/manual tracking with IRS deductions, tax estimates using 2025 brackets, and year-end summaries.</p>
+                    <h3>GPS Mileage Tracking</h3>
+                    <p>IRS-compliant automated mileage tracking with GPS. Live Activities show trip progress right on your Lock Screen.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-badge badge-new">New in 2.0</span>
+                    <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+                    <h3>Debt-Free Planning</h3>
+                    <p>Snowball and avalanche payoff strategies with side-by-side comparison. See exactly when you'll be debt-free.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-badge badge-new">New in 2.0</span>
+                    <div class="feature-icon"><i class="fas fa-brain"></i></div>
+                    <h3>AI-Powered Insights</h3>
+                    <p>On-device machine learning predicts spending patterns and detects anomalies. Your data never leaves your device.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-badge badge-new">New in 2.0</span>
+                    <div class="feature-icon"><i class="fab fa-apple"></i></div>
+                    <h3>Apple Watch App</h3>
+                    <p>Log expenses from your wrist, view spending summaries, control mileage trips, and check tax estimates with 3 complications.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-badge badge-pro">Pro</span>
+                    <div class="feature-icon"><i class="fas fa-university"></i></div>
+                    <h3>Bank Sync via Plaid</h3>
+                    <p>Connect your bank accounts for automatic transaction imports and real-time balance updates. Secure and encrypted.</p>
                 </div>
             </div>
         </div>
     </section>
-    <!-- Integration Section (Adapted to Technology) -->
-    <section id="integration" class="integration">
+
+    <!-- Technology Section -->
+    <section id="technology" class="integration">
         <div class="container">
-            <h2>Powered by Apple Technologies</h2>
+            <h2>Built on Apple Technologies</h2>
+            <p class="section-subtitle">Every major feature is powered by a native Apple framework. Zero third-party UI dependencies.</p>
             <div class="integration-content">
                 <div class="integration-text">
-                    <h3>Modern iOS Development Stack</h3>
-                    <p>FLO is built using Apple's latest frameworks for secure, efficient financial management on iOS.</p>
+                    <h3>Deep Platform Integration</h3>
+                    <p>FLO 2.0 is built entirely with SwiftUI and leverages the full depth of Apple's ecosystem for a fast, private, and seamless experience.</p>
                     <ul>
-                        <li>SwiftUI for intuitive user interfaces</li>
-                        <li>SwiftData for secure local storage</li>
-                        <li>VisionKit for receipt OCR scanning</li>
-                        <li>CoreLocation for mileage tracking</li>
-                        <li>UserNotifications for timely reminders</li>
+                        <li>SwiftUI for a fully native interface</li>
+                        <li>SwiftData for secure on-device storage</li>
+                        <li>CreateML for on-device spending predictions</li>
+                        <li>Apple Vision for receipt OCR scanning</li>
+                        <li>ActivityKit for Live Activities on Lock Screen</li>
+                        <li>WidgetKit for Home Screen widgets</li>
+                        <li>WatchKit for Apple Watch companion app</li>
+                        <li>AppIntents for 8 Siri Shortcuts</li>
+                        <li>CoreLocation for GPS mileage tracking</li>
                     </ul>
-                    <h4 style="margin-top: 2rem; margin-bottom: 1rem;">Core Technologies</h4>
                     <div class="tech-stack">
                         <span class="tech-badge">SwiftUI</span>
                         <span class="tech-badge">SwiftData</span>
+                        <span class="tech-badge">CreateML</span>
                         <span class="tech-badge">Vision</span>
+                        <span class="tech-badge">ActivityKit</span>
+                        <span class="tech-badge">WidgetKit</span>
+                        <span class="tech-badge">WatchKit</span>
+                        <span class="tech-badge">AppIntents</span>
                         <span class="tech-badge">CoreLocation</span>
+                        <span class="tech-badge">StoreKit 2</span>
                         <span class="tech-badge">Charts</span>
                     </div>
                 </div>
                 <div class="integration-image">
-                    <div class="plaid-badge">
-                        <i class="fab fa-apple"></i> Built for iOS
+                    <div class="platform-badge">
+                        <i class="fab fa-apple"></i> Built for Apple
                     </div>
                     <p style="margin-top: 2rem; color: #6B7280;">
-                        Leveraging Apple's ecosystem for privacy-focused, high-performance apps.
+                        iPhone &bull; Apple Watch &bull; Widgets &bull; Siri &bull; Live Activities
+                    </p>
+                    <p style="margin-top: 1rem; color: #9CA3AF; font-size: 0.9rem;">
+                        100% SwiftUI &bull; Privacy-first &bull; On-device ML
                     </p>
                 </div>
             </div>
         </div>
     </section>
+
     <!-- Security Section -->
     <section id="security">
         <div class="container">
-            <h2>Security & Privacy First</h2>
+            <h2>Privacy & Security First</h2>
+            <p class="section-subtitle">Your financial data stays on your device by default. No ads, no data selling, no cloud accounts required.</p>
             <div class="security-grid">
                 <div class="security-item">
                     <h4><i class="fas fa-lock"></i> Biometric Protection</h4>
-                    <p>Face ID/Touch ID and passcode locking for app access.</p>
+                    <p>Face ID / Touch ID and passcode locking for app access.</p>
                 </div>
                 <div class="security-item">
-                    <h4><i class="fas fa-database"></i> Local Storage</h4>
-                    <p>All data stored on-device with SwiftData—no cloud syncing without consent.</p>
+                    <h4><i class="fas fa-database"></i> On-Device Storage</h4>
+                    <p>All data stored locally with SwiftData. Optional iCloud sync available.</p>
                 </div>
                 <div class="security-item">
                     <h4><i class="fas fa-user-shield"></i> Privacy Controls</h4>
-                    <p>Granular permissions for camera, location, and photos.</p>
+                    <p>Granular permissions for camera, location, and photos. You choose what to share.</p>
                 </div>
                 <div class="security-item">
-                    <h4><i class="fas fa-shield-alt"></i> Compliance</h4>
-                    <p>Designed for GDPR/CCPA with on-device processing for sensitive financial data.</p>
+                    <h4><i class="fas fa-shield-alt"></i> Industry-Standard Encryption</h4>
+                    <p>On-device processing for all sensitive financial data. Bank sync encrypted end-to-end.</p>
                 </div>
             </div>
         </div>
     </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="pricing">
+        <div class="container">
+            <h2>Simple, Transparent Pricing</h2>
+            <p class="section-subtitle">Start free. Upgrade when you're ready. Try Premium or Pro free for 7 days.</p>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <h3>Free</h3>
+                    <div class="price">$0</div>
+                    <div class="price-period">Get started</div>
+                    <ul>
+                        <li>50 transactions per month</li>
+                        <li>20 receipt scans</li>
+                        <li>1 account</li>
+                        <li>Basic budgeting</li>
+                        <li>Dashboard overview</li>
+                    </ul>
+                    <a href="https://apps.apple.com/us/app/finance-ledger-optimizer/id6756789373" class="pricing-cta pricing-cta-secondary">Download Free</a>
+                </div>
+                <div class="pricing-card featured">
+                    <h3>Premium</h3>
+                    <div class="price">$12.99</div>
+                    <div class="price-period">per month &bull; or $129.99/year</div>
+                    <ul>
+                        <li>Unlimited transactions</li>
+                        <li>100 receipt scans</li>
+                        <li>5 accounts</li>
+                        <li>Quarterly tax estimates</li>
+                        <li>GPS mileage tracking</li>
+                        <li>25 invoices per month</li>
+                        <li>Recurring automation</li>
+                        <li>Debt payoff planning</li>
+                    </ul>
+                    <a href="https://apps.apple.com/us/app/finance-ledger-optimizer/id6756789373" class="pricing-cta pricing-cta-primary">Try Free for 7 Days</a>
+                </div>
+                <div class="pricing-card">
+                    <h3>Pro</h3>
+                    <div class="price">$19.99</div>
+                    <div class="price-period">per month &bull; or $199.99/year</div>
+                    <ul>
+                        <li>Everything in Premium, unlimited</li>
+                        <li>AI spending predictions</li>
+                        <li>Bank sync via Plaid</li>
+                        <li>Client management</li>
+                        <li>Custom invoice branding</li>
+                        <li>CPA-ready export reports</li>
+                    </ul>
+                    <a href="https://apps.apple.com/us/app/finance-ledger-optimizer/id6756789373" class="pricing-cta pricing-cta-secondary">Try Free for 7 Days</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Call to Action Section -->
     <section class="cta-section">
         <div class="container">
-            <h2>Coming Soon to the App Store</h2>
+            <h2>Available on the App Store</h2>
             <p>
-                Be the first to know when FLO launches. Comprehensive financial tools for freelancers are almost here.
+                Proactive tax planning, professional invoicing, and smart expense management. Download FLO and take control of your finances today.
             </p>
-            <a href="mailto:FLOco@gmail.com?subject=FLO%20Early%20Access" class="btn btn-primary">
-                <i class="fas fa-envelope"></i> Join the Waitlist
+            <a href="https://apps.apple.com/us/app/finance-ledger-optimizer/id6756789373" class="btn btn-primary">
+                <i class="fab fa-apple"></i> Download FLO
             </a>
-            <div style="margin-top: 2rem;">
-                <a href="https://github.com/FLOco/FLO" class="btn btn-secondary" target="_blank">
-                    <i class="fab fa-github"></i> Follow Development
-                </a>
-            </div>
+            <p style="margin-top: 1.5rem; opacity: 0.8; font-size: 0.95rem;">
+                Free to download &bull; Premium plans start at $12.99/month &bull; 7-day free trial
+            </p>
         </div>
     </section>
+
     <!-- Footer -->
     <footer>
         <div class="footer-links">
-            <a href="https://github.com/FLOco/FLO">GitHub</a>
             <a href="contact.html">Contact</a>
             <a href="privacy.html">Privacy Policy</a>
             <a href="terms.html">Terms of Service</a>
+            <a href="eula.html">EULA</a>
             <a href="legal.html">Legal Disclaimer</a>
         </div>
-       
         <div class="social-links">
-            <a href="https://github.com/FLOco/FLO" target="_blank" title="GitHub"><i class="fab fa-github"></i></a>
-            <a href="https://twitter.com/FLOco" target="_blank" title="Twitter"><i class="fab fa-twitter"></i></a>
-            <a href="https://linkedin.com/company/FLOco" target="_blank" title="LinkedIn"><i class="fab fa-linkedin"></i></a>
+            <a href="https://www.instagram.com/flo.financeapp" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="mailto:flo.financeapp@gmail.com" title="Email"><i class="fas fa-envelope"></i></a>
         </div>
-        <p style="margin-top: 2rem; opacity: 0.7;">&copy; 2025 FINCH & POPPY CO. LLC. All rights reserved.</p>
-        <p style="opacity: 0.7;">Made with ❤️ by the FLO Team</p>
+        <p style="margin-top: 2rem; opacity: 0.7;">&copy; 2026 Finch & Poppy Co LLC. All rights reserved.</p>
+        <p style="opacity: 0.7;">Made with &#10084;&#65039; by Finch & Poppy Co LLC</p>
     </footer>
 </body>
 </html>
