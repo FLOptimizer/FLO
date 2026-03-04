@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-itunes-app" content="app-id=6756789373">
     <title>Terms of Service - FLO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -24,7 +25,6 @@
             line-height: 1.6;
             color: var(--dark);
         }
-        /* Navigation */
         nav {
             background: white;
             padding: 1rem 0;
@@ -34,6 +34,491 @@
             z-index: 100;
         }
         .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .logo-icon {
+            height: 40px;
+            margin-right: 0.5rem;
+            border-radius: 8px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+        .nav-links a {
+            color: var(--dark);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+        .page-hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        .page-hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .page-hero p {
+            opacity: 0.9;
+        }
+        .content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+        .content h2 {
+            font-size: 1.5rem;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+        .content h3 {
+            font-size: 1.2rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--dark);
+        }
+        .content p {
+            margin-bottom: 1rem;
+            color: #4B5563;
+        }
+        .content ul {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+        }
+        .content li {
+            margin-bottom: 0.5rem;
+            color: #4B5563;
+        }
+        .content a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .content a:hover {
+            text-decoration: underline;
+        }
+        .callout-warning {
+            background: #FFF3CD;
+            border-left: 4px solid #FFA500;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .callout-danger {
+            background: #FFE5E5;
+            border-left: 4px solid #DC3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        footer {
+            background: var(--dark);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+        .social-links {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+        .social-links a {
+            color: white;
+            font-size: 1.5rem;
+            transition: color 0.3s;
+        }
+        .social-links a:hover {
+            color: var(--primary);
+        }
+        @media (max-width: 768px) {
+            .page-hero h1 {
+                font-size: 2rem;
+            }
+            .nav-links {
+                display: none;
+            }
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="logo"><img src="FLO-icon.png" alt="FLO Icon" class="logo-icon"> FLO</a>
+            <ul class="nav-links">
+                <li><a href="index.html#features">Features</a></li>
+                <li><a href="index.html#technology">Technology</a></li>
+                <li><a href="index.html#pricing">Pricing</a></li>
+                <li><a href="index.html#security">Security</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li><a href="privacy.html">Privacy</a></li>
+                <li><a href="terms.html">Terms</a></li>
+                <li><a href="eula.html">EULA</a></li>
+                <li><a href="legal.html">Disclaimer</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="page-hero">
+        <h1>Terms of Service</h1>
+        <p>Last updated: December 16, 2025</p>
+    </section>
+
+    <div class="content">
+        <div class="callout-warning">
+            <strong>⚠️ Please Read Carefully:</strong> These Terms of Service ("Terms") govern your use of the FLO mobile application. By downloading, installing, or using FLO, you agree to be bound by these Terms. If you do not agree, do not use the app.
+        </div>
+
+        <h2>1. Acceptance of Terms</h2>
+        <p>By accessing and using FLO ("the App"), operated by FINCH & POPPY CO. LLC ("we", "us", "our"), you accept and agree to be bound by these Terms of Service and our <a href="privacy.html">Privacy Policy</a>. These Terms apply to all users of the App.</p>
+
+        <h2>2. Description of Service</h2>
+        <p>FLO is a financial management and tracking application designed for freelancers, gig workers, and small business owners. The App provides:</p>
+        <ul>
+            <li>Transaction tracking and categorization</li>
+            <li>Budget creation and monitoring</li>
+            <li>Invoice generation and payment tracking</li>
+            <li>Receipt scanning and storage</li>
+            <li>Business mileage tracking with GPS automation</li>
+            <li>Tax estimate calculations</li>
+            <li>AI-powered spending predictions (on-device)</li>
+            <li>Debt payoff planning</li>
+            <li>Bank sync via Plaid (Pro tier)</li>
+            <li>Apple Watch companion app</li>
+            <li>Financial reports and analytics</li>
+        </ul>
+        <p>These features are provided as tools to assist with financial organization. They are <strong>not</strong> professional financial, tax, accounting, or legal advice.</p>
+
+        <h2>3. User Accounts and Eligibility</h2>
+        <h3>Eligibility</h3>
+        <p>You must be at least 18 years old to use FLO. By using the App, you represent and warrant that you meet this age requirement.</p>
+
+        <h3>Account Responsibility</h3>
+        <p>You are responsible for:</p>
+        <ul>
+            <li>Maintaining the security of your device and any passcodes or biometric authentication you use to protect the App</li>
+            <li>All activities that occur under your account or through your device</li>
+            <li>The accuracy and completeness of all data you enter into the App</li>
+            <li>Keeping your device and iOS software up to date</li>
+        </ul>
+
+        <h2>4. Subscription Plans</h2>
+        <p>FLO offers the following subscription tiers:</p>
+        <ul>
+            <li><strong>Free:</strong> 50 transactions per month, 20 receipt scans, 1 account, basic budgeting</li>
+            <li><strong>Premium ($12.99/month or $129.99/year):</strong> Unlimited transactions, 100 receipt scans, 5 accounts, quarterly tax estimates, GPS mileage tracking, 25 invoices per month, recurring automation, debt payoff planning</li>
+            <li><strong>Pro ($19.99/month or $199.99/year):</strong> Everything in Premium unlimited, AI-powered spending predictions, bank sync via Plaid, client management, custom invoice branding, CPA-ready export reports</li>
+        </ul>
+        <p>Both paid tiers include a 7-day free trial. Subscriptions are managed through Apple's App Store and are subject to Apple's subscription terms. You can cancel at any time through your Apple ID settings.</p>
+
+        <h2>5. License and Restrictions</h2>
+        <h3>Limited License</h3>
+        <p>Subject to these Terms, we grant you a limited, non-exclusive, non-transferable, revocable license to:</p>
+        <ul>
+            <li>Download and install the App on devices you own or control</li>
+            <li>Use the App for your personal or business financial management</li>
+        </ul>
+
+        <h3>Restrictions</h3>
+        <p>You may NOT:</p>
+        <ul>
+            <li>Modify, reverse engineer, decompile, or disassemble the App</li>
+            <li>Copy or reproduce the App (except for normal backup purposes)</li>
+            <li>Rent, lease, lend, sell, redistribute, or sublicense the App</li>
+            <li>Remove any proprietary notices or labels from the App</li>
+            <li>Use the App for any illegal purpose or in violation of any laws</li>
+            <li>Attempt to gain unauthorized access to any part of the App</li>
+            <li>Use the App to harm, harass, or violate the rights of others</li>
+            <li>Interfere with or disrupt the App's functionality</li>
+        </ul>
+
+        <h2>6. User Content and Data</h2>
+        <h3>Your Data</h3>
+        <p>You retain all ownership rights to the data you enter into the App, including transactions, notes, receipts, invoices, and other content ("User Content"). By using the App, you grant us a limited license to:</p>
+        <ul>
+            <li>Store your User Content locally on your device</li>
+            <li>Process your User Content to provide App functionality (e.g., calculations, reports, on-device ML predictions)</li>
+        </ul>
+
+        <h3>Data Accuracy</h3>
+        <p>You are solely responsible for:</p>
+        <ul>
+            <li>The accuracy and completeness of all data you enter</li>
+            <li>Verifying all calculations, estimates, and reports</li>
+            <li>Maintaining backup copies of important data</li>
+            <li>Ensuring data entered complies with applicable laws and regulations</li>
+        </ul>
+
+        <h3>Data Backup</h3>
+        <p>While we take reasonable measures to prevent data loss, you are responsible for:</p>
+        <ul>
+            <li>Regularly backing up your data using the App's export features</li>
+            <li>Maintaining copies of important receipts and documents outside the App</li>
+        </ul>
+        <p>We are not responsible for any loss of data resulting from device failure, app deletion, iOS updates, or any other cause.</p>
+
+        <h2>7. Tax and Financial Disclaimers</h2>
+        <div class="callout-danger">
+            <h3 style="margin-top: 0;">⚠️ Critical Disclaimer</h3>
+            <p><strong>FLO is NOT a substitute for professional tax, accounting, or legal advice.</strong></p>
+        </div>
+
+        <h3>Tax Estimates</h3>
+        <p>Tax estimation features are provided for informational and planning purposes only. These estimates:</p>
+        <ul>
+            <li>Are based on generalized federal and state tax rates</li>
+            <li>May not reflect your specific tax situation</li>
+            <li>Do not account for all possible deductions, credits, or special circumstances</li>
+            <li>May become outdated as tax laws change</li>
+            <li>Should never be used as the basis for official tax filings</li>
+        </ul>
+
+        <h3>Your Responsibilities</h3>
+        <p>You are responsible for:</p>
+        <ul>
+            <li>Consulting with qualified tax professionals (CPAs, EAs, tax attorneys) for tax advice</li>
+            <li>Verifying all tax calculations before filing</li>
+            <li>Ensuring compliance with current IRS regulations and state/local tax laws</li>
+            <li>Meeting all tax deadlines (FLO reminders are helpful but not guaranteed)</li>
+            <li>Maintaining proper documentation as required by law</li>
+        </ul>
+
+        <p>For complete tax disclaimers, see our <a href="legal.html">Tax & Legal Disclaimer</a> page.</p>
+
+        <h2>8. Mileage Tracking</h2>
+        <p>The mileage tracking feature uses GPS location data to calculate distances. You acknowledge that:</p>
+        <ul>
+            <li>GPS accuracy can vary based on signal, weather, and device conditions</li>
+            <li>You are responsible for verifying mileage calculations</li>
+            <li>The IRS requires contemporaneous logs - maintain backup records</li>
+            <li>Battery drain may occur during active tracking</li>
+            <li>Background location use is only active when you enable mileage tracking</li>
+        </ul>
+
+        <h2>9. Receipt Scanning</h2>
+        <p>The receipt scanning feature uses Optical Character Recognition (OCR) to extract data from images. You acknowledge that:</p>
+        <ul>
+            <li>OCR accuracy depends on image quality and receipt legibility</li>
+            <li>You must review and verify all extracted data before relying on it</li>
+            <li>Original receipts should be retained as required by tax law</li>
+            <li>We are not responsible for errors in OCR extraction</li>
+        </ul>
+
+        <h2>10. Invoicing Features</h2>
+        <p>The invoice generation features allow you to create professional invoices. You acknowledge that:</p>
+        <ul>
+            <li>You are responsible for ensuring invoices comply with local laws and client contracts</li>
+            <li>Some jurisdictions require specific invoice elements (tax ID, registration numbers, etc.)</li>
+            <li>Professional invoicing software or legal review may be necessary for some businesses</li>
+            <li>Payment tracking is for your records only - actual payment collection is your responsibility</li>
+            <li>We are not responsible for client disputes, non-payment, or collection issues</li>
+        </ul>
+
+        <h2>11. Intellectual Property</h2>
+        <h3>Our Property</h3>
+        <p>The App, including its design, code, features, graphics, and content (excluding User Content), is owned by FINCH & POPPY CO. LLC and protected by copyright, trademark, and other intellectual property laws.</p>
+
+        <h3>Trademarks</h3>
+        <p>"FLO" and associated logos are trademarks of FINCH & POPPY CO. LLC. You may not use these marks without our prior written permission.</p>
+
+        <h3>Open Source</h3>
+        <p>FLO may include open-source software components. These components are governed by their respective licenses, which are available within the App or upon request.</p>
+
+        <h2>12. Third-Party Services</h2>
+        <h3>iOS and Apple Services</h3>
+        <p>FLO operates on iOS devices and uses Apple services (iCloud, StoreKit, notifications, etc.). Your use of these services is subject to Apple's terms and conditions.</p>
+
+        <h3>Bank Sync (Plaid)</h3>
+        <p>If you use the bank account linking feature (Pro tier), you will be subject to Plaid's terms of service (<a href="https://plaid.com/legal" target="_blank">plaid.com/legal</a>). Bank credentials are handled by Plaid and are never stored by FLO. We are not responsible for Plaid's services or data handling.</p>
+
+        <h3>Third-Party Links</h3>
+        <p>The App may contain links to third-party websites or services. We are not responsible for the content, policies, or practices of third-party sites.</p>
+
+        <h2>13. Limitation of Liability</h2>
+        <div class="callout-danger">
+            <p><strong>IMPORTANT - PLEASE READ CAREFULLY</strong></p>
+        </div>
+
+        <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW:</p>
+
+        <h3>"AS IS" Provision</h3>
+        <p>THE APP IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO:</p>
+        <ul>
+            <li>Warranties of merchantability or fitness for a particular purpose</li>
+            <li>Warranties of accuracy, reliability, or completeness</li>
+            <li>Warranties that the App will be uninterrupted, secure, or error-free</li>
+            <li>Warranties regarding tax calculations, financial estimates, or data accuracy</li>
+        </ul>
+
+        <h3>No Liability for Damages</h3>
+        <p>FINCH & POPPY CO. LLC, ITS OFFICERS, DIRECTORS, EMPLOYEES, AND AGENTS SHALL NOT BE LIABLE FOR:</p>
+        <ul>
+            <li>Tax calculation errors, missed deadlines, or IRS audits</li>
+            <li>Financial losses resulting from inaccurate data or estimates</li>
+            <li>Data loss due to device failure, app errors, or user error</li>
+            <li>Damages resulting from unauthorized access to your device</li>
+            <li>Missed business opportunities or lost income</li>
+            <li>Any indirect, incidental, consequential, special, or punitive damages</li>
+            <li>Lost profits, data, or goodwill</li>
+        </ul>
+
+        <h3>Maximum Liability</h3>
+        <p>IN NO EVENT SHALL OUR TOTAL LIABILITY TO YOU FOR ALL DAMAGES EXCEED THE AMOUNT YOU PAID FOR THE APP IN THE 12 MONTHS PRECEDING THE CLAIM (OR $50 IF THE APP WAS FREE).</p>
+
+        <h3>Jurisdictional Limitations</h3>
+        <p>Some jurisdictions do not allow the exclusion of certain warranties or limitation of liability. In such jurisdictions, our liability shall be limited to the greatest extent permitted by law.</p>
+
+        <h2>14. Indemnification</h2>
+        <p>You agree to indemnify, defend, and hold harmless FINCH & POPPY CO. LLC, its officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses (including legal fees) arising from:</p>
+        <ul>
+            <li>Your use or misuse of the App</li>
+            <li>Your violation of these Terms</li>
+            <li>Your violation of any laws or regulations</li>
+            <li>Your User Content or data you enter into the App</li>
+            <li>Any tax filings or financial decisions you make based on the App</li>
+            <li>Disputes with clients, vendors, or tax authorities</li>
+        </ul>
+
+        <h2>15. Changes to the App</h2>
+        <p>We reserve the right to:</p>
+        <ul>
+            <li>Modify, update, or discontinue features at any time</li>
+            <li>Release new versions with changes to functionality</li>
+            <li>Require updates to continue using the App</li>
+            <li>Change pricing or subscription models</li>
+        </ul>
+        <p>We will provide notice of significant changes when reasonably possible.</p>
+
+        <h2>16. Termination</h2>
+        <h3>By You</h3>
+        <p>You may stop using the App at any time by deleting it from your device. We recommend exporting your data first.</p>
+
+        <h3>By Us</h3>
+        <p>We may terminate or suspend your access if you:</p>
+        <ul>
+            <li>Violate these Terms</li>
+            <li>Use the App for illegal purposes</li>
+            <li>Engage in conduct that harms us or other users</li>
+        </ul>
+
+        <h3>Effect of Termination</h3>
+        <p>Upon termination:</p>
+        <ul>
+            <li>Your license to use the App ends immediately</li>
+            <li>You must stop using the App and delete it from your devices</li>
+            <li>Provisions that should survive (disclaimers, limitations of liability) remain in effect</li>
+        </ul>
+
+        <h2>17. Dispute Resolution</h2>
+        <h3>Governing Law</h3>
+        <p>These Terms are governed by the laws of the State of Kentucky, USA, without regard to conflict of law principles.</p>
+
+        <h3>Arbitration</h3>
+        <p>Any disputes arising from these Terms or your use of the App shall be resolved through binding arbitration in accordance with the rules of the American Arbitration Association. You waive your right to participate in class action lawsuits.</p>
+
+        <h3>Exceptions</h3>
+        <p>Either party may seek injunctive relief in court for intellectual property violations or other equitable claims.</p>
+
+        <h2>18. General Provisions</h2>
+        <h3>Entire Agreement</h3>
+        <p>These Terms, together with our Privacy Policy, EULA, and Legal Disclaimer, constitute the entire agreement between you and FINCH & POPPY CO. LLC regarding the App.</p>
+
+        <h3>Severability</h3>
+        <p>If any provision of these Terms is found unenforceable, the remaining provisions remain in full force and effect.</p>
+
+        <h3>Waiver</h3>
+        <p>Our failure to enforce any right or provision does not constitute a waiver of that right or provision.</p>
+
+        <h3>Assignment</h3>
+        <p>You may not assign these Terms without our consent. We may assign these Terms to any successor or affiliate.</p>
+
+        <h3>Force Majeure</h3>
+        <p>We are not liable for failures or delays due to circumstances beyond our reasonable control (e.g., natural disasters, government actions, internet failures).</p>
+
+        <h2>19. Changes to Terms</h2>
+        <p>We may update these Terms from time to time. We will notify you by:</p>
+        <ul>
+            <li>Posting the new Terms on this page with an updated "Last updated" date</li>
+            <li>Providing an in-app notification for significant changes</li>
+            <li>Requiring acceptance of new terms before continued use (for material changes)</li>
+        </ul>
+        <p>Your continued use of the App after changes constitutes acceptance of the new Terms.</p>
+
+        <h2>20. Contact Information</h2>
+        <p>For questions about these Terms of Service, please contact us:</p>
+        <ul>
+            <li><strong>Email:</strong> <a href="mailto:flo.financeapp@gmail.com">flo.financeapp@gmail.com</a></li>
+            <li><strong>Website:</strong> <a href="https://floptimizer.github.io/FLO">floptimizer.github.io/FLO</a></li>
+            <li><strong>Company:</strong> FINCH & POPPY CO. LLC</li>
+        </ul>
+
+        <h2>21. Acknowledgment</h2>
+        <p>BY DOWNLOADING, INSTALLING, OR USING FLO, YOU ACKNOWLEDGE THAT YOU HAVE READ, UNDERSTOOD, AND AGREE TO BE BOUND BY THESE TERMS OF SERVICE.</p>
+
+        <h2>Related Documents</h2>
+        <ul>
+            <li><a href="privacy.html">Privacy Policy</a></li>
+            <li><a href="eula.html">End User License Agreement</a></li>
+            <li><a href="legal.html">Tax & Legal Disclaimer</a></li>
+            <li><a href="contact.html">Contact Us</a></li>
+        </ul>
+    </div>
+
+    <footer>
+        <div class="footer-links">
+            <a href="index.html">Home</a>
+            <a href="contact.html">Contact</a>
+            <a href="privacy.html">Privacy Policy</a>
+            <a href="terms.html">Terms of Service</a>
+            <a href="eula.html">EULA</a>
+            <a href="legal.html">Legal Disclaimer</a>
+        </div>
+        <div class="social-links">
+            <a href="https://www.instagram.com/flo.financeapp" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="mailto:flo.financeapp@gmail.com" title="Email"><i class="fas fa-envelope"></i></a>
+        </div>
+        <p style="margin-top: 2rem; opacity: 0.7;">&copy; 2026 Finch & Poppy Co LLC. All rights reserved.</p>
+        <p style="opacity: 0.7;">Made with &#10084;&#65039; by Finch & Poppy Co LLC</p>
+    </footer>
+</body>
+</html>
             max-width: 1200px;
             margin: 0 auto;
             padding: 0 2rem;
