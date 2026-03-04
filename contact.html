@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-itunes-app" content="app-id=6756789373">
     <title>Contact - FLO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -24,7 +25,6 @@
             line-height: 1.6;
             color: var(--dark);
         }
-        /* Navigation */
         nav {
             background: white;
             padding: 1rem 0;
@@ -67,194 +67,36 @@
         .nav-links a:hover {
             color: var(--primary);
         }
-        /* Hero Section */
-        .hero {
+        .contact-hero {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             color: white;
-            padding: 6rem 2rem;
+            padding: 4rem 2rem;
             text-align: center;
         }
-        .hero h1 {
-            font-size: 3rem;
+        .contact-hero h1 {
+            font-size: 2.5rem;
             margin-bottom: 1rem;
         }
-        .hero p {
-            font-size: 1.25rem;
-            margin-bottom: 2rem;
+        .contact-hero p {
+            font-size: 1.15rem;
             opacity: 0.9;
         }
-        .cta-buttons {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        .btn {
-            padding: 0.75rem 2rem;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s;
-            display: inline-block;
-        }
-        .btn-primary {
-            background: white;
-            color: var(--primary);
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-        .btn-secondary {
-            background: transparent;
+        .contact-hero a {
             color: white;
-            border: 2px solid white;
+            text-decoration: underline;
         }
-        .btn-secondary:hover {
-            background: white;
-            color: var(--primary);
-        }
-        /* Container */
-        .container {
-            max-width: 1200px;
+        .contact-content {
+            max-width: 800px;
             margin: 0 auto;
-            padding: 4rem 2rem;
-        }
-        section {
-            padding: 4rem 0;
-        }
-        section h2 {
-            font-size: 2.5rem;
-            text-align: center;
-            margin-bottom: 3rem;
-            color: var(--dark);
-        }
-        /* Features Grid */
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-        }
-        .feature-card {
-            padding: 2rem;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
-        }
-        .feature-icon {
-            font-size: 2.5rem;
-            color: var(--primary);
-            margin-bottom: 1rem;
-        }
-        .feature-card h3 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: var(--dark);
-        }
-        .feature-card p {
-            color: #6B7280;
-        }
-        /* Integration Section */
-        .integration {
-            background: var(--light);
-        }
-        .integration-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4rem;
-            align-items: center;
-        }
-        .integration-text h3 {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-        }
-        .integration-text ul {
-            list-style: none;
-            margin: 1.5rem 0;
-        }
-        .integration-text li {
-            padding: 0.5rem 0;
-            padding-left: 2rem;
-            position: relative;
-        }
-        .integration-text li:before {
-            content: "✓";
-            position: absolute;
-            left: 0;
-            color: var(--secondary);
-            font-weight: bold;
-        }
-        .integration-image {
+            padding: 3rem 2rem;
             text-align: center;
         }
-        .plaid-badge {
-            display: inline-block;
-            padding: 1rem 2rem;
-            background: white;
+        .contact-content iframe {
+            max-width: 100%;
+            border: none;
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            font-size: 1.5rem;
-            font-weight: bold;
         }
-        /* Tech Stack */
-        .tech-stack {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            justify-content: center;
-            margin-top: 2rem;
-        }
-        .tech-badge {
-            padding: 0.5rem 1rem;
-            background: var(--light);
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            font-weight: 600;
-            color: var(--dark);
-        }
-        /* Security Section */
-        .security-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-        .security-item {
-            padding: 1.5rem;
-            background: white;
-            border-left: 4px solid var(--secondary);
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .security-item i {
-            color: var(--secondary);
-            margin-right: 0.5rem;
-        }
-        /* CTA Section */
-        .cta-section {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            padding: 4rem 2rem;
-            text-align: center;
-        }
-        .cta-section h2 {
-            color: white;
-            margin-bottom: 1rem;
-        }
-        .cta-section p {
-            font-size: 1.2rem;
-            margin-bottom: 2rem;
-            opacity: 0.9;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        /* Footer */
         footer {
             background: var(--dark);
             color: white;
@@ -290,66 +132,61 @@
         .social-links a:hover {
             color: var(--primary);
         }
-        /* Responsive */
         @media (max-width: 768px) {
-            .hero h1 {
+            .contact-hero h1 {
                 font-size: 2rem;
-            }
-            .integration-content {
-                grid-template-columns: 1fr;
             }
             .nav-links {
                 display: none;
             }
-            section h2 {
-                font-size: 2rem;
-            }
         }
-        /* Smooth Scroll */
         html {
             scroll-behavior: smooth;
         }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
     <nav>
         <div class="nav-container">
             <a href="index.html" class="logo"><img src="FLO-icon.png" alt="FLO Icon" class="logo-icon"> FLO</a>
             <ul class="nav-links">
-                <li><a href="https://floptimizer.github.io/FLO/index.html#features">Features</a></li>
-                <li><a href="https://floptimizer.github.io/FLO/index.html#integration">Technology</a></li>
-                <li><a href="https://floptimizer.github.io/FLO/index.html#security">Security</a></li>
-                <li><a href="https://floptimizer.github.io/FLO/contact.html">Contact</a></li>
-                <li><a href="https://floptimizer.github.io/FLO/privacy.html">Privacy</a></li>
-                <li><a href="https://floptimizer.github.io/FLO/terms.html">Terms</a></li>
-                <li><a href="https://floptimizer.github.io/FLO/eula.html">EULA</a></li>
-                <li><a href="https://floptimizer.github.io/FLO/legal.html">Disclaimer</a></li>
-                <li><a href="https://github.com/FLOco/FLO" target="_blank">GitHub</a></li>
+                <li><a href="index.html#features">Features</a></li>
+                <li><a href="index.html#technology">Technology</a></li>
+                <li><a href="index.html#pricing">Pricing</a></li>
+                <li><a href="index.html#security">Security</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li><a href="privacy.html">Privacy</a></li>
+                <li><a href="terms.html">Terms</a></li>
+                <li><a href="eula.html">EULA</a></li>
+                <li><a href="legal.html">Disclaimer</a></li>
             </ul>
         </div>
     </nav>
 
-    <main>
-        <section class="contact">
-            <h1>Contact Us</h1>
-            <p>Have questions about FLO? Reach out to us at <a href="mailto:flo.financeapp@gmail.com">flo.financeapp@gmail.com</a>.</p>
-            <!-- Embedded Google Form -->
-            <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSd-KSc9A8O9PWvQ5Xojsyx-PrGeuab3ewTNq5cteKvLy6xnzw/viewform?embedded=true" width="640" height="686" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
-        </section>
-    </main>
+    <section class="contact-hero">
+        <h1>Contact Us</h1>
+        <p>Have questions about FLO? Reach out at <a href="mailto:flo.financeapp@gmail.com">flo.financeapp@gmail.com</a> or use the form below.</p>
+    </section>
+
+    <div class="contact-content">
+        <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSd-KSc9A8O9PWvQ5Xojsyx-PrGeuab3ewTNq5cteKvLy6xnzw/viewform?embedded=true" width="640" height="686" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
+    </div>
 
     <footer>
         <div class="footer-links">
-            <a href="https://floptimizer.github.io/FLO/index.html</a>
-            <a href="https://floptimizer.github.io/FLO/contact.html">Contact</a>
-            <a href="https://floptimizer.github.io/FLO/privacy.html">Privacy Policy</a>
-            <a href="https://floptimizer.github.io/FLO/terms.html">Terms of Service</a>
-            <a href="https://floptimizer.github.io/FLO/eula.html">EULA</a>
-            <a href="https://floptimizer.github.io/FLO/legal.html">Legal Disclaimer</a>
+            <a href="index.html">Home</a>
+            <a href="contact.html">Contact</a>
+            <a href="privacy.html">Privacy Policy</a>
+            <a href="terms.html">Terms of Service</a>
+            <a href="eula.html">EULA</a>
+            <a href="legal.html">Legal Disclaimer</a>
         </div>
-        <p style="margin-top: 2rem; opacity: 0.7;">&copy; 2026 FINCH & POPPY CO. LLC. All rights reserved.</p>
-        <p style="opacity: 0.7;">Made with ❤️ by the FLO Team</p>
+        <div class="social-links">
+            <a href="https://www.instagram.com/flo.financeapp" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="mailto:flo.financeapp@gmail.com" title="Email"><i class="fas fa-envelope"></i></a>
+        </div>
+        <p style="margin-top: 2rem; opacity: 0.7;">&copy; 2026 Finch & Poppy Co LLC. All rights reserved.</p>
+        <p style="opacity: 0.7;">Made with &#10084;&#65039; by Finch & Poppy Co LLC</p>
     </footer>
 </body>
 </html>
