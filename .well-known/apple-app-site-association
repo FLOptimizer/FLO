@@ -1,10 +1,15 @@
 {
+  "appclips": {
+    "apps": [
+      "D9HZRHZ736.com.finchandpoppy.flo.Clip"
+    ]
+  },
   "applinks": {
     "apps": [],
     "details": [
       {
-        "appID": "D9HZRHZ736.finchandpoppy.flo",
-        "paths": ["/FLO/plaid-oauth"]
+        "appID": "D9HZRHZ736.com.finchandpoppy.flo",
+        "paths": ["/FLO/invoice/*"]
       }
     ]
   }
