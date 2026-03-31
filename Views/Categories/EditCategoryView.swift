@@ -1,33 +1,28 @@
 //  EditCategoryView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.5 — Tax Treatment, Tax Owner, and Business/Personal classification
+//  Version 3.0 — Schedule C Line Picker for business expense categories
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v2.5:
-//  ✅ ADDED: isBusiness toggle — initialized from category.isBusiness
-//  ✅ ADDED: taxTreatmentSection — NavigationLink picker (income categories only)
-//  ✅ ADDED: taxOwnerSection — NavigationLink picker (income categories only)
-//  ✅ ADDED: withholdingRateSection — estimated withholding % field (W-2 income only)
-//  ✅ ADDED: taxDeductibleSection hidden for income categories (not applicable)
-//  ✅ UPDATED: init() reads all new properties from category model
-//  ✅ UPDATED: save() writes all new properties back to category model
-//  ✅ PRESERVED: All v2.4 Dynamic Type (lineLimit + minimumScaleFactor) on all text
+//  CHANGES v3.0:
+//  ✅ ADDED: selectedScheduleCLine state — initialized from category.scheduleCLine
+//  ✅ ADDED: scheduleCLineSection — NavigationLink picker, visible when !isIncome && isBusiness && isTaxDeductible
+//  ✅ UPDATED: save() writes selectedScheduleCLine back to category
+//  ✅ PRESERVED: All v2.5 tax treatment, tax owner, business/personal classification
 //  ✅ PRESERVED: All haptics, entrance animations, VoiceOver labels, and dark mode colors
-//  ✅ NOTE: TaxTreatmentPickerView and TaxOwnerPickerView defined in AddCategoryView.swift
+//  ✅ NOTE: ScheduleCLinePickerView defined in AddCategoryView.swift (shared)
+//
+//  CHANGES v2.5:
+//  ✅ ADDED: isBusiness toggle, taxTreatmentSection, taxOwnerSection, withholdingRateSection
 //
 //  CHANGES v2.4 — VoiceOver Audit:
 //  ✅ IconButton/ColorButton accessibility labels and isSelected traits
-//  ✅ Removed duplicate .accessibilityHidden on info icon
 //
 //  CHANGES v2.3 — Dynamic Type Verification:
 //  ✅ Default warning and tax deductible footer lineLimit + minimumScaleFactor
 //
 //  CHANGES v2.1:
 //  ✅ Haptics, selection animations, section entrance animations, delete confirmation haptic
-//
-//  PREVIOUS (v2.0.1):
-//  — Basic haptic on save/delete
 //
 
 import SwiftUI
@@ -47,11 +42,14 @@ struct EditCategoryView: View {
     @State private var showingDeleteAlert = false
     @State private var viewAppeared = false
 
-    // MARK: - State — New (v2.5)
+    // MARK: - State — v2.5
     @State private var isBusiness: Bool
     @State private var selectedTaxTreatment: TaxTreatment
     @State private var selectedTaxOwner: TaxOwner
     @State private var withholdingRateText: String
+
+    // MARK: - State — v3.0
+    @State private var selectedScheduleCLine: ScheduleCLine?
 
     // MARK: - Icon / Color Data
 
@@ -68,6 +66,11 @@ struct EditCategoryView: View {
         "10B981", "14B8A6", "06B6D4", "3B82F6", "8B5CF6",
         "EC4899", "F43F5E"
     ]
+
+    /// Whether the Schedule C line picker should be visible
+    private var showScheduleCPicker: Bool {
+        !category.isIncome && isBusiness && isTaxDeductible
+    }
 
     // MARK: - Init
 
@@ -93,6 +96,9 @@ struct EditCategoryView: View {
         } else {
             _withholdingRateText = State(initialValue: "")
         }
+
+        // v3.0 — initialize Schedule C line from persisted value
+        _selectedScheduleCLine = State(initialValue: category.scheduleCLine)
     }
 
     // MARK: - Body
@@ -142,11 +148,17 @@ struct EditCategoryView: View {
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
 
+                // v3.0 — Schedule C line picker
+                scheduleCLineSection
+                    .opacity(viewAppeared ? 1 : 0.001)
+                    .offset(y: viewAppeared ? 0 : 10)
+                    .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
+
                 if !category.isDefault {
                     deleteSection
                         .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 10)
-                        .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
+                        .animation(FLOAnimation.standard.delay(0.5), value: viewAppeared)
                 }
             }
             .navigationTitle("Edit Category")
@@ -160,7 +172,6 @@ struct EditCategoryView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        // a11y: label from button text
                         HapticService.play(.medium)
                         save()
                     }
@@ -170,7 +181,6 @@ struct EditCategoryView: View {
             .alert("Delete Category", isPresented: $showingDeleteAlert) {
                 Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive) {
-                    // a11y: label from button text
                     deleteCategory()
                 }
             } message: {
@@ -194,7 +204,6 @@ struct EditCategoryView: View {
         }
     }
 
-    // v2.4 — preserved unchanged
     @ViewBuilder
     private var defaultCategoryWarning: some View {
         if category.isDefault {
@@ -227,8 +236,11 @@ struct EditCategoryView: View {
                         .accessibilityHidden(true)
                 }
             }
-            .onChange(of: isBusiness) { _, _ in
+            .onChange(of: isBusiness) { _, newValue in
                 HapticService.play(.light)
+                if !newValue {
+                    selectedScheduleCLine = nil
+                }
             }
         } header: {
             Text("Classification")
@@ -406,14 +418,16 @@ struct EditCategoryView: View {
         .padding(.vertical, 8)
     }
 
-    // v2.4 footer preserved; now conditionally hidden for income categories
     @ViewBuilder
     private var taxDeductibleSection: some View {
         if !category.isIncome {
             Section {
                 Toggle("Tax Deductible", isOn: $isTaxDeductible)
-                    .onChange(of: isTaxDeductible) { _, _ in
+                    .onChange(of: isTaxDeductible) { _, newValue in
                         HapticService.play(.light)
+                        if !newValue {
+                            selectedScheduleCLine = nil
+                        }
                     }
             } footer: {
                 Text("Tax deductible categories help you track business expenses for tax reporting")
@@ -424,10 +438,47 @@ struct EditCategoryView: View {
         }
     }
 
+    // MARK: - Schedule C Line Section (v3.0)
+
+    @ViewBuilder
+    private var scheduleCLineSection: some View {
+        if showScheduleCPicker {
+            Section {
+                NavigationLink {
+                    ScheduleCLinePickerView(selectedLine: $selectedScheduleCLine)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .foregroundStyle(selectedScheduleCLine != nil ? Color.brandPrimary : .secondary)
+                            .frame(width: 24)
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Schedule C Line")
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                            Text(selectedScheduleCLine?.displayName ?? "Not assigned")
+                                .font(.caption)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .accessibilityLabel("Schedule C line: \(selectedScheduleCLine?.displayName ?? "Not assigned"). Tap to change.")
+            } header: {
+                Text("IRS Schedule C")
+            } footer: {
+                Text("Maps this expense to the correct line on IRS Schedule C (Form 1040). This helps generate CPA-ready tax reports with line-by-line breakdowns.")
+                    .font(.caption)
+                    .lineLimit(5)
+                    .minimumScaleFactor(0.7)
+            }
+        }
+    }
+
     private var deleteSection: some View {
         Section {
             Button(role: .destructive) {
-                // a11y: Delete category button
                 HapticService.play(.heavy)
                 showingDeleteAlert = true
             } label: {
@@ -468,7 +519,6 @@ struct EditCategoryView: View {
             category.taxTreatment = selectedTaxTreatment
             category.taxOwner     = selectedTaxOwner
 
-            // Convert percentage text to decimal rate; nil if not W-2 or invalid
             if selectedTaxTreatment == .w2WithholdingPaid,
                let raw = Double(withholdingRateText),
                raw > 0, raw <= 100 {
@@ -476,6 +526,13 @@ struct EditCategoryView: View {
             } else {
                 category.estimatedWithholdingRate = nil
             }
+        }
+
+        // v3.0 — Schedule C line (business deductible expenses only)
+        if showScheduleCPicker {
+            category.scheduleCLine = selectedScheduleCLine
+        } else {
+            category.scheduleCLine = nil
         }
 
         do {
@@ -515,7 +572,7 @@ private struct IconButton: View {
             .font(.title2)
             .foregroundStyle(isSelected ? color : .secondary)
             .frame(width: 50, height: 50)
-            .background(isSelected ? color.opacity(0.15) : Color(.systemGray6))
+            .background(isSelected ? color.opacity(0.15) : Color.gray.opacity(0.1))
             .cornerRadius(10)
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
@@ -591,6 +648,26 @@ private struct ColorButton: View {
         isIncome: false,
         isTaxDeductible: false,
         isBusiness: false
+    )
+    container.mainContext.insert(category)
+    return EditCategoryView(category: category)
+        .modelContainer(container)
+}
+
+#Preview("Edit Business Expense — Schedule C") {
+    let container = try! ModelContainer(
+        for: Category.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    let category = Category(
+        name: "Office Supplies",
+        icon: "pencil.and.ruler.fill",
+        colorHex: "F59E0B",
+        isDefault: true,
+        isIncome: false,
+        isTaxDeductible: true,
+        isBusiness: true,
+        scheduleCLine: .line18_officeExpense
     )
     container.mainContext.insert(category)
     return EditCategoryView(category: category)

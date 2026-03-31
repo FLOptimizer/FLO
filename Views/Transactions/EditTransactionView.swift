@@ -1,8 +1,17 @@
 //  EditTransactionView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.0 - UTF-8 Mojibake Fix
+//  Version 3.1 - Penny-Up Currency Input
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.1 - Penny-Up Currency Input:
+//  ✅ REPLACED: Old TextField + String amount with CurrencyInputField component
+//  ✅ CHANGED: Amount state from String to Double (initialized from transaction.amount)
+//  ✅ REMOVED: parsedAmount, formattedEnteredAmount, amountFormatter computed properties
+//  ✅ UPDATED: All validation/save logic to use Double amount directly
+//  ✅ UPDATED: hasChanges check uses Double comparison
+//  ✅ UPDATED: Keyboard Done button uses resignFirstResponder for CurrencyInputField
+//  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters
 //
 //  CHANGES v3.0:
 //  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters (chart emoji)
@@ -71,7 +80,7 @@ struct EditTransactionView: View {
     let transaction: Transaction
     
     // Editable Properties
-    @State private var amount: String
+    @State private var amount: Double
     @State private var note: String
     @State private var isIncome: Bool
     @State private var selectedCategory: Category?
@@ -97,28 +106,10 @@ struct EditTransactionView: View {
                         
     private let largeAmountThreshold: Double = 10_000
     
-    // Static formatters for consistency and performance
-    private static let amountFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        f.minimumFractionDigits = 2
-        f.maximumFractionDigits = 2
-        f.locale = Locale.current
-        return f
-    }()
-    
-    private static let currencyFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        f.locale = Locale.current
-        return f
-    }()
-    
     init(transaction: Transaction) {
         self.transaction = transaction
-        
-        let amountString = Self.amountFormatter.string(from: NSNumber(value: transaction.amount)) ?? String(transaction.amount)
-        _amount = State(initialValue: amountString)
+
+        _amount = State(initialValue: transaction.amount)
         _note = State(initialValue: transaction.note)
         _isIncome = State(initialValue: transaction.isIncome)
         _selectedCategory = State(initialValue: transaction.category)
@@ -210,7 +201,7 @@ struct EditTransactionView: View {
                     saveTransaction()
                 }
             } message: {
-                Text("You're about to save a transaction for \(formattedEnteredAmount). Is this correct?")
+                Text("You're about to save a transaction for \(amount, format: .currency(code: "USD")). Is this correct?")
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
             }
@@ -253,7 +244,7 @@ struct EditTransactionView: View {
                     showingReceiptImage = true
                 } label: {
                     HStack {
-                        Image(uiImage: image)
+                        Image(platformImage: image)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                             .frame(width: 60, height: 60)
@@ -299,13 +290,11 @@ struct EditTransactionView: View {
     
     private var amountSection: some View {
         Section("Amount") {
-            TextField("0.00", text: $amount)
-                .keyboardType(.decimalPad)
-                .font(.title2)
-                .fontWeight(.semibold)
-                .focused($focusedField, equals: .amount)
-                .accessibilityLabel("Transaction amount")
-                .accessibilityHint("Enter the amount")
+            CurrencyInputField(
+                amount: $amount,
+                accessibilityLabelText: "Transaction amount",
+                showDoneButton: false
+            )
         }
     }
     
@@ -632,6 +621,12 @@ struct EditTransactionView: View {
             Button("Done") {
                 HapticService.play(.light)
                 focusedField = nil
+                #if canImport(UIKit)
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil, from: nil, for: nil
+                )
+                #endif
             }
         }
     }
@@ -639,13 +634,9 @@ struct EditTransactionView: View {
     // MARK: - Validation & Save
     
     private var canSave: Bool {
-        !amount.isEmpty && parsedAmount != nil
+        amount > 0
     }
-    
-    private var parsedAmount: Double? {
-        Self.amountFormatter.number(from: amount)?.doubleValue
-    }
-    
+
     private var isFutureDate: Bool {
         let calendar = Calendar.current
         let today = Date()
@@ -657,15 +648,8 @@ struct EditTransactionView: View {
         return calendar.startOfDay(for: date) > calendar.startOfDay(for: today)
     }
     
-    private var formattedEnteredAmount: String {
-        guard let amt = parsedAmount else { return "$0.00" }
-        return Self.currencyFormatter.string(from: NSNumber(value: amt)) ?? "$\(amt)"
-    }
-    
     private var hasChanges: Bool {
-        guard let amt = parsedAmount else { return false }
-        
-        return amt != transaction.amount ||
+        return amount != transaction.amount ||
                note != transaction.note ||
                isIncome != transaction.isIncome ||
                selectedCategory?.id != transaction.category?.id ||
@@ -676,35 +660,29 @@ struct EditTransactionView: View {
     }
     
     private func validateAndSave() {
-        guard let amt = parsedAmount else {
-            validationMessage = "Please enter a valid amount"
-            showingValidationAlert = true
-            HapticService.play(.warning)
-            return
-        }
-        
-        if amt <= 0 {
+        if amount <= 0 {
             validationMessage = "Amount must be greater than zero"
             showingValidationAlert = true
             HapticService.play(.warning)
             return
         }
-        
-        if amt > largeAmountThreshold {
+
+        if amount > largeAmountThreshold {
             showingLargeAmountConfirmation = true
             return
         }
         
         if isFutureDate {
-            print("âš ï¸ Saving future-dated transaction")
+            print("⚠️ Saving future-dated transaction")
         }
         
         saveTransaction()
     }
     
     private func saveTransaction() {
-        guard let amt = parsedAmount else { return }
-        
+        let amt = amount
+        guard amt > 0 else { return }
+
         guard hasChanges else {
             dismiss()
             return
@@ -726,7 +704,7 @@ struct EditTransactionView: View {
             }
             oldAccount.lastBalanceUpdate = Date()
             oldAccount.touch()  // v2.7: Restored touch() call
-            print("ðŸ“Š Reverted balance on \(oldAccount.name): \(oldAccount.formattedBalance)")
+            print("📊 Reverted balance on \(oldAccount.name): \(oldAccount.formattedBalance)")
         }
         
         // STEP 2: Apply changes to transaction
@@ -749,7 +727,7 @@ struct EditTransactionView: View {
             }
             newAccount.lastBalanceUpdate = Date()
             newAccount.touch()  // v2.7: Restored touch() call
-            print("ðŸ“Š Applied balance to \(newAccount.name): \(newAccount.formattedBalance)")
+            print("📊 Applied balance to \(newAccount.name): \(newAccount.formattedBalance)")
         }
         
         do {
@@ -763,7 +741,7 @@ struct EditTransactionView: View {
                 dismiss()
             }
         } catch {
-            print("âŒ Failed to update transaction: \(error)")
+            print("❌ Failed to update transaction: \(error)")
             
             HapticService.play(.error)
             
@@ -785,7 +763,7 @@ struct EditTransactionView: View {
             }
             account.lastBalanceUpdate = Date()
             account.touch()  // v2.7: Restored touch() call
-            print("ðŸ“Š Reverted balance on \(account.name) before delete: \(account.formattedBalance)")
+            print("📊 Reverted balance on \(account.name) before delete: \(account.formattedBalance)")
         }
         
         context.delete(transaction)
@@ -797,7 +775,7 @@ struct EditTransactionView: View {
             AccessibilityAnnouncement.announce("Transaction deleted")
             dismiss()
         } catch {
-            print("âŒ Failed to delete transaction: \(error)")
+            print("❌ Failed to delete transaction: \(error)")
             HapticService.play(.error)
             validationMessage = "Failed to delete transaction. Please try again."
             showingValidationAlert = true

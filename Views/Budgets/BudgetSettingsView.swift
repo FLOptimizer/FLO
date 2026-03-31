@@ -53,7 +53,11 @@ struct BudgetSettingsView: View {
                             .tag(type.rawValue)
                     }
                 }
+                #if os(macOS)
+                .pickerStyle(.menu)
+                #else
                 .pickerStyle(.navigationLink)
+                #endif
                 .onChange(of: defaultBudgetType) { _, _ in
                     HapticService.play(.selection)
                 }
@@ -230,9 +234,11 @@ struct BudgetSettingsView: View {
     }
     
     private func openNotificationSettings() {
+        #if canImport(UIKit)
         if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(settingsURL)
         }
+        #endif
     }
 }
 

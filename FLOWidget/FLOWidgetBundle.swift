@@ -33,8 +33,10 @@ struct FLOWidgetBundle: WidgetBundle {
             FLOMileageControl()
         }
         
-        // ✅ Live Activity - ENABLED
+        // ✅ Live Activity - ENABLED (iOS only, ActivityKit unavailable on macOS)
+        #if os(iOS)
         FLOWidgetLiveActivity()
+        #endif
     }
 }
 

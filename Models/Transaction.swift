@@ -1,10 +1,16 @@
 //  Transaction.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.0 - Move Money / Transfer support
+//  Version 3.1 - Performance Optimization
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Elite Transaction model with Business/Personal classification
+//
+//  CHANGES FROM v3.0:
+//  ✅ Replaced per-access NumberFormatter/DateFormatter allocations with shared static formatters
+//  ✅ formattedAmount/formattedAmountNoSign now use static sharedCurrencyFormatter
+//  ✅ monthKey now uses static monthKeyFormatter (eliminates ~3,000 allocations per render)
+//  ✅ Static formatters defined locally for Widget extension compatibility
 //
 //  CHANGES FROM v2.5:
 //  ✅ Added Move Money / Transfer support
@@ -57,10 +63,10 @@ final class Transaction {
     // MARK: - Core Properties
     
     /// Unique identifier
-    var id: UUID
+    var id: UUID = UUID()
     
     /// Transaction amount (always positive, use isIncome to determine direction)
-    var amount: Double {
+    var amount: Double = 0.0 {
         didSet {
             if amount != oldValue {
                 updatedAt = Date()
@@ -69,7 +75,7 @@ final class Transaction {
     }
     
     /// Transaction date
-    var date: Date {
+    var date: Date = Date() {
         didSet {
             if date != oldValue {
                 updatedAt = Date()
@@ -78,7 +84,7 @@ final class Transaction {
     }
     
     /// Optional note/description
-    var note: String {
+    var note: String = "" {
         didSet {
             if note != oldValue {
                 updatedAt = Date()
@@ -87,7 +93,7 @@ final class Transaction {
     }
     
     /// Whether this is income (true) or expense (false)
-    var isIncome: Bool {
+    var isIncome: Bool = false {
         didSet {
             if isIncome != oldValue {
                 updatedAt = Date()
@@ -96,7 +102,7 @@ final class Transaction {
     }
     
     /// Merchant or payee name
-    var merchantName: String {
+    var merchantName: String = "" {
         didSet {
             if merchantName != oldValue {
                 updatedAt = Date()
@@ -105,7 +111,7 @@ final class Transaction {
     }
     
     /// Business vs Personal classification
-    var financeType: FinanceType {
+    var financeType: FinanceType = FinanceType.personal {
         didSet {
             if financeType != oldValue {
                 updatedAt = Date()
@@ -133,7 +139,7 @@ final class Transaction {
     var recurringParent: RecurringTransaction?
     
     /// Associated account (NEW in v2.3 - Premium feature)
-    /// NOTE: The inverse is defined on Account.transactions
+    /// Inverse defined on Account.transactions
     @Relationship(deleteRule: .nullify)
     var account: Account? {
         didSet {
@@ -142,7 +148,11 @@ final class Transaction {
             }
         }
     }
-    
+
+    /// Invoice payment linked to this transaction (inverse of InvoicePayment.linkedTransaction)
+    @Relationship(deleteRule: .nullify, inverse: \InvoicePayment.linkedTransaction)
+    var linkedPayment: InvoicePayment?
+
     // MARK: - Receipt Properties
     
     /// Path to stored receipt image
@@ -158,7 +168,7 @@ final class Transaction {
     var receiptID: String?
     
     /// Whether transaction has an attached receipt
-    var hasReceipt: Bool {
+    var hasReceipt: Bool = false {
         didSet {
             if hasReceipt != oldValue {
                 updatedAt = Date()
@@ -208,14 +218,30 @@ final class Transaction {
     /// The type of transfer, stored as raw value for SwiftData compatibility.
     /// nil for non-transfer transactions.
     var transferTypeRaw: String?
-    
+
+    // MARK: - Household Sharing (Build 8)
+
+    /// Whether this transaction is shared with household members.
+    /// Default false — existing transactions remain private.
+    var isShared: Bool = false
+
+    /// The household ID this transaction belongs to (if shared).
+    /// nil for private transactions.
+    var householdId: UUID?
+
+    // MARK: - Review Status (Build 10)
+
+    /// Whether this transaction has been reviewed by the user.
+    /// New transactions default to false. Review flow allows bulk marking.
+    var isReviewed: Bool = false
+
     // MARK: - Metadata
-    
+
     /// When transaction was created
-    var createdAt: Date
-    
+    var createdAt: Date = Date()
+
     /// When transaction was last modified
-    var updatedAt: Date
+    var updatedAt: Date = Date()
     
     // MARK: - Initializer
     
@@ -244,6 +270,7 @@ final class Transaction {
         isTransfer: Bool = false,
         linkedTransferID: UUID? = nil,
         transferType: TransferType? = nil,
+        isReviewed: Bool = false,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -271,6 +298,7 @@ final class Transaction {
         self.isTransfer = isTransfer
         self.linkedTransferID = linkedTransferID
         self.transferTypeRaw = transferType?.rawValue
+        self.isReviewed = isReviewed
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -488,19 +516,15 @@ final class Transaction {
         }
     }
     
-    /// Formatted currency amount
+    /// Formatted currency amount (uses shared static formatter for performance)
     var formattedAmount: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
         let sign = isIncome ? "+" : "-"
-        return sign + (formatter.string(from: NSNumber(value: abs(amount))) ?? "$\(abs(amount))")
+        return sign + (Transaction.sharedCurrencyFormatter.string(from: NSNumber(value: abs(amount))) ?? "$\(abs(amount))")
     }
-    
-    /// Formatted currency amount without sign
+
+    /// Formatted currency amount without sign (uses shared static formatter for performance)
     var formattedAmountNoSign: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        return formatter.string(from: NSNumber(value: amount)) ?? "$\(amount)"
+        Transaction.sharedCurrencyFormatter.string(from: NSNumber(value: amount)) ?? "$\(amount)"
     }
     
     /// Whether this transaction is tax deductible (business expenses only, not transfers)
@@ -508,11 +532,27 @@ final class Transaction {
         financeType == .business && !isIncome && !isTransfer
     }
     
+    // MARK: - Shared Formatters (Performance)
+
+    /// Static currency formatter — reused across all transactions instead of allocating per-access.
+    /// Defined here (not AppConstants) so it works in both main app and Widget extension targets.
+    private static let sharedCurrencyFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.locale = Locale.current
+        return f
+    }()
+
+    /// Static month-key formatter — reused across all transactions instead of allocating per-access
+    private static let monthKeyFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM"
+        return f
+    }()
+
     /// Month key for grouping transactions (YYYY-MM format)
     var monthKey: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM"
-        return formatter.string(from: date)
+        Transaction.monthKeyFormatter.string(from: date)
     }
     
     /// Whether this is a recurring transaction instance
@@ -806,7 +846,7 @@ final class Transaction {
             amount: abs(amount), // Plaid amounts can be negative
             date: date,
             note: "",
-            isIncome: amount > 0, // Positive = income in Plaid
+            isIncome: amount < 0, // Plaid: positive = expense, negative = income
             merchantName: merchantName,
             financeType: .personal, // Default, user can change
             account: account,

@@ -210,7 +210,7 @@ struct BusinessProfileDiagnosticView: View {
         // Test 2: Check if we can create a BusinessProfile object
         let _ = BusinessProfile(
             businessName: "Test Company",
-            email: "test@test.com"
+            email: "info@example.com"
         )
         results.append(DiagnosticResult(text: "Can create BusinessProfile object", type: .success))
         print("✓ Can create BusinessProfile object")
@@ -238,7 +238,7 @@ struct BusinessProfileDiagnosticView: View {
         results.append(DiagnosticResult(text: "Test 4: Insert & Save Test", type: .header))
         let testProfile = BusinessProfile(
             businessName: "Diagnostic Test \(Date().timeIntervalSince1970)",
-            email: "diagnostic@test.com"
+            email: "diagnostic@example.com"
         )
         
         print("🔍 Attempting to insert test profile...")
@@ -332,10 +332,10 @@ struct BusinessProfileDiagnosticView: View {
         diagnosticResults.append(DiagnosticResult(text: "Creating permanent test profile...", type: .info))
         
         let profile = BusinessProfile(
-            businessName: "Urban Cowboy",
-            email: "UCad@example.com",
-            phone: "2153626754",
-            website: "www.yourbusiness.com",
+            businessName: "Sample Business LLC",
+            email: "contact@example.com",
+            phone: "5551234567",
+            website: "www.example.com",
             taxId: "12-3456789"
         )
         

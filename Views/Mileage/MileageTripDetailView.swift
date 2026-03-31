@@ -169,7 +169,11 @@ struct MileageTripDetailView: View {
                         .tag(purpose)
                 }
             }
+            #if os(macOS)
+            .pickerStyle(.menu)
+            #else
             .pickerStyle(.navigationLink)
+            #endif
             .onChange(of: trip.purpose) { _, newValue in
                 HapticService.shared.selection()
                 if newValue == .personal || newValue == .commute {
@@ -375,7 +379,7 @@ struct MileageTripDetailView: View {
             .accessibilityLabel("Delete trip")
             .accessibilityHint("Double tap to permanently delete this trip. This action cannot be undone.")
         }
-        .listRowBackground(Color(UIColor.systemGroupedBackground))
+        .listRowBackground(Color.floSystemGroupedBackground)
         .opacity(deleteOpacity)
     }
     
@@ -444,8 +448,8 @@ struct MileageTripDetailView: View {
         .padding(.vertical, 10)
         .background(
             Capsule()
-                .fill(Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
+                .fill(Color.floSystemBackground)
+                .floCardShadow(y: 4)
         )
         .transition(.move(edge: .top).combined(with: .opacity))
         .padding(.top, 8)

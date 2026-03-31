@@ -19,7 +19,7 @@
 //  ✅ ADDED: Comprehensive logging for debugging
 //  ✅ ADDED: Authorization check before starting activity
 
-#if canImport(ActivityKit)
+#if canImport(ActivityKit) && !os(macOS)
 import ActivityKit
 #endif
 import Foundation
@@ -34,7 +34,7 @@ final class MileageLiveActivityManager {
     
     private let logger = Logger(subsystem: "com.finchandpoppy.flo", category: "LiveActivity")
     
-    #if canImport(ActivityKit)
+    #if canImport(ActivityKit) && !os(macOS)
     /// The currently active Live Activity (nil if none)
     private var currentActivity: Activity<MileageLiveActivityAttributes>?
     #endif
@@ -44,7 +44,7 @@ final class MileageLiveActivityManager {
     /// Called from MileageTrackingService.startNewTrip(at:)
     /// Begins a new Live Activity to show trip progress on Lock Screen and Dynamic Island
     func startActivity(tripId: UUID, startAddress: String, startTime: Date) {
-        #if canImport(ActivityKit)
+        #if canImport(ActivityKit) && !os(macOS)
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             logger.warning("Live Activities not enabled by user")
             return
@@ -75,7 +75,7 @@ final class MileageLiveActivityManager {
         } catch {
             logger.error("❌ Failed to start Live Activity: \(error.localizedDescription)")
         }
-        #endif // canImport(ActivityKit)
+        #endif // canImport(ActivityKit) && !os(macOS)
     }
     
     // MARK: - Update Live Activity
@@ -88,7 +88,7 @@ final class MileageLiveActivityManager {
         isPaused: Bool,
         gpsSignal: String
     ) {
-        #if canImport(ActivityKit)
+        #if canImport(ActivityKit) && !os(macOS)
         guard let activity = currentActivity else {
             logger.debug("No active Live Activity to update")
             return
@@ -109,7 +109,7 @@ final class MileageLiveActivityManager {
             )
             logger.debug("Live Activity updated: \(String(format: "%.1f mi", distanceMiles)), paused: \(isPaused)")
         }
-        #endif // canImport(ActivityKit)
+        #endif // canImport(ActivityKit) && !os(macOS)
     }
     
     // MARK: - End Live Activity
@@ -117,7 +117,7 @@ final class MileageLiveActivityManager {
     /// Called from MileageTrackingService.endCurrentTrip(reason:)
     /// Ends the Live Activity, keeping it visible for 5 minutes to show final stats
     func endActivity(finalDistanceMiles: Double, finalElapsedSeconds: TimeInterval) {
-        #if canImport(ActivityKit)
+        #if canImport(ActivityKit) && !os(macOS)
         guard let activity = currentActivity else {
             logger.debug("No active Live Activity to end")
             return
@@ -140,7 +140,7 @@ final class MileageLiveActivityManager {
             currentActivity = nil
             logger.info("✅ Live Activity ended: \(String(format: "%.1f mi", finalDistanceMiles))")
         }
-        #endif // canImport(ActivityKit)
+        #endif // canImport(ActivityKit) && !os(macOS)
     }
     
     // MARK: - End All Activities (cleanup)
@@ -148,7 +148,7 @@ final class MileageLiveActivityManager {
     /// Ends any stale activities on app launch
     /// Call this from MileageTrackingService.startTracking() to clean up orphaned activities
     func endAllActivities() {
-        #if canImport(ActivityKit)
+        #if canImport(ActivityKit) && !os(macOS)
         Task {
             let activities = Activity<MileageLiveActivityAttributes>.activities
             guard !activities.isEmpty else {
@@ -162,6 +162,6 @@ final class MileageLiveActivityManager {
             currentActivity = nil
             logger.info("🧹 All stale Live Activities cleared (\(activities.count) removed)")
         }
-        #endif // canImport(ActivityKit)
+        #endif // canImport(ActivityKit) && !os(macOS)
     }
 }

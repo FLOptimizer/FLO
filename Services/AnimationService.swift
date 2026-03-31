@@ -61,14 +61,27 @@ struct FLOAnimation {
     
     // MARK: - Environment Check
     
+    /// Cross-platform Reduce Motion check
+    static var isReduceMotionEnabled: Bool {
+        reduceMotion
+    }
+
     /// Returns true if Reduce Motion is enabled in system settings
     private static var reduceMotion: Bool {
-        UIAccessibility.isReduceMotionEnabled
+        #if canImport(UIKit)
+        FLOAnimation.isReduceMotionEnabled
+        #else
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        #endif
     }
-    
+
     /// Returns true if Reduce Transparency is enabled
     private static var reduceTransparency: Bool {
+        #if canImport(UIKit)
         UIAccessibility.isReduceTransparencyEnabled
+        #else
+        NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
+        #endif
     }
     
     // MARK: - Logging
@@ -300,7 +313,7 @@ extension AnyTransition {
     /// Standard slide and fade transition
     /// Use for: Navigation, card reveals
     static var floSlide: AnyTransition {
-        UIAccessibility.isReduceMotionEnabled
+        FLOAnimation.isReduceMotionEnabled
             ? .opacity
             : .asymmetric(
                 insertion: .move(edge: .trailing).combined(with: .opacity),
@@ -311,7 +324,7 @@ extension AnyTransition {
     /// Scale and fade transition for modals
     /// Use for: Popups, alerts, tooltips
     static var floScale: AnyTransition {
-        UIAccessibility.isReduceMotionEnabled
+        FLOAnimation.isReduceMotionEnabled
             ? .opacity
             : .scale(scale: 0.9).combined(with: .opacity)
     }
@@ -319,7 +332,7 @@ extension AnyTransition {
     /// Bottom sheet transition
     /// Use for: Sheets, action menus
     static var floSheet: AnyTransition {
-        UIAccessibility.isReduceMotionEnabled
+        FLOAnimation.isReduceMotionEnabled
             ? .opacity
             : .move(edge: .bottom).combined(with: .opacity)
     }
@@ -327,7 +340,7 @@ extension AnyTransition {
     /// Top reveal transition
     /// Use for: Banners, notifications
     static var floTopReveal: AnyTransition {
-        UIAccessibility.isReduceMotionEnabled
+        FLOAnimation.isReduceMotionEnabled
             ? .opacity
             : .move(edge: .top).combined(with: .opacity)
     }
@@ -335,21 +348,21 @@ extension AnyTransition {
     /// Scale up from center
     /// Use for: Emphasis, celebrations
     static var floGrow: AnyTransition {
-        UIAccessibility.isReduceMotionEnabled
+        FLOAnimation.isReduceMotionEnabled
             ? .opacity
             : .scale(scale: 0.5).combined(with: .opacity)
     }
     
     /// Slide from leading
     static var floSlideFromLeading: AnyTransition {
-        UIAccessibility.isReduceMotionEnabled
+        FLOAnimation.isReduceMotionEnabled
             ? .opacity
             : .move(edge: .leading).combined(with: .opacity)
     }
     
     /// Slide from trailing
     static var floSlideFromTrailing: AnyTransition {
-        UIAccessibility.isReduceMotionEnabled
+        FLOAnimation.isReduceMotionEnabled
             ? .opacity
             : .move(edge: .trailing).combined(with: .opacity)
     }

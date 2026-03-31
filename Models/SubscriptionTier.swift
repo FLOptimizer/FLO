@@ -186,7 +186,17 @@ enum SubscriptionTier: Int, Codable, Comparable {
     var hasDebtInsights: Bool {
         self >= .premium
     }
-    
+
+    /// Access to ML-powered spending predictions and anomaly detection (Premium+)
+    var hasMLInsights: Bool {
+        self >= .premium
+    }
+
+    /// Access to on-device AI financial assistant (Premium+)
+    var hasAIAssistant: Bool {
+        self >= .premium
+    }
+
     // MARK: - Account Features (v1.1)
     
     /// Multiple account support
@@ -239,6 +249,12 @@ enum SubscriptionTier: Int, Codable, Comparable {
     
     /// Export to CSV/PDF for accountants
     var hasAdvancedExports: Bool {
+        self == .pro
+    }
+
+    /// Household sharing (Pro only)
+    /// v1.5: Added for Build 8 household sharing
+    var hasHouseholdSharing: Bool {
         self == .pro
     }
     
@@ -356,19 +372,21 @@ enum SubscriptionTier: Int, Codable, Comparable {
                 "Recurring transaction automation",
                 "Dashboard widgets",
                 "Debt Payoff Calculator",
-                "Personalized Financial Tips"
+                "Personalized Financial Tips",
+                "Smart Spending Predictions"
             ]
         case .pro:
             return [
                 "Everything in Premium",
                 "Unlimited accounts",
-                "Bank sync (coming soon)",
+                "Bank sync via Plaid",
                 "Account reconciliation tools",
                 "Unlimited invoices",
                 "Advanced tax deduction flagging",
                 "Profit & Loss Reports",
                 "Year-End Tax Package",
                 "Export to CSV/PDF",
+                "Household Sharing",
                 "Unlimited receipt storage",
                 "Advanced reporting",
                 "Early access to new features"
@@ -482,6 +500,10 @@ extension SubscriptionTier {
             return hasPersonalizedTips
         case .debtInsights:
             return hasDebtInsights
+        case .mlInsights:
+            return hasMLInsights
+        case .aiAssistant:
+            return hasAIAssistant
         // v1.3: Pro features
         case .profitLossReports:
             return hasProfitLossReports
@@ -502,6 +524,8 @@ extension SubscriptionTier {
             return hasAccountReconciliation
         case .multiAccountReports:
             return hasMultiAccountReports
+        case .householdSharing:
+            return hasHouseholdSharing
         }
     }
     
@@ -595,7 +619,9 @@ enum Feature {
     case debtCalculator          // v1.4: Debt Payoff Calculator
     case personalizedTips        // v1.4: Personalized Money Moves tips
     case debtInsights            // v1.4: Debt optimization insights
-    
+    case mlInsights              // v1.6: ML-powered spending predictions
+    case aiAssistant             // v1.7: My Assistant (on-device AI financial guidance)
+
     // Premium account features (v1.1)
     case multipleAccounts
     case accountFiltering
@@ -612,6 +638,9 @@ enum Feature {
     case plaidIntegration
     case bankSync
     case accountReconciliation
+
+    // Pro household feature (v1.5 / Build 8)
+    case householdSharing
     
     var displayName: String {
         switch self {
@@ -641,6 +670,10 @@ enum Feature {
             return "Personalized Financial Tips"
         case .debtInsights:
             return "Debt Optimization Insights"
+        case .mlInsights:
+            return "Smart Spending Predictions"
+        case .aiAssistant:
+            return "My Assistant"
         case .profitLossReports:
             return "Profit & Loss Reports"
         case .yearEndTaxPackage:
@@ -660,19 +693,21 @@ enum Feature {
             return "Account Reconciliation"
         case .multiAccountReports:
             return "Multi-Account Reports"
+        case .householdSharing:
+            return "Household Sharing"
         }
     }
-    
+
     var requiredTier: SubscriptionTier {
         switch self {
         // Premium features
         case .taxEstimates, .automatedMileage, .invoicing, .advancedBudgets, .recurringTransactions,
              .clientManagement, .smartReceiptScanning, .csvImport, .debtCalculator, .personalizedTips, .debtInsights,
-             .multipleAccounts, .accountFiltering, .balanceTracking, .multiAccountReports:
+             .mlInsights, .aiAssistant, .multipleAccounts, .accountFiltering, .balanceTracking, .multiAccountReports:
             return .premium
         // Pro features
         case .advancedDeductions, .advancedExports, .profitLossReports, .yearEndTaxPackage,
-             .plaidIntegration, .bankSync, .accountReconciliation:
+             .plaidIntegration, .bankSync, .accountReconciliation, .householdSharing:
             return .pro
         }
     }
@@ -705,6 +740,10 @@ enum Feature {
             return "sparkles"
         case .debtInsights:
             return "lightbulb.fill"
+        case .mlInsights:
+            return "wand.and.stars"
+        case .aiAssistant:
+            return "bubble.left.and.text.bubble.right"
         case .profitLossReports:
             return "doc.text.magnifyingglass"
         case .yearEndTaxPackage:
@@ -724,6 +763,8 @@ enum Feature {
             return "checkmark.circle.fill"
         case .multiAccountReports:
             return "chart.pie.fill"
+        case .householdSharing:
+            return "person.2.circle.fill"
         }
     }
     
@@ -755,6 +796,10 @@ enum Feature {
             return "Financial tips personalized to your spending and debt"
         case .debtInsights:
             return "Proactive insights to optimize your debt payments"
+        case .mlInsights:
+            return "AI-powered spending predictions and anomaly detection, all on-device"
+        case .aiAssistant:
+            return "On-device AI financial assistant for tax prep and financial insights"
         case .profitLossReports:
             return "Professional P&L statements for your business"
         case .yearEndTaxPackage:
@@ -774,6 +819,8 @@ enum Feature {
             return "Match and reconcile bank transactions"
         case .multiAccountReports:
             return "See consolidated reports across all accounts"
+        case .householdSharing:
+            return "Share expenses and track finances with your household"
         }
     }
 }

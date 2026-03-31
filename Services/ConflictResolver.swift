@@ -472,10 +472,7 @@ final class ConflictResolver: ObservableObject {
     }
     
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .medium
-        return formatter.string(from: date)
+        return DateFormatter.shortDate.string(from: date)
     }
     
     private func logConflictResolution(_ conflict: SyncConflict, choice: UserConflictChoice) {
@@ -705,7 +702,9 @@ struct ConflictResolutionView: View {
                 .padding(.bottom, 32)
             }
             .padding(.top, 40)
+            #if !os(macOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Later") {
@@ -753,7 +752,7 @@ private struct ComparisonCard: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(isSelected ? Color.brandPrimary.opacity(0.1) : Color(uiColor: .secondarySystemBackground))
+                .fill(isSelected ? Color.brandPrimary.opacity(0.1) : Color.floSurface)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
@@ -897,7 +896,9 @@ struct ConflictSettingsView: View {
             }
         }
         .navigationTitle("Conflict Resolution")
-        .navigationBarTitleDisplayMode(.inline)
+        #if !os(macOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
         .task {
             loadState()
         }

@@ -36,6 +36,13 @@
 import WidgetKit
 import SwiftUI
 
+// MARK: - Release Build Print Silencer (Widget Target)
+
+#if !DEBUG
+@inline(__always)
+func print(_ items: Any..., separator: String = " ", terminator: String = "\n") { }
+#endif
+
 // MARK: - Widget Color Constants
 
 private let widgetTeal = Color(red: 0.078, green: 0.722, blue: 0.651)

@@ -1,8 +1,15 @@
 //  CategoryManagementView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.5 — Four-section layout: Business/Personal × Expense/Income
+//  Version 1.6 — Allow deletion of any category (no more isDefault restriction)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.6:
+//  ✅ REMOVED: isDefault check — users can now delete ANY category
+//  ✅ ADDED: Warning confirmation when deleting categories with linked transactions
+//  ✅ ADDED: "In Use" indicator showing transaction count for each category
+//  ✅ NOTE: Category list is now much longer (61 categories in v1.4 seed data)
+//           Users should delete categories they don't need to simplify their view
 //
 //  CHANGES v1.5:
 //  ✅ ADDED: Four sections replacing two — Business Expenses, Personal Expenses,
@@ -44,6 +51,8 @@ struct CategoryManagementView: View {
 
     @State private var showingAddCategory = false
     @State private var categoryToEdit: Category?
+    @State private var categoryToDelete: Category?
+    @State private var showDeleteConfirmation = false
     @State private var viewAppeared = false
 
     // MARK: - Computed Category Groups
@@ -123,6 +132,26 @@ struct CategoryManagementView: View {
         .sheet(item: $categoryToEdit) { category in
             EditCategoryView(category: category)
         }
+        .alert("Delete Category?", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) {
+                categoryToDelete = nil
+            }
+            Button("Delete", role: .destructive) {
+                if let category = categoryToDelete {
+                    performDelete(category)
+                }
+                categoryToDelete = nil
+            }
+        } message: {
+            if let category = categoryToDelete {
+                let count = category.transactionCount
+                if count > 0 {
+                    Text("This category has \(count) linked transaction\(count == 1 ? "" : "s"). Deleting it will remove the category from those transactions.")
+                } else {
+                    Text("Are you sure you want to delete \"\(category.name)\"?")
+                }
+            }
+        }
         .onAppear {
             withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
@@ -151,13 +180,12 @@ struct CategoryManagementView: View {
                             categoryToEdit = category
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            if !category.isDefault {
-                                Button(role: .destructive) {
-                                    HapticService.play(.heavy)
-                                    deleteCategory(category)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
+                            // v1.6: Removed isDefault check — all categories can be deleted
+                            Button(role: .destructive) {
+                                HapticService.play(.heavy)
+                                deleteCategory(category)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
                             }
                         }
                         .swipeActions(edge: .leading) {
@@ -184,6 +212,16 @@ struct CategoryManagementView: View {
     // MARK: - Delete
 
     private func deleteCategory(_ category: Category) {
+        // v1.6: Show confirmation if category has transactions
+        if category.transactionCount > 0 {
+            categoryToDelete = category
+            showDeleteConfirmation = true
+        } else {
+            performDelete(category)
+        }
+    }
+    
+    private func performDelete(_ category: Category) {
         withAnimation(FLOAnimation.quick) {
             context.delete(category)
         }
@@ -231,12 +269,12 @@ struct CategoryRow: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
 
-                        // "Default" badge — v1.4 preserved
-                        if category.isDefault {
+                        // v1.6: "In Use" badge shows transaction count
+                        if category.transactionCount > 0 {
                             CategoryBadge(
-                                label: "Default",
-                                background: Color.primary.opacity(0.1),
-                                foreground: Color.primary
+                                label: "\(category.transactionCount) txn\(category.transactionCount == 1 ? "" : "s")",
+                                background: Color.secondary.opacity(0.15),
+                                foreground: Color.secondary
                             )
                         }
 
@@ -296,7 +334,9 @@ struct CategoryRow: View {
     private var rowAccessibilityLabel: String {
         var parts = [category.name]
 
-        if category.isDefault       { parts.append("default") }
+        if category.transactionCount > 0 {
+            parts.append("\(category.transactionCount) transactions")
+        }
         if category.isTaxDeductible { parts.append("tax deductible") }
 
         if category.isIncome {
@@ -347,7 +387,7 @@ private struct CategoryBadge: View {
             name: "Office Supplies",
             icon: "pencil.and.ruler.fill",
             colorHex: "F59E0B",
-            isDefault: true,
+            isDefault: false,
             isIncome: false,
             isTaxDeductible: true,
             isBusiness: true
@@ -366,7 +406,7 @@ private struct CategoryBadge: View {
             name: "Groceries",
             icon: "cart.fill",
             colorHex: "10B981",
-            isDefault: true,
+            isDefault: false,
             isIncome: false,
             isTaxDeductible: false,
             isBusiness: false

@@ -348,6 +348,20 @@ struct CreateInvoiceView: View {
             .sheet(isPresented: $showingSubscription) {
                 SubscriptionView()
             }
+            #if os(macOS)
+            .sheet(isPresented: $showingLimitReached) {
+                LimitReachedOverlay(
+                    limitType: .invoices,
+                    currentCount: usageLimitService?.currentMonthInvoiceCount ?? 25,
+                    limit: subscriptionManager.currentTier.invoiceLimit ?? 25,
+                    showingSubscription: $showingSubscription,
+                    onDismiss: {
+                        showingLimitReached = false
+                        dismiss()
+                    }
+                )
+            }
+            #else
             .fullScreenCover(isPresented: $showingLimitReached) {
                 LimitReachedOverlay(
                     limitType: .invoices,
@@ -360,6 +374,7 @@ struct CreateInvoiceView: View {
                     }
                 )
             }
+            #endif
             .alert("Could Not Save Invoice", isPresented: $showingSaveError) {
                 Button("OK") { }
             } message: {
@@ -519,10 +534,10 @@ struct EditInvoiceView: View {
         _zelleEmail = State(initialValue: invoice.zelleEmail ?? "")
         
         let items: [InvoiceItemData]
-        if invoice.items.isEmpty {
+        if (invoice.items ?? []).isEmpty {
             items = [InvoiceItemData()]
         } else {
-            items = invoice.items.map { item in
+            items = (invoice.items ?? []).map { item in
                 InvoiceItemData(
                     description: item.itemDescription,
                     quantity: item.quantity,
@@ -784,7 +799,7 @@ struct EditInvoiceView: View {
         invoice.zelleEmail = zelleEmail.isEmpty ? nil : zelleEmail
         invoice.modifiedDate = Date()
         
-        for item in invoice.items {
+        for item in invoice.items ?? [] {
             modelContext.delete(item)
         }
         

@@ -1,10 +1,20 @@
 //  TaxSettings.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.4 - Official IRS 2026 Tax Data (Rev. Proc. 2025-32)
+//  Version 2.5 - User-Defined State Tax Exemptions
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Tax configuration and settings model
+//
+//  CHANGES IN v2.5:
+//  ✅ ADDED: stateRetirementExemption — user-defined retirement income exempt from state tax
+//  ✅ ADDED: stateDisabilityExemption — user-defined disability income exempt from state tax
+//  ✅ ADDED: stateSocialSecurityExempt — whether SS is fully exempt from state tax
+//  ✅ ADDED: stateExemptionNotes — free-text field for user to note their state's rules
+//  ✅ ADDED: Computed helpers for exemption status
+//  ✅ NOTE: These fields allow users to configure their state's specific exemptions
+//           (e.g., Kentucky exempts $31,110 retirement income, fully exempts SS & VA disability)
+//  ✅ Retained all v2.4 functionality
 //
 //  CHANGES IN v2.4:
 //  ✅ UPDATED: 2026 federal tax brackets to official IRS Rev. Proc. 2025-32 values
@@ -38,42 +48,65 @@ final class TaxSettings {
     // MARK: - Properties
     
     /// Unique identifier (should only ever be one TaxSettings record)
-    @Attribute(.unique) var id: UUID
-    
+    var id: UUID = UUID()
+
     /// User's state for state tax calculations
-    var state: String
-    
+    var state: String = "CA"
+
     /// User's federal filing status
-    var filingStatus: FilingStatus
-    
+    var filingStatus: FilingStatus = FilingStatus.single
+
     /// Estimated federal tax rate (if user wants to override calculated rate)
     var customFederalRate: Double?
-    
+
     /// Estimated state tax rate (if user wants to override)
     var customStateRate: Double?
-    
+
     /// Whether to include self-employment tax in calculations
-    var includeSelfEmploymentTax: Bool
-    
+    var includeSelfEmploymentTax: Bool = true
+
     /// Self-employment tax rate (default 15.3% = 12.4% Social Security + 2.9% Medicare)
     /// Note: This property is retained for backward compatibility but is no longer used
     /// by TaxCalculationService v1.4+, which uses the correct IRS rates with wage base cap.
-    var selfEmploymentTaxRate: Double
-    
+    var selfEmploymentTaxRate: Double = 0.153
+
     /// Whether to enable quarterly tax notifications
-    var enableQuarterlyReminders: Bool
-    
+    var enableQuarterlyReminders: Bool = true
+
     /// How many days before deadline to send first reminder
-    var reminderDaysBefore: Int
-    
+    var reminderDaysBefore: Int = 14
+
     /// Prior year's tax liability (for safe harbor calculation)
     var priorYearTaxLiability: Double?
-    
+
     /// Whether user is high earner (>$150K AGI) requiring 110% safe harbor
-    var isHighEarner: Bool
-    
+    var isHighEarner: Bool = false
+
     /// Date when settings were last updated
-    var lastUpdated: Date
+    var lastUpdated: Date = Date()
+
+    // MARK: - State Tax Exemptions (v2.5)
+
+    /// Amount of retirement income exempt from state tax (e.g., $31,110 for Kentucky)
+    /// Applies to income categorized as Retirement Income.
+    /// nil = no exemption configured (use state default behavior)
+    var stateRetirementExemption: Double?
+
+    /// Amount of disability income exempt from state tax
+    /// Applies to income categorized as Disability Income (VA, SSDI, etc.)
+    /// nil = no exemption configured
+    /// Note: For "fully exempt" states, user can enter a very large number or leave nil
+    var stateDisabilityExemption: Double?
+
+    /// Whether Social Security income is fully exempt from state tax
+    /// true = 100% exempt (e.g., Kentucky and most states)
+    /// false = taxable or partially taxable at state level
+    /// Default: true (most states exempt SS)
+    var stateSocialSecurityExempt: Bool = true
+
+    /// User notes about their state's tax rules (for their own reference)
+    /// Example: "KY exempts first $31,110 of retirement. VA disability fully exempt."
+    var stateExemptionNotes: String?
     
     // MARK: - Initialization
     
@@ -89,7 +122,12 @@ final class TaxSettings {
         reminderDaysBefore: Int = 14,
         priorYearTaxLiability: Double? = nil,
         isHighEarner: Bool = false,
-        lastUpdated: Date = Date()
+        lastUpdated: Date = Date(),
+        // v2.5 additions
+        stateRetirementExemption: Double? = nil,
+        stateDisabilityExemption: Double? = nil,
+        stateSocialSecurityExempt: Bool = true,
+        stateExemptionNotes: String? = nil
     ) {
         self.id = id
         self.state = state
@@ -103,6 +141,11 @@ final class TaxSettings {
         self.priorYearTaxLiability = priorYearTaxLiability
         self.isHighEarner = isHighEarner
         self.lastUpdated = lastUpdated
+        // v2.5 additions
+        self.stateRetirementExemption = stateRetirementExemption
+        self.stateDisabilityExemption = stateDisabilityExemption
+        self.stateSocialSecurityExempt = stateSocialSecurityExempt
+        self.stateExemptionNotes = stateExemptionNotes
     }
 }
 
@@ -459,6 +502,62 @@ extension TaxSettings {
     }
 }
 
+// MARK: - State Exemption Helpers (v2.5)
+
+extension TaxSettings {
+    /// States with no income tax (for reference)
+    static let noIncomeTaxStates: Set<String> = [
+        "AK", "FL", "NV", "NH", "SD", "TN", "TX", "WA", "WY"
+    ]
+    
+    /// States that fully exempt Social Security from state tax
+    /// (Most states do — only ~9 states tax SS to some degree)
+    static let socialSecurityExemptStates: Set<String> = [
+        "AL", "AK", "AZ", "AR", "CA", "DE", "FL", "GA", "HI", "ID", "IL",
+        "IN", "IA", "KY", "LA", "ME", "MD", "MA", "MI", "MS", "NV", "NH",
+        "NJ", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "SC", "SD", "TN",
+        "TX", "VA", "WA", "WI", "WY", "DC"
+    ]
+    
+    /// Whether this state has no income tax
+    var isNoIncomeTaxState: Bool {
+        Self.noIncomeTaxStates.contains(state)
+    }
+    
+    /// Default Social Security exemption based on state
+    /// Used when user hasn't explicitly set stateSocialSecurityExempt
+    var defaultStateSocialSecurityExempt: Bool {
+        Self.socialSecurityExemptStates.contains(state)
+    }
+    
+    /// Effective state tax rate (custom or default from table)
+    var effectiveStateRate: Double {
+        customStateRate ?? Self.stateTaxRates[state] ?? 0.05
+    }
+    
+    /// Whether user has configured any custom state exemptions
+    var hasCustomStateExemptions: Bool {
+        stateRetirementExemption != nil ||
+        stateDisabilityExemption != nil ||
+        stateExemptionNotes != nil
+    }
+    
+    /// Formatted retirement exemption for display
+    var formattedRetirementExemption: String? {
+        guard let amount = stateRetirementExemption else { return nil }
+        return NumberFormatter.appCurrency.string(from: NSNumber(value: amount))
+    }
+
+    /// Formatted disability exemption for display
+    var formattedDisabilityExemption: String? {
+        guard let amount = stateDisabilityExemption else { return nil }
+        if amount >= 1_000_000 {
+            return "Fully Exempt"
+        }
+        return NumberFormatter.appCurrency.string(from: NSNumber(value: amount))
+    }
+}
+
 // MARK: - Protocol Conformances
 
 extension TaxSettings: Identifiable { }
@@ -477,7 +576,17 @@ extension TaxSettings: Hashable {
 
 // MARK: - Version History
 /*
- Version 2.4 (Current):
+ Version 2.5 (Current):
+ - ADDED: User-defined state tax exemption fields (Option D implementation)
+   * stateRetirementExemption — e.g., $31,110 for Kentucky
+   * stateDisabilityExemption — for VA disability, SSDI, etc.
+   * stateSocialSecurityExempt — most states exempt SS
+   * stateExemptionNotes — user's own reference notes
+ - ADDED: Helper computed properties for exemption status
+ - ADDED: Static sets for no-income-tax and SS-exempt states
+ - NOTE: SwiftData handles lightweight migration automatically for new Optional properties
+ 
+ Version 2.4:
  - UPDATED: 2026 federal tax brackets to official IRS Rev. Proc. 2025-32 values
  - UPDATED: 2026 standard deductions to official IRS values
    * Single/MFS: $16,100 (was projected $15,420)

@@ -43,28 +43,28 @@ import CoreLocation
 final class MileageTrip {
     
     // MARK: - Identifiers
-    @Attribute(.unique) private(set) var id: UUID
-    
+    private(set) var id: UUID = UUID()
+
     // MARK: - Dates
-    var startDate: Date
-    var endDate: Date
-    var createdDate: Date
-    var modifiedDate: Date
-    
+    var startDate: Date = Date()
+    var endDate: Date = Date()
+    var createdDate: Date = Date()
+    var modifiedDate: Date = Date()
+
     // MARK: - Location Coordinates
-    var startLatitude: Double
-    var startLongitude: Double
-    var endLatitude: Double
-    var endLongitude: Double
+    var startLatitude: Double = 0.0
+    var startLongitude: Double = 0.0
+    var endLatitude: Double = 0.0
+    var endLongitude: Double = 0.0
     
     // MARK: - Addresses
     var startAddress: String?
     var endAddress: String?
     
     // MARK: - Trip Details
-    var distanceMiles: Double
-    var purpose: TripPurpose
-    var isBusinessTrip: Bool
+    var distanceMiles: Double = 0.0
+    var purpose: TripPurpose = TripPurpose.needsReview
+    var isBusinessTrip: Bool = false
     var notes: String?
     
     // MARK: - Vehicle Tracking (v4.0)
@@ -76,16 +76,16 @@ final class MileageTrip {
     var clientName: String?
     
     // MARK: - Entry Tracking
-    var isManualEntry: Bool
-    
+    var isManualEntry: Bool = false
+
     // MARK: - IRS Rate & Reimbursement
-    var mileageRate: Double
+    var mileageRate: Double = 0.725
     
     // MARK: - Route Data (for visualization)
     var routePoints: [RoutePoint]?
     
     // MARK: - Finance Type
-    var financeType: Transaction.FinanceType
+    var financeType: Transaction.FinanceType = Transaction.FinanceType.business
     
     // MARK: - Initialization
     
@@ -318,19 +318,13 @@ final class MileageTrip {
     /// Generates a single CSV row for this trip
     /// v4.0: Now includes createdDate, modifiedDate, vehicleName, clientName for audit defense
     func toCSVRow() -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let date = dateFormatter.string(from: startDate)
-        
-        let timeFormatter = DateFormatter()
-        timeFormatter.dateFormat = "HH:mm"
-        let startTime = timeFormatter.string(from: startDate)
-        let endTime = timeFormatter.string(from: endDate)
-        
-        let auditDateFormatter = DateFormatter()
-        auditDateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let created = auditDateFormatter.string(from: createdDate)
-        let modified = auditDateFormatter.string(from: modifiedDate)
+        let date = DateFormatter.isoDate.string(from: startDate)
+
+        let startTime = DateFormatter.time.string(from: startDate)
+        let endTime = DateFormatter.time.string(from: endDate)
+
+        let created = DateFormatter.isoDateTime.string(from: createdDate)
+        let modified = DateFormatter.isoDateTime.string(from: modifiedDate)
         
         // For CSV, show review status clearly
         let businessStatus: String

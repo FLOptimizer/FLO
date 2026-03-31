@@ -22,7 +22,9 @@ import Foundation
 import SwiftData
 import SwiftUI
 #if !os(macOS)
+#if canImport(UIKit)
 import UIKit
+#endif
 #endif
 
 // MARK: - Custom Error Types
@@ -167,7 +169,7 @@ class InvoiceService {
         
         context.insert(newInvoice)
         
-        for item in invoice.items {
+        for item in invoice.items ?? [] {
             let newItem = InvoiceItem(
                 itemDescription: item.itemDescription,
                 quantity: item.quantity,
@@ -512,12 +514,12 @@ class InvoiceService {
     
     /// Validates invoice data to prevent NaN errors in PDF generation
     private func validateInvoiceData(_ invoice: Invoice) -> Bool {
-        guard !invoice.items.isEmpty else {
+        guard !(invoice.items ?? []).isEmpty else {
             print("⚠️ Invoice has no line items")
             return false
         }
         
-        for item in invoice.items {
+        for item in invoice.items ?? [] {
             guard !item.itemDescription.isEmpty else {
                 print("⚠️ Line item has empty description")
                 return false
@@ -765,14 +767,11 @@ class InvoiceService {
         let detailAttributes: [NSAttributedString.Key: Any] = [.font: detailFont, .foregroundColor: UIColor.darkGray]
         let detailBoldAttributes: [NSAttributedString.Key: Any] = [.font: detailBoldFont, .foregroundColor: UIColor.black]
         
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .medium
-        
         "Issue Date: ".draw(at: CGPoint(x: leftColumnX, y: yPos), withAttributes: detailAttributes)
-        dateFormatter.string(from: invoice.issueDate).draw(at: CGPoint(x: leftColumnX + 60, y: yPos), withAttributes: detailBoldAttributes)
-        
+        DateFormatter.mediumDate.string(from: invoice.issueDate).draw(at: CGPoint(x: leftColumnX + 60, y: yPos), withAttributes: detailBoldAttributes)
+
         "Due Date: ".draw(at: CGPoint(x: leftColumnX + 160, y: yPos), withAttributes: detailAttributes)
-        dateFormatter.string(from: invoice.dueDate).draw(at: CGPoint(x: leftColumnX + 210, y: yPos), withAttributes: detailBoldAttributes)
+        DateFormatter.mediumDate.string(from: invoice.dueDate).draw(at: CGPoint(x: leftColumnX + 210, y: yPos), withAttributes: detailBoldAttributes)
         
         "Terms: ".draw(at: CGPoint(x: rightColumnX, y: yPos), withAttributes: detailAttributes)
         invoice.paymentTerms.draw(at: CGPoint(x: rightColumnX + 40, y: yPos), withAttributes: detailBoldAttributes)
@@ -816,12 +815,10 @@ class InvoiceService {
         let itemFont = UIFont.systemFont(ofSize: 9)
         let itemAttributes: [NSAttributedString.Key: Any] = [.font: itemFont, .foregroundColor: UIColor.black]
         
-        let currencyFormatter = NumberFormatter()
-        currencyFormatter.numberStyle = .currency
-        currencyFormatter.currencyCode = "USD"
-        
+        let currencyFormatter = NumberFormatter.appCurrency
+
         // Sort line items by creation date to preserve insertion order
-        let sortedItems = invoice.items.sorted { item1, item2 in
+        let sortedItems = (invoice.items ?? []).sorted { item1, item2 in
             item1.createdDate < item2.createdDate
         }
         
@@ -881,10 +878,8 @@ class InvoiceService {
             .foregroundColor: UIColor(red: 0.078, green: 0.722, blue: 0.651, alpha: 1.0)
         ]
         
-        let currencyFormatter = NumberFormatter()
-        currencyFormatter.numberStyle = .currency
-        currencyFormatter.currencyCode = "USD"
-        
+        let currencyFormatter = NumberFormatter.appCurrency
+
         let rightX = rect.width - margin - 70
         
         // Subtotal

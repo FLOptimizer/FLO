@@ -1,12 +1,45 @@
 //  DashboardView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.7.1 - Accessibility: Dynamic Type text scaling on mode label
+//  Version 3.12 — Predicated Fetch Performance Optimization
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Elite production-ready dashboard with Business/Personal/All filtering
 //
 //  THIS IS THE KILLER FEATURE - The app that finally understands freelancers
+//
+//  CHANGES v3.12 — Predicated Fetch Performance Optimization:
+//  ✅ REPLACED: @Query (all 946 transactions) with FetchDescriptor + date predicate
+//  ✅ REDUCED: SQLite deserialization from ~946 to ~80 transactions (current month)
+//  ✅ REMOVED: Calendar.isDate() filtering in dashboardMetrics — dates pre-filtered by fetch
+//  ✅ ADDED: loadTransactions() with timeframe-based date predicates at SQLite level
+//  ✅ ADDED: Separate lightweight fetch for all-time business deductions
+//  ✅ ADDED: onChange triggers for selectedTimeframe and financeMode to re-fetch
+//  ✅ KEPT: Single-pass DashboardMetrics struct from v3.11 (now even faster)
+//
+//  CHANGES v3.11 — Single-Pass Dashboard Metrics:
+//  ✅ Replaced 5 separate computed properties with single-pass DashboardMetrics struct
+//  ✅ Reduces O(5N) Calendar.isDate calls to O(N) — critical at 945+ transactions
+//  ✅ filteredTransactions, totalIncome, totalExpenses, businessDeductions now computed once
+//  ✅ Eliminates ~4,000 redundant iterations per render cycle
+//
+//  CHANGES v3.10 — Performance Render Timing:
+//  ✅ Added .measureRenderTime("Dashboard") to dashboardContent
+//  ✅ Measures time to first meaningful frame, logs against 200ms budget
+//  ✅ Visible in Instruments under FLO.Rendering signpost category
+//
+//  CHANGES v3.9 — Transfer Exclusion:
+//  ✅ FIXED: filteredTransactions now excludes isTransfer transactions
+//  ✅ FIXED: totalIncome, totalExpenses no longer inflated by transfers
+//  ✅ FIXED: businessDeductions excludes transfers
+//  ✅ ROOT CAUSE: Bank-to-bank transfers counted as expenses on Dashboard
+//
+//  CHANGES v3.8 - Transfer Summary:
+//  ✅ ADDED: TransferSummaryCard showing recent money movement
+//  ✅ ADDED: YTD owner's draws and capital contributions at a glance
+//  ✅ ADDED: Sheet presentation for MoveMoneyView
+//  ✅ Positioned after Balance Summary, before Quick Actions
+//  ✅ Helps freelancers track business/personal money separation
 //
 //  CHANGES v3.7:
 //  ✅ FIXED: Timeframe.contains() did not exist — replaced with inline Calendar filter
@@ -74,7 +107,9 @@ import WidgetKit
 
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Transaction.date, order: .reverse) private var allTransactions: [Transaction]
+    // v3.12: Replaced @Query with FetchDescriptor — date predicate at SQLite level
+    @State private var allTransactions: [Transaction] = []
+    @State private var allTimeBusinessDeductions: Double = 0  // v3.12: Separate lightweight fetch
     @Query private var allBudgets: [Budget]
     
     // v3.5: Subscription manager for tier checking
@@ -82,6 +117,7 @@ struct DashboardView: View {
     
     // MARK: - Sheet Presentation States
     @State private var showingAddExpense = false
+    @State private var showingAddIncome = false
     @State private var showingCreateInvoice = false
     @State private var showingReceiptScanner = false      // Premium+: SmartReceiptScanningView
     @State private var showingMileageTracking = false
@@ -97,6 +133,7 @@ struct DashboardView: View {
     @State private var cardsAppeared = false
     @State private var summaryAnimated = false
     @State private var isInitialLoad = true
+    @State private var hasLoaded = false
     
     // MARK: - Computed Properties
     
@@ -104,18 +141,18 @@ struct DashboardView: View {
     private var hasInvoicing: Bool {
         subscriptionManager.currentTier.hasInvoicing
     }
-    
+
     /// Filter budgets to current month AND by finance mode
     /// v3.2: Now filters by financeMode so business/personal budgets stay separate
     private var filteredBudgets: [Budget] {
         let calendar = Calendar.current
         let now = Date()
-        
+
         // First filter to current month
         let currentMonth = allBudgets.filter { budget in
             calendar.isDate(budget.month, equalTo: now, toGranularity: .month)
         }
-        
+
         // Then filter by finance mode
         switch financeMode {
         case .business:
@@ -126,62 +163,140 @@ struct DashboardView: View {
             return currentMonth
         }
     }
-    
-    /// Filter transactions by finance mode AND timeframe
-    private var filteredTransactions: [Transaction] {
-        let modeFiltered: [Transaction]
-        
-        switch financeMode {
-        case .business:
-            modeFiltered = allTransactions.filter { $0.financeType == .business }
-        case .personal:
-            modeFiltered = allTransactions.filter { $0.financeType == .personal }
-        case .all:
-            modeFiltered = Array(allTransactions)
-        }
-        
-        let calendar = Calendar.current
-        let now = Date()
-        
-        return modeFiltered.filter { transaction in
-            switch selectedTimeframe {
-            case .thisWeek:
-                return calendar.isDate(transaction.date, equalTo: now, toGranularity: .weekOfYear)
-            case .thisMonth:
-                return calendar.isDate(transaction.date, equalTo: now, toGranularity: .month)
-            case .thisYear:
-                return calendar.isDate(transaction.date, equalTo: now, toGranularity: .year)
+
+    // MARK: - Single-Pass Dashboard Metrics (v3.11 → v3.12 Performance Optimization)
+    //
+    // v3.12: Transactions are now PRE-FILTERED by date at the SQLite level via
+    // FetchDescriptor with a #Predicate. The loop no longer calls Calendar.isDate()
+    // — it only filters by finance mode and accumulates totals. Business deductions
+    // are fetched separately (all-time) via loadBusinessDeductions().
+    //
+    // v3.11 (original): Single-pass replaced 5 separate O(N) passes with O(1) pass.
+    // v3.12 (current): N reduced from ~946 to ~80 by predicated fetch. Zero Calendar calls.
+
+    /// Aggregated dashboard metrics computed in a single pass over allTransactions.
+    private struct DashboardMetrics {
+        var filtered: [Transaction] = []
+        var income: Double = 0
+        var expenses: Double = 0
+
+        var net: Double { income - expenses }
+        var recent: [Transaction] { Array(filtered.prefix(8)) }
+    }
+
+    /// Single-pass aggregation — dates already filtered by FetchDescriptor (v3.12).
+    /// Only filters by finance mode and accumulates income/expenses.
+    private var dashboardMetrics: DashboardMetrics {
+        var metrics = DashboardMetrics()
+
+        for t in allTransactions {
+            // Skip transfers for dashboard display
+            guard !t.isTransfer else { continue }
+
+            // Check finance mode
+            let matchesMode: Bool
+            switch financeMode {
+            case .business: matchesMode = t.financeType == .business
+            case .personal: matchesMode = t.financeType == .personal
+            case .all: matchesMode = true
+            }
+            guard matchesMode else { continue }
+
+            // Accumulate into metrics (no date check needed — pre-filtered by fetch)
+            metrics.filtered.append(t)
+            if t.isIncome {
+                metrics.income += t.amount
+            } else {
+                metrics.expenses += abs(t.amount)
             }
         }
+
+        return metrics
     }
-    
-    private var totalIncome: Double {
-        filteredTransactions
-            .filter { $0.isIncome }
+
+    // MARK: - Convenience Accessors (backed by single-pass dashboardMetrics)
+
+    private var filteredTransactions: [Transaction] { dashboardMetrics.filtered }
+    private var totalIncome: Double { dashboardMetrics.income }
+    private var totalExpenses: Double { dashboardMetrics.expenses }
+    private var netIncome: Double { dashboardMetrics.net }
+    private var recentTransactions: [Transaction] { dashboardMetrics.recent }
+    private var businessDeductions: Double { allTimeBusinessDeductions }  // v3.12: From separate fetch
+
+    // MARK: - Build 10 Redesign Computed Properties
+
+    /// Daily spending totals for the hero trend line (last 7 days).
+    private var dailyTotals: [Double] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return (0..<7).reversed().map { daysAgo in
+            guard let day = calendar.date(byAdding: .day, value: -daysAgo, to: today) else { return 0 }
+            return filteredTransactions
+                .filter { !$0.isIncome && calendar.isDate($0.date, inSameDayAs: day) }
+                .reduce(0) { $0 + abs($1.amount) }
+        }
+    }
+
+    /// Budget items paired with their spent amounts for circles and chips.
+    private var budgetItems: [(budget: Budget, spent: Double)] {
+        filteredBudgets.map { budget in
+            let spent = filteredTransactions
+                .filter { !$0.isIncome && $0.category?.name == budget.category?.name }
+                .reduce(0) { $0 + abs($1.amount) }
+            return (budget: budget, spent: spent)
+        }
+    }
+
+    /// Total planned budget across all filtered budgets.
+    private var budgetTotal: Double {
+        filteredBudgets.reduce(0) { $0 + $1.planned }
+    }
+
+    /// Count of unreviewed transactions for the review badge.
+    private var unreviewedCount: Int {
+        filteredTransactions.filter { !$0.isReviewed }.count
+    }
+
+    /// Next payday from active recurring income transactions.
+    private var nextPayday: Date? {
+        let descriptor = FetchDescriptor<RecurringTransaction>()
+        guard let recurring = try? modelContext.fetch(descriptor) else { return nil }
+        return recurring
+            .filter { $0.isIncome && $0.isActive }
+            .compactMap(\.nextOccurrence)
+            .filter { $0 > Date() }
+            .min()
+    }
+
+    /// Income trend: current month vs 3-month average (positive = above avg).
+    private var incomeTrendPercent: Double? {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let threeMonthsAgo = calendar.date(byAdding: .month, value: -3, to: now) else { return nil }
+
+        let pastIncome = allTransactions
+            .filter { $0.isIncome && !$0.isTransfer && $0.date >= threeMonthsAgo && !calendar.isDate($0.date, equalTo: now, toGranularity: .month) }
             .reduce(0) { $0 + $1.amount }
+
+        // Count distinct months in the past data
+        let pastMonths = Set(allTransactions
+            .filter { $0.isIncome && !$0.isTransfer && $0.date >= threeMonthsAgo && !calendar.isDate($0.date, equalTo: now, toGranularity: .month) }
+            .map { calendar.component(.month, from: $0.date) }
+        ).count
+
+        guard pastMonths > 0 else { return nil }
+        let monthlyAvg = pastIncome / Double(pastMonths)
+        guard monthlyAvg > 0 else { return nil }
+
+        return ((totalIncome - monthlyAvg) / monthlyAvg) * 100
     }
-    
-    private var totalExpenses: Double {
-        filteredTransactions
-            .filter { !$0.isIncome }
-            .reduce(0) { $0 + abs($1.amount) }
+
+    /// Current month savings rate (income - expenses) / income.
+    private var savingsRate: Double? {
+        guard totalIncome > 0 else { return nil }
+        return (totalIncome - totalExpenses) / totalIncome
     }
-    
-    private var netIncome: Double {
-        totalIncome - totalExpenses
-    }
-    
-    private var recentTransactions: [Transaction] {
-        Array(filteredTransactions.prefix(5))
-    }
-    
-    // Business-specific metrics
-    private var businessDeductions: Double {
-        allTransactions
-            .filter { $0.financeType == .business && !$0.isIncome }
-            .reduce(0) { $0 + abs($1.amount) }
-    }
-    
+
     // MARK: - Body
     
     var body: some View {
@@ -195,9 +310,9 @@ struct DashboardView: View {
                         .accessibilityAddTraits(.updatesFrequently)
                 } else {
                     dashboardContent
+                        .measureRenderTime("Dashboard")
                 }
             }
-            .background(Color(.systemGroupedBackground))
             .navigationTitle(navigationTitle)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -223,6 +338,9 @@ struct DashboardView: View {
             // MARK: - Sheet Presentations
             .sheet(isPresented: $showingAddExpense) {
                 AddTransactionView()
+            }
+            .sheet(isPresented: $showingAddIncome) {
+                AddTransactionView(startAsIncome: true)
             }
             .sheet(isPresented: $showingCreateInvoice) {
                 CreateInvoiceView()
@@ -261,30 +379,43 @@ struct DashboardView: View {
             .refreshable {
                 await refreshAsync()
             }
-            .onAppear {
+            .task {
+                // Guard against NavigationSplitView re-mounting content column
+                guard !hasLoaded else { return }
+                hasLoaded = true
+
+                // v3.12: Fetch transactions with date predicate on appear
+                loadTransactions()
+
+                // Sync Zone 3 summary panel with initial state
+                NotificationCenter.default.post(name: .dashboardTimeframeChanged, object: selectedTimeframe)
+                NotificationCenter.default.post(name: .dashboardFinanceModeChanged, object: financeMode)
+
                 setupTripSaving()
                 refreshWidgets()
-                
-                // Mark initial load complete after brief delay (for skeleton)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    withAnimation(FLOAnimation.standard) {
-                        isInitialLoad = false
-                    }
-                    // v3.7: Announce dashboard loaded to VoiceOver
-                    AccessibilityAnnouncement.screenChanged("\(navigationTitle). \(dashboardSummaryForAccessibility)")
-                }
-                
+
+                // Defer state mutations to next run loop to avoid
+                // "Publishing changes from within view updates"
+                try? await Task.sleep(for: .milliseconds(50))
+
                 // Trigger entrance animations
                 withAnimation(FLOAnimation.standard) {
                     cardsAppeared = true
                 }
-                
+
                 // Delay summary animation slightly
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    withAnimation(FLOAnimation.gentle) {
-                        summaryAnimated = true
-                    }
+                try? await Task.sleep(for: .milliseconds(250))
+                withAnimation(FLOAnimation.gentle) {
+                    summaryAnimated = true
                 }
+
+                // Mark initial load complete (skeleton dismiss)
+                try? await Task.sleep(for: .milliseconds(200))
+                withAnimation(FLOAnimation.standard) {
+                    isInitialLoad = false
+                }
+                // v3.7: Announce dashboard loaded to VoiceOver
+                AccessibilityAnnouncement.screenChanged("\(navigationTitle). \(dashboardSummaryForAccessibility)")
             }
             .onChange(of: financeMode) { oldValue, newValue in
                 HapticService.play(.selection)
@@ -301,12 +432,21 @@ struct DashboardView: View {
                 
                 // v3.7: Announce mode change to VoiceOver
                 AccessibilityAnnouncement.announce("Switched to \(newValue.rawValue) mode. \(newValue.description)")
+
+                // Notify Zone 3 summary panel
+                NotificationCenter.default.post(name: .dashboardFinanceModeChanged, object: newValue)
             }
             .onChange(of: selectedTimeframe) { oldValue, newValue in
                 HapticService.play(.selection)
-                
+
+                // v3.12: Re-fetch with new timeframe date predicate
+                loadTransactions()
+
                 // v3.7: Announce timeframe change to VoiceOver
                 AccessibilityAnnouncement.announce("Showing \(newValue.displayName)")
+
+                // Notify Zone 3 summary panel
+                NotificationCenter.default.post(name: .dashboardTimeframeChanged, object: newValue)
             }
             .id(refreshID)
         }
@@ -317,18 +457,32 @@ struct DashboardView: View {
         @ViewBuilder
         private var dashboardContent: some View {
             ScrollView {
-                VStack(spacing: 20) {
-                    // 1. PRIMARY: Finance Mode Selector (THE KILLER FEATURE)
+                LazyVStack(spacing: 20) {
+                    // 1. Context: Finance Mode + Timeframe
                     financeModeSelector
                         .opacity(cardsAppeared ? 1 : 0.001)
                         .offset(y: cardsAppeared ? 0 : -20)
-                    
-                    // 2. SECONDARY: Timeframe Picker (shown for ALL modes including Business)
+
                     timeframePicker
                         .opacity(cardsAppeared ? 1 : 0.001)
                         .offset(y: cardsAppeared ? 0 : -15)
-                    
-                    // 3. Getting Started Card (v3.4) - Shows for new users after onboarding
+
+                    // 2. Quick Actions — top priority, instant access
+                    QuickActionsView(
+                        showingAddExpense: $showingAddExpense,
+                        showingAddIncome: $showingAddIncome,
+                        showingCreateInvoice: $showingCreateInvoice,
+                        showingReceiptScanner: $showingReceiptScanner,
+                        showingMileageTracking: $showingMileageTracking,
+                        showingBasicReceiptCapture: $showingBasicReceiptCapture,
+                        financeMode: financeMode
+                    )
+                    .padding(.horizontal)
+                    .opacity(cardsAppeared ? 1 : 0.001)
+                    .offset(y: cardsAppeared ? 0 : 20)
+                    .animation(FLOAnimation.standard.delay(0.05), value: cardsAppeared)
+
+                    // 3. Getting Started — dismissible onboarding (only for new users)
                     GettingStartedCard(
                         showingAddTransaction: $showingAddExpense,
                         showingReceiptScanner: $showingReceiptScanner
@@ -336,96 +490,100 @@ struct DashboardView: View {
                     .padding(.horizontal)
                     .opacity(cardsAppeared ? 1 : 0.001)
                     .offset(y: cardsAppeared ? 0 : 20)
-                    .animation(FLOAnimation.standard.delay(0.05), value: cardsAppeared)
-                    
-                    // 4. Accounts Summary Card (Premium+) - v3.3: Moved to top for prominence
+                    .animation(FLOAnimation.standard.delay(0.08), value: cardsAppeared)
+
+                    // 4. Alerts: Smart Chips + Review Badge
+                    DashboardSmartChips(
+                        budgets: budgetItems,
+                        taxDeadline: TaxSettings.nextQuarterlyDeadline(),
+                        nextPayday: nextPayday,
+                        incomeTrendPercent: incomeTrendPercent,
+                        savingsRate: savingsRate,
+                        currentMonthIncome: totalIncome,
+                        currentMonthExpenses: totalExpenses
+                    )
+                    .opacity(cardsAppeared ? 1 : 0.001)
+                    .animation(FLOAnimation.standard.delay(0.10), value: cardsAppeared)
+
+                    DashboardReviewBadge(count: unreviewedCount) {
+                        NavigationService.shared.navigateTo(.transactions)
+                    }
+                    .padding(.horizontal)
+                    .opacity(cardsAppeared ? 1 : 0.001)
+                    .animation(FLOAnimation.standard.delay(0.12), value: cardsAppeared)
+
+                    // 5. Accounts Summary — financial snapshot
                     AccountsSummaryCard(financeMode: financeMode)
                         .padding(.horizontal)
                         .opacity(cardsAppeared ? 1 : 0.001)
                         .offset(y: cardsAppeared ? 0 : 20)
-                        .animation(FLOAnimation.standard.delay(0.1), value: cardsAppeared)
-                    
-                    // 5. Balance Summary Card - Shows income/expense flow
-                    BalanceSummaryCard(
-                        income: totalIncome,
-                        expenses: totalExpenses,
-                        net: netIncome,
-                        timeframe: selectedTimeframe,
-                        financeMode: financeMode,
-                        animated: summaryAnimated
+                        .animation(FLOAnimation.standard.delay(0.15), value: cardsAppeared)
+
+                    // 6. Budget Circles — visual budget health
+                    DashboardBudgetCircles(
+                        budgets: budgetItems,
+                        onTap: { budget in
+                            NavigationService.shared.openBudget(id: budget.id)
+                        }
                     )
-                    .padding(.horizontal)
                     .opacity(cardsAppeared ? 1 : 0.001)
                     .offset(y: cardsAppeared ? 0 : 20)
-                    .animation(FLOAnimation.standard.delay(0.15), value: cardsAppeared)
-                    
-                    // 6. Quick Actions - v3.6: Now properly routes receipts by tier
-                    QuickActionsView(
-                        showingAddExpense: $showingAddExpense,
-                        showingCreateInvoice: $showingCreateInvoice,
-                        showingReceiptScanner: $showingReceiptScanner,
-                        showingMileageTracking: $showingMileageTracking,
-                        showingMoveMoney: $showingMoveMoney,
-                        showingBasicReceiptCapture: $showingBasicReceiptCapture,
-                        financeMode: financeMode
-                    )
-                    .padding(.horizontal)
-                    .opacity(cardsAppeared ? 1 : 0.001)
-                    .offset(y: cardsAppeared ? 0 : 20)
-                    .animation(FLOAnimation.standard.delay(0.2), value: cardsAppeared)
-                    
-                    // 7. Business Mode: Show tax-focused cards
-                    if financeMode == .business {
-                        businessCards
-                    }
-                    
-                    // 8. Budget Overview Card (shown for ALL modes, filtered by financeType)
-                    if !filteredBudgets.isEmpty {
-                        BudgetOverviewCard(
-                            budgets: filteredBudgets,
-                            transactions: filteredTransactions
-                        )
-                        .padding(.horizontal)
-                        .opacity(cardsAppeared ? 1 : 0.001)
-                        .offset(y: cardsAppeared ? 0 : 20)
-                        .animation(FLOAnimation.standard.delay(financeMode == .business ? 0.45 : 0.3), value: cardsAppeared)
-                    }
-                    
-                    // 9. Credit Card Summary Card (Premium+)
+                    .animation(FLOAnimation.standard.delay(0.18), value: cardsAppeared)
+
+                    // 7. Credit Card Summary — debt awareness
                     CreditCardSummaryCard(financeMode: financeMode)
                         .padding(.horizontal)
                         .opacity(cardsAppeared ? 1 : 0.001)
                         .offset(y: cardsAppeared ? 0 : 20)
-                        .animation(FLOAnimation.standard.delay(financeMode == .business ? 0.47 : 0.32), value: cardsAppeared)
-                    
-                    // 10. Money Moves Tips Card (v3.7) - Financial tips & debt optimization
-                    MoneyMovesTipsCard()
+                        .animation(FLOAnimation.standard.delay(0.21), value: cardsAppeared)
+
+                    // 8. Transfer Summary — recent money movement
+                    TransferSummaryCard(showMoveMoneyView: $showingMoveMoney)
                         .padding(.horizontal)
                         .opacity(cardsAppeared ? 1 : 0.001)
                         .offset(y: cardsAppeared ? 0 : 20)
-                        .animation(FLOAnimation.standard.delay(financeMode == .business ? 0.50 : 0.37), value: cardsAppeared)
-                    
-                    // 11. Recent Transactions
+                        .animation(FLOAnimation.standard.delay(0.24), value: cardsAppeared)
+
+                    // 9. Recent Transactions — activity feed
                     if !recentTransactions.isEmpty {
-                        RecentTransactionsCard(
-                            transactions: recentTransactions,
-                            financeMode: financeMode
-                        )
-                        .padding(.horizontal)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Recent")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .textCase(.uppercase)
+                                .padding(.horizontal)
+                                .accessibilityAddTraits(.isHeader)
+
+                            ForEach(recentTransactions.prefix(8)) { transaction in
+                                DashboardRecentRow(transaction: transaction)
+                                    .padding(.horizontal)
+                            }
+                        }
                         .opacity(cardsAppeared ? 1 : 0.001)
                         .offset(y: cardsAppeared ? 0 : 20)
-                        .animation(FLOAnimation.standard.delay(financeMode == .business ? 0.52 : 0.40), value: cardsAppeared)
+                        .animation(FLOAnimation.standard.delay(0.27), value: cardsAppeared)
                     } else {
                         DashboardEmptyStateCard(financeMode: financeMode)
                             .padding(.horizontal)
                             .opacity(cardsAppeared ? 1 : 0.001)
                             .scaleEffect(cardsAppeared ? 1 : 0.9)
-                            .animation(FLOAnimation.standard.delay(financeMode == .business ? 0.52 : 0.40), value: cardsAppeared)
-                            // v3.7: VoiceOver label for empty state
+                            .animation(FLOAnimation.standard.delay(0.27), value: cardsAppeared)
                             .accessibleCard(
                                 label: "No transactions yet for \(financeMode.rawValue) mode, \(selectedTimeframe.displayName)",
                                 hint: "Use quick actions above to add your first transaction"
                             )
+                    }
+
+                    // 10. Money Moves Tips — educational, low priority
+                    MoneyMovesTipsCard()
+                        .padding(.horizontal)
+                        .opacity(cardsAppeared ? 1 : 0.001)
+                        .offset(y: cardsAppeared ? 0 : 20)
+                        .animation(FLOAnimation.standard.delay(0.30), value: cardsAppeared)
+
+                    // 11. Business cards — only in Business mode
+                    if financeMode == .business {
+                        businessCards
                     }
                     
                     // Bottom padding
@@ -528,23 +686,95 @@ struct DashboardView: View {
         return "Income \(incomeStr), Expenses \(expenseStr) for \(selectedTimeframe.displayName)"
     }
     
+    // MARK: - Data Loading (v3.12 Performance Optimization)
+
+    /// Fetches transactions using FetchDescriptor with a date predicate at the SQLite level.
+    /// Reduces deserialization from ~946 (all transactions) to ~80 (current timeframe).
+    /// Also fetches all-time business deductions separately (lightweight sum).
+    private func loadTransactions() {
+        let calendar = Calendar.current
+        let now = Date()
+
+        // Build start date based on selected timeframe
+        let startDate: Date
+        switch selectedTimeframe {
+        case .thisWeek:
+            startDate = calendar.dateComponents([.calendar, .yearForWeekOfYear, .weekOfYear], from: now).date ?? now
+        case .thisMonth:
+            startDate = calendar.dateComponents([.calendar, .year, .month], from: now).date ?? now
+        case .thisYear:
+            startDate = calendar.dateComponents([.calendar, .year], from: now).date ?? now
+        }
+
+        // Fetch transactions within the timeframe, excluding future-dated (upcoming) items
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { transaction in
+                transaction.date >= startDate && transaction.date < tomorrow
+            },
+            sortBy: [SortDescriptor(\Transaction.date, order: .reverse)]
+        )
+
+        do {
+            allTransactions = try modelContext.fetch(descriptor)
+        } catch {
+            print("❌ [Dashboard] Failed to fetch transactions: \(error.localizedDescription)")
+            allTransactions = []
+        }
+
+        // Fetch all-time business deductions separately (lightweight)
+        loadBusinessDeductions()
+
+        #if DEBUG
+        print("📊 [Dashboard] Loaded \(allTransactions.count) transactions for \(selectedTimeframe.displayName)")
+        #endif
+    }
+
+    /// Fetches all-time business deductions total. This is a separate lightweight fetch
+    /// because business deductions are shown regardless of the selected timeframe.
+    private func loadBusinessDeductions() {
+        // Note: #Predicate has limited support for complex enum/boolean expressions,
+        // so we fetch all non-income, non-transfer transactions and filter by financeType in-memory.
+        // This is still fast because the heavy work (date filtering for dashboard metrics)
+        // is handled by the main loadTransactions() predicate.
+        let businessType = Transaction.FinanceType.business
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { transaction in
+                transaction.isIncome == false && transaction.isTransfer == false
+            }
+        )
+
+        do {
+            let expenses = try modelContext.fetch(descriptor)
+            allTimeBusinessDeductions = expenses
+                .filter { $0.financeType == businessType }
+                .reduce(0.0) { $0 + abs($1.amount) }
+        } catch {
+            print("❌ [Dashboard] Failed to fetch business deductions: \(error.localizedDescription)")
+            allTimeBusinessDeductions = 0
+        }
+    }
+
     // MARK: - Helper Functions
-    
+
     private func refreshDashboard() {
         HapticService.play(.medium)
         isRefreshing = true
         refreshID = UUID()
-        
+
+        // v3.12: Re-fetch transactions on refresh
+        loadTransactions()
+
         // v3.7: Announce refresh to VoiceOver
         AccessibilityAnnouncement.announce("Refreshing dashboard")
-        
+
         Task {
             try? await Task.sleep(nanoseconds: 500_000_000)
             await MainActor.run {
                 refreshWidgets()
                 isRefreshing = false
                 HapticService.play(.success)
-                
+
                 // v3.7: Announce refresh complete
                 AccessibilityAnnouncement.announce("Dashboard refreshed")
             }
@@ -558,15 +788,17 @@ struct DashboardView: View {
     private func refreshAsync() async {
         HapticService.play(.light)
         isRefreshing = true
-        
+
         // Update widget data
         #if canImport(WidgetKit)
         WidgetCenter.shared.reloadAllTimelines()
         #endif
-        
+
         try? await Task.sleep(nanoseconds: 500_000_000)
-        
+
         await MainActor.run {
+            // v3.12: Re-fetch transactions on pull-to-refresh
+            loadTransactions()
             refreshID = UUID()
             isRefreshing = false
             HapticService.play(.success)

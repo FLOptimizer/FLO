@@ -1,8 +1,11 @@
 //  TransactionRow.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.4 - VoiceOver Audit: Decorative icons hidden
+//  Version 2.5 - Build 10: Monospaced tabular figures for amounts
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.5 - Build 10:
+//  ✅ UPDATED: Amount display uses monospaced design + monospacedDigit for alignment
 //
 //  CHANGES v2.4 - VoiceOver Audit:
 //  ✅ ADDED: Category icon hidden from VoiceOver (decorative, text describes it)
@@ -115,8 +118,9 @@ struct TransactionRow: View {
             
             VStack(alignment: .trailing, spacing: 2) {
                 Text(isTransactionValid ? transaction.formattedAmount : "")
-                    .font(.body)
+                    .font(.system(.body, design: .monospaced))
                     .fontWeight(.semibold)
+                    .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .foregroundStyle(amountColor)

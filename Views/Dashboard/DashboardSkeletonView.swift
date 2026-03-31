@@ -60,7 +60,7 @@ struct DashboardSkeletonView: View {
             }
             .padding(.vertical)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
         // v1.1: Hide skeleton from VoiceOver
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Loading dashboard")
@@ -145,7 +145,7 @@ struct BalanceSummaryCardSkeleton: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
     }
 }
@@ -176,7 +176,7 @@ struct QuickActionsSkeletonView: View {
             }
             .padding()
         }
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
     }
 }
@@ -212,7 +212,7 @@ struct BudgetOverviewCardSkeleton: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
     }
 }
@@ -257,7 +257,7 @@ struct RecentTransactionsCardSkeleton: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
     }
 }
@@ -305,7 +305,7 @@ struct TaxEstimateCardSkeleton: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
     }
 }
@@ -343,7 +343,7 @@ struct MileageCardSkeleton: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
     }
 }

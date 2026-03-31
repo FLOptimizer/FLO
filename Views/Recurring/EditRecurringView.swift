@@ -1,8 +1,15 @@
 //  EditRecurringView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.4
+//  Version 2.5 - Penny-Up Currency Input
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.5 - Penny-Up Currency Input:
+//  ✅ REPLACED: Old TextField + String amount with CurrencyInputField component
+//  ✅ CHANGED: Amount state from String to Double (initialized from recurringTransaction.amount)
+//  ✅ REMOVED: String-to-Double parsing in isValid and save()
+//  ✅ UPDATED: All validation/save logic to use Double amount directly
+//  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters (X mark emoji)
 //
 //  CHANGES v2.4:
 //  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters (X mark emoji)
@@ -28,7 +35,7 @@ struct EditRecurringView: View {
     
     let recurringTransaction: RecurringTransaction
     
-    @State private var amount: String
+    @State private var amount: Double
     @State private var merchantName: String
     @State private var isIncome: Bool
     @State private var selectedCategory: Category?
@@ -45,7 +52,7 @@ struct EditRecurringView: View {
                         
     init(recurringTransaction: RecurringTransaction) {
         self.recurringTransaction = recurringTransaction
-        _amount = State(initialValue: String(format: "%.2f", recurringTransaction.amount))
+        _amount = State(initialValue: recurringTransaction.amount)
         _merchantName = State(initialValue: recurringTransaction.merchantName)
         _isIncome = State(initialValue: recurringTransaction.isIncome)
         _selectedCategory = State(initialValue: recurringTransaction.category)
@@ -72,6 +79,17 @@ struct EditRecurringView: View {
             .navigationTitle("Edit Recurring")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        #if canImport(UIKit)
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil
+                        )
+                        #endif
+                    }
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         HapticService.play(.light)
@@ -134,14 +152,11 @@ struct EditRecurringView: View {
     private var detailsSection: some View {
         Section("Details") {
             TextField("Merchant Name", text: $merchantName)
-            
-            HStack {
-                Text("$")
-                    .accessibilityHidden(true)
-                TextField("0.00", text: $amount)
-                    .keyboardType(.decimalPad)
-                    .accessibilityLabel("Amount in dollars")
-            }
+
+            CurrencyInputField(
+                amount: $amount,
+                accessibilityLabelText: "Recurring amount"
+            )
         }
         .opacity(viewAppeared ? 1 : 0.001)
         .offset(y: viewAppeared ? 0 : 10)
@@ -301,18 +316,19 @@ struct EditRecurringView: View {
     
     private var isValid: Bool {
         guard !merchantName.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
-        guard let amt = Double(amount), amt > 0 else { return false }
+        guard amount > 0 else { return false }
         return true
     }
     
     // MARK: - Actions
     
     private func save() {
-        guard let amt = Double(amount), amt > 0 else { return }
-        
+        let amt = amount
+        guard amt > 0 else { return }
+
         let trimmedName = merchantName.trimmingCharacters(in: .whitespaces)
         guard !trimmedName.isEmpty else { return }
-        
+
         recurringTransaction.amount = amt
         recurringTransaction.merchantName = trimmedName
         recurringTransaction.isIncome = isIncome
@@ -328,7 +344,7 @@ struct EditRecurringView: View {
             HapticService.play(.success)
             dismiss()
         } catch {
-            print("Ã¢ÂÅ’ Failed to save recurring transaction: \(error)")
+            print("❌ Failed to save recurring transaction: \(error)")
             HapticService.play(.error)
         }
     }
@@ -341,7 +357,7 @@ struct EditRecurringView: View {
             HapticService.play(.success)
             dismiss()
         } catch {
-            print("Ã¢ÂÅ’ Failed to delete recurring transaction: \(error)")
+            print("❌ Failed to delete recurring transaction: \(error)")
             HapticService.play(.error)
         }
     }

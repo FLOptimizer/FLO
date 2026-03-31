@@ -385,7 +385,7 @@ struct InvoicesIllustration: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(colorScheme == .dark
                       ? Color.white.opacity(0.06)
-                      : Color(.systemGray5))
+                      : Color.gray.opacity(0.2))
                 .frame(width: 80, height: 100)
                 .rotationEffect(.degrees(6))
                 .offset(x: 5, y: 5)
@@ -926,10 +926,14 @@ private struct ContactCard: View {
     var body: some View {
         RoundedRectangle(cornerRadius: 10)
             .fill(colorScheme == .dark
-                  ? Color.white.opacity(0.08)
+                  ? Color.white.opacity(0.12)
                   : Color.white)
             .frame(width: 90, height: 65)
-            .shadow(color: .black.opacity(0.06), radius: 5, y: 2)
+            .shadow(color: .black.opacity(0.08), radius: 5, y: 2)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(Color.brandPrimary.opacity(colorScheme == .dark ? 0.25 : 0.1), lineWidth: 1)
+            )
             .overlay(
                 HStack(spacing: 8) {
                     // Avatar circle
@@ -937,8 +941,8 @@ private struct ContactCard: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.brandPrimary.opacity(avatarOpacity),
-                                    Color.brandPrimary.opacity(avatarOpacity * 0.6)
+                                    Color.brandPrimary.opacity(max(avatarOpacity, 0.25)),
+                                    Color.brandPrimary.opacity(max(avatarOpacity * 0.6, 0.15))
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -948,14 +952,14 @@ private struct ContactCard: View {
                         .overlay(
                             Image(systemName: "person.fill")
                                 .font(.system(size: 10))
-                                .foregroundStyle(Color.brandPrimary.opacity(avatarOpacity * 2))
+                                .foregroundStyle(Color.brandPrimary.opacity(max(avatarOpacity * 2, 0.5)))
                         )
-                    
+
                     // Text lines
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(Array(lineWidths.enumerated()), id: \.offset) { _, width in
                             RoundedRectangle(cornerRadius: 1.5)
-                                .fill(Color.primary.opacity(0.12))
+                                .fill(Color.primary.opacity(colorScheme == .dark ? 0.2 : 0.12))
                                 .frame(width: width, height: 4)
                         }
                     }

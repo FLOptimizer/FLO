@@ -277,7 +277,7 @@ struct EULAView: View {
                         EULAKeyPoint(text: "Governed by Kentucky state law")
                     }
                     .padding()
-                    .background(Color(.systemGray6))
+                    .background(Color.gray.opacity(0.1))
                     .cornerRadius(8)
                 }
                 .opacity(viewAppeared ? 1 : 0.001)
@@ -323,7 +323,7 @@ struct EULAView: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color(.systemGray6))
+                .background(Color.gray.opacity(0.1))
                 .cornerRadius(8)
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)

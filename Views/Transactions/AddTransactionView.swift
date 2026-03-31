@@ -1,8 +1,18 @@
 //  AddTransactionView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.2 - VoiceOver Audit: Decorative icons hidden
+//  Version 4.0 - Penny-Up Currency Input
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v4.0 - Penny-Up Currency Input:
+//  ✅ REPLACED: Old TextField + amountBinding with CurrencyInputField component
+//  ✅ CHANGED: Amount state from Decimal (amountValue) to Double (amountDouble)
+//  ✅ REMOVED: amountBinding computed property (penny-up handles formatting internally)
+//  ✅ REMOVED: formattedAmount computed property (CurrencyInputField formats display)
+//  ✅ UPDATED: largeAmountThreshold from Decimal to Double
+//  ✅ UPDATED: Receipt auto-fill sets amountDouble directly
+//  ✅ UPDATED: Celebration overlay uses amountDouble directly
+//  ✅ UPDATED: All validation and save logic uses amountDouble
 //
 //  CHANGES v3.2 - VoiceOver Audit:
 //  ✅ ADDED: Category picker icons hidden (decorative, text describes category)
@@ -64,6 +74,9 @@
 import SwiftUI
 import SwiftData
 import AVFoundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct AddTransactionView: View {
     @Environment(\.modelContext) private var context
@@ -73,8 +86,11 @@ struct AddTransactionView: View {
     @Query(sort: \Category.name) private var categories: [Category]
     @Query(sort: \Account.name) private var accounts: [Account]
     
+    // Optional: start with Income toggle on
+    var startAsIncome: Bool = false
+
     // Transaction Properties
-    @State private var amountValue: Decimal = 0
+    @State private var amountDouble: Double = 0
     @State private var note = ""
     @State private var isIncome = false
     @State private var selectedCategory: Category?
@@ -101,6 +117,9 @@ struct AddTransactionView: View {
     // Loading state
     @State private var isSaving = false
     
+    // Celebration
+    @State private var showIncomeCelebration = false
+    
     // v2.9: Usage Limit State
     @State private var usageLimitService: UsageLimitService?
     @State private var showingSubscription = false
@@ -113,7 +132,7 @@ struct AddTransactionView: View {
         case amount, merchant, note
     }
     
-    private let largeAmountThreshold: Decimal = 10_000
+    private let largeAmountThreshold: Double = 10_000
     
     // v2.9: Check if within transaction limit
     private var isWithinLimit: Bool {
@@ -158,11 +177,15 @@ struct AddTransactionView: View {
                 }
             }
             .navigationTitle("New Transaction")
+            #if !os(macOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar { toolbarContent }
+            #if canImport(UIKit)
             .sheet(isPresented: $showingCamera) {
                 DocumentCameraView(image: $capturedImage)
             }
+            #endif
             .sheet(isPresented: $showingReceiptPreview) {
                 receiptPreviewSheet
             }
@@ -171,6 +194,20 @@ struct AddTransactionView: View {
                 SubscriptionView()
             }
             // v2.9: Limit reached overlay
+            #if os(macOS)
+            .sheet(isPresented: $showingLimitReached) {
+                LimitReachedOverlay(
+                    limitType: .transactions,
+                    currentCount: usageLimitService?.currentMonthTransactionCount ?? 50,
+                    limit: subscriptionManager.currentTier.transactionLimit ?? 50,
+                    showingSubscription: $showingSubscription,
+                    onDismiss: {
+                        showingLimitReached = false
+                        dismiss()
+                    }
+                )
+            }
+            #else
             .fullScreenCover(isPresented: $showingLimitReached) {
                 LimitReachedOverlay(
                     limitType: .transactions,
@@ -183,6 +220,7 @@ struct AddTransactionView: View {
                     }
                 )
             }
+            #endif
             // v2.8: Camera permission denied alert
             .alert("Camera Access Required", isPresented: $showingCameraPermissionAlert) {
                 Button("Open Settings") {
@@ -218,9 +256,10 @@ struct AddTransactionView: View {
                     saveTransaction()
                 }
             } message: {
-                Text("You're about to save a transaction for \(formattedAmount). Is this correct?")
+                Text("You're about to save a transaction for \(amountDouble, format: .currency(code: "USD")). Is this correct?")
             }
             .onAppear {
+                if startAsIncome { isIncome = true }
                 setDefaultAccount()
                 setupLimitService()
                 // v3.0: Screen announcement
@@ -229,6 +268,14 @@ struct AddTransactionView: View {
             .onDisappear {
                 cleanupOnCancel()
             }
+            .celebrationOverlay(
+                isPresented: $showIncomeCelebration,
+                style: .incomeReceived,
+                amount: amountDouble > 0 ? amountDouble : nil,
+                onDismiss: {
+                    dismiss()
+                }
+            )
         }
     }
     
@@ -250,14 +297,12 @@ struct AddTransactionView: View {
 
     private var amountSection: some View {
         Section("Amount") {
-            TextField("0.00", text: amountBinding)
-                .keyboardType(.decimalPad)
-                .font(.title2)
-                .fontWeight(.semibold)
-                .focused($focusedField, equals: .amount)
-                .disabled(isProcessingReceipt)
-                .accessibilityLabel("Transaction amount")
-                .accessibilityHint("Enter the amount in dollars")
+            CurrencyInputField(
+                amount: $amountDouble,
+                accessibilityLabelText: "Transaction amount",
+                showDoneButton: false  // Parent toolbar handles Done button
+            )
+            .disabled(isProcessingReceipt)
         }
     }
 
@@ -535,43 +580,21 @@ struct AddTransactionView: View {
             Spacer()
             Button("Done") {
                 focusedField = nil
+                // Also dismiss CurrencyInputField's internal keyboard
+                #if canImport(UIKit)
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil, from: nil, for: nil
+                )
+                #endif
             }
         }
     }
     
-    // MARK: - Amount Binding
-    
-    private var formattedAmount: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        return formatter.string(from: amountValue as NSDecimalNumber) ?? "$0.00"
-    }
-    
-    private var amountBinding: Binding<String> {
-        Binding(
-            get: {
-                if amountValue == 0 {
-                    return ""
-                }
-                return String(describing: amountValue)
-            },
-            set: { newValue in
-                let sanitized = newValue.filter { "0123456789.,".contains($0) }
-                
-                if let decimal = Decimal(string: sanitized, locale: .current) {
-                    amountValue = decimal
-                } else if sanitized.isEmpty {
-                    amountValue = 0
-                }
-            }
-        )
-    }
-    
     // MARK: - Validation
-    
+
     private var canSave: Bool {
-        amountValue > 0
+        amountDouble > 0
     }
     
     private var isFutureDate: Bool {
@@ -593,13 +616,13 @@ struct AddTransactionView: View {
             return
         }
         
-        if amountValue <= 0 {
+        if amountDouble <= 0 {
             validationMessage = "Amount must be greater than zero"
             showingValidationAlert = true
             return
         }
-        
-        if amountValue > largeAmountThreshold {
+
+        if amountDouble > largeAmountThreshold {
             showingLargeAmountConfirmation = true
             return
         }
@@ -614,7 +637,7 @@ struct AddTransactionView: View {
     private func saveTransaction() {
         isSaving = true
         
-        let amount = Double(truncating: amountValue as NSDecimalNumber)
+        let amount = amountDouble
         
         let transaction = Transaction(
             amount: amount,
@@ -646,10 +669,15 @@ struct AddTransactionView: View {
             try context.save()
             print("Transaction saved: \(transaction.displayName) - \(financeType.displayName) - Account: \(selectedAccount?.name ?? "None")")
             
-            HapticService.play(.success)
             AccessibilityAnnouncement.announce("Transaction saved successfully")
             
-            dismiss()
+            // Show celebration for income transactions, otherwise dismiss normally
+            if isIncome {
+                showIncomeCelebration = true
+            } else {
+                HapticService.play(.success)
+                dismiss()
+            }
         } catch {
             print("Failed to save transaction: \(error)")
             
@@ -733,8 +761,9 @@ struct AddTransactionView: View {
                 await MainActor.run {
                     if let parsedAmount = parsedData.amount {
                         let roundedAmount = (parsedAmount * 100).rounded() / 100
-                        amountValue = Decimal(string: String(format: "%.2f", roundedAmount)) ?? Decimal(roundedAmount)
-                        announceAccessibilityChange("Amount filled from receipt: \(formattedAmount)")
+                        amountDouble = roundedAmount
+                        let formatted = roundedAmount.formatted(.currency(code: "USD"))
+                        announceAccessibilityChange("Amount filled from receipt: \(formatted)")
                     }
                     if let parsedDate = parsedData.date {
                         date = parsedDate
@@ -795,7 +824,7 @@ struct AccountChipView: View {
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.brandPrimary.opacity(0.15) : Color(.secondarySystemBackground))
+                    .fill(isSelected ? Color.brandPrimary.opacity(0.15) : Color.floSecondarySystemBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8)

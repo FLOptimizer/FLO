@@ -34,12 +34,13 @@ import SwiftUI
 import SwiftData
 
 struct InsightsCard: View {
-    @Query private var transactions: [Transaction]
-    @Query private var budgets: [Budget]
-    @Query private var mileageTrips: [MileageTrip]
+    @State private var transactions: [Transaction] = []
+    @State private var budgets: [Budget] = []
+    @State private var mileageTrips: [MileageTrip] = []
     @Query private var categories: [Category]
     @Query private var accounts: [Account]  // v1.2: Added for debt insights
-    
+
+    @Environment(\.modelContext) private var modelContext
     @ObservedObject private var insightsService = InsightsService.shared
     
     @State private var isExpanded = false
@@ -65,12 +66,18 @@ struct InsightsCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(16)
         .opacity(cardOpacity)
         .onAppear {
+            loadData()
             generateInsights()
             animateEntrance()
+        }
+        .onDisappear {
+            transactions = []
+            budgets = []
+            mileageTrips = []
         }
         .onChange(of: transactions.count) { _, _ in
             insightsService.invalidateCache()
@@ -194,6 +201,25 @@ struct InsightsCard: View {
     
     // MARK: - Actions
     
+    private func loadData() {
+        let calendar = Calendar.current
+        let yearStart = calendar.date(from: calendar.dateComponents([.year], from: Date()))!
+
+        let txDescriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= yearStart },
+            sortBy: [SortDescriptor(\Transaction.date, order: .reverse)]
+        )
+        transactions = (try? modelContext.fetch(txDescriptor)) ?? []
+
+        let tripDescriptor = FetchDescriptor<MileageTrip>(
+            predicate: #Predicate<MileageTrip> { $0.startDate >= yearStart }
+        )
+        mileageTrips = (try? modelContext.fetch(tripDescriptor)) ?? []
+
+        let budgetDescriptor = FetchDescriptor<Budget>()
+        budgets = (try? modelContext.fetch(budgetDescriptor)) ?? []
+    }
+
     private func generateInsights() {
         insightsService.generateInsights(
             transactions: transactions,
@@ -304,7 +330,7 @@ struct SpendingInsightRow: View {
             Spacer(minLength: 0)
         }
         .padding(12)
-        .background(Color(.tertiarySystemBackground))
+        .background(Color.floTertiarySystemBackground)
         .cornerRadius(12)
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
@@ -344,7 +370,7 @@ struct SpendingInsightRow: View {
         case .tip:
             // Navigate to relevant section
             if insight.message.lowercased().contains("tax") || insight.message.lowercased().contains("deduction") {
-                NavigationService.shared.navigateTo(.more)
+                NavigationService.shared.navigateTo(.tax)
             } else if insight.message.lowercased().contains("credit") || insight.message.lowercased().contains("utilization") {
                 // Credit utilization - go to transactions or accounts
                 NavigationService.shared.navigateTo(.transactions)
@@ -353,6 +379,10 @@ struct SpendingInsightRow: View {
             }
             
         case .trend, .cashFlow:
+            NavigationService.shared.navigateTo(.transactions)
+
+        case .prediction:
+            // ML-generated insights — navigate to transactions for review
             NavigationService.shared.navigateTo(.transactions)
         }
     }
@@ -458,7 +488,7 @@ struct InsightsSummaryCard: View {
                 .accessibilityHidden(true)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(insightsSummaryAccessibilityLabel)

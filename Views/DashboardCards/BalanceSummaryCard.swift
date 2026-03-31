@@ -57,10 +57,7 @@ struct BalanceSummaryCard: View {
         VStack(spacing: 16) {
             // Header with mode indicator
             HStack {
-                Image(systemName: headerIcon)
-                    .font(.title2)
-                    .foregroundStyle(modeColor)
-                    .accessibilityHidden(true)
+                FLOBrandedIcon(icon: .dashboard, size: .medium, color: modeColor)
                 
                 Text(headerTitle)
                     .font(.headline)
@@ -130,9 +127,9 @@ struct BalanceSummaryCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .floCardShadow()
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isSummaryElement)
         .onAppear {

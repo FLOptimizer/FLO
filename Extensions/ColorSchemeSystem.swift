@@ -222,7 +222,7 @@ class ColorSchemeManager {
     var personal: Color { Color.flow(currentScheme.personal) }
     
     // NOTE: background, cardBackground, textPrimary, textSecondary accessors removed (v1.1)
-    // Use SwiftUI semantic colors instead: Color(.systemBackground), .primary, .secondary
+    // Use SwiftUI semantic colors instead: Color.floSystemBackground, .primary, .secondary
 }
 
 // MARK: - Environment Key

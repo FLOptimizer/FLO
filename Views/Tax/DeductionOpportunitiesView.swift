@@ -2,8 +2,13 @@
 //  DeductionOpportunitiesView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.4 - VoiceOver Audit: Verified excellent accessibility
+//  Version 1.5 - Fixed image slot error and navigation consistency
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.5:
+//  ✅ FIXED: "Failed to create 1206x0 image slot" error on dismiss
+//  ✅ FIXED: Navigation - Done button moved from LEFT to RIGHT (Apple HIG)
+//  ✅ FIXED: Sort menu moved from RIGHT to LEFT
 //
 //  CHANGES v1.4 - VoiceOver Audit:
 //  ✅ ADDED: Filter chip icons hidden (decorative, text describes filter)
@@ -99,13 +104,6 @@ struct DeductionOpportunitiesView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Done") {
-                        HapticService.play(.light)
-                        dismiss()
-                    }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Picker("Sort By", selection: $sortOrder) {
                             ForEach(SortOrder.allCases, id: \.self) { order in
@@ -119,6 +117,13 @@ struct DeductionOpportunitiesView: View {
                     }
                     .accessibilityLabel("Sort opportunities")
                     .accessibilityHint("Current sort: \(sortOrder.rawValue)")
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        HapticService.play(.light)
+                        dismiss()
+                    }
                 }
             }
             .searchable(text: $searchText, prompt: "Search opportunities")
@@ -174,15 +179,14 @@ struct DeductionOpportunitiesView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground))
+            .background(Color.floSecondarySystemGroupedBackground)
             .cornerRadius(12)
             .padding(.horizontal)
             .padding(.top)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(filteredOpportunities.count) opportunities, potential savings \(AccessibilityFormatters.spokenCurrency(totalSavings))")
         }
-        .opacity(viewAppeared ? 1 : 0.001)
-        .offset(y: viewAppeared ? 0 : 15)
+        .opacity(viewAppeared ? 1 : 0)
         .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
     }
     
@@ -206,9 +210,8 @@ struct DeductionOpportunitiesView: View {
             .padding(.horizontal)
             .padding(.vertical, 12)
         }
-        .background(Color(.systemGroupedBackground))
-        .opacity(viewAppeared ? 1 : 0.001)
-        .offset(y: viewAppeared ? 0 : 10)
+        .background(Color.floSystemGroupedBackground)
+        .opacity(viewAppeared ? 1 : 0)
         .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
     }
     
@@ -229,7 +232,7 @@ struct DeductionOpportunitiesView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .background(
-                    isSelected ? Color.brandPrimary : Color(.secondarySystemGroupedBackground)
+                    isSelected ? Color.brandPrimary : Color.floSecondarySystemGroupedBackground
                 )
                 .foregroundColor(isSelected ? .white : .primary)
                 .cornerRadius(20)
@@ -248,8 +251,7 @@ struct DeductionOpportunitiesView: View {
             LazyVStack(spacing: 12) {
                 ForEach(Array(sortedOpportunities.enumerated()), id: \.element.id) { index, opportunity in
                     OpportunityCard(opportunity: opportunity)
-                        .opacity(viewAppeared ? 1 : 0.001)
-                        .offset(y: viewAppeared ? 0 : 20)
+                        .opacity(viewAppeared ? 1 : 0)
                         .animation(
                             FLOAnimation.standard
                             .delay(0.15 + Double(index) * 0.05),
@@ -259,7 +261,7 @@ struct DeductionOpportunitiesView: View {
             }
             .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
     }
     
     struct OpportunityCard: View {
@@ -351,9 +353,9 @@ struct DeductionOpportunitiesView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground))
+                .background(Color.floSecondarySystemGroupedBackground)
                 .cornerRadius(12)
-                .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
+                .floCardShadow(radius: 2, y: 1)
                 .scaleEffect(isPressed ? 0.98 : 1.0)
             }
             .buttonStyle(.plain)
@@ -401,7 +403,7 @@ struct DeductionOpportunitiesView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
         .accessibilityElement(children: .combine)
-        .opacity(viewAppeared ? 1 : 0.001)
+        .opacity(viewAppeared ? 1 : 0)
         .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
     }
     

@@ -325,12 +325,11 @@ class InvoiceReminderService {
         }
     }
     
-    /// Get count of pending (unpaid/overdue) invoices for badge
+    /// Get count of pending (unpaid/overdue) invoices for badge.
+    /// Returns 0 until ModelContext injection is added in a future build.
     private func getPendingInvoiceCount() async -> Int {
-        // Note: This requires access to ModelContext
-        // Temporary workaround: Use shared service or return fixed count
-        // TODO: Inject ModelContext when service is initialized
-        return 0 // Placeholder - implement when ModelContext available
+        // FUTURE: Inject ModelContext at service init to query real invoice counts (Build 9+)
+        return 0
     }
     
     // MARK: - Email Reminders (Placeholder)

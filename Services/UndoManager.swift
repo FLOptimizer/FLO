@@ -241,7 +241,7 @@ struct UndoToastView: View {
                         .foregroundStyle(Color.brandPrimaryText)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(Color(.systemBackground))
+                        .background(Color.floSystemBackground)
                         .cornerRadius(6)
                 }
                 .accessibilityHint("Double tap to undo the last action")
@@ -338,7 +338,7 @@ extension View {
 
 #Preview("Undo Toast") {
     ZStack {
-        Color(.systemBackground)
+        Color.floSystemBackground
             .ignoresSafeArea()
         
         VStack {

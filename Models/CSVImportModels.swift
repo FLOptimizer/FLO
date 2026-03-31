@@ -1,8 +1,14 @@
 //  CSVImportModels.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - Enhanced CSV Column Support
+//  Version 1.2 - Transfer Detection Support
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.2:
+//  ✅ ADDED: isTransfer flag to CSVParsedTransaction — user-confirmed transfer status
+//  ✅ ADDED: detectedAsTransfer flag — auto-detection result from keyword matching
+//  ✅ ADDED: transferConfidence — how confident we are this is a transfer (0.0-1.0)
+//  ✅ Transfers are excluded from P&L, tax estimates, and spending insights when committed
 //
 //  CHANGES v1.1:
 //  ✅ ADDED: indicatorColumn in CSVColumnMapping — for "Credit Debit Indicator" style CSVs
@@ -72,6 +78,27 @@ struct CSVParsedTransaction: Identifiable {
     var isDuplicate: Bool = false     // Detected as existing
     var duplicateMatchScore: Double = 0.0
     var duplicateMatchID: UUID?       // ID of matched Transaction
+    
+    // MARK: - Transfer Detection (NEW in v1.2)
+    
+    /// Whether this transaction should be treated as a transfer.
+    /// When true, the committed Transaction will have isTransfer = true,
+    /// excluding it from P&L, tax estimates, and spending insights.
+    /// This is the user-confirmed value (can override auto-detection).
+    var isTransfer: Bool = false
+    
+    /// Whether the system auto-detected this as a likely transfer.
+    /// Based on keyword matching in merchant name, description, or bank category.
+    /// User can override this via the UI toggle.
+    var detectedAsTransfer: Bool = false
+    
+    /// Confidence score for transfer detection (0.0 to 1.0).
+    /// Higher values indicate stronger keyword matches.
+    /// - 1.0: Exact match (e.g., "TRANSFER TO SAVINGS")
+    /// - 0.8: Strong indicator (e.g., "ZELLE TO JOHN DOE")
+    /// - 0.6: Moderate indicator (e.g., "ACH CREDIT")
+    /// - 0.0: No transfer indicators detected
+    var transferConfidence: Double = 0.0
 }
 
 // MARK: - CSV Bank Profile

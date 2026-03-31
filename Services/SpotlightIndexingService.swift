@@ -18,7 +18,9 @@
 //                    flo://more/clients/detail?id=xxx
 
 import CoreSpotlight
+#if canImport(MobileCoreServices)
 import MobileCoreServices
+#endif
 import SwiftData
 import Foundation
 

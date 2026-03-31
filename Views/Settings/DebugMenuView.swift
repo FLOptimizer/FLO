@@ -726,8 +726,13 @@ struct DebugMenuView: View {
     private var systemInfoSection: some View {
         Section {
             InfoRow(label: "App Version", value: Bundle.main.appVersionLong)
+            #if canImport(UIKit)
             InfoRow(label: "iOS Version", value: UIDevice.current.systemVersion)
             InfoRow(label: "Device", value: UIDevice.current.model)
+            #else
+            InfoRow(label: "macOS Version", value: ProcessInfo.processInfo.operatingSystemVersionString)
+            InfoRow(label: "Device", value: Host.current().localizedName ?? "Mac")
+            #endif
             InfoRow(label: "Build Config", value: "DEBUG")
         } header: {
             Label("System Info", systemImage: "info.circle.fill")

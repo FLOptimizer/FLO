@@ -29,9 +29,9 @@ import SwiftUI
 import SwiftData
 
 struct DeductionOpportunityCard: View {
-    @Query private var transactions: [Transaction]
-    @Query private var mileageTrips: [MileageTrip]
-    @Query private var receipts: [ReceiptData]
+    @State private var transactions: [Transaction] = []
+    @State private var mileageTrips: [MileageTrip] = []
+    @State private var receipts: [ReceiptData] = []
     @Query private var taxSettings: [TaxSettings]
     @Query private var businessProfiles: [BusinessProfile]
     
@@ -84,10 +84,11 @@ struct DeductionOpportunityCard: View {
                 opportunitiesList
             }
         }
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
+        .floCardShadow(radius: 5)
         .accessibilityElement(children: .contain)
+        .task { loadData() }
         .onAppear {
             withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
@@ -95,6 +96,11 @@ struct DeductionOpportunityCard: View {
             Task {
                 await analyzeOpportunities()
             }
+        }
+        .onDisappear {
+            transactions = []
+            mileageTrips = []
+            receipts = []
         }
         .sheet(isPresented: $showAllOpportunities) {
             DeductionOpportunitiesView(opportunities: opportunities)
@@ -249,13 +255,29 @@ struct DeductionOpportunityCard: View {
         .padding()
     }
     
+    // MARK: - Data Loading
+
+    private func loadData() {
+        let calendar = Calendar.current
+        let yearStart = calendar.date(from: calendar.dateComponents([.year], from: Date()))!
+
+        transactions = (try? modelContext.fetch(FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= yearStart }
+        ))) ?? []
+
+        mileageTrips = (try? modelContext.fetch(FetchDescriptor<MileageTrip>(
+            predicate: #Predicate<MileageTrip> { $0.startDate >= yearStart }
+        ))) ?? []
+
+        receipts = (try? modelContext.fetch(FetchDescriptor<ReceiptData>(
+            predicate: #Predicate<ReceiptData> { $0.date >= yearStart }
+        ))) ?? []
+    }
+
     // MARK: - Analysis
-    
+
     @MainActor
     private func analyzeOpportunities() async {
-        // Simulate brief loading for UX
-        try? await Task.sleep(nanoseconds: 500_000_000)
-        
         // Use the shared singleton instance
         let foundOpportunities = TaxOptimizationEngine.shared.scanForMissedDeductions(
             transactions: transactions,
@@ -303,7 +325,7 @@ struct OpportunityRow: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     .frame(width: 40, height: 40)
-                    .background(Color(.tertiarySystemGroupedBackground))
+                    .background(Color.floTertiarySystemBackground)
                     .cornerRadius(8)
                     .accessibilityHidden(true)
                 
@@ -344,7 +366,7 @@ struct OpportunityRow: View {
                 }
             }
             .padding(12)
-            .background(Color(.tertiarySystemGroupedBackground))
+            .background(Color.floTertiarySystemBackground)
             .cornerRadius(10)
             .scaleEffect(isPressed ? 0.98 : 1.0)
         }
@@ -457,7 +479,7 @@ struct OpportunityDetailView: View {
                             }
                         }
                         .padding()
-                        .background(Color(.secondarySystemGroupedBackground))
+                        .background(Color.floSecondarySystemGroupedBackground)
                         .cornerRadius(12)
                         .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 15)
@@ -484,7 +506,7 @@ struct OpportunityDetailView: View {
                                 .foregroundStyle(.secondary)
                         }
                         .padding()
-                        .background(Color(.secondarySystemGroupedBackground))
+                        .background(Color.floSecondarySystemGroupedBackground)
                         .cornerRadius(12)
                         .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 15)
@@ -623,7 +645,7 @@ struct OpportunityDetailView: View {
                 .foregroundStyle(.secondary)
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Audit risk: \(opportunity.riskLevel.rawValue). \(riskDescription)")

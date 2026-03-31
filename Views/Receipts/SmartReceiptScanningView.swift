@@ -1,8 +1,13 @@
 //  SmartReceiptScanningView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.6 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
+//  Version 3.7 - Penny-Up Currency Input
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.7 - Penny-Up Currency Input:
+//  ✅ REPLACED: Old TextField + String editedAmount with CurrencyInputField component
+//  ✅ CHANGED: editedAmount state and binding from String to Double
+//  ✅ UPDATED: Auto-fill, save, and reset to use Double directly
 //
 //  CHANGES v3.6 - Dynamic Type Verification:
 //  ✅ FIXED: ProcessingView title missing lineLimit + minimumScaleFactor
@@ -88,6 +93,9 @@ import SwiftData
 import PhotosUI
 import VisionKit
 import AVFoundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 @MainActor
 struct SmartReceiptScanningView: View {
@@ -111,7 +119,7 @@ struct SmartReceiptScanningView: View {
     
     // Editable fields
     @State private var editedMerchant: String = ""
-    @State private var editedAmount: String = ""
+    @State private var editedAmount: Double = 0
     @State private var editedDate: Date = Date()
     @State private var editedCategoryName: String = ""
     @State private var editedFinanceType: Transaction.FinanceType = .business
@@ -176,12 +184,14 @@ struct SmartReceiptScanningView: View {
                     }
                 }
             }
+            #if canImport(UIKit)
             .sheet(isPresented: $showingImagePicker) {
                 ImagePicker(image: $selectedImage)
             }
             .fullScreenCover(isPresented: $showingCamera) {
                 CameraView(image: $selectedImage)
             }
+            #endif
             .sheet(isPresented: $showingMatchConfirmation) {
                 if let receipt = processedReceipt, !potentialMatches.isEmpty {
                     TransactionMatchingView(
@@ -212,7 +222,9 @@ struct SmartReceiptScanningView: View {
                     await processImage(image)
                 }
             }
-            .onAppear {
+            .task {
+                // Defer to avoid "Publishing changes from within view updates"
+                try? await Task.sleep(for: .milliseconds(50))
                 setDefaultAccount()
                 AccessibilityAnnouncement.screenChanged("Smart receipt scanner")
             }
@@ -304,7 +316,7 @@ struct SmartReceiptScanningView: View {
             )
             
             editedMerchant = receipt.merchantName
-            editedAmount = String(format: "%.2f", receipt.totalAmount)
+            editedAmount = receipt.totalAmount
             editedDate = receipt.date
             editedCategoryName = receipt.suggestedCategoryName ?? ""
             editedFinanceType = .business
@@ -404,7 +416,7 @@ struct SmartReceiptScanningView: View {
         
         HapticService.play(.medium)
         
-        let finalAmount = Double(editedAmount) ?? receipt.totalAmount
+        let finalAmount = editedAmount > 0 ? editedAmount : receipt.totalAmount
         let finalMerchant = editedMerchant.isEmpty ? receipt.merchantName : editedMerchant
         let finalCategory = editedCategoryName
         
@@ -500,7 +512,7 @@ struct SmartReceiptScanningView: View {
         errorMessage = nil
         isProcessing = false
         editedMerchant = ""
-        editedAmount = ""
+        editedAmount = 0
         editedDate = Date()
         editedCategoryName = ""
         selectedAccount = nil
@@ -512,7 +524,7 @@ struct SmartReceiptScanningView: View {
 struct EditableReceiptReviewViewWithAccount: View {
     let receipt: ReceiptData
     @Binding var editedMerchant: String
-    @Binding var editedAmount: String
+    @Binding var editedAmount: Double
     @Binding var editedDate: Date
     @Binding var editedCategoryName: String
     @Binding var editedFinanceType: Transaction.FinanceType
@@ -571,7 +583,7 @@ struct EditableReceiptReviewViewWithAccount: View {
                 // Receipt Image
                 if let imageData = receipt.imageData,
                    let image = UIImage(data: imageData) {
-                    Image(uiImage: image)
+                    Image(platformImage: image)
                         .resizable()
                         .scaledToFit()
                         .frame(maxHeight: 180)
@@ -603,16 +615,10 @@ struct EditableReceiptReviewViewWithAccount: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                             .foregroundStyle(.secondary)
-                        HStack {
-                            Text("$")
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(.secondary)
-                            TextField("0.00", text: $editedAmount)
-                                .keyboardType(.decimalPad)
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedField, equals: .amount)
-                        }
+                        CurrencyInputField(
+                            amount: $editedAmount,
+                            accessibilityLabelText: "Receipt amount"
+                        )
                     }
                     
                     Divider()
@@ -740,7 +746,7 @@ struct EditableReceiptReviewViewWithAccount: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground))
+                .background(Color.floSecondarySystemBackground)
                 .cornerRadius(12)
                 .shadow(radius: 2)
                 .padding(.horizontal)
@@ -876,7 +882,7 @@ struct ReceiptAccountChip: View {
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(isSelected ? Color.brandPrimary.opacity(0.1) : Color(UIColor.tertiarySystemFill))
+                    .fill(isSelected ? Color.brandPrimary.opacity(0.1) : Color.secondary.opacity(0.12))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
@@ -1051,7 +1057,7 @@ struct MatchRow: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemBackground))
+            .background(Color.floSecondarySystemBackground)
             .cornerRadius(8)
         }
         .buttonStyle(PlainButtonStyle())
@@ -1128,6 +1134,7 @@ struct DuplicateMatchRow: View {
 
 // MARK: - Camera & Image Picker
 
+#if canImport(UIKit)
 struct CameraView: UIViewControllerRepresentable {
     @Binding var image: UIImage?
     @Environment(\.dismiss) private var dismiss
@@ -1206,6 +1213,7 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
     }
 }
+#endif
 
 struct TransactionMatchingView: View {
     @Environment(\.dismiss) private var dismiss
@@ -1272,6 +1280,7 @@ struct TransactionMatchingView: View {
                     .foregroundStyle(.secondary)
                 }
             }
+            .scrollContentBackground(.hidden)
             .navigationTitle("Match Transaction")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -160,23 +160,33 @@ struct DebtInput: Identifiable, Hashable {
     /// Create from Account model
     static func fromAccount(_ account: Account) -> DebtInput? {
         guard account.currentBalance < 0 else { return nil } // Only debts
-        
+
         let debtType: DebtType
         switch account.accountType {
         case .creditCard:
             debtType = .creditCard
         case .loan:
-            debtType = .personalLoan // Could be refined with more metadata
+            // Map LoanType to DebtType using the new loanTypeRaw field
+            switch account.loanType {
+            case .sba, .business:  debtType = .personalLoan // SBA treated as amortized loan
+            case .mortgage:        debtType = .mortgage
+            case .auto:            debtType = .autoLoan
+            case .student:         debtType = .studentLoan
+            case .personal:        debtType = .personalLoan
+            case .other:           debtType = .other
+            }
         default:
             return nil
         }
-        
+
         return DebtInput(
             id: account.id,
             name: account.name,
             debtType: debtType,
             currentBalance: account.currentBalance,
             interestRate: account.apr ?? 0,
+            monthlyPayment: account.monthlyPaymentAmount ?? 0,
+            remainingTermMonths: account.estimatedRemainingTermMonths,
             minimumPaymentPercent: account.minimumPaymentPercent ?? 2.0,
             minimumPaymentFloor: account.minimumPaymentFloor ?? 25.0
         )
@@ -197,6 +207,7 @@ struct PayoffResult: Identifiable {
     let interestSaved: Double // vs minimum payments
     let monthsSaved: Int // vs minimum payments
     let schedule: [DebtPaymentEntry]
+    var interestTrap: Bool = false // True when minimum payments can't cover interest
     
     var payoffDate: Date {
         Calendar.current.date(byAdding: .month, value: totalMonths, to: Date()) ?? Date()
@@ -439,65 +450,68 @@ final class DebtCalculationService {
         minimumFloor: Double = 25.0,
         extraPayment: Double = 0,
         maxMonths: Int = 600
-    ) -> [DebtPaymentEntry] {
-        guard balance > 0, apr >= 0 else { return [] }
-        
+    ) -> (schedule: [DebtPaymentEntry], interestTrap: Bool) {
+        guard balance > 0, apr >= 0 else { return ([], false) }
+
         let monthlyRate = apr / 100.0 / 12.0
         var currentBalance = balance
         var schedule: [DebtPaymentEntry] = []
         var month = 0
         var cumulativeInterest = 0.0
         var cumulativePrincipal = 0.0
-        
+
         let calendar = Calendar.current
         let startDate = Date()
-        
-        // Interest trap detection
+
+        // Interest trap detection: minimum payment + extra can't cover monthly interest
         if apr > 0 {
             let initialInterest = currentBalance * monthlyRate
             let initialMinPayment = max(currentBalance * (minimumPercent / 100.0), minimumFloor)
             if initialMinPayment + extraPayment <= initialInterest {
-                return [] // Would never pay off
+                return ([], true) // Interest trap — signal to caller
             }
         }
-        
+
         while currentBalance > 0.01 && month < maxMonths {
             month += 1
-            
-            // Calculate interest
+
+            // 1. Calculate interest on the PRE-interest balance
             let interest = currentBalance * monthlyRate
-            currentBalance += interest
-            
-            // Calculate minimum payment
+
+            // 2. Calculate minimum payment on the PRE-interest balance (how CC companies do it)
             let minPayment = max(
                 currentBalance * (minimumPercent / 100.0),
-                min(minimumFloor, currentBalance)
+                min(minimumFloor, currentBalance + interest)
             )
-            
-            // Total payment
-            let totalPayment = min(minPayment + extraPayment, currentBalance)
-            let principalPaid = totalPayment - interest
-            
-            currentBalance -= totalPayment
+
+            // 3. Total payment = minimum + any extra, capped at full payoff
+            let totalPayment = min(minPayment + extraPayment, currentBalance + interest)
+
+            // 4. Principal paid = total payment minus interest portion
+            let principalPaid = max(0, totalPayment - interest)
+            let extraPrincipalPaid = extraPayment > 0 ? max(0, min(extraPayment, principalPaid)) : 0
+
+            // 5. Update balance: add interest, subtract total payment
+            currentBalance = currentBalance + interest - totalPayment
             cumulativeInterest += interest
-            cumulativePrincipal += max(0, principalPaid)
-            
+            cumulativePrincipal += principalPaid
+
             let paymentDate = calendar.date(byAdding: .month, value: month, to: startDate) ?? startDate
-            
+
             schedule.append(DebtPaymentEntry(
                 month: month,
                 date: paymentDate,
                 payment: totalPayment,
-                principal: max(0, principalPaid),
+                principal: principalPaid - extraPrincipalPaid,
                 interest: interest,
-                extraPrincipal: extraPayment > 0 ? min(extraPayment, totalPayment - minPayment + interest) : 0,
+                extraPrincipal: extraPrincipalPaid,
                 remainingBalance: max(0, currentBalance),
                 cumulativeInterest: cumulativeInterest,
                 cumulativePrincipal: cumulativePrincipal
             ))
         }
-        
-        return schedule
+
+        return (schedule, false)
     }
     
     /// Calculate credit card payoff with different strategies
@@ -506,63 +520,108 @@ final class DebtCalculationService {
         extraPayment: Double? = nil
     ) -> [PayoffStrategy: PayoffResult] {
         var results: [PayoffStrategy: PayoffResult] = [:]
-        
+
         let minPercent = debt.minimumPaymentPercent ?? 2.0
         let minFloor = debt.minimumPaymentFloor ?? 25.0
-        
+
         // 1. Minimum payments only
-        let standardSchedule = generateCreditCardSchedule(
+        let standardResult = generateCreditCardSchedule(
             balance: debt.currentBalance,
             apr: debt.interestRate,
             minimumPercent: minPercent,
             minimumFloor: minFloor,
             extraPayment: 0
         )
-        
-        if let lastEntry = standardSchedule.last {
-            let avgPayment = standardSchedule.reduce(0.0) { $0 + $1.payment } / Double(standardSchedule.count)
-            
+
+        // Interest trap: signal stored on PayoffResult for the view to display
+        if standardResult.interestTrap {
             results[.minimumOnly] = PayoffResult(
                 strategy: .minimumOnly,
-                totalMonths: standardSchedule.count,
+                totalMonths: 0,
+                totalPaid: 0,
+                totalInterest: 0,
+                monthlyPayment: 0,
+                extraPayment: 0,
+                interestSaved: 0,
+                monthsSaved: 0,
+                schedule: [],
+                interestTrap: true
+            )
+            return results
+        }
+
+        if let lastEntry = standardResult.schedule.last {
+            let avgPayment = standardResult.schedule.reduce(0.0) { $0 + $1.payment } / Double(standardResult.schedule.count)
+
+            results[.minimumOnly] = PayoffResult(
+                strategy: .minimumOnly,
+                totalMonths: standardResult.schedule.count,
                 totalPaid: lastEntry.cumulativePrincipal + lastEntry.cumulativeInterest,
                 totalInterest: lastEntry.cumulativeInterest,
                 monthlyPayment: avgPayment,
                 extraPayment: 0,
                 interestSaved: 0,
                 monthsSaved: 0,
-                schedule: standardSchedule
+                schedule: standardResult.schedule
             )
         }
-        
-        // 2. Fixed extra payment
+
+        // 2. 1/6 Trick — use average minimum payment / 6 as extra
+        if let standardPayoff = results[.minimumOnly], standardPayoff.monthlyPayment > 0 {
+            let oneSixthExtra = standardPayoff.monthlyPayment / 6.0
+            let oneSixthResult = generateCreditCardSchedule(
+                balance: debt.currentBalance,
+                apr: debt.interestRate,
+                minimumPercent: minPercent,
+                minimumFloor: minFloor,
+                extraPayment: oneSixthExtra
+            )
+
+            if let lastEntry = oneSixthResult.schedule.last {
+                let avgPayment = oneSixthResult.schedule.reduce(0.0) { $0 + $1.payment } / Double(oneSixthResult.schedule.count)
+
+                results[.oneSixthTrick] = PayoffResult(
+                    strategy: .oneSixthTrick,
+                    totalMonths: oneSixthResult.schedule.count,
+                    totalPaid: lastEntry.cumulativePrincipal + lastEntry.cumulativeInterest,
+                    totalInterest: lastEntry.cumulativeInterest,
+                    monthlyPayment: avgPayment,
+                    extraPayment: oneSixthExtra,
+                    interestSaved: standardPayoff.totalInterest - lastEntry.cumulativeInterest,
+                    monthsSaved: standardPayoff.totalMonths - oneSixthResult.schedule.count,
+                    schedule: oneSixthResult.schedule
+                )
+            }
+        }
+
+        // 3. Fixed extra payment
         if let extra = extraPayment, extra > 0 {
-            let customSchedule = generateCreditCardSchedule(
+            let customResult = generateCreditCardSchedule(
                 balance: debt.currentBalance,
                 apr: debt.interestRate,
                 minimumPercent: minPercent,
                 minimumFloor: minFloor,
                 extraPayment: extra
             )
-            
-            if let lastEntry = customSchedule.last,
-               let standardResult = results[.minimumOnly] {
-                let avgPayment = customSchedule.reduce(0.0) { $0 + $1.payment } / Double(customSchedule.count)
-                
+
+            if let lastEntry = customResult.schedule.last,
+               let standardPayoff = results[.minimumOnly] {
+                let avgPayment = customResult.schedule.reduce(0.0) { $0 + $1.payment } / Double(customResult.schedule.count)
+
                 results[.fixed] = PayoffResult(
                     strategy: .fixed,
-                    totalMonths: customSchedule.count,
+                    totalMonths: customResult.schedule.count,
                     totalPaid: lastEntry.cumulativePrincipal + lastEntry.cumulativeInterest,
                     totalInterest: lastEntry.cumulativeInterest,
                     monthlyPayment: avgPayment,
                     extraPayment: extra,
-                    interestSaved: standardResult.totalInterest - lastEntry.cumulativeInterest,
-                    monthsSaved: standardResult.totalMonths - customSchedule.count,
-                    schedule: customSchedule
+                    interestSaved: standardPayoff.totalInterest - lastEntry.cumulativeInterest,
+                    monthsSaved: standardPayoff.totalMonths - customResult.schedule.count,
+                    schedule: customResult.schedule
                 )
             }
         }
-        
+
         return results
     }
     
@@ -663,17 +722,10 @@ final class DebtCalculationService {
 extension DebtCalculationService {
     
     func formatCurrency(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        formatter.maximumFractionDigits = 0 // No cents for large amounts
-        return formatter.string(from: NSNumber(value: amount)) ?? "$\(Int(amount))"
+        return NumberFormatter.appCurrencyCompact.string(from: NSNumber(value: amount)) ?? "$\(Int(amount))"
     }
-    
+
     func formatCurrencyPrecise(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        return formatter.string(from: NSNumber(value: amount)) ?? "$\(amount)"
+        return NumberFormatter.appCurrency.string(from: NSNumber(value: amount)) ?? "$\(amount)"
     }
 }

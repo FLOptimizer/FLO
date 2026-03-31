@@ -5,7 +5,7 @@
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v1.4 - Dark Mode Optimization:
-//  ✅ FIXED: L522 Color.gray.opacity(0.3) → Color(.systemGray4).opacity(0.3) for button background (adapts to dark mode)
+//  ✅ FIXED: L522 Color.gray.opacity(0.3) → Color.gray.opacity(0.3).opacity(0.3) for button background (adapts to dark mode)
 //
 //  CHANGES v1.3 - Dynamic Type Verification:
 //  ✅ FIXED: Instructions title "Manual Column Mapping" missing lineLimit + minimumScaleFactor
@@ -132,7 +132,7 @@ struct CSVColumnMapperView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 32)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
         .navigationTitle("Map Columns")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showingReview) {
@@ -182,7 +182,7 @@ struct CSVColumnMapperView: View {
             }
         }
         .padding(20)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
     }
     
@@ -224,7 +224,7 @@ struct CSVColumnMapperView: View {
                                     .minimumScaleFactor(0.5)
                                     .padding(8)
                                     .frame(minWidth: 100, alignment: .leading)
-                                    .background(rowIndex % 2 == 0 ? Color(.systemBackground) : Color(.secondarySystemBackground))
+                                    .background(rowIndex % 2 == 0 ? Color.floSystemBackground : Color.floSecondarySystemBackground)
                             }
                         }
                     }
@@ -232,14 +232,14 @@ struct CSVColumnMapperView: View {
                 .cornerRadius(8)
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color(.separator), lineWidth: 1)
+                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
                 )
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("CSV column preview showing headers and sample data")
         }
         .padding(20)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
     }
     
@@ -268,7 +268,7 @@ struct CSVColumnMapperView: View {
             }
         }
         .padding(20)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
     }
     
@@ -401,7 +401,7 @@ struct CSVColumnMapperView: View {
             )
         }
         .padding(20)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
     }
     
@@ -449,7 +449,7 @@ struct CSVColumnMapperView: View {
             }
         }
         .padding(20)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
     }
     
@@ -501,7 +501,7 @@ struct CSVColumnMapperView: View {
             }
         }
         .padding(20)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
     }
     
@@ -523,7 +523,7 @@ struct CSVColumnMapperView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(isFormValid ? Color.brandPrimary : Color(.systemGray4).opacity(0.3))
+                .background(isFormValid ? Color.brandPrimary : Color.gray.opacity(0.3).opacity(0.3))
                 .foregroundStyle(.white)
                 .cornerRadius(12)
             }

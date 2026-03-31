@@ -1,31 +1,27 @@
 //  AddCategoryView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.5 — Tax Treatment, Tax Owner, and Business/Personal classification
+//  Version 3.0 — Schedule C Line Picker for business expense categories
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v2.5:
-//  ✅ ADDED: isBusiness toggle — Business or Personal classification for all categories
-//  ✅ ADDED: taxTreatmentSection — NavigationLink picker (income categories only)
-//  ✅ ADDED: taxOwnerSection — NavigationLink picker (income categories only)
-//  ✅ ADDED: withholdingRateSection — estimated withholding % field (W-2 income only)
-//  ✅ ADDED: taxDeductibleSection now hidden for income categories (not applicable)
-//  ✅ UPDATED: previewSection shows tax treatment badge for income categories
-//  ✅ UPDATED: previewAccessibilityLabel includes treatment and owner for income
-//  ✅ UPDATED: save() passes all new properties to Category init
-//  ✅ ADDED: TaxTreatmentPickerView — shared with EditCategoryView
-//  ✅ ADDED: TaxOwnerPickerView — shared with EditCategoryView
-//  ✅ PRESERVED: All v2.4 Dynamic Type (lineLimit + minimumScaleFactor) on all text
+//  CHANGES v3.0:
+//  ✅ ADDED: selectedScheduleCLine state — optional ScheduleCLine for business expenses
+//  ✅ ADDED: scheduleCLineSection — NavigationLink picker, visible when !isIncome && isBusiness && isTaxDeductible
+//  ✅ ADDED: Schedule C badge in preview section (shows "Ln 8", "Ln 24b", etc.)
+//  ✅ UPDATED: previewAccessibilityLabel includes Schedule C line when set
+//  ✅ UPDATED: save() passes selectedScheduleCLine to Category init
+//  ✅ ADDED: ScheduleCLinePickerView — shared with EditCategoryView
+//  ✅ PRESERVED: All v2.5 tax treatment, tax owner, business/personal classification
 //  ✅ PRESERVED: All haptics, entrance animations, VoiceOver labels, and dark mode colors
+//
+//  CHANGES v2.5:
+//  ✅ ADDED: isBusiness toggle, taxTreatmentSection, taxOwnerSection, withholdingRateSection
 //
 //  CHANGES v2.4 — Dynamic Type Verification:
 //  ✅ FIXED: Preview category name, type badge, tax deductible badge text
 //
 //  CHANGES v2.2:
 //  ✅ Haptic feedback, icon/color/toggle selection animations, success/error haptics
-//
-//  PREVIOUS (v2.1):
-//  — Fixed Color(flowHex:), extracted icon grid
 //
 
 import SwiftUI
@@ -43,11 +39,14 @@ struct AddCategoryView: View {
     @State private var isTaxDeductible = false
     @State private var viewAppeared = false
 
-    // MARK: - State — New (v2.5)
+    // MARK: - State — v2.5
     @State private var isBusiness = false
     @State private var selectedTaxTreatment: TaxTreatment = .selfEmployment
     @State private var selectedTaxOwner: TaxOwner = .primary
     @State private var withholdingRateText = ""
+
+    // MARK: - State — v3.0
+    @State private var selectedScheduleCLine: ScheduleCLine? = nil
 
     // MARK: - Icon / Color Data
 
@@ -64,6 +63,11 @@ struct AddCategoryView: View {
         "10B981", "14B8A6", "06B6D4", "3B82F6", "8B5CF6",
         "EC4899", "F43F5E"
     ]
+
+    /// Whether the Schedule C line picker should be visible
+    private var showScheduleCPicker: Bool {
+        !isIncome && isBusiness && isTaxDeductible
+    }
 
     // MARK: - Body
 
@@ -85,7 +89,7 @@ struct AddCategoryView: View {
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
 
-                // Income-only sections — animate regardless, content conditional
+                // Income-only sections
                 taxTreatmentSection
                     .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
@@ -116,10 +120,16 @@ struct AddCategoryView: View {
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
 
-                previewSection
+                // v3.0 — Schedule C line picker (business + expense + deductible only)
+                scheduleCLineSection
                     .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.5), value: viewAppeared)
+
+                previewSection
+                    .opacity(viewAppeared ? 1 : 0.001)
+                    .offset(y: viewAppeared ? 0 : 10)
+                    .animation(FLOAnimation.standard.delay(0.55), value: viewAppeared)
             }
             .navigationTitle("New Category")
             .navigationBarTitleDisplayMode(.inline)
@@ -165,11 +175,13 @@ struct AddCategoryView: View {
             .pickerStyle(.segmented)
             .onChange(of: isIncome) { _, newValue in
                 HapticService.play(.selection)
-                // Reset income-specific fields when switching to expense
                 if !newValue {
                     selectedTaxTreatment = .selfEmployment
                     selectedTaxOwner = .primary
                     withholdingRateText = ""
+                } else {
+                    // Income categories don't have Schedule C lines
+                    selectedScheduleCLine = nil
                 }
             }
         }
@@ -188,8 +200,12 @@ struct AddCategoryView: View {
                         .accessibilityHidden(true)
                 }
             }
-            .onChange(of: isBusiness) { _, _ in
+            .onChange(of: isBusiness) { _, newValue in
                 HapticService.play(.light)
+                // Clear Schedule C line if switching to personal
+                if !newValue {
+                    selectedScheduleCLine = nil
+                }
             }
         } header: {
             Text("Classification")
@@ -372,8 +388,12 @@ struct AddCategoryView: View {
         if !isIncome {
             Section {
                 Toggle("Tax Deductible", isOn: $isTaxDeductible)
-                    .onChange(of: isTaxDeductible) { _, _ in
+                    .onChange(of: isTaxDeductible) { _, newValue in
                         HapticService.play(.light)
+                        // Clear Schedule C line if no longer deductible
+                        if !newValue {
+                            selectedScheduleCLine = nil
+                        }
                     }
             } footer: {
                 Text("Tax deductible categories help you track business expenses for tax reporting.")
@@ -383,6 +403,46 @@ struct AddCategoryView: View {
             }
         }
     }
+
+    // MARK: - Schedule C Line Section (v3.0)
+
+    @ViewBuilder
+    private var scheduleCLineSection: some View {
+        if showScheduleCPicker {
+            Section {
+                NavigationLink {
+                    ScheduleCLinePickerView(selectedLine: $selectedScheduleCLine)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .foregroundStyle(selectedScheduleCLine != nil ? Color.brandPrimary : .secondary)
+                            .frame(width: 24)
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Schedule C Line")
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                            Text(selectedScheduleCLine?.displayName ?? "Not assigned")
+                                .font(.caption)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .accessibilityLabel("Schedule C line: \(selectedScheduleCLine?.displayName ?? "Not assigned"). Tap to change.")
+            } header: {
+                Text("IRS Schedule C")
+            } footer: {
+                Text("Maps this expense to the correct line on IRS Schedule C (Form 1040). This helps generate CPA-ready tax reports with line-by-line breakdowns.")
+                    .font(.caption)
+                    .lineLimit(5)
+                    .minimumScaleFactor(0.7)
+            }
+        }
+    }
+
+    // MARK: - Preview
 
     private var previewSection: some View {
         Section("Preview") {
@@ -403,7 +463,7 @@ struct AddCategoryView: View {
                         .minimumScaleFactor(0.7)
                         .foregroundStyle(name.isEmpty ? .secondary : .primary)
 
-                    // Scrollable badge row so all badges stay visible at all text sizes
+                    // Scrollable badge row
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
                             // Income / Expense
@@ -458,6 +518,21 @@ struct AddCategoryView: View {
                                     .cornerRadius(4)
                                     .transition(.scale.combined(with: .opacity))
                             }
+
+                            // v3.0 — Schedule C line badge
+                            if let line = selectedScheduleCLine {
+                                Text(line.badgeLabel)
+                                    .font(.caption2)
+                                    .fontWeight(.medium)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.indigo.opacity(0.15))
+                                    .foregroundStyle(.indigo)
+                                    .cornerRadius(4)
+                                    .transition(.scale.combined(with: .opacity))
+                            }
                         }
                     }
                 }
@@ -466,6 +541,7 @@ struct AddCategoryView: View {
             .animation(FLOAnimation.quick, value: isIncome)
             .animation(FLOAnimation.quick, value: isBusiness)
             .animation(FLOAnimation.quick, value: selectedTaxTreatment.rawValue)
+            .animation(FLOAnimation.quick, value: selectedScheduleCLine?.rawValue)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(previewAccessibilityLabel)
         }
@@ -481,12 +557,16 @@ struct AddCategoryView: View {
             parts.append(selectedTaxOwner.displayName)
         }
         if !isIncome && isTaxDeductible { parts.append("Tax deductible") }
+        if let line = selectedScheduleCLine { parts.append(line.displayName) }
         return parts.joined(separator: ", ")
     }
 
     // MARK: - Save
 
     private func save() {
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmedName.isEmpty else { return }
+
         // Convert withholding text "22" -> 0.22; only for W-2 categories
         let withholdingRate: Double? = {
             guard selectedTaxTreatment == .w2WithholdingPaid,
@@ -494,6 +574,9 @@ struct AddCategoryView: View {
                   raw > 0, raw <= 100 else { return nil }
             return raw / 100.0
         }()
+
+        // Only pass scheduleCLine for business deductible expenses
+        let finalScheduleCLine: ScheduleCLine? = showScheduleCPicker ? selectedScheduleCLine : nil
 
         let category = Category(
             name: name,
@@ -505,7 +588,8 @@ struct AddCategoryView: View {
             isBusiness: isBusiness,
             taxTreatment: isIncome ? selectedTaxTreatment : .selfEmployment,
             taxOwner: isIncome ? selectedTaxOwner : .primary,
-            estimatedWithholdingRate: withholdingRate
+            estimatedWithholdingRate: withholdingRate,
+            scheduleCLine: finalScheduleCLine
         )
         context.insert(category)
 
@@ -532,7 +616,7 @@ private struct IconButton: View {
             .font(.title2)
             .foregroundStyle(isSelected ? color : .secondary)
             .frame(width: 50, height: 50)
-            .background(isSelected ? color.opacity(0.15) : Color(.systemGray6))
+            .background(isSelected ? color.opacity(0.15) : Color.gray.opacity(0.1))
             .cornerRadius(10)
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
@@ -581,7 +665,6 @@ private struct ColorButton: View {
 // MARK: - Tax Treatment Picker View (v2.5 — shared with EditCategoryView)
 
 /// NavigationLink destination for selecting a TaxTreatment.
-/// Follows the established FLO pattern: StatePickerView / FilingStatusPickerView in TaxSettingsView.
 struct TaxTreatmentPickerView: View {
     @Binding var selectedTreatment: TaxTreatment
     @Environment(\.dismiss) private var dismiss
@@ -688,6 +771,110 @@ struct TaxOwnerPickerView: View {
         .onAppear {
             AccessibilityAnnouncement.screenChanged("Income owner")
         }
+    }
+}
+
+// MARK: - Schedule C Line Picker View (v3.0 — shared with EditCategoryView)
+
+/// NavigationLink destination for selecting a ScheduleCLine.
+/// Shows only expense lines (not income lines 1/6) sorted by line number.
+/// Includes a "None" option to clear the assignment.
+struct ScheduleCLinePickerView: View {
+    @Binding var selectedLine: ScheduleCLine?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List {
+            // "None" option to clear assignment
+            Button {
+                selectedLine = nil
+                HapticService.play(.selection)
+                dismiss()
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "minus.circle")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28)
+                        .accessibilityHidden(true)
+
+                    Text("Not Assigned")
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    if selectedLine == nil {
+                        Image(systemName: "checkmark")
+                            .foregroundStyle(Color.brandPrimary)
+                            .fontWeight(.semibold)
+                            .accessibilityHidden(true)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .accessibilityLabel("Not assigned")
+            .accessibilityAddTraits(selectedLine == nil ? .isSelected : [])
+
+            // Common expense lines (most relevant for freelancers)
+            Section("Common Lines") {
+                ForEach(ScheduleCLine.commonExpenseLines, id: \.rawValue) { line in
+                    scheduleCLineRow(line)
+                }
+            }
+
+            // All other expense lines
+            Section("All Expense Lines") {
+                ForEach(ScheduleCLine.expenseLines.filter { !ScheduleCLine.commonExpenseLines.contains($0) }, id: \.rawValue) { line in
+                    scheduleCLineRow(line)
+                }
+            }
+        }
+        .navigationTitle("Schedule C Line")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            AccessibilityAnnouncement.screenChanged("Schedule C line")
+        }
+    }
+
+    private func scheduleCLineRow(_ line: ScheduleCLine) -> some View {
+        Button {
+            selectedLine = line
+            HapticService.play(.selection)
+            dismiss()
+        } label: {
+            HStack(spacing: 14) {
+                Text(line.badgeLabel)
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 24)
+                    .background(Color.indigo)
+                    .cornerRadius(6)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(line.irsDescription)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .foregroundStyle(.primary)
+                    Text(line.lineNumber)
+                        .font(.caption)
+                        .lineLimit(1)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if selectedLine == line {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(Color.brandPrimary)
+                        .fontWeight(.semibold)
+                        .accessibilityHidden(true)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .accessibilityLabel("\(line.displayName). \(line.irsDescription)")
+        .accessibilityAddTraits(selectedLine == line ? .isSelected : [])
     }
 }
 

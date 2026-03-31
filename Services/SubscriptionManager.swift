@@ -302,6 +302,7 @@ class SubscriptionManager: ObservableObject {
     
     /// Present the offer code redemption sheet (iOS 16+)
     /// Allows users to redeem subscription offer codes directly within the app
+    #if canImport(UIKit)
     @available(iOS 16.0, *)
     func presentOfferCodeRedeemSheet() async {
         do {
@@ -314,7 +315,7 @@ class SubscriptionManager: ObservableObject {
             purchaseError = .offerCodeFailed
         }
     }
-    
+
     /// Get the current window scene for presenting StoreKit sheets
     private static var currentWindowScene: UIWindowScene {
         guard let scene = UIApplication.shared.connectedScenes
@@ -328,6 +329,7 @@ class SubscriptionManager: ObservableObject {
         }
         return scene
     }
+    #endif
     
     /// Check if user can access a specific feature
     func canAccess(_ feature: Feature) -> Bool {

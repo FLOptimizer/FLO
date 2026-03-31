@@ -67,11 +67,18 @@ struct CameraPermissionHelper {
     
     /// Open device Settings app to FLO's settings page
     static func openSettings() {
+        #if canImport(UIKit)
         if let url = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(url)
         }
+        #else
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera") {
+            NSWorkspace.shared.open(url)
+        }
+        #endif
     }
-    
+
+    #if canImport(UIKit)
     /// Show alert directing user to Settings when camera access is denied
     static func showSettingsAlert(on viewController: UIViewController? = nil) {
         let alert = UIAlertController(
@@ -79,13 +86,13 @@ struct CameraPermissionHelper {
             message: "FLO needs camera access to scan receipts. Please enable it in Settings.",
             preferredStyle: .alert
         )
-        
+
         alert.addAction(UIAlertAction(title: "Open Settings", style: .default) { _ in
             openSettings()
         })
-        
+
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
+
         // Find the topmost view controller to present the alert
         if let vc = viewController {
             vc.present(alert, animated: true)
@@ -99,6 +106,19 @@ struct CameraPermissionHelper {
             topVC.present(alert, animated: true)
         }
     }
+    #else
+    /// Show alert directing user to Settings when camera access is denied (macOS)
+    static func showSettingsAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Camera Access Required"
+        alert.informativeText = "FLO needs camera access to scan receipts. Please enable it in System Settings."
+        alert.addButton(withTitle: "Open Settings")
+        alert.addButton(withTitle: "Cancel")
+        if alert.runModal() == .alertFirstButtonReturn {
+            openSettings()
+        }
+    }
+    #endif
 }
 
 // MARK: - SwiftUI View Modifier

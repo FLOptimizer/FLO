@@ -12,20 +12,20 @@ import SwiftData
 
 @Model
 final class MerchantCategoryMapping {
-    @Attribute(.unique) var id: UUID
-    var merchantName: String
-    var normalizedMerchantName: String  // Lowercase, trimmed version for matching
+    var id: UUID = UUID()
+    var merchantName: String = ""
+    var normalizedMerchantName: String = ""  // Lowercase, trimmed version for matching
     var categoryID: UUID?  // Optional: might not have category yet
     var categoryName: String?  // Cached for quick access
-    var confidence: Double  // 0.0 to 1.0 - how confident we are about this mapping
-    var timesUsed: Int  // How many times user has confirmed this mapping
-    var lastUsedDate: Date
-    var createdDate: Date
-    var isManualOverride: Bool  // User explicitly set this vs. learned
-    
+    var confidence: Double = 0.5  // 0.0 to 1.0 - how confident we are about this mapping
+    var timesUsed: Int = 0  // How many times user has confirmed this mapping
+    var lastUsedDate: Date = Date()
+    var createdDate: Date = Date()
+    var isManualOverride: Bool = false  // User explicitly set this vs. learned
+
     // FIX: Store patterns as comma-separated string instead of [String] array
     // SwiftData has issues materializing String arrays during initialization
-    var merchantPatternsString: String  // Comma-separated patterns
+    var merchantPatternsString: String = ""  // Comma-separated patterns
     
     // Computed property for easy access with sanitization
     var merchantPatterns: [String] {

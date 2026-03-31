@@ -9,7 +9,9 @@
 
 import Foundation
 import Vision
+#if canImport(UIKit)
 import UIKit
+#endif
 
 class ReceiptScannerService {
     static let shared = ReceiptScannerService()

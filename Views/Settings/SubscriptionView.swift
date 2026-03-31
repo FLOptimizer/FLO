@@ -1,11 +1,17 @@
 //  SubscriptionView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.5 - Dark Mode Optimization: Adaptive color fixes
+//  Version 3.6 - Trial tier switch: Premium is now recommended + trial tier
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
+//  CHANGES v3.6 - Trial Tier Switch (Premium):
+//  ✅ CHANGED: Moved isRecommended ("MOST POPULAR") from Pro to Premium
+//  ✅ REASON: 7-day free trial moves to Premium tier in App Store Connect
+//  ✅ REASON: Protects against Plaid API fees from non-converting trial users
+//  ✅ REASON: Creates natural upgrade path: Trial → Premium → Pro
+//
 //  CHANGES v3.5 - Dark Mode Optimization:
-//  ✅ FIXED: L688 Color.gray → Color(.systemGray4) for tier badge background (adapts to dark mode)
+//  ✅ FIXED: L688 Color.gray → Color.gray.opacity(0.3) for tier badge background (adapts to dark mode)
 //
 //  CHANGES v3.4 - Dynamic Type Verification:
 //  ✅ FIXED: Hero section "Unlock FLO Premium" missing lineLimit + minimumScaleFactor
@@ -181,7 +187,7 @@ struct SubscriptionView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.floSystemGroupedBackground)
             .navigationTitle("Choose Your Plan")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -301,9 +307,11 @@ struct SubscriptionView: View {
         HapticService.play(.medium)
         Task {
             isRedeemingCode = true
+            #if canImport(UIKit)
             if #available(iOS 16.0, *) {
                 await manager.presentOfferCodeRedeemSheet()
             }
+            #endif
             isRedeemingCode = false
             if manager.currentTier != .free {
                 HapticService.play(.success)
@@ -377,7 +385,7 @@ struct SubscriptionView: View {
             .toggleStyle(SwitchToggleStyle(tint: Color.brandPrimary))
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(Color(.secondarySystemGroupedBackground))
+            .background(Color.floSecondarySystemGroupedBackground)
             .cornerRadius(20)
             Spacer()
         }
@@ -389,14 +397,15 @@ struct SubscriptionView: View {
 
     private var subscriptionOptions: some View {
         VStack(spacing: 16) {
-            // Premium Option
+            // Premium Option (Recommended — trial tier)
             let premiumProduct = manager.product(for: .premium, period: selectedPeriod)
             if let premiumProduct = premiumProduct {
                 SubscriptionOptionCard(
                     product: premiumProduct,
                     tier: .premium,
                     isCurrentTier: manager.currentTier == .premium,
-                    isYearly: selectedPeriod == .yearly
+                    isYearly: selectedPeriod == .yearly,
+                    isRecommended: true
                 ) {
                     HapticService.play(.medium)
                     selectedTierForPurchase = (premiumProduct, .premium)
@@ -407,15 +416,14 @@ struct SubscriptionView: View {
                 .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
             }
             
-            // Pro Option (Recommended)
+            // Pro Option
             let proProduct = manager.product(for: .pro, period: selectedPeriod)
             if let proProduct = proProduct {
                 SubscriptionOptionCard(
                     product: proProduct,
                     tier: .pro,
                     isCurrentTier: manager.currentTier == .pro,
-                    isYearly: selectedPeriod == .yearly,
-                    isRecommended: true
+                    isYearly: selectedPeriod == .yearly
                 ) {
                     HapticService.play(.medium)
                     selectedTierForPurchase = (proProduct, .pro)
@@ -609,17 +617,17 @@ struct SubscriptionView: View {
                 delay: 0.60, appeared: viewAppeared
             )
             
-            // Row 12: Bank Sync with "Soon" badge (Pro only)
+            // Row 12: Bank Sync (Pro only)
             FeatureRowWithLimits(
                 title: "Bank Sync",
                 freeValue: .disabled,
                 premiumValue: .disabled,
-                proValue: .comingSoon,
+                proValue: .enabled,
                 delay: 0.62, appeared: viewAppeared
             )
         }
         .padding(20)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
     }
     
@@ -688,7 +696,7 @@ struct SubscriptionView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(manager.currentTier == .free ? Color(.systemGray4) : Color.brandPrimary)
+                    .background(manager.currentTier == .free ? Color.gray.opacity(0.3) : Color.brandPrimary)
                     .clipShape(Capsule())
             }
             
@@ -738,7 +746,7 @@ struct SubscriptionView: View {
             }
         }
         .padding(20)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
         .opacity(viewAppeared ? 1 : 0.001)
         .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
@@ -1172,7 +1180,7 @@ struct FeatureValueIcon: View {
                 
             case .disabled:
                 Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(Color(.systemGray4))
+                    .foregroundColor(Color.gray.opacity(0.3))
                 
             case .limit(let text):
                 Text(text)
@@ -1212,7 +1220,7 @@ struct SubscriptionCardButtonStyle: ButtonStyle {
     
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .background(Color(.secondarySystemGroupedBackground))
+            .background(Color.floSecondarySystemGroupedBackground)
             .cornerRadius(12)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
@@ -1243,7 +1251,11 @@ struct SubscriptionOptionCard: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(Color.brandPrimary)
+                        #if canImport(UIKit)
                         .cornerRadius(12, corners: [.topLeft, .topRight])
+                        #else
+                        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12, topTrailingRadius: 12))
+                        #endif
                 }
                 
                 // Card Content
@@ -1384,7 +1396,7 @@ struct CheckmarkIcon: View {
     
     var body: some View {
         Image(systemName: enabled ? "checkmark.circle.fill" : "xmark.circle.fill")
-            .foregroundColor(enabled ? Color.brandPrimary : Color(.systemGray4))
+            .foregroundColor(enabled ? Color.brandPrimary : Color.gray.opacity(0.3))
             .frame(width: 44)
     }
 }
@@ -1418,6 +1430,7 @@ extension Color {
     }
 }
 
+#if canImport(UIKit)
 // MARK: - View Extension for Rounded Corners
 
 extension View {
@@ -1439,6 +1452,7 @@ struct RoundedCorner: Shape {
         return Path(path.cgPath)
     }
 }
+#endif
 
 // MARK: - Preview
 

@@ -200,7 +200,7 @@ struct MarkAsSentView: View {
                     .accessibilityLabel("Due \(AccessibilityFormatters.spokenDate(invoice.dueDate)), \(daysUntilDue) days\(daysUntilDue <= 7 ? ", due soon" : "")")
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground))
+                .background(Color.floSecondarySystemBackground)
                 .cornerRadius(12)
                 .padding(.horizontal)
                 .offset(y: cardOffset)
@@ -252,7 +252,7 @@ struct MarkAsSentView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color(.secondarySystemBackground))
+                        .background(Color.floSecondarySystemBackground)
                         .foregroundStyle(Color.brandPrimaryText)
                         .cornerRadius(12)
                         .scaleEffect(shareButtonPressed ? 0.95 : 1.0)
@@ -443,9 +443,9 @@ struct MarkAsSentView: View {
         quantity: 1,
         unitPrice: 5000
     )
-    invoice.items.append(item)
+    invoice.items = [item]
     container.mainContext.insert(invoice)
-    
+
     return MarkAsSentView(invoice: invoice)
         .modelContainer(container)
 }
@@ -455,26 +455,26 @@ struct MarkAsSentView: View {
         for: Invoice.self, Client.self, InvoiceItem.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
-    
+
     let client = Client(name: "Urgent Client", email: "urgent@example.com")
     container.mainContext.insert(client)
-    
+
     let invoice = Invoice(
         invoiceNumber: "INV-2026-URGENT",
         client: client,
         issueDate: Date(),
         dueDate: Calendar.current.date(byAdding: .day, value: 3, to: Date())!
     )
-    
+
     let item = InvoiceItem(
         invoice: invoice,
         itemDescription: "Rush Project",
         quantity: 1,
         unitPrice: 2500
     )
-    invoice.items.append(item)
+    invoice.items = [item]
     container.mainContext.insert(invoice)
-    
+
     return MarkAsSentView(invoice: invoice)
         .modelContainer(container)
 }

@@ -68,7 +68,7 @@ extension ReportsView {
             categoryLegend
         }
         .padding(.vertical)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(16)
         .padding(.horizontal)
     }
@@ -182,7 +182,7 @@ extension ReportsView {
             monthlyNetSummary
         }
         .padding(.vertical)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(16)
         .padding(.horizontal)
     }
@@ -284,7 +284,7 @@ extension ReportsView {
             trendInsightView
         }
         .padding(.vertical)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(16)
         .padding(.horizontal)
     }
@@ -351,7 +351,7 @@ extension ReportsView {
             projectionSummaryView
         }
         .padding(.vertical)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(16)
         .padding(.horizontal)
     }
@@ -455,7 +455,7 @@ extension ReportsView {
             .accessibilityValue("Business: \(AccessibilityFormatters.spokenCurrency(businessExpenses)), Personal: \(AccessibilityFormatters.spokenCurrency(personalExpenses))")
         }
         .padding(.vertical)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(16)
         .padding(.horizontal)
     }
@@ -529,7 +529,7 @@ extension ReportsView {
             }
         }
         .padding(.vertical)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(16)
         .padding(.horizontal)
     }
@@ -581,7 +581,7 @@ extension ReportsView {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(16)
         .padding(.horizontal)
     }

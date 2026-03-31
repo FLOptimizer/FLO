@@ -95,7 +95,7 @@ struct CSVFilePickerView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.floSystemGroupedBackground)
             .navigationTitle("Import CSV")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -221,7 +221,7 @@ struct CSVFilePickerView: View {
             )
         }
         .padding(20)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
     }
     
@@ -288,7 +288,7 @@ struct CSVFilePickerView: View {
                         .accessibilityHidden(true)
                 }
                 .padding()
-                .background(Color(.tertiarySystemGroupedBackground))
+                .background(Color.floTertiarySystemBackground)
                 .cornerRadius(8)
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("\(profile.displayName), auto-detected")
@@ -304,7 +304,7 @@ struct CSVFilePickerView: View {
                     Spacer()
                 }
                 .padding()
-                .background(Color(.tertiarySystemGroupedBackground))
+                .background(Color.floTertiarySystemBackground)
                 .cornerRadius(8)
                 .accessibilityLabel("Bank not recognized")
             }
@@ -327,7 +327,7 @@ struct CSVFilePickerView: View {
             .accessibilityHint("Opens bank selection list")
         }
         .padding(20)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
     }
     
@@ -364,7 +364,7 @@ struct CSVFilePickerView: View {
                 .padding(.top, 8)
         }
         .padding(20)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
     }
     
@@ -536,7 +536,7 @@ struct BankBadge: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
-        .background(Color(.tertiarySystemGroupedBackground))
+        .background(Color.floTertiarySystemBackground)
         .cornerRadius(8)
     }
 }

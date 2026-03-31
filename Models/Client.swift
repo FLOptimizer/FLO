@@ -13,10 +13,10 @@ final class Client {
     // MARK: - Properties
     
     /// Unique identifier
-    var id: UUID
+    var id: UUID = UUID()
     
     /// Client/Company name
-    var name: String
+    var name: String = ""
     
     /// Contact person name (if different from company)
     var contactName: String?
@@ -38,7 +38,7 @@ final class Client {
     var taxId: String?
     
     /// Payment terms in days (e.g., Net 30)
-    var defaultPaymentTerms: Int
+    var defaultPaymentTerms: Int = 30
     
     /// Preferred payment method
     var preferredPaymentMethod: String?
@@ -53,20 +53,20 @@ final class Client {
     var notes: String?
     
     /// Whether client wants to receive automatic reminders
-    var allowReminders: Bool
+    var allowReminders: Bool = true
     
     /// Client status (active, inactive, blocked)
-    var status: ClientStatus
+    var status: ClientStatus = ClientStatus.active
     
     /// Relationship to invoices
     @Relationship(deleteRule: .cascade, inverse: \Invoice.client)
     var invoices: [Invoice]?
     
     /// Date client was added
-    var createdDate: Date
-    
+    var createdDate: Date = Date()
+
     /// Date client info was last updated
-    var modifiedDate: Date
+    var modifiedDate: Date = Date()
     
     // MARK: - Computed Properties
     

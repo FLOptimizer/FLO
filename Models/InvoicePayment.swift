@@ -14,12 +14,12 @@ final class InvoicePayment {
     
     // MARK: - Properties
     
-    @Attribute(.unique) private(set) var id: UUID
-    var amount: Double
-    var date: Date
-    var paymentMethod: PaymentMethod
-    var notes: String
-    var createdAt: Date
+    private(set) var id: UUID = UUID()
+    var amount: Double = 0.0
+    var date: Date = Date()
+    var paymentMethod: PaymentMethod = PaymentMethod.bankTransfer
+    var notes: String = ""
+    var createdAt: Date = Date()
     
     // MARK: - Relationships
     

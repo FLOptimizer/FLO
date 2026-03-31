@@ -20,7 +20,9 @@
 
 import Foundation
 import SwiftData
+#if canImport(UIKit)
 import UIKit
+#endif
 
 // MARK: - Storage Statistics Models
 
@@ -65,9 +67,7 @@ struct MonthlyReceiptStats: Identifiable, Hashable {
         guard let date = Calendar.current.date(from: dateComponents) else {
             return "\(month)/\(year)"
         }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: date)
+        return DateFormatter.monthYear.string(from: date)
     }
     
     var shortDisplayName: String {
@@ -75,9 +75,7 @@ struct MonthlyReceiptStats: Identifiable, Hashable {
         guard let date = Calendar.current.date(from: dateComponents) else {
             return "\(month)/\(year)"
         }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM yyyy"
-        return formatter.string(from: date)
+        return DateFormatter.shortMonthYear.string(from: date)
     }
     
     var sizeFormatted: String {
@@ -150,9 +148,7 @@ struct ReceiptExportItem: Identifiable {
     let image: UIImage?
     
     var amountFormatted: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        return formatter.string(from: NSNumber(value: amount)) ?? "$\(amount)"
+        return NumberFormatter.appCurrency.string(from: NSNumber(value: amount)) ?? "$\(amount)"
     }
 }
 

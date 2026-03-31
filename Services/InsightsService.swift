@@ -1,7 +1,7 @@
 //  InsightsService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.2 - Exclude transfers from insights
+//  Version 1.3 - On-Device ML Insights Integration
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  AI-like spending insights engine that provides proactive
@@ -81,7 +81,8 @@ enum InsightType: String, CaseIterable {
     case alert          // Unusual activity, large transaction
     case trend          // Income/expense trend
     case cashFlow       // Cash flow insight
-    
+    case prediction     // v1.3: ML-generated insight (spending prediction, anomaly, pattern)
+
     var defaultIcon: String {
         switch self {
         case .warning: return "exclamationmark.triangle.fill"
@@ -91,9 +92,10 @@ enum InsightType: String, CaseIterable {
         case .alert: return "bell.fill"
         case .trend: return "chart.line.uptrend.xyaxis"
         case .cashFlow: return "arrow.left.arrow.right"
+        case .prediction: return "wand.and.stars"
         }
     }
-    
+
     var defaultColor: Color {
         switch self {
         case .warning: return .orange
@@ -103,6 +105,7 @@ enum InsightType: String, CaseIterable {
         case .alert: return .red
         case .trend: return .purple
         case .cashFlow: return .teal
+        case .prediction: return .indigo
         }
     }
 }
@@ -215,7 +218,16 @@ final class InsightsService: ObservableObject {
             if SubscriptionManager.shared.currentTier.hasDebtInsights {
                 newInsights.append(contentsOf: generateDebtInsights(accounts: accounts))
             }
-            
+
+            // v1.3: Generate ML-powered insights (Premium+ only)
+            if SubscriptionManager.shared.currentTier.hasMLInsights {
+                newInsights.append(contentsOf: generateMLInsights(
+                    transactions: filteredTransactions,
+                    budgets: budgets,
+                    categories: categories
+                ))
+            }
+
             // Sort by priority (highest first) then by date
             newInsights.sort { lhs, rhs in
                 if lhs.priority != rhs.priority {
@@ -757,17 +769,11 @@ final class InsightsService: ObservableObject {
     // MARK: - Helpers
     
     private func formatCurrency(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        return formatter.string(from: NSNumber(value: amount)) ?? "$\(amount)"
+        return NumberFormatter.appCurrency.string(from: NSNumber(value: amount)) ?? "$\(amount)"
     }
-    
+
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter.string(from: date)
+        return DateFormatter.mediumDate.string(from: date)
     }
 }
 

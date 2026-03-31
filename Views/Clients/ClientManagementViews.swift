@@ -5,7 +5,7 @@
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v4.2 - Dark Mode Optimization:
-//  ✅ FIXED: L401 Color.gray → Color(.systemGray4) for status dot fill (adapts to dark mode)
+//  ✅ FIXED: L401 Color.gray → Color.gray.opacity(0.3) for status dot fill (adapts to dark mode)
 //
 //  CHANGES v4.1 - Dynamic Type Verification:
 //  ✅ FIXED: "Client Management" title missing lineLimit + minimumScaleFactor
@@ -181,7 +181,9 @@ struct AnimatedLockedClientView: View {
         .navigationTitle("Clients")
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
-            animateEntrance()
+            DispatchQueue.main.async {
+                animateEntrance()
+            }
             AccessibilityAnnouncement.screenChanged("Client management, upgrade required")
         }
     }
@@ -309,10 +311,13 @@ struct ClientListContentView: View {
                         }
                     }
                 }
+                .scrollContentBackground(.hidden)
                 .searchable(text: $searchText, prompt: "Search clients")
                 .onAppear {
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        listVisible = true
+                    DispatchQueue.main.async {
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            listVisible = true
+                        }
                     }
                 }
             }
@@ -402,7 +407,7 @@ struct AnimatedClientRow: View {
             
             // Status indicator
             Circle()
-                .fill(client.status == .active ? Color.green : Color(.systemGray4))
+                .fill(client.status == .active ? Color.green : Color.gray.opacity(0.3))
                 .frame(width: 8, height: 8)
         }
         .padding(.vertical, 4)
@@ -522,6 +527,7 @@ struct ClientDetailView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle(client.name)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: Invoice.self) { invoice in

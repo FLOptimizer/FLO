@@ -96,8 +96,10 @@ struct MileageDashboardCard: View {
         switch service.trackingPermissionStatus {
         case .notDetermined:
             return "Enable Tracking"
+        #if !os(macOS)
         case .authorizedWhenInUse:
             return "Start Tracking"
+        #endif
         case .authorizedAlways:
             return "Start Tracking"
         default:
@@ -165,9 +167,9 @@ struct MileageDashboardCard: View {
             }
         }
         .buttonStyle(AnimatedCardButtonStyle())
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 3)
+        .floCardShadow(radius: 6, y: 3)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(cardAccessibilityLabel)
         .accessibilityHint("Double tap to view all trips")
@@ -190,7 +192,13 @@ struct MileageDashboardCard: View {
             guard hasGPSAccess, let service = trackingService else { return }
             
             if oldStatus == .notDetermined &&
-               (newStatus == .authorizedWhenInUse || newStatus == .authorizedAlways) {
+               ({
+                    #if os(macOS)
+                    return newStatus == .authorized || newStatus == .authorizedAlways
+                    #else
+                    return newStatus == .authorizedWhenInUse || newStatus == .authorizedAlways
+                    #endif
+                }()) {
                 if !service.isTracking {
                     service.startTracking()
                 }
@@ -223,11 +231,7 @@ struct MileageDashboardCard: View {
     
     private var headerView: some View {
         HStack {
-            Image(systemName: "car.fill")
-                .font(.title2)
-                .foregroundStyle(Color.brandPrimary)
-                .symbolEffect(.bounce, value: cardVisible)
-                .accessibilityHidden(true)
+            FLOBrandedIcon(icon: .mileage, size: .medium, color: .brandPrimary)
             
             Text("Mileage")
                 .font(.headline)
@@ -463,7 +467,13 @@ struct MileageDashboardCard: View {
         
         if status == .notDetermined {
             service.requestLocationPermission()
-        } else if status == .authorizedWhenInUse || status == .authorizedAlways {
+        } else if ({
+            #if os(macOS)
+            return status == .authorized || status == .authorizedAlways
+            #else
+            return status == .authorizedWhenInUse || status == .authorizedAlways
+            #endif
+        }()) {
             if !service.isTracking {
                 service.startTracking()
             }

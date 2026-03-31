@@ -1,8 +1,15 @@
 //  MileageTrackingMainView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.2 - Dark Mode Optimization: Brand color replacement
+//  Version 3.3 - Brand Color Pass
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.3 - Brand Color Pass:
+//  ✅ FIXED: .green → Color.incomeGreen for deduction/money values
+//  ✅ FIXED: .blue → Color.brandPrimary for stat accents
+//  ✅ FIXED: .orange → Color.brandWarning for warning indicators
+//  ✅ FIXED: .red → Color.expenseRed for error states
+//  ✅ FIXED: StatBox background Color.floTertiarySystemBackground → floGlassCard styling
 //
 //  CHANGES v3.2 - Dark Mode Optimization:
 //  ✅ FIXED: L872 Color(hex: "14B8A6") → Color.brandPrimary for button tint (adaptive brand color)
@@ -158,35 +165,35 @@ struct FreeTierMileageView: View {
                         title: "Deduction",
                         value: String(format: "$%.0f", thisMonthStats.totalDeduction),
                         icon: "dollarsign.circle.fill",
-                        color: .green,
+                        color: Color.incomeGreen,
                         delay: 0.25,
                         appeared: viewAppeared
                     )
-                    
+
                     StatBox(
                         title: "Trips",
                         value: "\(thisMonthStats.tripCount)",
                         icon: "road.lanes",
-                        color: .blue,
+                        color: Color.brandPrimary,
                         delay: 0.3,
                         appeared: viewAppeared
                     )
                 }
                 .padding(.vertical, 4)
             }
-            
+
             // MARK: - Recent Trips
             Section {
                 if recentTrips.isEmpty {
                     VStack(spacing: 12) {
                         MileageIllustration()
                             .accessibilityHidden(true)
-                        
+
                         Text("No Trips Yet")
                             .font(.headline)
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
-                        
+
                         Text("Add a manual trip to track your business mileage")
                             .font(.subheadline)
                             .lineLimit(2)
@@ -209,7 +216,7 @@ struct FreeTierMileageView: View {
                                 value: viewAppeared
                             )
                     }
-                    
+
                     Button {
                         HapticService.play(.light)
                         showingAllTrips = true
@@ -232,7 +239,7 @@ struct FreeTierMileageView: View {
             } header: {
                 Text("Recent Trips")
             }
-            
+
             // MARK: - Actions (Manual Only)
             Section("Actions") {
                 Button {
@@ -246,7 +253,7 @@ struct FreeTierMileageView: View {
             }
             .opacity(viewAppeared ? 1 : 0.001)
             .animation(FLOAnimation.standard.delay(0.55), value: viewAppeared)
-            
+
             // MARK: - IRS Rates Info
             Section {
                 VStack(alignment: .leading, spacing: 8) {
@@ -256,7 +263,7 @@ struct FreeTierMileageView: View {
                         .minimumScaleFactor(0.7)
                         .fontWeight(.semibold)
                         .accessibilityAddTraits(.isHeader)
-                    
+
                     HStack {
                         Text("2026")
                             .lineLimit(1)
@@ -266,7 +273,7 @@ struct FreeTierMileageView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
                             .fontWeight(.medium)
-                            .foregroundStyle(.green)
+                            .foregroundStyle(Color.incomeGreen)
                     }
                     .font(.subheadline)
                     .accessibilityElement(children: .ignore)
@@ -295,13 +302,16 @@ struct FreeTierMileageView: View {
             .opacity(viewAppeared ? 1 : 0.001)
             .animation(FLOAnimation.standard.delay(0.65), value: viewAppeared)
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Mileage Tracking")
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
             AccessibilityAnnouncement.screenChanged("Mileage tracking, free tier, manual entry only")
-            
-            withAnimation(FLOAnimation.standard) {
-                viewAppeared = true
+
+            DispatchQueue.main.async {
+                withAnimation(FLOAnimation.standard) {
+                    viewAppeared = true
+                }
             }
         }
         .sheet(isPresented: $showingManualEntry) {
@@ -377,7 +387,11 @@ struct PremiumMileageTrackingView: View {
     
     private var isLimitedMode: Bool {
         let status = trackingService.trackingPermissionStatus
+        #if os(macOS)
+        return status == .denied || status == .restricted
+        #else
         return status == .authorizedWhenInUse || status == .denied || status == .restricted
+        #endif
     }
     
     private var hasNoPermission: Bool {
@@ -394,9 +408,11 @@ struct PremiumMileageTrackingView: View {
                         hasNoPermission: hasNoPermission,
                         onFix: {
                             HapticService.play(.medium)
+                            #if canImport(UIKit)
                             if let url = URL(string: UIApplication.openSettingsURLString) {
                                 UIApplication.shared.open(url)
                             }
+                            #endif
                         },
                         onDismiss: {
                             HapticService.play(.light)
@@ -415,9 +431,11 @@ struct PremiumMileageTrackingView: View {
                         hasNoPermission: hasNoPermission,
                         onTap: {
                             HapticService.play(.light)
+                            #if canImport(UIKit)
                             if let url = URL(string: UIApplication.openSettingsURLString) {
                                 UIApplication.shared.open(url)
                             }
+                            #endif
                         }
                     )
                 }
@@ -485,16 +503,16 @@ struct PremiumMileageTrackingView: View {
                         title: "Deduction",
                         value: String(format: "$%.0f", thisMonthStats.totalDeduction),
                         icon: "dollarsign.circle.fill",
-                        color: .green,
+                        color: Color.incomeGreen,
                         delay: 0.25,
                         appeared: viewAppeared
                     )
-                    
+
                     StatBox(
                         title: "Trips",
                         value: "\(thisMonthStats.tripCount)",
                         icon: "road.lanes",
-                        color: .blue,
+                        color: Color.brandPrimary,
                         delay: 0.3,
                         appeared: viewAppeared
                     )
@@ -651,12 +669,12 @@ struct PremiumMileageTrackingView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
                             .fontWeight(.medium)
-                            .foregroundStyle(.green)
+                            .foregroundStyle(Color.incomeGreen)
                     }
                     .font(.subheadline)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("2026 rate: 72.5 cents per mile")
-                    
+
                     HStack {
                         Text("2025")
                             .lineLimit(1)
@@ -680,38 +698,47 @@ struct PremiumMileageTrackingView: View {
             .opacity(viewAppeared ? 1 : 0.001)
             .animation(FLOAnimation.standard.delay(0.65), value: viewAppeared)
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Mileage Tracking")
         .navigationBarTitleDisplayMode(.large)
-        .onAppear {
+        .task {
             // Inject ModelContext
             trackingService.inject(modelContext: modelContext)
-            
+
             // Check if setup is needed
             if needsSetup {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    showingSetupPrompt = true
-                }
+                try? await Task.sleep(for: .milliseconds(500))
+                showingSetupPrompt = true
             }
-            
+
+            // Defer state mutations to avoid "Publishing changes from within view updates"
+            try? await Task.sleep(for: .milliseconds(50))
+
             // Auto-start tracking if enabled and has permission
+            // Skip auto-start on macOS — GPS accuracy is typically too poor for mileage tracking
+            #if !os(macOS)
             if trackingEnabled && !trackingService.isTracking {
                 let status = trackingService.trackingPermissionStatus
-                if status == .authorizedAlways || status == .authorizedWhenInUse {
+                let hasPermission = status == .authorizedAlways || status == .authorizedWhenInUse
+                if hasPermission {
                     trackingService.startTracking()
                 }
             }
-            
+            #endif
+
             // Show recovery alert if needed
             if trackingService.hasRecoveredTrip {
                 showingRecoveryAlert = true
             }
-            
+
             AccessibilityAnnouncement.screenChanged(
                 "Mileage tracking, GPS \(trackingService.isTracking ? "active" : "inactive")"
             )
-            
-            withAnimation(FLOAnimation.standard) {
-                viewAppeared = true
+
+            DispatchQueue.main.async {
+                withAnimation(FLOAnimation.standard) {
+                    viewAppeared = true
+                }
             }
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
@@ -779,9 +806,11 @@ struct PremiumMileageTrackingView: View {
             showingSetupPrompt = true
         } else if status == .denied || status == .restricted {
             HapticService.play(.medium)
+            #if canImport(UIKit)
             if let url = URL(string: UIApplication.openSettingsURLString) {
                 UIApplication.shared.open(url)
             }
+            #endif
         } else {
             if trackingService.isTracking {
                 HapticService.play(.heavy)
@@ -803,13 +832,16 @@ struct PremiumMileageTrackingView: View {
         switch newPhase {
         case .active:
             trackingService.inject(modelContext: modelContext)
-            
+
+            #if !os(macOS)
             if trackingEnabled && !trackingService.isTracking {
                 let status = trackingService.trackingPermissionStatus
-                if status == .authorizedAlways || status == .authorizedWhenInUse {
+                let hasPermission = status == .authorizedAlways || status == .authorizedWhenInUse
+                if hasPermission {
                     trackingService.startTracking()
                 }
             }
+            #endif
         case .background:
             break
         case .inactive:
@@ -830,9 +862,9 @@ struct FreeTierMileageBanner: View {
             HStack(spacing: 12) {
                 Image(systemName: "location.slash.fill")
                     .font(.title2)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Color.brandWarning)
                     .frame(width: 44, height: 44)
-                    .background(Color.orange.opacity(0.15))
+                    .background(Color.brandWarning.opacity(0.15))
                     .clipShape(Circle())
                     .accessibilityHidden(true)
                 
@@ -892,15 +924,15 @@ struct LimitedModeBanner: View {
             HStack(alignment: .top) {
                 Image(systemName: hasNoPermission ? "location.slash.fill" : "exclamationmark.triangle.fill")
                     .font(.title3)
-                    .foregroundStyle(hasNoPermission ? .red : .orange)
+                    .foregroundStyle(hasNoPermission ? Color.expenseRed : Color.brandWarning)
                     .accessibilityHidden(true)
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text(hasNoPermission ? "Location Access Disabled" : "Limited Tracking Mode")
                         .font(.headline)
                         .lineLimit(2)
                         .minimumScaleFactor(0.7)
-                        .foregroundStyle(hasNoPermission ? .red : .orange)
+                        .foregroundStyle(hasNoPermission ? Color.expenseRed : Color.brandWarning)
                     
                     Text(hasNoPermission ?
                          "Mileage tracking is unavailable. Enable location access in Phone Settings." :
@@ -939,7 +971,7 @@ struct LimitedModeBanner: View {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
-                .background(hasNoPermission ? Color.red : Color.orange)
+                .background(hasNoPermission ? Color.expenseRed : Color.brandWarning)
                 .cornerRadius(8)
             }
             .accessibilityLabel("Open phone settings")
@@ -954,21 +986,21 @@ struct LimitedModeBanner: View {
 struct CompactLimitedModeIndicator: View {
     let hasNoPermission: Bool
     let onTap: () -> Void
-    
+
     var body: some View {
         Button {
             onTap()
         } label: {
             HStack {
                 Image(systemName: hasNoPermission ? "location.slash.fill" : "location.fill")
-                    .foregroundStyle(hasNoPermission ? .red : .orange)
+                    .foregroundStyle(hasNoPermission ? Color.expenseRed : Color.brandWarning)
                     .accessibilityHidden(true)
-                
+
                 Text(hasNoPermission ? "Location Disabled" : "Limited Mode")
                     .font(.subheadline)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                    .foregroundStyle(hasNoPermission ? .red : .orange)
+                    .foregroundStyle(hasNoPermission ? Color.expenseRed : Color.brandWarning)
                 
                 Spacer()
                 
@@ -979,7 +1011,7 @@ struct CompactLimitedModeIndicator: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 4)
-                    .background(hasNoPermission ? Color.red : Color.orange)
+                    .background(hasNoPermission ? Color.expenseRed : Color.brandWarning)
                     .cornerRadius(12)
             }
         }
@@ -1002,7 +1034,7 @@ struct TrackingButtonStyle: ButtonStyle {
             .foregroundStyle(.white)
             .frame(width: 70)
             .padding(.vertical, 10)
-            .background(isTracking ? Color.brandPrimary : Color(.systemGray3))
+            .background(isTracking ? Color.brandPrimary : Color.gray.opacity(0.4))
             .cornerRadius(8)
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
@@ -1071,7 +1103,7 @@ struct TrackingControlCard: View {
                 VStack(spacing: 12) {
                     HStack {
                         Image(systemName: "location.fill")
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Color.brandWarning)
                             .symbolEffect(.pulse, value: true)
                             .accessibilityHidden(true)
                         Text("Trip in Progress")
@@ -1120,7 +1152,7 @@ struct TrackingControlCard: View {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.5)
                                 .fontWeight(.bold)
-                                .foregroundStyle(.green)
+                                .foregroundStyle(Color.incomeGreen)
                                 .contentTransition(.numericText())
                         }
                         
@@ -1153,13 +1185,13 @@ struct TrackingControlCard: View {
                                 .fontWeight(.medium)
                         }
                         .buttonStyle(.bordered)
-                        .tint(.orange)
+                        .tint(Color.brandWarning)
                         .accessibilityLabel("End trip")
                         .accessibilityHint("Force end the current trip and save it")
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground))
+                .background(Color.floSecondarySystemBackground)
                 .cornerRadius(12)
                 .transition(.asymmetric(
                     insertion: .scale(scale: 0.95).combined(with: .opacity),
@@ -1170,13 +1202,13 @@ struct TrackingControlCard: View {
             if !trackingService.isContextInjected {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Color.expenseRed)
                         .accessibilityHidden(true)
                     Text("Database not connected")
                         .font(.caption)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Color.expenseRed)
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Warning: Database not connected")
@@ -1191,7 +1223,7 @@ struct TrackingControlCard: View {
     
     private var statusColor: Color {
         if trackingService.isTracking {
-            return trackingService.currentTrip != nil ? .green : .yellow
+            return trackingService.currentTrip != nil ? Color.incomeGreen : Color.brandWarning
         }
         return .gray
     }
@@ -1205,10 +1237,10 @@ struct TrackingControlCard: View {
     
     private var gpsStatusColor: Color {
         switch trackingService.gpsStatus {
-        case .available: return .green
-        case .lowAccuracy: return .orange
-        case .searching: return .yellow
-        case .unavailable: return .red
+        case .available: return Color.incomeGreen
+        case .lowAccuracy: return Color.brandWarning
+        case .searching: return Color.brandWarning.opacity(0.7)
+        case .unavailable: return Color.expenseRed
         case .unknown: return .gray
         }
     }
@@ -1227,7 +1259,7 @@ struct RecoveryBanner: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Color.brandWarning)
                     .font(.title3)
                     .symbolEffect(.bounce, value: appeared)
                     .accessibilityHidden(true)
@@ -1284,7 +1316,7 @@ struct RecoveryBanner: View {
                 .font(.subheadline)
             }
             .padding()
-            .background(Color(.tertiarySystemBackground))
+            .background(Color.floTertiarySystemBackground)
             .cornerRadius(8)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Recovered trip: started \(AccessibilityFormatters.spokenDate(tripInfo.startDate)), from \(tripInfo.startAddress), \(String(format: "%.1f", tripInfo.distanceMiles)) miles")
@@ -1297,7 +1329,7 @@ struct RecoveryBanner: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .tint(.red)
+                .tint(Color.expenseRed)
                 .accessibilityLabel("Discard recovered trip")
                 .accessibilityHint("Permanently delete this interrupted trip")
                 
@@ -1328,16 +1360,16 @@ struct ErrorCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "exclamationmark.octagon.fill")
-                .foregroundStyle(.red)
+                .foregroundStyle(Color.expenseRed)
                 .font(.title3)
                 .accessibilityHidden(true)
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text("Error")
                     .font(.headline)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Color.expenseRed)
                 Text(error.userMessage)
                     .font(.subheadline)
                     .lineLimit(3)
@@ -1384,8 +1416,12 @@ struct StatBox: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
-        .background(Color(.tertiarySystemBackground))
-        .cornerRadius(8)
+        .background(Color.floCardGlass)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.floCardBorder, lineWidth: 1)
+        )
         .opacity(appeared ? 1 : 0.001)
         .offset(y: appeared ? 0 : 10)
         .scaleEffect(appeared ? 1 : 0.95)
@@ -1441,7 +1477,7 @@ struct TripRowCompact: View {
                         .font(.caption)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Color.incomeGreen)
                 }
             }
         }

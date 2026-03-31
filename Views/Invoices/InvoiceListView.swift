@@ -135,8 +135,10 @@ struct InvoiceListView: View {
             HapticService.play(.selection)
         }
         .onAppear {
-            withAnimation(FLOAnimation.standard) {
-                viewAppeared = true
+            DispatchQueue.main.async {
+                withAnimation(FLOAnimation.standard) {
+                    viewAppeared = true
+                }
             }
         }
     }
@@ -265,6 +267,7 @@ struct InvoiceListView: View {
                         .onDelete(perform: deleteInvoices)
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                     .searchable(text: $searchText, prompt: "Search invoices or clients")
                 }
             }
@@ -663,7 +666,7 @@ struct TierComparisonRow: View {
                 .foregroundColor(.brandPrimaryText)
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(tier) plan, \(price), \(limit)\(isRecommended ? ", Best value" : "")")

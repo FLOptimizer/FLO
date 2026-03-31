@@ -20,21 +20,21 @@ final class Invoice {
     // MARK: - Properties
     
     /// Unique identifier
-    @Attribute(.unique) var id: UUID
-    
+    var id: UUID = UUID()
+
     /// Invoice number (user-visible, e.g., "INV-2024-001")
-    @Attribute(.unique) var invoiceNumber: String
+    var invoiceNumber: String = ""
     
     /// Client this invoice is for
     var client: Client?
     
     /// Invoice issue date
-    var issueDate: Date {
+    var issueDate: Date = Date() {
         didSet { updateModifiedDate() }
     }
-    
+
     /// Invoice due date
-    var dueDate: Date {
+    var dueDate: Date = Date() {
         didSet { updateModifiedDate() }
     }
     
@@ -44,32 +44,32 @@ final class Invoice {
     }
     
     /// Invoice status
-    var status: InvoiceStatus {
+    var status: InvoiceStatus = InvoiceStatus.draft {
         didSet { updateModifiedDate() }
     }
-    
+
     /// Payment terms (e.g., "Net 30", "Due on Receipt")
-    var paymentTerms: String {
+    var paymentTerms: String = "Net 30" {
         didSet { updateModifiedDate() }
     }
     
     /// Line items on this invoice
     @Relationship(deleteRule: .cascade, inverse: \InvoiceItem.invoice)
-    var items: [InvoiceItem] = []
-    
+    var items: [InvoiceItem]?
+
     /// Payment records (supports partial payments)
     @Relationship(deleteRule: .cascade, inverse: \InvoicePayment.invoice)
-    var payments: [InvoicePayment] = []
+    var payments: [InvoicePayment]?
     
     /// Subtotal before tax
     var subtotal: Double {
-        items.reduce(0) { $0 + $1.total }
+        (items ?? []).reduce(0) { $0 + $1.total }
     }
     
     // WARNING: Using Double for money. Acceptable for MVP. Migrate to Decimal in v3 for production accounting.
     
     /// Tax rate (as decimal, e.g., 0.0825 for 8.25%)
-    var taxRate: Double {
+    var taxRate: Double = 0.0 {
         didSet { updateModifiedDate() }
     }
     
@@ -79,7 +79,7 @@ final class Invoice {
     }
     
     /// Discount amount (flat dollar amount)
-    var discountAmount: Double {
+    var discountAmount: Double = 0.0 {
         didSet { updateModifiedDate() }
     }
     
@@ -121,26 +121,26 @@ final class Invoice {
     var remindersSent: [ReminderRecord] = []
     
     /// Date when invoice was created
-    var createdDate: Date
-    
+    var createdDate: Date = Date()
+
     /// Date when invoice was last modified
-    var modifiedDate: Date
+    var modifiedDate: Date = Date()
     
     // MARK: - Payment Computed Properties
     
     /// Total amount paid so far
     var amountPaid: Double {
-        payments.reduce(0) { $0 + $1.amount }
+        (payments ?? []).reduce(0) { $0 + $1.amount }
     }
-    
+
     /// Remaining balance to be paid
     var remainingBalance: Double {
         max(totalAmount - amountPaid, 0)
     }
-    
+
     /// Whether invoice has any payments
     var hasPayments: Bool {
-        !payments.isEmpty
+        !(payments ?? []).isEmpty
     }
     
     /// Whether invoice is fully paid
@@ -376,7 +376,11 @@ final class Invoice {
             invoice: self
         )
         
-        payments.append(payment)
+        if payments != nil {
+            payments?.append(payment)
+        } else {
+            payments = [payment]
+        }
         
         // Update status based on payment
         if isFullyPaid {
@@ -396,7 +400,7 @@ final class Invoice {
         if isFullyPaid {
             self.status = .paid
             if paidDate == nil {
-                self.paidDate = payments.last?.date ?? Date()
+                self.paidDate = payments?.last?.date ?? Date()
             }
         } else if hasPayments {
             self.status = .partiallyPaid
@@ -410,33 +414,33 @@ final class Invoice {
 
 @Model
 final class InvoiceItem {
-    @Attribute(.unique) var id: UUID
-    
+    var id: UUID = UUID()
+
     var invoice: Invoice?
-    
-    var itemDescription: String {
+
+    var itemDescription: String = "" {
         didSet {
             invoice?.updateModifiedDate()
         }
     }
-    
-    var quantity: Double {
+
+    var quantity: Double = 0.0 {
         didSet {
             invoice?.updateModifiedDate()
         }
     }
-    
-    var unitPrice: Double {
+
+    var unitPrice: Double = 0.0 {
         didSet {
             invoice?.updateModifiedDate()
         }
     }
-    
+
     var total: Double {
         quantity * unitPrice
     }
-    
-    var createdDate: Date
+
+    var createdDate: Date = Date()
     
     init(
         id: UUID = UUID(),

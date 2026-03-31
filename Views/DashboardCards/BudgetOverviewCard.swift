@@ -1,8 +1,14 @@
 //  BudgetOverviewCard.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.2 - Dynamic Type verification: adaptive layout, scaled text
+//  Version 1.3 — Transfer Exclusion Fix
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.3 — Transfer Exclusion (Bulletproof):
+//  ✅ FIXED: activeBudgets spent calculation excludes isTransfer transactions
+//  ✅ FIXED: @Query predicate (with category) adds isTransfer == false at query level
+//  ✅ FIXED: @Query predicate (no category) adds isTransfer == false at query level
+//  ✅ Transfers now excluded at 3 layers: DashboardView, @Query, and computed property
 //
 //  CHANGES v1.2 - Dynamic Type Verification:
 //  ✅ FIXED: amountColumn currency text missing lineLimit + minimumScaleFactor
@@ -37,7 +43,7 @@ struct BudgetOverviewCard: View {
         budgets.compactMap { budget in
             let categoryName = budget.category?.name
             let spent = transactions
-                .filter { !$0.isIncome }
+                .filter { !$0.isIncome && !$0.isTransfer }
                 .filter { $0.category?.name == categoryName }
                 .reduce(0) { $0 + $1.amount }
             
@@ -51,10 +57,7 @@ struct BudgetOverviewCard: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Image(systemName: "chart.pie.fill")
-                    .font(.title2)
-                    .foregroundStyle(Color.brandPrimary)
-                    .accessibilityHidden(true)
+                FLOBrandedIcon(icon: .budgets, size: .medium, color: .brandPrimary)
                 
                 Text("Budget Overview")
                     .font(.headline)
@@ -64,13 +67,15 @@ struct BudgetOverviewCard: View {
                 
                 Spacer()
                 
-                NavigationLink {
-                    BudgetListView()
+                Button {
+                    HapticService.play(.light)
+                    NavigationService.shared.selectedTab = .budgets
                 } label: {
                     Image(systemName: "chevron.right")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel("View all budgets")
             }
             .padding()
@@ -111,9 +116,9 @@ struct BudgetOverviewCard: View {
                 }
             }
         }
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .floCardShadow()
     }
 }
 
@@ -147,9 +152,11 @@ struct BudgetRow: View {
             to: startOfMonth
         ) ?? budget.month
         
+        // v1.3: Both predicates exclude transfers at the query level
         if let categoryName = budget.category?.name {
             let predicate = #Predicate<Transaction> { transaction in
                 !transaction.isIncome &&
+                transaction.isTransfer == false &&
                 transaction.date >= startOfMonth &&
                 transaction.date <= endOfMonth &&
                 transaction.category?.name == categoryName
@@ -158,6 +165,7 @@ struct BudgetRow: View {
         } else {
             let predicate = #Predicate<Transaction> { transaction in
                 !transaction.isIncome &&
+                transaction.isTransfer == false &&
                 transaction.date >= startOfMonth &&
                 transaction.date <= endOfMonth
             }

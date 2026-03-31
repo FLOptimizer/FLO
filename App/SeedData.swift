@@ -1,47 +1,27 @@
 //  SeedData.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.7 — isBusiness, taxTreatment, and taxOwner classification for all categories
+//  Version 4.0 — Comprehensive granular category expansion (Build 8)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v2.7:
-//  ✅ ADDED: DefaultCategory.isBusiness — true for all business expense/income categories
-//  ✅ ADDED: DefaultCategory.taxTreatment — correct TaxTreatment for all income categories
-//  ✅ ADDED: DefaultCategory.taxOwner — .primary for all defaults (user is sole earner)
-//  ✅ UPDATED: All 33 DefaultCategory entries annotated with isBusiness + taxTreatment
-//             Business expenses → isBusiness: true
-//             Personal expenses → isBusiness: false
-//             SE/gig income     → taxTreatment: .selfEmployment,    isBusiness: true
-//             Salary/Wages      → taxTreatment: .w2WithholdingPaid, isBusiness: false
-//             Investment Income → taxTreatment: .passiveIncome,     isBusiness: false
-//             Refunds           → taxTreatment: .taxExempt,         isBusiness: false
-//  ✅ UPDATED: seedDefaultCategories() passes isBusiness/taxTreatment/taxOwner to Category init
-//  ✅ UPDATED: static let version = "2.7" (new installs get fully classified categories)
-//  ✅ ADDED: migrateCategories() v2.7 block — back-fills isBusiness and taxTreatment
-//            for existing users who installed before v2.7.
-//            Guarded by UserDefaults key — runs exactly once per device.
-//  ✅ UPDATED: Analytics helpers use isBusiness flag instead of name-based heuristics
-//  ✅ UPDATED: Color reference comment updated with isBusiness and taxTreatment columns
-//
-//  CHANGES v2.6:
-//  ✅ Added Gas category (fuelpump.fill, orange, tax deductible)
-//  ✅ migrateCategories() adds missing default categories for existing users
-//
-//  CHANGES v2.5:
-//  ✅ migrateCategories() removes duplicate categories
-//
-//  CHANGES v2.4:
-//  ✅ migrateCategories() — "doc.badge.fill" -> "signature" icon migration
-//
-//  CHANGES v2.3:
-//  ✅ FIXED: "doc.badge.fill" -> "signature" for Contract Work category
-//
-//  CHANGES v2.2:
-//  ✅ More vibrant, visually distinct colors for each category
+//  CHANGES v4.0:
+//  ✅ EXPANDED: 37 defaults → 142 defaults (48 biz exp, 60 personal exp, 16 biz inc, 18 personal inc)
+//  ✅ REMOVED: 5 generic categories from defaults (replaced by granular):
+//             Insurance (Business), Utilities (Business), Transportation, Utilities (Personal), Healthcare
+//  ✅ ADDED: Granular utilities (Electric, Gas/Natural Gas, Water & Sewer) — business + personal pairs
+//  ✅ ADDED: Granular vehicle (Gas, Vehicle Insurance/Maintenance, Parking & Tolls) — business side
+//  ✅ ADDED: Granular transportation (Gas/Fuel, Car Insurance/Payment/Maintenance, etc.) — personal side
+//  ✅ ADDED: Granular insurance (General Liability, Health SE, Property) — business side
+//  ✅ ADDED: Granular insurance (Health Premiums, Dental/Vision, Life, Disability, Renter's) — personal
+//  ✅ ADDED: Granular health (Doctor, Prescriptions, Dental, Vision, Therapy, HSA/FSA) — personal
+//  ✅ ADDED: 16 business income categories (was 4), 18 personal income (was 3)
+//  ✅ ADDED: Family, Financial, Lifestyle personal expense subcategories
+//  ✅ ADDED: Schedule C line mappings on all new business expenses
+//  ✅ ADDED: v4.0 migration — adds all new categories for existing users (name-match guard)
 //
 //  MODEL ASSUMPTIONS:
-//  - Category model v2.2+: name, icon, colorHex, isDefault, isIncome, isTaxDeductible,
-//    isBusiness, taxTreatment, taxOwner, estimatedWithholdingRate
+//  - Category model v3.0+: name, icon, colorHex, isDefault, isIncome, isTaxDeductible,
+//    isBusiness, taxTreatment, taxOwner, estimatedWithholdingRate, scheduleCLine
 //
 
 import SwiftData
@@ -52,10 +32,16 @@ struct SeedData {
 
     // MARK: - Version Management
 
-    static let version = "2.7"
+    static let version = "4.1"
 
-    private static let versionKey           = "com.finchandpoppy.flo.seeddata.version"
-    private static let taxTreatmentMigrationKey = "com.finchandpoppy.flo.seeddata.taxtreatmentv27"
+    private static let versionKey                = "com.finchandpoppy.flo.seeddata.version"
+    private static let iconMigrationKey          = "com.finchandpoppy.flo.seeddata.iconmigrationv24"       // v3.12 perf
+    private static let missingCategoriesKey      = "com.finchandpoppy.flo.seeddata.missingcategoriesv26"   // v3.12 perf
+    private static let taxTreatmentMigrationKey  = "com.finchandpoppy.flo.seeddata.taxtreatmentv27"
+    private static let scheduleCMigrationKey     = "com.finchandpoppy.flo.seeddata.schedulecv30"
+    private static let plaidIncomeFixKey          = "com.finchandpoppy.flo.seeddata.plaidincomefixv312"
+    private static let granularCategoriesV40Key  = "com.finchandpoppy.flo.seeddata.granularcategoriesv40"
+    private static let militaryVAEducationV41Key = "com.finchandpoppy.flo.seeddata.milVAeduv41"
 
     private static var seededVersion: String? {
         get { UserDefaults.standard.string(forKey: versionKey) }
@@ -80,7 +66,7 @@ struct SeedData {
         }
     }
 
-    // MARK: - Default Category Configuration (v2.7 — added isBusiness, taxTreatment, taxOwner)
+    // MARK: - Default Category Configuration (v3.0 — added scheduleCLine)
 
     private struct DefaultCategory {
         let name: String
@@ -89,362 +75,603 @@ struct SeedData {
         let isIncome: Bool
         let isTaxDeductible: Bool
         let sortOrder: Int
-        // v2.7 new fields
+        // v2.7 fields
         let isBusiness: Bool
-        let taxTreatment: TaxTreatment  // meaningful for income categories; .selfEmployment for expenses
-        let taxOwner: TaxOwner          // .primary for all defaults
+        let taxTreatment: TaxTreatment
+        let taxOwner: TaxOwner
+        // v3.0 field
+        let scheduleCLine: ScheduleCLine?
     }
 
-    // MARK: - Predefined Categories (v2.7 — fully classified)
-    //
-    // COLOR PALETTE — each category has a DISTINCT color:
-    // Teal: 14B8A6 (brand)  Green: 22C55E, 10B981, 84CC16
-    // Blue: 3B82F6, 0EA5E9, 06B6D4  Purple: 8B5CF6, A855F7, 7C3AED
-    // Indigo: 6366F1, 4F46E5  Pink: EC4899, F472B6  Rose: F43F5E, FB7185
-    // Red: EF4444, DC2626  Orange: F97316, EA580C  Amber: F59E0B, D97706
-    // Yellow: EAB308  Slate: 64748B, 475569
-    //
+    // MARK: - Predefined Categories (v4.0 — 142 defaults, granular coverage)
 
     private static let defaults: [DefaultCategory] = [
 
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // MARK: Business Expense Categories (isBusiness: true, tax deductible)
+        // MARK: Business Expense Categories (48 total — all tax deductible)
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-        DefaultCategory(
-            name: "Office Supplies",
-            icon: "pencil.and.ruler.fill",
-            colorHex: "F59E0B",  // Amber
+        // ── Office & Operations ──
+        DefaultCategory(name: "Office Supplies", icon: "pencil.and.ruler.fill", colorHex: "F59E0B",
             isIncome: false, isTaxDeductible: true, sortOrder: 1,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Software & Subscriptions",
-            icon: "app.badge.fill",
-            colorHex: "8B5CF6",  // Purple
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line18_officeExpense),
+        DefaultCategory(name: "Software & Subscriptions", icon: "app.badge.fill", colorHex: "8B5CF6",
             isIncome: false, isTaxDeductible: true, sortOrder: 2,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Professional Services",
-            icon: "briefcase.fill",
-            colorHex: "3B82F6",  // Blue
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
+        DefaultCategory(name: "Professional Services", icon: "person.crop.rectangle.fill", colorHex: "3B82F6",
             isIncome: false, isTaxDeductible: true, sortOrder: 3,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Marketing & Advertising",
-            icon: "megaphone.fill",
-            colorHex: "EC4899",  // Pink
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line17_legalProfessional),
+        DefaultCategory(name: "Marketing & Advertising", icon: "megaphone.fill", colorHex: "EC4899",
             isIncome: false, isTaxDeductible: true, sortOrder: 4,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Business Travel",
-            icon: "airplane",
-            colorHex: "06B6D4",  // Cyan
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line8_advertising),
+        DefaultCategory(name: "Education & Training", icon: "book.fill", colorHex: "6366F1",
             isIncome: false, isTaxDeductible: true, sortOrder: 5,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Meals & Entertainment (Business)",
-            icon: "fork.knife",
-            colorHex: "F97316",  // Orange
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
+        DefaultCategory(name: "Equipment & Tools", icon: "wrench.and.screwdriver.fill", colorHex: "64748B",
             isIncome: false, isTaxDeductible: true, sortOrder: 6,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Education & Training",
-            icon: "book.fill",
-            colorHex: "6366F1",  // Indigo
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line13_depreciation),
+        DefaultCategory(name: "Supplies", icon: "shippingbox.fill", colorHex: "D97706",
             isIncome: false, isTaxDeductible: true, sortOrder: 7,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Equipment & Tools",
-            icon: "wrench.and.screwdriver.fill",
-            colorHex: "64748B",  // Slate
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line22_supplies),
+        DefaultCategory(name: "Inventory / COGS", icon: "archivebox.fill", colorHex: "F59E0B",
             isIncome: false, isTaxDeductible: true, sortOrder: 8,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Internet & Phone (Business)",
-            icon: "wifi",
-            colorHex: "0EA5E9",  // Sky blue
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
+        DefaultCategory(name: "Shipping & Postage", icon: "shippingbox.fill", colorHex: "F97316",
             isIncome: false, isTaxDeductible: true, sortOrder: 9,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Insurance (Business)",
-            icon: "shield.lefthalf.filled",
-            colorHex: "10B981",  // Emerald
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
+        DefaultCategory(name: "Domain & Hosting", icon: "globe", colorHex: "3B82F6",
             isIncome: false, isTaxDeductible: true, sortOrder: 10,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Rent/Lease (Business)",
-            icon: "building.2.fill",
-            colorHex: "7C3AED",  // Violet
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
+        DefaultCategory(name: "Internet & Phone (Biz)", icon: "wifi", colorHex: "0EA5E9",
             isIncome: false, isTaxDeductible: true, sortOrder: 11,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Utilities (Business)",
-            icon: "bolt.fill",
-            colorHex: "EAB308",  // Yellow
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line25_utilities),
+        DefaultCategory(name: "Printing & Copying", icon: "printer.fill", colorHex: "64748B",
             isIncome: false, isTaxDeductible: true, sortOrder: 12,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Contract Labor",
-            icon: "person.2.fill",
-            colorHex: "14B8A6",  // Teal (brand)
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
+        DefaultCategory(name: "Cleaning & Janitorial", icon: "sparkles", colorHex: "84CC16",
             isIncome: false, isTaxDeductible: true, sortOrder: 13,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Bank Fees & Interest",
-            icon: "building.columns.fill",
-            colorHex: "EF4444",  // Red
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
+        DefaultCategory(name: "Research & Development", icon: "magnifyingglass", colorHex: "3B82F6",
             isIncome: false, isTaxDeductible: true, sortOrder: 14,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Legal & Accounting",
-            icon: "doc.text.fill",
-            colorHex: "475569",  // Slate dark
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
+
+        // ── People ──
+        DefaultCategory(name: "Contract Labor", icon: "person.2.fill", colorHex: "14B8A6",
             isIncome: false, isTaxDeductible: true, sortOrder: 15,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Gas",
-            icon: "fuelpump.fill",
-            colorHex: "F97316",  // Orange (added v2.6)
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line11_contractLabor),
+        DefaultCategory(name: "Employee Wages", icon: "dollarsign.circle.fill", colorHex: "22C55E",
             isIncome: false, isTaxDeductible: true, sortOrder: 16,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line26_wages),
+        DefaultCategory(name: "Employee Benefits", icon: "person.3.fill", colorHex: "10B981",
+            isIncome: false, isTaxDeductible: true, sortOrder: 17,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line14_employeeBenefits),
+        DefaultCategory(name: "Pension / Profit-Sharing", icon: "chart.pie.fill", colorHex: "6366F1",
+            isIncome: false, isTaxDeductible: true, sortOrder: 18,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line19_pensionProfitShare),
+        DefaultCategory(name: "Commissions & Fees", icon: "percent", colorHex: "FB7185",
+            isIncome: false, isTaxDeductible: true, sortOrder: 19,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line10_commissionsAndFees),
+
+        // ── Travel & Meals ──
+        DefaultCategory(name: "Business Travel", icon: "airplane", colorHex: "06B6D4",
+            isIncome: false, isTaxDeductible: true, sortOrder: 20,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line24a_travel),
+        DefaultCategory(name: "Meals & Entertainment", icon: "fork.knife", colorHex: "F97316",
+            isIncome: false, isTaxDeductible: true, sortOrder: 21,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line24b_meals),
+        DefaultCategory(name: "Conferences & Events", icon: "ticket.fill", colorHex: "A855F7",
+            isIncome: false, isTaxDeductible: true, sortOrder: 22,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
+        DefaultCategory(name: "Client Gifts", icon: "gift.fill", colorHex: "EC4899",
+            isIncome: false, isTaxDeductible: true, sortOrder: 23,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
+
+        // ── Property & Rent ──
+        DefaultCategory(name: "Rent/Lease (Business)", icon: "building.2.fill", colorHex: "7C3AED",
+            isIncome: false, isTaxDeductible: true, sortOrder: 24,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line20b_rentProperty),
+        DefaultCategory(name: "Rent (Equipment/Vehicles)", icon: "car.2.fill", colorHex: "8B5CF6",
+            isIncome: false, isTaxDeductible: true, sortOrder: 25,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line20a_rentEquipment),
+        DefaultCategory(name: "Repairs & Maintenance", icon: "hammer.fill", colorHex: "84CC16",
+            isIncome: false, isTaxDeductible: true, sortOrder: 26,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line21_repairsMaintenance),
+        DefaultCategory(name: "Depreciation (Section 179)", icon: "chart.bar.xaxis.ascending", colorHex: "475569",
+            isIncome: false, isTaxDeductible: true, sortOrder: 27,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line13_depreciation),
+        DefaultCategory(name: "Business Use of Home", icon: "house.circle.fill", colorHex: "14B8A6",
+            isIncome: false, isTaxDeductible: true, sortOrder: 28,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line30_businessUseOfHome),
+        DefaultCategory(name: "Uniforms & Work Clothing", icon: "tshirt.fill", colorHex: "7C3AED",
+            isIncome: false, isTaxDeductible: true, sortOrder: 29,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
+
+        // ── Utilities — Granular (dual-use with personal) ──
+        DefaultCategory(name: "Electric (Business)", icon: "bolt.fill", colorHex: "EAB308",
+            isIncome: false, isTaxDeductible: true, sortOrder: 30,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line25_utilities),
+        DefaultCategory(name: "Gas / Natural Gas (Business)", icon: "flame.fill", colorHex: "F97316",
+            isIncome: false, isTaxDeductible: true, sortOrder: 31,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line25_utilities),
+        DefaultCategory(name: "Water & Sewer (Business)", icon: "drop.fill", colorHex: "0EA5E9",
+            isIncome: false, isTaxDeductible: true, sortOrder: 32,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line25_utilities),
+
+        // ── Vehicle — Granular ──
+        DefaultCategory(name: "Gas", icon: "fuelpump.fill", colorHex: "F97316",
+            isIncome: false, isTaxDeductible: true, sortOrder: 33,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line9_carAndTruck),
+        DefaultCategory(name: "Vehicle Insurance (Business)", icon: "car.circle.fill", colorHex: "10B981",
+            isIncome: false, isTaxDeductible: true, sortOrder: 34,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line15_insurance),
+        DefaultCategory(name: "Vehicle Maintenance (Business)", icon: "wrench.and.screwdriver.fill", colorHex: "64748B",
+            isIncome: false, isTaxDeductible: true, sortOrder: 35,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line21_repairsMaintenance),
+        DefaultCategory(name: "Parking & Tolls (Business)", icon: "parkingsign", colorHex: "0EA5E9",
+            isIncome: false, isTaxDeductible: true, sortOrder: 36,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line9_carAndTruck),
+
+        // ── Insurance — Granular ──
+        DefaultCategory(name: "General Liability Insurance", icon: "shield.fill", colorHex: "64748B",
+            isIncome: false, isTaxDeductible: true, sortOrder: 37,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line15_insurance),
+        DefaultCategory(name: "Health Insurance (Self-Employed)", icon: "heart.text.square.fill", colorHex: "EF4444",
+            isIncome: false, isTaxDeductible: true, sortOrder: 38,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line15_insurance),
+        DefaultCategory(name: "Property Insurance (Business)", icon: "building.fill", colorHex: "475569",
+            isIncome: false, isTaxDeductible: true, sortOrder: 39,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line15_insurance),
+
+        // ── Legal, Financial & Taxes ──
+        DefaultCategory(name: "Legal & Accounting", icon: "doc.text.fill", colorHex: "475569",
+            isIncome: false, isTaxDeductible: true, sortOrder: 40,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line17_legalProfessional),
+        DefaultCategory(name: "Legal Fees", icon: "scale.3d", colorHex: "6366F1",
+            isIncome: false, isTaxDeductible: true, sortOrder: 41,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line17_legalProfessional),
+        DefaultCategory(name: "Accounting & Bookkeeping", icon: "doc.text.magnifyingglass", colorHex: "10B981",
+            isIncome: false, isTaxDeductible: true, sortOrder: 42,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line17_legalProfessional),
+        DefaultCategory(name: "Bank Fees & Interest", icon: "building.columns.fill", colorHex: "EF4444",
+            isIncome: false, isTaxDeductible: true, sortOrder: 43,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
+        DefaultCategory(name: "Taxes & Licenses", icon: "checkmark.seal.fill", colorHex: "DC2626",
+            isIncome: false, isTaxDeductible: true, sortOrder: 44,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line23_taxesAndLicenses),
+        DefaultCategory(name: "Interest Expense", icon: "percent", colorHex: "EF4444",
+            isIncome: false, isTaxDeductible: true, sortOrder: 45,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line16b_mortgageOther),
+        DefaultCategory(name: "Dues & Memberships", icon: "person.3.fill", colorHex: "8B5CF6",
+            isIncome: false, isTaxDeductible: true, sortOrder: 46,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
+        DefaultCategory(name: "Bad Debt / Write-offs", icon: "xmark.circle.fill", colorHex: "78716C",
+            isIncome: false, isTaxDeductible: true, sortOrder: 47,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
+        DefaultCategory(name: "Miscellaneous (Business)", icon: "ellipsis.circle.fill", colorHex: "78716C",
+            isIncome: false, isTaxDeductible: true, sortOrder: 48,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: .line27a_otherExpenses),
 
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // MARK: Personal Expense Categories (isBusiness: false, not deductible)
+        // MARK: Personal Expense Categories (60 total — not deductible)
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-        DefaultCategory(
-            name: "Groceries",
-            icon: "cart.fill",
-            colorHex: "22C55E",  // Green
+        // ── Food & Dining ──
+        DefaultCategory(name: "Groceries", icon: "cart.fill", colorHex: "22C55E",
             isIncome: false, isTaxDeductible: false, sortOrder: 101,
-            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Dining Out",
-            icon: "fork.knife.circle.fill",
-            colorHex: "F97316",  // Orange
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Dining Out", icon: "fork.knife.circle.fill", colorHex: "F97316",
             isIncome: false, isTaxDeductible: false, sortOrder: 102,
-            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Transportation",
-            icon: "car.fill",
-            colorHex: "3B82F6",  // Blue
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Coffee & Snacks", icon: "cup.and.saucer.fill", colorHex: "D97706",
             isIncome: false, isTaxDeductible: false, sortOrder: 103,
-            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Housing",
-            icon: "house.fill",
-            colorHex: "8B5CF6",  // Purple
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Alcohol & Bars", icon: "wineglass.fill", colorHex: "7C3AED",
             isIncome: false, isTaxDeductible: false, sortOrder: 104,
-            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Utilities (Personal)",
-            icon: "lightbulb.fill",
-            colorHex: "EAB308",  // Yellow
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+
+        // ── Housing ──
+        DefaultCategory(name: "Housing", icon: "house.fill", colorHex: "8B5CF6",
             isIncome: false, isTaxDeductible: false, sortOrder: 105,
-            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Healthcare",
-            icon: "cross.case.fill",
-            colorHex: "EF4444",  // Red
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Home Insurance", icon: "house.and.flag.fill", colorHex: "10B981",
             isIncome: false, isTaxDeductible: false, sortOrder: 106,
-            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Entertainment",
-            icon: "tv.fill",
-            colorHex: "A855F7",  // Fuchsia
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Property Taxes", icon: "building.columns.fill", colorHex: "DC2626",
             isIncome: false, isTaxDeductible: false, sortOrder: 107,
-            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Shopping",
-            icon: "bag.fill",
-            colorHex: "EC4899",  // Pink
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "HOA / Condo Fees", icon: "building.fill", colorHex: "7C3AED",
             isIncome: false, isTaxDeductible: false, sortOrder: 108,
-            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Personal Care",
-            icon: "sparkles",
-            colorHex: "F472B6",  // Pink light
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Home Maintenance & Repairs", icon: "hammer.fill", colorHex: "64748B",
             isIncome: false, isTaxDeductible: false, sortOrder: 109,
-            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Gifts & Donations",
-            icon: "gift.fill",
-            colorHex: "F43F5E",  // Rose
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Lawn & Garden", icon: "leaf.fill", colorHex: "22C55E",
             isIncome: false, isTaxDeductible: false, sortOrder: 110,
-            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Home Furnishings", icon: "sofa.fill", colorHex: "F59E0B",
+            isIncome: false, isTaxDeductible: false, sortOrder: 111,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+
+        // ── Utilities — Granular (dual-use with business) ──
+        DefaultCategory(name: "Electric", icon: "bolt.fill", colorHex: "EAB308",
+            isIncome: false, isTaxDeductible: false, sortOrder: 112,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Gas / Natural Gas", icon: "flame.fill", colorHex: "F97316",
+            isIncome: false, isTaxDeductible: false, sortOrder: 113,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Water & Sewer", icon: "drop.fill", colorHex: "0EA5E9",
+            isIncome: false, isTaxDeductible: false, sortOrder: 114,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Trash & Recycling", icon: "trash.fill", colorHex: "84CC16",
+            isIncome: false, isTaxDeductible: false, sortOrder: 115,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Internet (Home)", icon: "wifi", colorHex: "3B82F6",
+            isIncome: false, isTaxDeductible: false, sortOrder: 116,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Phone (Personal)", icon: "phone.fill", colorHex: "8B5CF6",
+            isIncome: false, isTaxDeductible: false, sortOrder: 117,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+
+        // ── Transportation — Granular ──
+        DefaultCategory(name: "Gas / Fuel", icon: "fuelpump.fill", colorHex: "F97316",
+            isIncome: false, isTaxDeductible: false, sortOrder: 118,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Car Insurance", icon: "car.circle.fill", colorHex: "10B981",
+            isIncome: false, isTaxDeductible: false, sortOrder: 119,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Car Payment", icon: "car.fill", colorHex: "3B82F6",
+            isIncome: false, isTaxDeductible: false, sortOrder: 120,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Car Maintenance & Repairs", icon: "wrench.and.screwdriver.fill", colorHex: "64748B",
+            isIncome: false, isTaxDeductible: false, sortOrder: 121,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Parking & Tolls", icon: "parkingsign", colorHex: "6366F1",
+            isIncome: false, isTaxDeductible: false, sortOrder: 122,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Public Transit", icon: "bus.fill", colorHex: "06B6D4",
+            isIncome: false, isTaxDeductible: false, sortOrder: 123,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Rideshare (Uber/Lyft)", icon: "figure.wave", colorHex: "A855F7",
+            isIncome: false, isTaxDeductible: false, sortOrder: 124,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Car Registration & DMV", icon: "doc.text.fill", colorHex: "475569",
+            isIncome: false, isTaxDeductible: false, sortOrder: 125,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+
+        // ── Insurance — Personal ──
+        DefaultCategory(name: "Health Insurance Premiums", icon: "heart.text.square.fill", colorHex: "EF4444",
+            isIncome: false, isTaxDeductible: false, sortOrder: 126,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Dental & Vision Insurance", icon: "eye.fill", colorHex: "F472B6",
+            isIncome: false, isTaxDeductible: false, sortOrder: 127,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Life Insurance", icon: "shield.lefthalf.filled", colorHex: "475569",
+            isIncome: false, isTaxDeductible: false, sortOrder: 128,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Disability Insurance", icon: "figure.roll", colorHex: "78716C",
+            isIncome: false, isTaxDeductible: false, sortOrder: 129,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Renter's / Umbrella Insurance", icon: "umbrella.fill", colorHex: "0EA5E9",
+            isIncome: false, isTaxDeductible: false, sortOrder: 130,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+
+        // ── Health & Medical — Granular ──
+        DefaultCategory(name: "Doctor & Specialist Visits", icon: "stethoscope", colorHex: "EF4444",
+            isIncome: false, isTaxDeductible: false, sortOrder: 131,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Prescriptions & Pharmacy", icon: "pills.fill", colorHex: "F43F5E",
+            isIncome: false, isTaxDeductible: false, sortOrder: 132,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Dental Care", icon: "mouth.fill", colorHex: "EC4899",
+            isIncome: false, isTaxDeductible: false, sortOrder: 133,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Vision & Eye Care", icon: "eyeglasses", colorHex: "8B5CF6",
+            isIncome: false, isTaxDeductible: false, sortOrder: 134,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Therapy & Counseling", icon: "brain.head.profile", colorHex: "6366F1",
+            isIncome: false, isTaxDeductible: false, sortOrder: 135,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "HSA / FSA Contributions", icon: "cross.case.fill", colorHex: "14B8A6",
+            isIncome: false, isTaxDeductible: false, sortOrder: 136,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+
+        // ── Family & Kids ──
+        DefaultCategory(name: "Childcare", icon: "figure.and.child.holdinghands", colorHex: "EC4899",
+            isIncome: false, isTaxDeductible: false, sortOrder: 137,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Tuition & School Fees", icon: "graduationcap.fill", colorHex: "3B82F6",
+            isIncome: false, isTaxDeductible: false, sortOrder: 138,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Kids' Activities & Sports", icon: "figure.run", colorHex: "22C55E",
+            isIncome: false, isTaxDeductible: false, sortOrder: 139,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "College Savings (529)", icon: "banknote.fill", colorHex: "6366F1",
+            isIncome: false, isTaxDeductible: false, sortOrder: 140,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Elder Care / Parent Support", icon: "figure.2.arms.open", colorHex: "78716C",
+            isIncome: false, isTaxDeductible: false, sortOrder: 141,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Pet Expenses", icon: "pawprint.fill", colorHex: "F97316",
+            isIncome: false, isTaxDeductible: false, sortOrder: 142,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+
+        // ── Financial ──
+        DefaultCategory(name: "Retirement Contributions (IRA/401k)", icon: "chart.line.uptrend.xyaxis", colorHex: "14B8A6",
+            isIncome: false, isTaxDeductible: false, sortOrder: 143,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Emergency Fund / Savings", icon: "dollarsign.arrow.circlepath", colorHex: "22C55E",
+            isIncome: false, isTaxDeductible: false, sortOrder: 144,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Loan Payments", icon: "banknote.fill", colorHex: "64748B",
+            isIncome: false, isTaxDeductible: false, sortOrder: 145,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Taxes Paid", icon: "building.columns.fill", colorHex: "0EA5E9",
+            isIncome: false, isTaxDeductible: false, sortOrder: 146,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Alimony (Paid)", icon: "arrow.up.circle.fill", colorHex: "78716C",
+            isIncome: false, isTaxDeductible: false, sortOrder: 147,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Child Support (Paid)", icon: "figure.2.and.child.holdinghands", colorHex: "78716C",
+            isIncome: false, isTaxDeductible: false, sortOrder: 148,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+
+        // ── Lifestyle ──
+        DefaultCategory(name: "Entertainment", icon: "tv.fill", colorHex: "A855F7",
+            isIncome: false, isTaxDeductible: false, sortOrder: 149,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Shopping", icon: "bag.fill", colorHex: "EC4899",
+            isIncome: false, isTaxDeductible: false, sortOrder: 150,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Clothing & Apparel", icon: "tshirt.fill", colorHex: "A855F7",
+            isIncome: false, isTaxDeductible: false, sortOrder: 151,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Personal Care", icon: "sparkles", colorHex: "F472B6",
+            isIncome: false, isTaxDeductible: false, sortOrder: 152,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Haircut & Grooming", icon: "scissors", colorHex: "F472B6",
+            isIncome: false, isTaxDeductible: false, sortOrder: 153,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Fitness & Wellness", icon: "figure.run", colorHex: "10B981",
+            isIncome: false, isTaxDeductible: false, sortOrder: 154,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Subscriptions (Personal)", icon: "play.rectangle.fill", colorHex: "6366F1",
+            isIncome: false, isTaxDeductible: false, sortOrder: 155,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Vacation & Travel (Personal)", icon: "airplane", colorHex: "06B6D4",
+            isIncome: false, isTaxDeductible: false, sortOrder: 156,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Hobbies", icon: "paintbrush.fill", colorHex: "F59E0B",
+            isIncome: false, isTaxDeductible: false, sortOrder: 157,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Books & Education (Personal)", icon: "book.fill", colorHex: "6366F1",
+            isIncome: false, isTaxDeductible: false, sortOrder: 158,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Gifts & Donations", icon: "gift.fill", colorHex: "F43F5E",
+            isIncome: false, isTaxDeductible: false, sortOrder: 159,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Charity & Donations", icon: "hands.sparkles.fill", colorHex: "8B5CF6",
+            isIncome: false, isTaxDeductible: false, sortOrder: 160,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
 
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // MARK: Income Categories (v2.7 — taxTreatment and isBusiness set correctly)
+        // MARK: Business Income Categories (16 total)
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-        // SE income (gig / 1099 / self-employed) — subject to SE tax
-        DefaultCategory(
-            name: "Client Payments",
-            icon: "dollarsign.circle.fill",
-            colorHex: "10B981",  // Emerald
+        // Self-employment / 1099 income — subject to SE tax
+        DefaultCategory(name: "Client Payments", icon: "dollarsign.circle.fill", colorHex: "10B981",
             isIncome: true, isTaxDeductible: false, sortOrder: 201,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Freelance Income",
-            icon: "laptopcomputer",
-            colorHex: "14B8A6",  // Teal (brand)
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Freelance Income", icon: "laptopcomputer", colorHex: "14B8A6",
             isIncome: true, isTaxDeductible: false, sortOrder: 202,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Contract Work",
-            icon: "signature",   // FIXED v2.3: was "doc.badge.fill" (invalid SF Symbol)
-            colorHex: "3B82F6",  // Blue
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Contract Work", icon: "signature", colorHex: "3B82F6",
             isIncome: true, isTaxDeductible: false, sortOrder: 203,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
-        DefaultCategory(
-            name: "Side Gig",
-            icon: "star.fill",
-            colorHex: "F59E0B",  // Amber
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Consulting Income", icon: "briefcase.fill", colorHex: "10B981",
+            isIncome: true, isTaxDeductible: false, sortOrder: 204,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Product Sales", icon: "shippingbox.fill", colorHex: "3B82F6",
+            isIncome: true, isTaxDeductible: false, sortOrder: 205,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Side Gig", icon: "star.fill", colorHex: "F59E0B",
             isIncome: true, isTaxDeductible: false, sortOrder: 206,
-            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary
-        ),
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Affiliate Income", icon: "link.circle.fill", colorHex: "8B5CF6",
+            isIncome: true, isTaxDeductible: false, sortOrder: 207,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Commission Income", icon: "percent", colorHex: "22C55E",
+            isIncome: true, isTaxDeductible: false, sortOrder: 208,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Service Revenue", icon: "briefcase.fill", colorHex: "3B82F6",
+            isIncome: true, isTaxDeductible: false, sortOrder: 209,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Resale / Wholesale", icon: "shippingbox.fill", colorHex: "F97316",
+            isIncome: true, isTaxDeductible: false, sortOrder: 210,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Sponsorship Income", icon: "star.circle.fill", colorHex: "FBBF24",
+            isIncome: true, isTaxDeductible: false, sortOrder: 211,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Grants & Awards", icon: "trophy.fill", colorHex: "F59E0B",
+            isIncome: true, isTaxDeductible: false, sortOrder: 212,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+
+        // Passive business income
+        DefaultCategory(name: "Rental Income (Business)", icon: "building.fill", colorHex: "F97316",
+            isIncome: true, isTaxDeductible: false, sortOrder: 213,
+            isBusiness: true, taxTreatment: .passiveIncome, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Royalties", icon: "music.note.list", colorHex: "EC4899",
+            isIncome: true, isTaxDeductible: false, sortOrder: 214,
+            isBusiness: true, taxTreatment: .passiveIncome, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Interest Income (Business)", icon: "percent", colorHex: "10B981",
+            isIncome: true, isTaxDeductible: false, sortOrder: 215,
+            isBusiness: true, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
+
+        // Tax exempt business income
+        DefaultCategory(name: "Refunds Received", icon: "arrow.uturn.backward.circle.fill", colorHex: "06B6D4",
+            isIncome: true, isTaxDeductible: false, sortOrder: 216,
+            isBusiness: true, taxTreatment: .taxExempt, taxOwner: .primary, scheduleCLine: nil),
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // MARK: Personal Income Categories (18 total)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
         // W-2 income — employer withholds; no SE tax
-        // Salary/Wages is personal (isBusiness: false) — primary earner W-2 job
-        DefaultCategory(
-            name: "Salary/Wages",
-            icon: "banknote.fill",
-            colorHex: "22C55E",  // Green
-            isIncome: true, isTaxDeductible: false, sortOrder: 204,
-            isBusiness: false, taxTreatment: .w2WithholdingPaid, taxOwner: .primary
-        ),
+        DefaultCategory(name: "Salary/Wages", icon: "banknote.fill", colorHex: "22C55E",
+            isIncome: true, isTaxDeductible: false, sortOrder: 251,
+            isBusiness: false, taxTreatment: .w2WithholdingPaid, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Spouse's Salary / W-2", icon: "person.2.fill", colorHex: "22C55E",
+            isIncome: true, isTaxDeductible: false, sortOrder: 252,
+            isBusiness: false, taxTreatment: .w2WithholdingPaid, taxOwner: .spouse, scheduleCLine: nil),
+        DefaultCategory(name: "Bonus Income", icon: "sparkles", colorHex: "F97316",
+            isIncome: true, isTaxDeductible: false, sortOrder: 253,
+            isBusiness: false, taxTreatment: .w2WithholdingPaid, taxOwner: .primary, scheduleCLine: nil),
+
+        // Self-employment personal income
+        DefaultCategory(name: "Side Hustle Income", icon: "star.fill", colorHex: "F59E0B",
+            isIncome: true, isTaxDeductible: false, sortOrder: 254,
+            isBusiness: false, taxTreatment: .selfEmployment, taxOwner: .primary, scheduleCLine: nil),
 
         // Passive income — no SE tax, no withholding
-        DefaultCategory(
-            name: "Investment Income",
-            icon: "chart.line.uptrend.xyaxis",
-            colorHex: "6366F1",  // Indigo
-            isIncome: true, isTaxDeductible: false, sortOrder: 205,
-            isBusiness: false, taxTreatment: .passiveIncome, taxOwner: .primary
-        ),
+        DefaultCategory(name: "Investment Income", icon: "chart.line.uptrend.xyaxis", colorHex: "6366F1",
+            isIncome: true, isTaxDeductible: false, sortOrder: 255,
+            isBusiness: false, taxTreatment: .passiveIncome, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Interest Income (Savings)", icon: "percent", colorHex: "14B8A6",
+            isIncome: true, isTaxDeductible: false, sortOrder: 256,
+            isBusiness: false, taxTreatment: .passiveIncome, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Dividend Income", icon: "chart.bar.fill", colorHex: "6366F1",
+            isIncome: true, isTaxDeductible: false, sortOrder: 257,
+            isBusiness: false, taxTreatment: .passiveIncome, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Capital Gains", icon: "chart.line.uptrend.xyaxis", colorHex: "22C55E",
+            isIncome: true, isTaxDeductible: false, sortOrder: 258,
+            isBusiness: false, taxTreatment: .passiveIncome, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Rental Income (Personal)", icon: "building.fill", colorHex: "A855F7",
+            isIncome: true, isTaxDeductible: false, sortOrder: 259,
+            isBusiness: false, taxTreatment: .passiveIncome, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Retirement Income", icon: "banknote.fill", colorHex: "F59E0B",
+            isIncome: true, isTaxDeductible: false, sortOrder: 260,
+            isBusiness: false, taxTreatment: .passiveIncome, taxOwner: .primary, scheduleCLine: nil),
 
         // Tax exempt — excluded from all calculations
-        DefaultCategory(
-            name: "Refunds & Reimbursements",
-            icon: "arrow.uturn.backward.circle.fill",
-            colorHex: "06B6D4",  // Cyan
-            isIncome: true, isTaxDeductible: false, sortOrder: 207,
-            isBusiness: false, taxTreatment: .taxExempt, taxOwner: .primary
-        ),
+        DefaultCategory(name: "Refunds & Reimbursements", icon: "arrow.uturn.backward.circle.fill", colorHex: "06B6D4",
+            isIncome: true, isTaxDeductible: false, sortOrder: 261,
+            isBusiness: false, taxTreatment: .taxExempt, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Disability Income", icon: "heart.text.square.fill", colorHex: "EF4444",
+            isIncome: true, isTaxDeductible: false, sortOrder: 262,
+            isBusiness: false, taxTreatment: .taxExempt, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Social Security", icon: "person.badge.shield.checkmark.fill", colorHex: "3B82F6",
+            isIncome: true, isTaxDeductible: false, sortOrder: 263,
+            isBusiness: false, taxTreatment: .taxExempt, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Alimony (Received)", icon: "arrow.down.circle.fill", colorHex: "8B5CF6",
+            isIncome: true, isTaxDeductible: false, sortOrder: 264,
+            isBusiness: false, taxTreatment: .taxExempt, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Child Support (Received)", icon: "figure.2.and.child.holdinghands", colorHex: "06B6D4",
+            isIncome: true, isTaxDeductible: false, sortOrder: 265,
+            isBusiness: false, taxTreatment: .taxExempt, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Gift / Inheritance", icon: "gift.fill", colorHex: "EC4899",
+            isIncome: true, isTaxDeductible: false, sortOrder: 266,
+            isBusiness: false, taxTreatment: .taxExempt, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Insurance Payouts", icon: "shield.lefthalf.filled", colorHex: "0EA5E9",
+            isIncome: true, isTaxDeductible: false, sortOrder: 267,
+            isBusiness: false, taxTreatment: .taxExempt, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Tax Refund", icon: "arrow.uturn.backward.circle.fill", colorHex: "10B981",
+            isIncome: true, isTaxDeductible: false, sortOrder: 268,
+            isBusiness: false, taxTreatment: .taxExempt, taxOwner: .primary, scheduleCLine: nil),
+
+        // v4.1: Military, VA, & Education — tax-exempt income categories
+        DefaultCategory(name: "Military Retirement Pay", icon: "shield.checkered", colorHex: "475569",
+            isIncome: true, isTaxDeductible: false, sortOrder: 269,
+            isBusiness: false, taxTreatment: .taxExempt, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "VA Disability", icon: "cross.circle.fill", colorHex: "DC2626",
+            isIncome: true, isTaxDeductible: false, sortOrder: 270,
+            isBusiness: false, taxTreatment: .taxExempt, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Pell Grant", icon: "graduationcap.fill", colorHex: "3B82F6",
+            isIncome: true, isTaxDeductible: false, sortOrder: 271,
+            isBusiness: false, taxTreatment: .taxExempt, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "GI Bill / Education Benefits", icon: "book.circle.fill", colorHex: "6366F1",
+            isIncome: true, isTaxDeductible: false, sortOrder: 272,
+            isBusiness: false, taxTreatment: .taxExempt, taxOwner: .primary, scheduleCLine: nil),
+        DefaultCategory(name: "Scholarships & Fellowships", icon: "medal.fill", colorHex: "F59E0B",
+            isIncome: true, isTaxDeductible: false, sortOrder: 273,
+            isBusiness: false, taxTreatment: .taxExempt, taxOwner: .primary, scheduleCLine: nil),
     ]
 
     // MARK: - Public Seeding
 
     /// Seeds default categories if none exist. Idempotent — safe to call multiple times.
+    @discardableResult
     static func seedDefaultCategories(in context: ModelContext) -> Result<Int, SeedError> {
         do {
-            if let seededVer = seededVersion, seededVer != version {
-                print("⚠️ SeedData: Version mismatch (seeded: \(seededVer), current: \(version))")
+            let existing = try context.fetch(FetchDescriptor<Category>())
+            guard existing.isEmpty else {
+                return .success(0) // Already seeded
             }
+        } catch {
+            return .failure(.fetchFailed(error))
+        }
 
-            let existingCount = try context.fetchCount(FetchDescriptor<Category>())
-            guard existingCount == 0 else {
-                return .success(0)  // Already seeded
-            }
+        var count = 0
+        for dc in defaults {
+            let category = Category(
+                name: dc.name,
+                icon: dc.icon,
+                colorHex: dc.colorHex,
+                isDefault: true,
+                isIncome: dc.isIncome,
+                isTaxDeductible: dc.isTaxDeductible,
+                isBusiness: dc.isBusiness,
+                taxTreatment: dc.taxTreatment,
+                taxOwner: dc.taxOwner,
+                scheduleCLine: dc.scheduleCLine
+            )
+            context.insert(category)
+            count += 1
+        }
 
-            for dc in defaults {
-                let category = Category(
-                    name:          dc.name,
-                    icon:          dc.icon,
-                    colorHex:      dc.colorHex,
-                    isDefault:     true,
-                    isIncome:      dc.isIncome,
-                    isTaxDeductible: dc.isTaxDeductible,
-                    isBusiness:    dc.isBusiness,     // v2.7
-                    taxTreatment:  dc.taxTreatment,    // v2.7
-                    taxOwner:      dc.taxOwner          // v2.7
-                )
-                context.insert(category)
-            }
-
+        do {
             try context.save()
             seededVersion = version
-            return .success(defaults.count)
-
+            print("✅ SeedData v\(version): Seeded \(count) default categories")
+            return .success(count)
         } catch {
-            let descriptor = String(describing: error)
-            return descriptor.contains("fetch") || descriptor.contains("Fetch")
-                ? .failure(.fetchFailed(error))
-                : .failure(.saveFailed(error))
+            return .failure(.saveFailed(error))
         }
     }
-
-    /// Async variant for use in Task contexts
-    static func seedDefaultCategoriesAsync(in context: ModelContext) async -> Result<Int, SeedError> {
-        return seedDefaultCategories(in: context)
-    }
-
-    /// Checks if seeding is needed without performing it
-    static func needsSeeding(in context: ModelContext) -> Bool {
-        do {
-            return try context.fetchCount(FetchDescriptor<Category>()) == 0
-        } catch {
-            return true
-        }
-    }
-
-    // MARK: - Testing Utilities
-
-    #if DEBUG
-    static func clearAllCategories(in context: ModelContext) throws {
-        let categories = try context.fetch(FetchDescriptor<Category>())
-        for category in categories { context.delete(category) }
-        try context.save()
-        seededVersion = nil
-        UserDefaults.standard.removeObject(forKey: taxTreatmentMigrationKey)
-        print("🧹 SeedData: Cleared \(categories.count) categories for testing")
-    }
-    #endif
 
     // MARK: - Migration
 
-    /// Migrates existing categories to fix known issues. Call on every app launch.
+    /// Runs all pending migrations. Idempotent — safe to call on every app launch.
     ///
     /// v2.4: "doc.badge.fill" → "signature" (invalid SF Symbol fix)
     /// v2.5: Removes duplicate categories (keeps first)
     /// v2.6: Adds missing "Gas" category
     /// v2.7: Back-fills isBusiness and taxTreatment for pre-v2.7 installs (runs once)
+    /// v3.0: Back-fills scheduleCLine and adds 4 new categories for pre-v3.0 installs (runs once)
+    /// v4.0: Adds ~105 granular categories for existing users (runs once)
     static func migrateCategories(in context: ModelContext) {
         let iconMigrations: [String: String] = [
-            "doc.badge.fill": "signature"
+            "doc.badge.fill": "signature",       // v2.4
+            "car.badge.checkmark": "car.circle.fill",  // v4.0: invalid SF Symbol fix
         ]
 
-        let missingCategoryChecks: [(name: String, icon: String, colorHex: String, isIncome: Bool, isTaxDeductible: Bool, isBusiness: Bool, taxTreatment: TaxTreatment)] = [
-            ("Gas", "fuelpump.fill", "F97316", false, true, true, .selfEmployment)
+        // Quick unconditional icon fix — catches icons from any prior migration
+        // Only touches categories with known-bad icons; runs every launch but is O(n) cheap.
+        do {
+            let allCats = try context.fetch(FetchDescriptor<Category>())
+            for cat in allCats {
+                if let replacement = iconMigrations[cat.icon] {
+                    cat.icon = replacement
+                    print("🔄 SeedData: Fixed icon '\(cat.icon)' for '\(cat.name)'")
+                }
+            }
+        } catch { /* non-fatal — guarded migrations below will catch anything missed */ }
+
+        // v2.6 + v3.0: missing category checks — Gas + 4 new Schedule C categories
+        let missingCategoryChecks: [(name: String, icon: String, colorHex: String, isIncome: Bool, isTaxDeductible: Bool, isBusiness: Bool, taxTreatment: TaxTreatment, scheduleCLine: ScheduleCLine?)] = [
+            ("Gas", "fuelpump.fill", "F97316", false, true, true, .selfEmployment, .line9_carAndTruck),
+            ("Commissions & Fees", "percent", "FB7185", false, true, true, .selfEmployment, .line10_commissionsAndFees),
+            ("Repairs & Maintenance", "hammer.fill", "84CC16", false, true, true, .selfEmployment, .line21_repairsMaintenance),
+            ("Taxes & Licenses", "checkmark.seal.fill", "DC2626", false, true, true, .selfEmployment, .line23_taxesAndLicenses),
+            ("Supplies", "shippingbox.fill", "D97706", false, true, true, .selfEmployment, .line22_supplies),
         ]
 
         do {
@@ -454,58 +681,68 @@ struct SeedData {
             var categoriesAdded  = 0
 
             // ── v2.4/v2.5: Icon fix + duplicate removal ───────────────
+            // v3.12 perf: Guarded — only runs once per device, skips on subsequent launches
             var seenNames: Set<String> = []
-            var toDelete: [Category]  = []
 
-            for category in categories {
-                if let newIcon = iconMigrations[category.icon] {
-                    category.icon = newIcon
-                    migratedCount += 1
-                    print("🔄 SeedData: Fixed icon for '\(category.name)'")
+            if !UserDefaults.standard.bool(forKey: iconMigrationKey) {
+                var toDelete: [Category]  = []
+
+                for category in categories {
+                    if let newIcon = iconMigrations[category.icon] {
+                        category.icon = newIcon
+                        migratedCount += 1
+                        print("🔄 SeedData: Fixed icon for '\(category.name)'")
+                    }
+                    if seenNames.contains(category.name) {
+                        toDelete.append(category)
+                        duplicatesRemoved += 1
+                    } else {
+                        seenNames.insert(category.name)
+                    }
                 }
-                if seenNames.contains(category.name) {
-                    toDelete.append(category)
-                    duplicatesRemoved += 1
-                } else {
+                for cat in toDelete {
+                    print("🗑️ SeedData: Removing duplicate '\(cat.name)'")
+                    context.delete(cat)
+                }
+
+                UserDefaults.standard.set(true, forKey: iconMigrationKey)
+            } else {
+                // Still need seenNames for the missing categories check below
+                for category in categories {
                     seenNames.insert(category.name)
                 }
             }
-            for cat in toDelete {
-                print("🗑️ SeedData: Removing duplicate '\(cat.name)'")
-                context.delete(cat)
-            }
 
-            // ── v2.6: Add missing default categories ──────────────────
-            for check in missingCategoryChecks {
-                if !seenNames.contains(check.name) {
-                    let newCat = Category(
-                        name:            check.name,
-                        icon:            check.icon,
-                        colorHex:        check.colorHex,
-                        isDefault:       true,
-                        isIncome:        check.isIncome,
-                        isTaxDeductible: check.isTaxDeductible,
-                        isBusiness:      check.isBusiness,
-                        taxTreatment:    check.taxTreatment,
-                        taxOwner:        .primary
-                    )
-                    context.insert(newCat)
-                    categoriesAdded += 1
-                    print("➕ SeedData: Added missing category '\(check.name)'")
+            // ── v2.6 + v3.0: Add missing default categories ──────────
+            // v3.12 perf: Guarded — only runs once per device, skips on subsequent launches
+            if !UserDefaults.standard.bool(forKey: missingCategoriesKey) {
+                for check in missingCategoryChecks {
+                    if !seenNames.contains(check.name) {
+                        let newCat = Category(
+                            name:            check.name,
+                            icon:            check.icon,
+                            colorHex:        check.colorHex,
+                            isDefault:       true,
+                            isIncome:        check.isIncome,
+                            isTaxDeductible: check.isTaxDeductible,
+                            isBusiness:      check.isBusiness,
+                            taxTreatment:    check.taxTreatment,
+                            taxOwner:        .primary,
+                            scheduleCLine:   check.scheduleCLine
+                        )
+                        context.insert(newCat)
+                        categoriesAdded += 1
+                        print("➕ SeedData: Added missing category '\(check.name)'")
+                    }
                 }
+
+                UserDefaults.standard.set(true, forKey: missingCategoriesKey)
             }
 
             // ── v2.7: Back-fill isBusiness and taxTreatment ───────────
-            //
-            // Only runs once per device (guarded by UserDefaults flag).
-            // Uses category name matching against the canonical defaults list so the
-            // logic mirrors what new installs receive via seedDefaultCategories().
-            //
-            // Unknown categories (user-created) are left untouched.
             if !UserDefaults.standard.bool(forKey: taxTreatmentMigrationKey) {
 
-                // Build lookup maps from the canonical defaults list
-                var businessByName: [String: Bool]        = [:]
+                var businessByName: [String: Bool]          = [:]
                 var treatmentByName: [String: TaxTreatment] = [:]
 
                 for dc in defaults {
@@ -513,15 +750,12 @@ struct SeedData {
                     treatmentByName[dc.name] = dc.taxTreatment
                 }
 
-                // Re-fetch after potential deletes above
                 let postDeleteCategories = try context.fetch(FetchDescriptor<Category>())
                 var taxMigrated = 0
 
                 for category in postDeleteCategories {
                     var changed = false
 
-                    // Only update if the category matches a known default name.
-                    // User-created categories keep whatever the user set (or the default false/SE).
                     if let isBiz = businessByName[category.name] {
                         if category.isBusiness != isBiz {
                             category.isBusiness = isBiz
@@ -541,7 +775,6 @@ struct SeedData {
                     }
                 }
 
-                // Mark migration as done regardless of count
                 UserDefaults.standard.set(true, forKey: taxTreatmentMigrationKey)
 
                 if taxMigrated > 0 {
@@ -552,95 +785,180 @@ struct SeedData {
                 }
             }
 
+            // ── v3.0: Back-fill scheduleCLine ─────────────────────────
+            //
+            // Maps known default category names to their correct Schedule C line.
+            // Only runs once per device (guarded by UserDefaults flag).
+            // User-created categories are left untouched (nil scheduleCLine).
+            if !UserDefaults.standard.bool(forKey: scheduleCMigrationKey) {
+
+                var scheduleCByName: [String: ScheduleCLine] = [:]
+                for dc in defaults {
+                    if let line = dc.scheduleCLine {
+                        scheduleCByName[dc.name] = line
+                    }
+                }
+
+                let allCategories = try context.fetch(FetchDescriptor<Category>())
+                var scheduleCMigrated = 0
+
+                for category in allCategories {
+                    if let line = scheduleCByName[category.name],
+                       category.scheduleCLine != line {
+                        category.scheduleCLine = line
+                        scheduleCMigrated += 1
+                        print("🔄 SeedData v3.0: Assigned \(line.badgeLabel) to '\(category.name)'")
+                    }
+                }
+
+                UserDefaults.standard.set(true, forKey: scheduleCMigrationKey)
+
+                if scheduleCMigrated > 0 {
+                    migratedCount += scheduleCMigrated
+                    print("✅ SeedData v3.0: Back-filled \(scheduleCMigrated) Schedule C line(s)")
+                } else {
+                    print("✅ SeedData v3.0: Schedule C migration — no changes needed")
+                }
+            }
+
+            // ── v3.12: Fix Plaid transaction income/expense inversion ──
+            //
+            // Build 7 had a bug where Transaction.fromPlaid() used `amount > 0`
+            // to set isIncome, but Plaid convention is positive = expense,
+            // negative = income. This flips isIncome on all Plaid-imported
+            // transactions so expenses show as expenses and income as income.
+            // Runs once per device (UserDefaults guard).
+            if !UserDefaults.standard.bool(forKey: plaidIncomeFixKey) {
+                let allTransactions = try context.fetch(FetchDescriptor<Transaction>())
+                let plaidTransactions = allTransactions.filter { $0.importSource == .plaid }
+
+                if !plaidTransactions.isEmpty {
+                    var flipped = 0
+
+                    for transaction in plaidTransactions {
+                        transaction.isIncome = !transaction.isIncome
+                        flipped += 1
+                    }
+
+                    migratedCount += flipped
+                    print("✅ SeedData v3.12: Flipped isIncome on \(flipped) Plaid transaction(s)")
+                } else {
+                    print("✅ SeedData v3.12: No Plaid transactions to fix")
+                }
+
+                UserDefaults.standard.set(true, forKey: plaidIncomeFixKey)
+            }
+
+            // ── v4.0: Add granular categories for existing users ────
+            //
+            // Build 8 expanded defaults from 37 → 142 categories.
+            // This adds any default category that doesn't already exist by name.
+            // Existing categories (including old generics like "Transportation",
+            // "Healthcare", "Utilities (Personal)") are left untouched —
+            // users can keep them or delete them at their discretion.
+            //
+            // Also fixes car.badge.checkmark → car.circle.fill (invalid SF Symbol)
+            // on categories that may have been created with the bad icon.
+            if !UserDefaults.standard.bool(forKey: granularCategoriesV40Key) {
+
+                let allCats = try context.fetch(FetchDescriptor<Category>())
+                var existingNames = Set<String>()
+                for cat in allCats {
+                    existingNames.insert(cat.name)
+                    // Fix invalid SF Symbol that may have been seeded before this fix
+                    if cat.icon == "car.badge.checkmark" {
+                        cat.icon = "car.circle.fill"
+                        migratedCount += 1
+                        print("🔄 SeedData v4.0: Fixed icon for '\(cat.name)'")
+                    }
+                }
+
+                var v4Added = 0
+                for dc in defaults where !existingNames.contains(dc.name) {
+                    let cat = Category(
+                        name:            dc.name,
+                        icon:            dc.icon,
+                        colorHex:        dc.colorHex,
+                        isDefault:       true,
+                        isIncome:        dc.isIncome,
+                        isTaxDeductible: dc.isTaxDeductible,
+                        isBusiness:      dc.isBusiness,
+                        taxTreatment:    dc.taxTreatment,
+                        taxOwner:        dc.taxOwner,
+                        scheduleCLine:   dc.scheduleCLine
+                    )
+                    context.insert(cat)
+                    v4Added += 1
+                }
+
+                UserDefaults.standard.set(true, forKey: granularCategoriesV40Key)
+
+                if v4Added > 0 {
+                    categoriesAdded += v4Added
+                    print("✅ SeedData v4.0: Added \(v4Added) granular categories for existing user")
+                } else {
+                    print("✅ SeedData v4.0: All categories already present")
+                }
+            }
+
+            // ── v4.1: Add military, VA, & education categories ────────
+            //
+            // Build 9 adds 5 tax-exempt income categories for military/VA/education
+            // users whose income was being incorrectly taxed by the CPA report.
+            if !UserDefaults.standard.bool(forKey: militaryVAEducationV41Key) {
+
+                let allCats41 = try context.fetch(FetchDescriptor<Category>())
+                var existingNames41 = Set<String>()
+                for cat in allCats41 { existingNames41.insert(cat.name) }
+
+                let newV41Categories: [(name: String, icon: String, colorHex: String, sortOrder: Int)] = [
+                    ("Military Retirement Pay", "shield.checkered",   "475569", 269),
+                    ("VA Disability",           "cross.circle.fill",  "DC2626", 270),
+                    ("Pell Grant",              "graduationcap.fill",  "3B82F6", 271),
+                    ("GI Bill / Education Benefits", "book.circle.fill", "6366F1", 272),
+                    ("Scholarships & Fellowships",   "medal.fill",     "F59E0B", 273),
+                ]
+
+                var v41Added = 0
+                for entry in newV41Categories where !existingNames41.contains(entry.name) {
+                    let cat = Category(
+                        name:            entry.name,
+                        icon:            entry.icon,
+                        colorHex:        entry.colorHex,
+                        isDefault:       true,
+                        isIncome:        true,
+                        isTaxDeductible: false,
+                        isBusiness:      false,
+                        taxTreatment:    .taxExempt,
+                        taxOwner:        .primary,
+                        scheduleCLine:   nil
+                    )
+                    context.insert(cat)
+                    v41Added += 1
+                }
+
+                UserDefaults.standard.set(true, forKey: militaryVAEducationV41Key)
+
+                if v41Added > 0 {
+                    categoriesAdded += v41Added
+                    print("✅ SeedData v4.1: Added \(v41Added) military/VA/education categories")
+                } else {
+                    print("✅ SeedData v4.1: All military/VA/education categories already present")
+                }
+            }
+
             // ── Save if anything changed ──────────────────────────────
             if migratedCount > 0 || duplicatesRemoved > 0 || categoriesAdded > 0 {
                 try context.save()
                 if duplicatesRemoved > 0 { print("✅ SeedData: Removed \(duplicatesRemoved) duplicate(s)") }
-                if categoriesAdded  > 0 { print("✅ SeedData: Added \(categoriesAdded) missing category(ies)") }
+                if categoriesAdded > 0   { print("✅ SeedData: Added \(categoriesAdded) new category/categories") }
+                if migratedCount > 0     { print("✅ SeedData: Migrated \(migratedCount) category/categories") }
+            } else {
+                print("✅ SeedData: No migration needed")
             }
 
         } catch {
-            print("❌ SeedData: Migration failed: \(error.localizedDescription)")
+            print("❌ SeedData migration failed: \(error.localizedDescription)")
         }
     }
-
-    // MARK: - Analytics Helpers (v2.7 — uses isBusiness flag)
-
-    static var businessExpenseCount: Int {
-        defaults.filter { !$0.isIncome && $0.isBusiness }.count
-    }
-
-    static var personalExpenseCount: Int {
-        defaults.filter { !$0.isIncome && !$0.isBusiness }.count
-    }
-
-    static var incomeCount: Int {
-        defaults.filter { $0.isIncome }.count
-    }
-
-    static var taxDeductibleCount: Int {
-        defaults.filter { $0.isTaxDeductible }.count
-    }
-
-    static var selfEmploymentIncomeCount: Int {
-        defaults.filter { $0.isIncome && $0.taxTreatment == .selfEmployment }.count
-    }
-
-    static var w2IncomeCount: Int {
-        defaults.filter { $0.isIncome && $0.taxTreatment == .w2WithholdingPaid }.count
-    }
-
-    static var passiveIncomeCount: Int {
-        defaults.filter { $0.isIncome && $0.taxTreatment == .passiveIncome }.count
-    }
-
-    static var taxExemptIncomeCount: Int {
-        defaults.filter { $0.isIncome && $0.taxTreatment == .taxExempt }.count
-    }
 }
-
-// MARK: - Color + Classification Reference
-/*
- ┌──────────────────────────────────────────────────────────────────────────────┐
- │ FLO CATEGORY CLASSIFICATION v2.7                                             │
- ├──────────────────────────────────────────────────────────────────────────────┤
- │ BUSINESS EXPENSES (isBusiness: true, taxDeductible: true)                    │
- │ ├─ Office Supplies          F59E0B  Amber                                     │
- │ ├─ Software & Subscriptions 8B5CF6  Purple                                   │
- │ ├─ Professional Services    3B82F6  Blue                                      │
- │ ├─ Marketing & Advertising  EC4899  Pink                                      │
- │ ├─ Business Travel          06B6D4  Cyan                                      │
- │ ├─ Meals & Entertainment    F97316  Orange                                    │
- │ ├─ Education & Training     6366F1  Indigo                                    │
- │ ├─ Equipment & Tools        64748B  Slate                                     │
- │ ├─ Internet & Phone (Biz)   0EA5E9  Sky                                       │
- │ ├─ Insurance (Business)     10B981  Emerald                                   │
- │ ├─ Rent/Lease (Business)    7C3AED  Violet                                    │
- │ ├─ Utilities (Business)     EAB308  Yellow                                    │
- │ ├─ Contract Labor           14B8A6  Teal (brand)                              │
- │ ├─ Bank Fees & Interest     EF4444  Red                                       │
- │ ├─ Legal & Accounting       475569  Slate Dark                                │
- │ └─ Gas                      F97316  Orange                                    │
- ├──────────────────────────────────────────────────────────────────────────────┤
- │ PERSONAL EXPENSES (isBusiness: false, taxDeductible: false)                  │
- │ ├─ Groceries                22C55E  Green                                     │
- │ ├─ Dining Out               F97316  Orange                                    │
- │ ├─ Transportation           3B82F6  Blue                                      │
- │ ├─ Housing                  8B5CF6  Purple                                    │
- │ ├─ Utilities (Personal)     EAB308  Yellow                                    │
- │ ├─ Healthcare               EF4444  Red                                       │
- │ ├─ Entertainment            A855F7  Fuchsia                                   │
- │ ├─ Shopping                 EC4899  Pink                                      │
- │ ├─ Personal Care            F472B6  Pink Light                                │
- │ └─ Gifts & Donations        F43F5E  Rose                                      │
- ├──────────────────────────────────────────────────────────────────────────────┤
- │ INCOME CATEGORIES (taxTreatment / isBusiness)                                │
- │ ├─ Client Payments          10B981  Emerald   selfEmployment  / business      │
- │ ├─ Freelance Income         14B8A6  Teal      selfEmployment  / business      │
- │ ├─ Contract Work            3B82F6  Blue      selfEmployment  / business      │
- │ ├─ Side Gig                 F59E0B  Amber     selfEmployment  / business      │
- │ ├─ Salary/Wages             22C55E  Green     w2WithholdingPaid / personal    │
- │ ├─ Investment Income        6366F1  Indigo    passiveIncome   / personal      │
- │ └─ Refunds & Reimb.         06B6D4  Cyan      taxExempt       / personal      │
- └──────────────────────────────────────────────────────────────────────────────┘
- */

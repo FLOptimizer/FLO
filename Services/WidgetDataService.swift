@@ -1,10 +1,14 @@
 //  WidgetDataService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.3 - Elite production-ready widget data management
+//  Version 1.4 — Transfer Exclusion Fix
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES FROM v1.2:
+//  CHANGES v1.4 — Transfer Exclusion:
+//  ✅ FIXED: updateWidgetData() excludes isTransfer from income/expense/weekly/monthly
+//  ✅ Widget no longer shows inflated expense totals from bank transfers
+//
+//  CHANGES FROM v1.3:
 //  - FIXED: Swift 6 concurrency - made sharedDefaults nonisolated
 //  - Made all UserDefaults access thread-safe
 //  - UserDefaults is internally thread-safe, safe to use from any context
@@ -68,7 +72,7 @@ final class WidgetDataService {
     
     // MARK: - Version
     
-    static let version = "1.3"
+    static let version = "1.4"
     
     // MARK: - Singleton
     
@@ -143,12 +147,16 @@ final class WidgetDataService {
             throw WidgetError.appGroupUnavailable
         }
         
-        // Calculate financial data
-        let income = transactions
+        // v1.4: Exclude transfers from financial calculations
+        // Transfers are money movement between accounts, not income/expenses
+        let nonTransferTransactions = transactions.filter { !$0.isTransfer }
+        
+        // Calculate financial data (using non-transfer transactions only)
+        let income = nonTransferTransactions
             .filter { $0.isIncome }
             .reduce(0) { $0 + $1.amount }
         
-        let expenses = transactions
+        let expenses = nonTransferTransactions
             .filter { !$0.isIncome }
             .reduce(0) { $0 + $1.amount }
         
@@ -164,11 +172,12 @@ final class WidgetDataService {
             throw WidgetError.dateCalculationFailed
         }
         
-        let thisWeekExpenses = transactions
+        // v1.4: These also use nonTransferTransactions
+        let thisWeekExpenses = nonTransferTransactions
             .filter { !$0.isIncome && $0.date >= weekAgo }
             .reduce(0) { $0 + $1.amount }
         
-        let thisMonthExpenses = transactions
+        let thisMonthExpenses = nonTransferTransactions
             .filter { !$0.isIncome && $0.date >= monthStart }
             .reduce(0) { $0 + $1.amount }
         

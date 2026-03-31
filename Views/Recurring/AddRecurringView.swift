@@ -1,8 +1,14 @@
 //  AddRecurringView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.3 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
+//  Version 2.4 - Penny-Up Currency Input
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.4 - Penny-Up Currency Input:
+//  ✅ REPLACED: Old TextField + String amount with CurrencyInputField component
+//  ✅ CHANGED: Amount state from String to Double
+//  ✅ REMOVED: String-to-Double parsing in isValid and save()
+//  ✅ UPDATED: All validation/save logic to use Double amount directly
 //
 //  CHANGES v2.3 - Dynamic Type Verification:
 //  ✅ FIXED: Account footer text missing lineLimit + minimumScaleFactor
@@ -37,7 +43,7 @@ struct AddRecurringView: View {
     
     let preselectedFinanceType: Transaction.FinanceType?
     
-    @State private var amount = ""
+    @State private var amount: Double = 0
     @State private var merchantName = ""
     @State private var note = ""
     @State private var isIncome = false
@@ -67,6 +73,17 @@ struct AddRecurringView: View {
             .navigationTitle("New Recurring")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        #if canImport(UIKit)
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil
+                        )
+                        #endif
+                    }
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         HapticService.play(.light)
@@ -120,14 +137,11 @@ struct AddRecurringView: View {
                 .textContentType(.organizationName)
             
             TextField("Description (optional)", text: $note)
-            
-            HStack {
-                Text("$")
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-                TextField("0.00", text: $amount)
-                    .keyboardType(.decimalPad)
-            }
+
+            CurrencyInputField(
+                amount: $amount,
+                accessibilityLabelText: "Recurring amount"
+            )
         } header: {
             Text("Details")
         } footer: {
@@ -343,7 +357,7 @@ struct AddRecurringView: View {
     
     private var isValid: Bool {
         guard !merchantName.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
-        guard let amt = Double(amount), amt > 0 else { return false }
+        guard amount > 0 else { return false }
         return true
     }
     
@@ -394,13 +408,14 @@ struct AddRecurringView: View {
     // MARK: - Actions
     
     private func save() {
-        guard let amt = Double(amount), amt > 0 else { return }
-        
+        let amt = amount
+        guard amt > 0 else { return }
+
         let trimmedMerchant = merchantName.trimmingCharacters(in: .whitespaces)
         guard !trimmedMerchant.isEmpty else { return }
-        
+
         HapticService.play(.medium)
-        
+
         let recurring = RecurringTransaction(
             amount: amt,
             merchantName: trimmedMerchant,
@@ -487,7 +502,7 @@ struct RecurringAccountChip: View {
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? Color.brandPrimary.opacity(0.1) : Color(UIColor.secondarySystemGroupedBackground))
+                    .fill(isSelected ? Color.brandPrimary.opacity(0.1) : Color.floSecondarySystemGroupedBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 20)

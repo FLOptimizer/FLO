@@ -1,8 +1,12 @@
 //  ExportService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.3 - Perfect 100/100 with Universal CSV Compatibility
+//  Version 3.4 — Transfer Exclusion Fix
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.4 — Transfer Exclusion:
+//  ✅ FIXED: filterTransactions() now excludes isTransfer transactions
+//  ✅ CSV and PDF exports no longer include bank-to-bank transfers as expenses
 //
 //  CHANGES FROM v3.2:
 //  - CRITICAL: CSV amounts now use en_US_POSIX locale (dot decimals)
@@ -24,7 +28,9 @@
 import Foundation
 import os.log
 #if !os(macOS)
+#if canImport(UIKit)
 import UIKit
+#endif
 #endif
 
 /// Elite service for exporting transactions to CSV or PDF formats.
@@ -142,17 +148,11 @@ final class ExportService {
         csvLines.append("")  // Blank line separator
         
         // Configure formatters once for performance
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .short
-        dateFormatter.timeStyle = .none
+        let dateFormatter = DateFormatter.shortDate
         
         // CRITICAL: Use US locale for CSV to ensure universal compatibility
         // CSV parsers expect dot decimals, not comma (EU locales)
-        let amountFormatter = NumberFormatter()
-        amountFormatter.numberStyle = .decimal
-        amountFormatter.minimumFractionDigits = 2
-        amountFormatter.maximumFractionDigits = 2
-        amountFormatter.locale = Locale(identifier: "en_US_POSIX")  // Dot decimal for CSV
+        let amountFormatter = NumberFormatter.csvDecimal
         
         var totalIncome: Double = 0
         var totalExpenses: Double = 0
@@ -323,15 +323,10 @@ final class ExportService {
                     yPosition = margin + 50
                 }
                 
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateStyle = .short
-                let dateString = dateFormatter.string(from: transaction.date)
-                
-                let amountFormatter = NumberFormatter()
-                amountFormatter.numberStyle = .currency
-                amountFormatter.locale = .current
+                let dateString = DateFormatter.shortDate.string(from: transaction.date)
+
                 let amountValue = abs(transaction.amount)
-                let amountString = amountFormatter.string(from: NSNumber(value: amountValue)) ?? "$0.00"
+                let amountString = NumberFormatter.appCurrency.string(from: NSNumber(value: amountValue)) ?? "$0.00"
                 
                 let rowData = [
                     dateString,
@@ -470,7 +465,8 @@ final class ExportService {
         dateRange: ClosedRange<Date>?,
         financeType: Transaction.FinanceType?
     ) -> [Transaction] {
-        var filtered = transactions
+        // v3.4: Exclude transfers from all exports — they are not income or expenses
+        var filtered = transactions.filter { !$0.isTransfer }
         if let range = dateRange {
             filtered = filtered.filter { range.contains($0.date) }
         }
@@ -532,9 +528,7 @@ final class ExportService {
         // Subtitle with filters
         var subtitle = "Page \(page)"
         if let range = dateRange {
-            let formatter = DateFormatter()
-            formatter.dateStyle = .medium
-            subtitle += " • \(formatter.string(from: range.lowerBound)) - \(formatter.string(from: range.upperBound))"
+            subtitle += " • \(DateFormatter.mediumDate.string(from: range.lowerBound)) - \(DateFormatter.mediumDate.string(from: range.upperBound))"
         }
         if let type = financeType {
             subtitle += " • \(type == .business ? "Business" : "Personal")"
@@ -626,13 +620,9 @@ final class ExportService {
         let font = UIFont.boldSystemFont(ofSize: 10)
         let attributes: [NSAttributedString.Key: Any] = [.font: font]
         
-        let amountFormatter = NumberFormatter()
-        amountFormatter.numberStyle = .currency
-        amountFormatter.locale = .current
-        
-        let incomeString = amountFormatter.string(from: NSNumber(value: income)) ?? "$0.00"
-        let expensesString = amountFormatter.string(from: NSNumber(value: expenses)) ?? "$0.00"
-        let netString = amountFormatter.string(from: NSNumber(value: income - expenses)) ?? "$0.00"
+        let incomeString = NumberFormatter.appCurrency.string(from: NSNumber(value: income)) ?? "$0.00"
+        let expensesString = NumberFormatter.appCurrency.string(from: NSNumber(value: expenses)) ?? "$0.00"
+        let netString = NumberFormatter.appCurrency.string(from: NSNumber(value: income - expenses)) ?? "$0.00"
         
         let net = income - expenses
         let netColor = net >= 0 ? UIColor.systemGreen : UIColor.systemRed

@@ -1,8 +1,13 @@
 //  AppearanceSettingsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.5 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
+//  Version 1.6 - Added Celebrations toggle for success animations
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.6:
+//  ✅ ADDED: Celebrations toggle in new "Feedback" section
+//  ✅ ADDED: celebrationsEnabled @AppStorage preference
+//  ✅ ADDED: Accessible toggle with hint about confetti animations
 //
 //  CHANGES v1.5 - Dynamic Type Verification:
 //  ✅ FIXED: Color scheme title text missing lineLimit + minimumScaleFactor
@@ -31,6 +36,7 @@ struct AppearanceSettingsView: View {
     @AppStorage("preferredColorScheme") private var preferredColorScheme = "system"
     @AppStorage("showCentsInList") private var showCentsInList = true
     @AppStorage("compactListView") private var compactListView = false
+    @AppStorage("celebrationsEnabled") private var celebrationsEnabled = true
     @State private var colorSchemeManager = ColorSchemeManager.shared
     @State private var viewAppeared = false
     
@@ -45,147 +51,137 @@ struct AppearanceSettingsView: View {
     }
     
     var body: some View {
-        Form {
-            // Color Scheme Section
-            Section {
-                NavigationLink {
-                    ColorSchemeSettingsView()
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Color Scheme")
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
+        ScrollView {
+            VStack(spacing: 16) {
+                ProfileHeaderCard(
+                    icon: "paintbrush.fill",
+                    title: "Appearance",
+                    subtitle: "Customize how FLO looks and feels",
+                    color: .brandPrimary
+                )
+
+                // Color Scheme Section
+                ProfileSectionCard(title: "Colors") {
+                    ProfileNavigationRow(
+                        icon: "paintpalette.fill",
+                        label: "Color Scheme",
+                        value: colorSchemeManager.currentScheme.name,
+                        iconColor: .brandPrimary
+                    ) {
+                        ColorSchemeSettingsView()
+                    }
+                    .accessibilityLabel("Color scheme, current: \(colorSchemeManager.currentScheme.name)")
+                }
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(y: viewAppeared ? 0 : 10)
+                .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
+
+                // Theme Section
+                ProfileSectionCard(title: "Light/Dark Mode") {
+                    Picker("App Theme", selection: $preferredColorScheme) {
+                        Label {
+                            Text("System")
                                 .foregroundStyle(.primary)
-                            Text(colorSchemeManager.currentScheme.name)
-                                .font(.caption)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(.secondary)
+                        } icon: {
+                            Image(systemName: "circle.lefthalf.filled")
+                                .accessibilityHidden(true)
+                                .foregroundStyle(Color.brandPrimaryText)
                         }
-                        
-                        Spacer()
-                        
-                        Text(colorSchemeManager.currentScheme.emoji)
-                            .font(.title3)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                            .accessibilityHidden(true)
+                        .tag("system")
+
+                        Label {
+                            Text("Light")
+                                .foregroundStyle(.primary)
+                        } icon: {
+                            Image(systemName: "sun.max.fill")
+                                .accessibilityHidden(true)
+                                .foregroundStyle(Color.brandPrimaryText)
+                        }
+                        .tag("light")
+
+                        Label {
+                            Text("Dark")
+                                .foregroundStyle(.primary)
+                        } icon: {
+                            Image(systemName: "moon.fill")
+                                .accessibilityHidden(true)
+                                .foregroundStyle(Color.brandPrimaryText)
+                        }
+                        .tag("dark")
+                    }
+                    .pickerStyle(.inline)
+                    .padding(.horizontal, 16)
+                    .onChange(of: preferredColorScheme) { _, _ in
+                        HapticService.play(.selection)
                     }
                 }
-                .accessibilityLabel("Color scheme, current: \(colorSchemeManager.currentScheme.name)")
-            } header: {
-                Text("Colors")
-            } footer: {
-                Text("Choose a color scheme that matches your style")
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.7)
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(y: viewAppeared ? 0 : 10)
+                .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
+
+                // Display Options Section
+                ProfileSectionCard(title: "Display Options") {
+                    ProfileToggleRow(
+                        icon: "dollarsign.circle",
+                        label: "Show Cents in Lists",
+                        isOn: $showCentsInList,
+                        subtitle: "Display $1,234.56 instead of $1,235"
+                    )
+                    .onChange(of: showCentsInList) { _, _ in
+                        HapticService.play(.light)
+                    }
+
+                    ProfileToggleRow(
+                        icon: "rectangle.compress.vertical",
+                        label: "Compact List View",
+                        isOn: $compactListView,
+                        subtitle: "Reduce spacing between items"
+                    )
+                    .onChange(of: compactListView) { _, _ in
+                        HapticService.play(.light)
+                    }
+                }
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(y: viewAppeared ? 0 : 10)
+                .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
+
+                // Feedback Section
+                ProfileSectionCard(title: "Feedback") {
+                    ProfileToggleRow(
+                        icon: "party.popper.fill",
+                        label: "Success Celebrations",
+                        isOn: $celebrationsEnabled,
+                        subtitle: "Show confetti and animations for achievements"
+                    )
+                    .onChange(of: celebrationsEnabled) { _, newValue in
+                        if newValue {
+                            // Play celebration haptic as preview
+                            HapticService.shared.celebration()
+                        } else {
+                            HapticService.play(.light)
+                        }
+                    }
+                    .accessibilityLabel("Success Celebrations")
+                    .accessibilityValue(celebrationsEnabled ? "On" : "Off")
+                    .accessibilityHint("When enabled, shows confetti and animations when you mark invoices as paid or add income")
+
+                    ProfileInfoRow(
+                        icon: "info.circle",
+                        label: "Celebrations",
+                        value: "Invoices, income, goals"
+                    )
+                }
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(y: viewAppeared ? 0 : 10)
+                .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
             }
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
-            
-            // Theme Section
-            Section {
-                Picker("App Theme", selection: $preferredColorScheme) {
-                    Label {
-                        Text("System")
-                            .foregroundStyle(.primary)
-                    } icon: {
-                        Image(systemName: "circle.lefthalf.filled")
-                            .accessibilityHidden(true)
-                             .foregroundStyle(Color.brandPrimaryText)
-                    }
-                    .tag("system")
-                    
-                    Label {
-                        Text("Light")
-                            .foregroundStyle(.primary)
-                    } icon: {
-                        Image(systemName: "sun.max.fill")
-                            .accessibilityHidden(true)
-                             .foregroundStyle(Color.brandPrimaryText)
-                    }
-                    .tag("light")
-                    
-                    Label {
-                        Text("Dark")
-                            .foregroundStyle(.primary)
-                    } icon: {
-                        Image(systemName: "moon.fill")
-                            .accessibilityHidden(true)
-                             .foregroundStyle(Color.brandPrimaryText)
-                    }
-                    .tag("dark")
-                }
-                .pickerStyle(.inline)
-                .onChange(of: preferredColorScheme) { _, _ in
-                    HapticService.play(.selection)
-                }
-            } header: {
-                Text("Light/Dark Mode")
-            } footer: {
-                Text("Choose how FLO appears throughout the day")
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.7)
-            }
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
-            
-            // Display Options Section
-            Section {
-                Toggle(isOn: $showCentsInList) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Show Cents in Lists")
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(.primary)
-                        Text("Display $1,234.56 instead of $1,235")
-                            .font(.caption)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .tint(Color.brandPrimary)
-                .onChange(of: showCentsInList) { _, _ in
-                    HapticService.play(.light)
-                }
-                
-                Toggle(isOn: $compactListView) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Compact List View")
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(.primary)
-                        Text("Reduce spacing between items")
-                            .font(.caption)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .tint(Color.brandPrimary)
-                .onChange(of: compactListView) { _, _ in
-                    HapticService.play(.light)
-                }
-            } header: {
-                Text("Display Options")
-            } footer: {
-                Text("Customize how transactions and amounts are displayed")
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.7)
-            }
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
+            .padding(16)
         }
         .navigationTitle("Appearance")
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(colorScheme)
         .onAppear {
-                        withAnimation(FLOAnimation.standard) {
+            withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
             AccessibilityAnnouncement.screenChanged("Appearance")

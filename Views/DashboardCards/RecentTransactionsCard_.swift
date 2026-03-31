@@ -37,10 +37,7 @@ struct RecentTransactionsCard: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Image(systemName: "list.bullet")
-                    .font(.title2)
-                    .foregroundStyle(modeColor)
-                    .accessibilityHidden(true)
+                FLOBrandedIcon(icon: .transactions, size: .medium, color: modeColor)
                 
                 Text(headerTitle)
                     .font(.headline)
@@ -50,13 +47,15 @@ struct RecentTransactionsCard: View {
                 
                 Spacer()
                 
-                NavigationLink {
-                    TransactionListView()
+                Button {
+                    HapticService.play(.light)
+                    NavigationService.shared.selectedTab = .transactions
                 } label: {
                     Image(systemName: "chevron.right")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel("View all transactions")
             }
             .padding()
@@ -80,9 +79,9 @@ struct RecentTransactionsCard: View {
                 }
             }
         }
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .floCardShadow()
     }
     
     private var modeColor: Color {
@@ -171,10 +170,7 @@ struct TransactionRowCompact: View {
     // v1.2: Single formatted string instead of Text concatenation
     private var formattedAmount: String {
         let prefix = transaction.isIncome ? "+" : "-"
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        let amountStr = formatter.string(from: NSNumber(value: abs(transaction.amount))) ?? "$\(abs(transaction.amount))"
+        let amountStr = NumberFormatter.appCurrency.string(from: NSNumber(value: abs(transaction.amount))) ?? "$\(abs(transaction.amount))"
         return "\(prefix)\(amountStr)"
     }
     

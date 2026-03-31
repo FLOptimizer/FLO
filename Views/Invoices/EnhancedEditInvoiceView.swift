@@ -106,11 +106,12 @@ struct EnhancedEditInvoiceView: View {
     
     private var lineItemsChanged: Bool {
         let validItems = lineItems.filter { $0.isValid }
-        if validItems.count != invoice.items.count { return true }
-        
+        let invoiceItems = invoice.items ?? []
+        if validItems.count != invoiceItems.count { return true }
+
         for (index, item) in validItems.enumerated() {
-            guard index < invoice.items.count else { return true }
-            let original = invoice.items[index]
+            guard index < invoiceItems.count else { return true }
+            let original = invoiceItems[index]
             if item.description != original.itemDescription ||
                item.quantity != original.quantity ||
                item.unitPrice != original.unitPrice {
@@ -535,7 +536,7 @@ struct EnhancedEditInvoiceView: View {
         venmoUsername = invoice.venmoUsername ?? ""
         zelleEmail = invoice.zelleEmail ?? ""
         
-        lineItems = invoice.items.map { item in
+        lineItems = (invoice.items ?? []).map { item in
             EditableLineItem(
                 id: item.id,
                 description: item.itemDescription,
@@ -604,7 +605,7 @@ struct EnhancedEditInvoiceView: View {
         invoice.zelleEmail = zelleEmail.isEmpty ? nil : zelleEmail
         invoice.modifiedDate = Date()
         
-        for item in invoice.items {
+        for item in invoice.items ?? [] {
             modelContext.delete(item)
         }
         

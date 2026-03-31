@@ -712,9 +712,7 @@ private struct ExportOptionsSheet: View {
         if let year = year, let month = month {
             let components = DateComponents(year: year, month: month)
             if let date = Calendar.current.date(from: components) {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "MMMM yyyy"
-                return formatter.string(from: date)
+                return DateFormatter.monthYear.string(from: date)
             }
         } else if let year = year {
             return "\(year)"

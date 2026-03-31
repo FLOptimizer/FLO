@@ -13,7 +13,7 @@
 //  in Xcode File Inspector (right panel → Target Membership).
 //
 
-#if canImport(ActivityKit)
+#if canImport(ActivityKit) && !os(macOS)
 import ActivityKit
 import Foundation
 
@@ -49,4 +49,4 @@ struct MileageLiveActivityAttributes: ActivityAttributes {
         let gpsSignal: String
     }
 }
-#endif // canImport(ActivityKit)
+#endif // canImport(ActivityKit) && !os(macOS)

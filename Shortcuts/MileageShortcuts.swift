@@ -51,7 +51,9 @@ struct PauseMileageIntent: AppIntent {
         UserDefaults.standard.set(false, forKey: "mileageTrackingEnabled")
         
         // Update quick action shortcuts
+        #if canImport(UIKit)
         QuickActionService.shared.updateShortcuts()
+        #endif
         
         return .result(dialog: "Mileage tracking paused. Your trips won't be recorded until you resume.")
     }
@@ -102,7 +104,9 @@ struct ResumeMileageIntent: AppIntent {
         UserDefaults.standard.set(true, forKey: "mileageTrackingEnabled")
         
         // Update quick action shortcuts
+        #if canImport(UIKit)
         QuickActionService.shared.updateShortcuts()
+        #endif
         
         return .result(dialog: "Mileage tracking started. I'll automatically record your trips.")
     }
@@ -160,7 +164,9 @@ struct ToggleMileageIntent: AppIntent {
             // Currently on, turn off
             trackingService.stopTracking()
             UserDefaults.standard.set(false, forKey: "mileageTrackingEnabled")
-            QuickActionService.shared.updateShortcuts()
+            #if canImport(UIKit)
+        QuickActionService.shared.updateShortcuts()
+        #endif
             return .result(dialog: "Mileage tracking paused.")
         } else {
             // Currently off, turn on
@@ -183,7 +189,9 @@ struct ToggleMileageIntent: AppIntent {
             
             trackingService.startTracking()
             UserDefaults.standard.set(true, forKey: "mileageTrackingEnabled")
-            QuickActionService.shared.updateShortcuts()
+            #if canImport(UIKit)
+        QuickActionService.shared.updateShortcuts()
+        #endif
             return .result(dialog: "Mileage tracking started.")
         }
     }

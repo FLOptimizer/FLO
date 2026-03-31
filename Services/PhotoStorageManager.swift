@@ -8,7 +8,10 @@
 //  All Swift 6 concurrency errors resolved
 //
 
+import Foundation
+#if canImport(UIKit)
 import UIKit
+#endif
 import os.log
 
 // MARK: - Public Error Type
@@ -79,11 +82,18 @@ actor PhotoStorageManager {
         }
         
         do {
+            #if canImport(UIKit)
             try FileManager.default.createDirectory(
                 at: receiptsDirectory,
                 withIntermediateDirectories: true,
                 attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
             )
+            #else
+            try FileManager.default.createDirectory(
+                at: receiptsDirectory,
+                withIntermediateDirectories: true
+            )
+            #endif
             Self.logger.info("✅ Created Receipts directory at \(self.receiptsDirectory.path, privacy: .public)")
         } catch {
             Self.logger.error("❌ Failed to create Receipts directory: \(error.localizedDescription, privacy: .public)")
@@ -117,8 +127,12 @@ actor PhotoStorageManager {
     
     /// Loads a receipt image by filename
     func loadReceipt(filename: String) async throws -> UIImage {
+        guard !filename.isEmpty else {
+            throw PhotoStorageError.fileReadFailed(NSError(domain: "PhotoStorage", code: -1, userInfo: [NSLocalizedDescriptionKey: "Empty filename"]))
+        }
+
         let fileURL = receiptsDirectory.appending(path: filename)
-        
+
         let data: Data
         do {
             data = try Data(contentsOf: fileURL)

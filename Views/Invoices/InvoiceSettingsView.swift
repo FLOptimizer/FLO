@@ -55,7 +55,7 @@ struct InvoiceSettingsView: View {
                     Text("Net 60").tag(60)
                     Text("Net 90").tag(90)
                 }
-                .listRowBackground(defaultPaymentTerms == 30 ? Color(.secondarySystemBackground) : nil)
+                .listRowBackground(defaultPaymentTerms == 30 ? Color.floSecondarySystemBackground : nil)
                 .onChange(of: defaultPaymentTerms) { _, _ in
                     HapticService.play(.selection)
                 }
@@ -209,9 +209,11 @@ struct InvoiceSettingsView: View {
     }
     
     private func openNotificationSettings() {
+        #if canImport(UIKit)
         if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(settingsURL)
         }
+        #endif
     }
 }
 

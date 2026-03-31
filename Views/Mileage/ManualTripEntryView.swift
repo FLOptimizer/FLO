@@ -418,7 +418,7 @@ struct ManualTripEntryView: View {
                                         .background(
                                             vehicleName == vehicle
                                                 ? Color.brandPrimary.opacity(0.2)
-                                                : Color(.systemGray5)
+                                                : Color.gray.opacity(0.2)
                                         )
                                         .foregroundStyle(vehicleName == vehicle ? Color.brandPrimary : .primary)
                                         .clipShape(Capsule())

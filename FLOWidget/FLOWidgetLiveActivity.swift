@@ -24,6 +24,7 @@
 //  ✅ ADDED: GPS signal indicator
 //  ✅ ADDED: Deep linking to flo://mileage
 
+#if os(iOS)
 import ActivityKit
 import WidgetKit
 import SwiftUI
@@ -334,3 +335,4 @@ struct FLOWidgetLiveActivity: Widget {
         gpsSignal: "weak"
     )
 }
+#endif // os(iOS)

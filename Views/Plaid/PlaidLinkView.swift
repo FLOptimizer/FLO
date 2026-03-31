@@ -65,6 +65,7 @@
 //  - Fixed LinkEvent Sendable conformance
 //  - Fixed MainActor patterns
 
+#if canImport(LinkKit)
 import SwiftUI
 import SwiftData
 import LinkKit
@@ -1118,3 +1119,4 @@ struct ConnectedAccountsCard_Previews: PreviewProvider {
     }
 }
 #endif
+#endif // canImport(LinkKit)

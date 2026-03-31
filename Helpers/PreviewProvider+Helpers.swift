@@ -85,10 +85,10 @@ struct PreviewContainer {
             switch seedResult {
             case .success(let count):
                 if count > 0 {
-                    print("âœ… Preview: Seeded \(count) default categories")
+                    print("✅ Preview: Seeded \(count) default categories")
                 }
             case .failure(let error):
-                print("âš ï¸ Preview: Seed failed - \(error.localizedDescription)")
+                print("⚠️ Preview: Seed failed - \(error.localizedDescription)")
                 // Continue anyway - don't fail the preview
             }
         }
@@ -140,16 +140,16 @@ struct PreviewContainer {
             )
             context.insert(income)
             
-            // âœ… FIXED: Sample budget with correct initializer
+            // ✅ FIXED: Sample budget with correct initializer
             let calendar = Calendar.current
             let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
             
             let budget = Budget(
-                month: startOfMonth,           // âœ… Date, not String
-                planned: 500.00,               // âœ… planned, not amount
+                month: startOfMonth,           // ✅ Date, not String
+                planned: 500.00,               // ✅ planned, not amount
                 carryOver: 0.0,
                 category: groceryCategory,
-                budgetType: BudgetType.envelope,  // âœ… Explicit type, not .monthly
+                budgetType: BudgetType.envelope,  // ✅ Explicit type, not .monthly
                 financeType: .personal
             )
             context.insert(budget)

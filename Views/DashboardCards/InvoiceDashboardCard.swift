@@ -84,11 +84,7 @@ struct InvoiceDashboardCard: View {
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    Image(systemName: "doc.text.fill")
-                        .font(.title2)
-                        .foregroundStyle(Color.brandPrimary)
-                        .symbolEffect(.bounce, value: cardVisible)
-                        .accessibilityHidden(true)
+                    FLOBrandedIcon(icon: .invoices, size: .medium, color: .brandPrimary)
                     
                     Text("Invoices")
                         .font(.headline)
@@ -130,9 +126,9 @@ struct InvoiceDashboardCard: View {
             }
         }
         .buttonStyle(AnimatedCardButtonStyle())
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .floCardShadow(radius: 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(cardAccessibilityLabel)
         .accessibilityHint("Double tap to view invoice list")
@@ -470,7 +466,7 @@ struct AnimatedStatusPill: View {
         .padding(.horizontal, 8)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isHighlighted ? color.opacity(0.1) : Color(.tertiarySystemBackground))
+                .fill(isHighlighted ? color.opacity(0.1) : Color.floTertiarySystemBackground)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8)
@@ -520,7 +516,7 @@ struct AnimatedCardButtonStyle: ButtonStyle {
                 .modelContainer(previewContainerWithData)
         }
     }
-    .background(Color(.systemGroupedBackground))
+    .background(Color.floSystemGroupedBackground)
 }
 
 #Preview("Empty State") {
@@ -531,7 +527,7 @@ struct AnimatedCardButtonStyle: ButtonStyle {
                 .modelContainer(previewContainerEmpty)
         }
     }
-    .background(Color(.systemGroupedBackground))
+    .background(Color.floSystemGroupedBackground)
 }
 
 // MARK: - Preview Containers

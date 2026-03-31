@@ -191,7 +191,7 @@ struct UsageWarningBanner: View {
             ZStack(alignment: .leading) {
                 // Background
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color(.systemGray5))
+                    .fill(Color.gray.opacity(0.2))
                 
                 // Progress
                 RoundedRectangle(cornerRadius: 4)
@@ -320,7 +320,7 @@ struct LimitReachedOverlay: View {
                     .foregroundStyle(.secondary)
             }
             .padding()
-            .background(Color(.secondarySystemBackground))
+            .background(Color.floSecondarySystemBackground)
             .cornerRadius(12)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(currentCount) of \(limit) \(limitType.displayName) used")
@@ -351,7 +351,7 @@ struct LimitReachedOverlay: View {
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemBackground))
+            .background(Color.floSecondarySystemBackground)
             .cornerRadius(12)
             .padding(.horizontal)
             
@@ -394,7 +394,7 @@ struct LimitReachedOverlay: View {
             
             Spacer().frame(height: 20)
         }
-        .background(Color(.systemBackground))
+        .background(Color.floSystemBackground)
     }
     
     private func benefitRow(_ text: String) -> some View {

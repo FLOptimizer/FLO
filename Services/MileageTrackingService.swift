@@ -1,7 +1,7 @@
 //  MileageTrackingService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.6 - Live Activity Integration
+//  Version 3.7 - Changed the milage tracking sensitivity.
 //  Copyright 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v3.6:
@@ -55,7 +55,11 @@ import Foundation
 import CoreLocation
 import SwiftData
 import UserNotifications
+#if canImport(UIKit)
 import UIKit
+#else
+import AppKit
+#endif
 import os.log
 
 // MARK: - MileageTrackingService
@@ -141,7 +145,9 @@ class MileageTrackingService: NSObject, ObservableObject {
     private var totalDistanceMeters: Double = 0.0
     
     /// Background task identifier for trip completion
+    #if canImport(UIKit)
     private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+    #endif
     
     // MARK: - Configuration
     
@@ -211,62 +217,91 @@ class MileageTrackingService: NSObject, ObservableObject {
         // CRITICAL: Don't let iOS pause updates - we handle trip end ourselves
         locationManager.pausesLocationUpdatesAutomatically = false
         
+        #if os(iOS)
         locationManager.allowsBackgroundLocationUpdates = true
+        #endif
         
+        #if canImport(UIKit)
         if #available(iOS 18.0, *) {
             locationManager.showsBackgroundLocationIndicator = true
         }
+        #endif
         
         logger.info("Location manager configured (pausesAutomatically: OFF)")
     }
     
     private func setupBatteryMonitoring() {
+        #if canImport(UIKit)
         UIDevice.current.isBatteryMonitoringEnabled = true
         updateBatteryStatus()
-        
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(batteryLevelDidChange),
             name: UIDevice.batteryLevelDidChangeNotification,
             object: nil
         )
-        
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(batteryStateDidChange),
             name: UIDevice.batteryStateDidChangeNotification,
             object: nil
         )
+        #endif
     }
     
     private func setupAppLifecycleObservers() {
+        #if canImport(UIKit)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(appWillResignActive),
             name: UIApplication.willResignActiveNotification,
             object: nil
         )
-        
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(appDidBecomeActive),
             name: UIApplication.didBecomeActiveNotification,
             object: nil
         )
-        
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(appWillTerminate),
             name: UIApplication.willTerminateNotification,
             object: nil
         )
-        
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(appDidEnterBackground),
             name: UIApplication.didEnterBackgroundNotification,
             object: nil
         )
+        #else
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillResignActive),
+            name: NSApplication.willResignActiveNotification,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidBecomeActive),
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillTerminate),
+            name: NSApplication.willTerminateNotification,
+            object: nil
+        )
+        #endif
         
         // Control Widget notification observers
         NotificationCenter.default.addObserver(
@@ -411,24 +446,29 @@ class MileageTrackingService: NSObject, ObservableObject {
     }
     
     // MARK: - Background Task Management
-    
+
+    #if canImport(UIKit)
     private func beginBackgroundTask() {
         guard backgroundTaskID == .invalid else { return }
-        
+
         backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "MileageTracking") { [weak self] in
             self?.endBackgroundTask()
         }
-        
+
         logger.info("Background task started: \(self.backgroundTaskID.rawValue)")
     }
-    
+
     private func endBackgroundTask() {
         guard backgroundTaskID != .invalid else { return }
-        
+
         UIApplication.shared.endBackgroundTask(backgroundTaskID)
         logger.info("Background task ended: \(self.backgroundTaskID.rawValue)")
         backgroundTaskID = .invalid
     }
+    #else
+    private func beginBackgroundTask() {}
+    private func endBackgroundTask() {}
+    #endif
     
     // MARK: - Battery Monitoring
     
@@ -441,11 +481,12 @@ class MileageTrackingService: NSObject, ObservableObject {
     }
     
     private func updateBatteryStatus() {
+        #if canImport(UIKit)
         let level = UIDevice.current.batteryLevel
         let state = UIDevice.current.batteryState
-        
+
         batteryLevel = level
-        
+
         // Only warn if not charging and below 20%
         if level > 0 && level < 0.20 && state != .charging && state != .full {
             if !batteryWarning {
@@ -472,8 +513,9 @@ class MileageTrackingService: NSObject, ObservableObject {
             }
             batteryWarning = false
         }
+        #endif
     }
-    
+
     // MARK: - ModelContext Injection
     
     func inject(modelContext: ModelContext) {
@@ -511,8 +553,14 @@ class MileageTrackingService: NSObject, ObservableObject {
     /// Accessibility: Announces "Mileage tracking started" to VoiceOver when successful.
     /// Checks permissions and displays user-friendly error messages if unavailable.
     func startTracking() {
-        guard trackingPermissionStatus == .authorizedAlways ||
-              trackingPermissionStatus == .authorizedWhenInUse else {
+        let hasPermission: Bool = {
+            #if os(macOS)
+            return trackingPermissionStatus == .authorized || trackingPermissionStatus == .authorizedAlways
+            #else
+            return trackingPermissionStatus == .authorizedAlways || trackingPermissionStatus == .authorizedWhenInUse
+            #endif
+        }()
+        guard hasPermission else {
             logger.warning("Cannot start: insufficient permissions")
             trackingError = .insufficientPermissions
             return
@@ -1508,7 +1556,7 @@ struct TrackingConfiguration {
     var minimumTripDistanceMiles: Double = 0.1
     
     /// Distance (meters) that must be traveled to start a trip
-    var tripStartDistanceMeters: Double = 100
+    var tripStartDistanceMeters: Double = 200
     
     /// Seconds without movement before trip auto-ends
     var tripEndThresholdSeconds: TimeInterval = 300 // 5 minutes
@@ -1517,7 +1565,7 @@ struct TrackingConfiguration {
     var minimumAccuracyMeters: Double = 50
     
     /// Minimum speed (m/s) to count as movement (filters walking)
-    var minimumSpeedMPS: Double = 2.0 // ~4.5 mph
+    var minimumSpeedMPS: Double = 4.0 // ~9 mph
     
     /// Minimum distance (meters) between route points
     var minimumPointDistanceMeters: Double = 15

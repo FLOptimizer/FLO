@@ -1,8 +1,16 @@
 //  CloudSyncService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.3 - VoiceOver Audit: Sync status UI accessibility
+//  Version 2.0 - SwiftData Automatic CloudKit Sync (Build 8)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.0 - iCloud Sync Enabled:
+//  ✅ Adapted to monitoring role — SwiftData handles all CloudKit sync automatically
+//  ✅ Added NSPersistentCloudKitContainer.eventChangedNotification listener
+//  ✅ Tracks import/export/setup events and updates sync status in real-time
+//  ✅ initialize() made internal for FLOApp to call at launch
+//  ✅ performSync() simplified — "Sync Now" refreshes status since sync is automatic
+//  ✅ Added initial sync migration flag tracking (cloudSync.initialSyncComplete)
 //
 //  CHANGES v1.3 - VoiceOver Audit:
 //  ✅ ADDED: CloudSyncStatusView icon hidden, combines with spoken label "iCloud sync: up to date"
@@ -13,12 +21,13 @@
 //  ✅ VERIFIED: All buttons have clear labels from visible text
 //
 //  PURPOSE:
-//  Manages iCloud synchronization for FLO data including:
-//  - CloudKit container configuration
-//  - Sync state monitoring and status reporting
-//  - Manual sync triggers and background refresh
-//  - Error handling and recovery
-//  - Network connectivity awareness
+//  Monitors iCloud synchronization status for FLO data.
+//  SwiftData handles all CloudKit mirroring automatically via cloudKitDatabase: .automatic.
+//  This service provides:
+//  - Sync event monitoring (import/export/setup tracking)
+//  - Account status and network connectivity awareness
+//  - User-facing sync status and error reporting
+//  - Manual status refresh and sync reset
 //
 //  CHANGES v1.2:
 //  - Removed unnecessary await from loadState() calls
@@ -110,22 +119,119 @@ final class CloudSyncService: ObservableObject {
     }
     
     // MARK: - Initialization
-    
-    private func initialize() {
+
+    /// Call from FLOApp.scheduleDeferredSetup() to start monitoring.
+    /// Loads saved preferences, initializes CloudKit container,
+    /// sets up sync event monitoring, and checks account status.
+    func initialize() {
         // Load saved preferences
         isSyncEnabled = UserDefaults.standard.bool(forKey: "cloudSync.enabled")
-        
+
         if let lastSync = UserDefaults.standard.object(forKey: "cloudSync.lastSync") as? Date {
             lastSyncDate = lastSync
         }
-        
+
         // Initialize CloudKit container
         container = CKContainer(identifier: containerIdentifier)
         database = container?.privateCloudDatabase
-        
+
+        // Listen for SwiftData/CloudKit sync events
+        setupCloudKitEventMonitor()
+
+        // Track initial sync migration
+        trackInitialSyncMigration()
+
         // Check initial status
         Task {
             await checkAccountStatus()
+        }
+
+        #if DEBUG
+        print("☁️ CloudSyncService initialized — monitoring CloudKit events")
+        #endif
+    }
+
+    // MARK: - CloudKit Event Monitoring
+
+    /// Listens for NSPersistentCloudKitContainer sync events to track
+    /// import/export/setup progress and update published state.
+    private func setupCloudKitEventMonitor() {
+        NotificationCenter.default.publisher(
+            for: NSNotification.Name("NSPersistentCloudKitContainer.eventChangedNotification")
+        )
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] notification in
+            self?.handleCloudKitEvent(notification)
+        }
+        .store(in: &cancellables)
+    }
+
+    /// Handles incoming CloudKit sync event notifications.
+    private func handleCloudKitEvent(_ notification: Notification) {
+        // NSPersistentCloudKitContainer.Event is not directly accessible,
+        // but the notification userInfo contains event details
+        guard let userInfo = notification.userInfo else { return }
+
+        // Check if the event succeeded or failed
+        if let error = userInfo["error"] as? Error {
+            currentError = .cloudKitError(error)
+            syncStatus = .error(error.localizedDescription)
+            #if DEBUG
+            print("☁️ CloudKit sync event error: \(error.localizedDescription)")
+            #endif
+            return
+        }
+
+        // Check event type from userInfo
+        if let eventTypeRaw = userInfo["type"] as? Int {
+            switch eventTypeRaw {
+            case 0: // setup
+                syncStatus = .syncing
+                syncProgress = 0.2
+                #if DEBUG
+                print("☁️ CloudKit sync: setup phase")
+                #endif
+            case 1: // import
+                syncStatus = .syncing
+                syncProgress = 0.6
+                #if DEBUG
+                print("☁️ CloudKit sync: importing remote changes")
+                #endif
+            case 2: // export
+                syncStatus = .syncing
+                syncProgress = 0.9
+                #if DEBUG
+                print("☁️ CloudKit sync: exporting local changes")
+                #endif
+            default:
+                break
+            }
+        }
+
+        // Check if event ended successfully
+        if let endDate = userInfo["endDate"] as? Date {
+            lastSyncDate = endDate
+            UserDefaults.standard.set(endDate, forKey: "cloudSync.lastSync")
+            syncStatus = .idle
+            syncProgress = 1.0
+            currentError = nil
+
+            // Mark initial sync as complete
+            if !UserDefaults.standard.bool(forKey: "cloudSync.initialSyncComplete") {
+                UserDefaults.standard.set(true, forKey: "cloudSync.initialSyncComplete")
+                #if DEBUG
+                print("☁️ Initial CloudKit sync completed successfully")
+                #endif
+            }
+        }
+    }
+
+    /// Tracks first-time sync migration for existing local data
+    private func trackInitialSyncMigration() {
+        if !UserDefaults.standard.bool(forKey: "cloudSync.initialSyncComplete") {
+            #if DEBUG
+            print("☁️ First launch with CloudKit — existing data will auto-export to iCloud")
+            #endif
         }
     }
     
@@ -238,101 +344,58 @@ final class CloudSyncService: ObservableObject {
         }
     }
     
-    /// Performs the actual sync operation
+    /// Refreshes sync status.
+    /// With SwiftData automatic CloudKit sync, data syncs continuously.
+    /// "Sync Now" refreshes account status and checks connectivity.
     private func performSync() async {
         guard syncTask == nil else { return }
-        
+
         syncStatus = .syncing
         syncProgress = 0.0
         currentError = nil
         lastSyncAttempt = Date()
-        
+
         syncTask = Task {
             defer {
                 syncTask = nil
             }
-            
-            do {
-                // Phase 1: Check for local changes
-                syncProgress = 0.1
-                let localChanges = await detectLocalChanges()
-                
-                // Phase 2: Fetch remote changes
-                syncProgress = 0.3
-                let remoteChanges = try await fetchRemoteChanges()
-                
-                // Phase 3: Resolve conflicts
-                syncProgress = 0.5
-                let resolvedChanges = await conflictResolver.resolveConflicts(
-                    local: localChanges,
-                    remote: remoteChanges
-                )
-                
-                // Phase 4: Apply remote changes locally
-                syncProgress = 0.7
-                try await applyRemoteChanges(resolvedChanges.toApplyLocally)
-                
-                // Phase 5: Push local changes
-                syncProgress = 0.9
-                try await pushLocalChanges(resolvedChanges.toPushRemote)
-                
-                // Complete
-                syncProgress = 1.0
-                lastSyncDate = Date()
-                UserDefaults.standard.set(lastSyncDate, forKey: "cloudSync.lastSync")
+
+            // Refresh account status
+            syncProgress = 0.3
+            await checkAccountStatus()
+
+            // Verify connectivity
+            syncProgress = 0.6
+            guard isNetworkAvailable else {
+                currentError = .networkUnavailable
+                syncStatus = .error("No internet connection")
+                return
+            }
+
+            guard accountStatus == .available else {
+                syncStatus = .disabled(reason: accountStatusReason(accountStatus))
+                return
+            }
+
+            // SwiftData handles actual sync automatically via NSPersistentCloudKitContainer
+            // We just update the status to reflect readiness
+            syncProgress = 1.0
+
+            if let lastSync = lastSyncDate {
                 syncStatus = .idle
-                pendingChangesCount = 0
-                
-            } catch let error as CKError {
-                handleCloudKitError(error)
-            } catch {
-                currentError = .unknownError(error)
-                syncStatus = .error(error.localizedDescription)
+                #if DEBUG
+                print("☁️ Sync status refreshed — last sync: \(lastSync)")
+                #endif
+            } else {
+                syncStatus = .idle
+                #if DEBUG
+                print("☁️ Sync status refreshed — awaiting first automatic sync")
+                #endif
             }
         }
-        
+
         // Wait for completion
         try? await syncTask?.value
-    }
-    
-    // MARK: - Change Detection
-    
-    /// Detects local changes that need to be synced
-    private func detectLocalChanges() async -> [SyncChange] {
-        // Note: With SwiftData CloudKit integration, this is handled automatically
-        // This method is for manual tracking if needed
-        return []
-    }
-    
-    /// Fetches remote changes from CloudKit
-    private func fetchRemoteChanges() async throws -> [SyncChange] {
-        guard database != nil else {
-            throw CloudSyncError.notConfigured
-        }
-        
-        // Note: With SwiftData CloudKit integration, this is automatic
-        return []
-    }
-    
-    /// Applies remote changes to local data
-    private func applyRemoteChanges(_ changes: [SyncChange]) async throws {
-        // With SwiftData CloudKit integration, this is automatic
-        for change in changes {
-            switch change.type {
-            case .added, .modified:
-                // Update or insert record
-                break
-            case .deleted:
-                // Delete local record
-                break
-            }
-        }
-    }
-    
-    /// Pushes local changes to CloudKit
-    private func pushLocalChanges(_ changes: [SyncChange]) async throws {
-        // With SwiftData CloudKit integration, this is automatic
-        guard !changes.isEmpty else { return }
     }
     
     // MARK: - Error Handling
@@ -797,7 +860,9 @@ struct CloudSyncDetailsView: View {
                 }
             }
             .navigationTitle("iCloud Sync")
+            #if !os(macOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {

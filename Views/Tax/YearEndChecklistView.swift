@@ -6,9 +6,9 @@
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v1.5 - Dark Mode Optimization:
-//  ✅ FIXED: L806 .gray → Color(.systemGray4) for priority badge foreground (adapts to dark mode)
-//  ✅ FIXED: L813 Color.gray → Color(.systemGray4) for priority badge background (adapts to dark mode)
-//  ✅ FIXED: L943 Color.gray → Color(.systemGray4) for button background (adapts to dark mode)
+//  ✅ FIXED: L806 .gray → Color.gray.opacity(0.3) for priority badge foreground (adapts to dark mode)
+//  ✅ FIXED: L813 Color.gray → Color.gray.opacity(0.3) for priority badge background (adapts to dark mode)
+//  ✅ FIXED: L943 Color.gray → Color.gray.opacity(0.3) for button background (adapts to dark mode)
 //
 //  CHANGES v1.4 - Dynamic Type verification
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
@@ -47,11 +47,13 @@ import SwiftUI
 import SwiftData
 
 struct YearEndChecklistView: View {
-    @Query private var transactions: [Transaction]
-    @Query private var mileageTrips: [MileageTrip]
-    @Query private var receipts: [ReceiptData]
+    @Environment(\.modelContext) private var modelContext
     @Query private var taxSettings: [TaxSettings]
     @Query private var businessProfiles: [BusinessProfile]
+
+    @State private var transactions: [Transaction] = []
+    @State private var mileageTrips: [MileageTrip] = []
+    @State private var receipts: [ReceiptData] = []
     
     // v1.2: Add subscription manager for Pro gating
     @StateObject private var subscriptionManager = SubscriptionManager.shared
@@ -74,7 +76,20 @@ struct YearEndChecklistView: View {
     private var businessProfile: BusinessProfile? {
         businessProfiles.first
     }
-    
+
+    private func loadData() {
+        let yearStart = Calendar.current.date(from: Calendar.current.dateComponents([.year], from: Date()))!
+        transactions = (try? modelContext.fetch(FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= yearStart }
+        ))) ?? []
+        mileageTrips = (try? modelContext.fetch(FetchDescriptor<MileageTrip>(
+            predicate: #Predicate<MileageTrip> { $0.startDate >= yearStart }
+        ))) ?? []
+        receipts = (try? modelContext.fetch(FetchDescriptor<ReceiptData>(
+            predicate: #Predicate<ReceiptData> { $0.date >= yearStart }
+        ))) ?? []
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -87,6 +102,7 @@ struct YearEndChecklistView: View {
             }
             .navigationTitle("Year-End Tax Planning")
             .navigationBarTitleDisplayMode(.inline)
+            .task { loadData() }
             .onAppear {
                 withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
@@ -97,6 +113,11 @@ struct YearEndChecklistView: View {
                     }
                 }
                 AccessibilityAnnouncement.screenChanged("Year-end tax planning")
+            }
+            .onDisappear {
+                transactions = []
+                mileageTrips = []
+                receipts = []
             }
             .sheet(isPresented: $showingSubscriptionView) {
                 SubscriptionView()
@@ -142,7 +163,7 @@ struct YearEndChecklistView: View {
                                 .frame(width: 50, height: 50)
                         }
                         .padding()
-                        .background(Color(.secondarySystemBackground))
+                        .background(Color.floSecondarySystemBackground)
                         .cornerRadius(12)
                         
                         // Savings preview
@@ -177,7 +198,7 @@ struct YearEndChecklistView: View {
                             }
                         }
                         .padding()
-                        .background(Color(.secondarySystemBackground))
+                        .background(Color.floSecondarySystemBackground)
                         .cornerRadius(12)
                     }
                     .blur(radius: 6)
@@ -255,7 +276,7 @@ struct YearEndChecklistView: View {
                     )
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground))
+                .background(Color.floSecondarySystemGroupedBackground)
                 .cornerRadius(12)
                 .padding(.horizontal)
                 .opacity(viewAppeared ? 1 : 0.001)
@@ -321,7 +342,7 @@ struct YearEndChecklistView: View {
             }
             .padding(.vertical)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
     }
     
     // MARK: - Loading State
@@ -388,7 +409,7 @@ struct YearEndChecklistView: View {
                     )
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground))
+                .background(Color.floSecondarySystemGroupedBackground)
                 .cornerRadius(12)
                 .padding(.horizontal)
                 .opacity(viewAppeared ? 1 : 0.001)
@@ -449,7 +470,7 @@ struct YearEndChecklistView: View {
             }
             .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
     }
     
     // MARK: - Progress Header
@@ -504,7 +525,7 @@ struct YearEndChecklistView: View {
             .accessibilityHidden(true)
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
     }
     
@@ -635,7 +656,7 @@ struct YearEndChecklistView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(12)
         .sheet(item: $selectedItem) { item in
             ChecklistItemDetailView(item: item)
@@ -684,7 +705,7 @@ struct YearEndChecklistView: View {
                     }
                 }
                 .padding(12)
-                .background(Color(.tertiarySystemBackground))
+                .background(Color.floTertiarySystemBackground)
                 .cornerRadius(10)
                 .scaleEffect(isPressed ? 0.98 : 1.0)
             }
@@ -812,13 +833,13 @@ struct ChecklistItemDetailView: View {
                         }
                         .foregroundColor(
                             item.priority == .high ? .red :
-                            item.priority == .medium ? .orange : Color(.systemGray4)
+                            item.priority == .medium ? .orange : Color.gray.opacity(0.3)
                         )
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(
                             (item.priority == .high ? Color.red :
-                             item.priority == .medium ? Color.orange : Color(.systemGray4))
+                             item.priority == .medium ? Color.orange : Color.gray.opacity(0.3))
                                 .opacity(0.1)
                         )
                         .cornerRadius(8)
@@ -839,7 +860,7 @@ struct ChecklistItemDetailView: View {
                             .foregroundStyle(.secondary)
                     }
                     .padding()
-                    .background(Color(.secondarySystemGroupedBackground))
+                    .background(Color.floSecondarySystemGroupedBackground)
                     .cornerRadius(12)
                     .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
@@ -896,7 +917,7 @@ struct ChecklistItemDetailView: View {
                             }
                         }
                         .padding()
-                        .background(Color(.secondarySystemGroupedBackground))
+                        .background(Color.floSecondarySystemGroupedBackground)
                         .cornerRadius(12)
                         .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 10)
@@ -949,7 +970,7 @@ struct ChecklistItemDetailView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(item.isCompleted ? Color(.systemGray4) : Color.green)
+                        .background(item.isCompleted ? Color.gray.opacity(0.3) : Color.green)
                         .cornerRadius(12)
                     }
                     .opacity(viewAppeared ? 1 : 0.001)

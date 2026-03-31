@@ -1,8 +1,19 @@
 //  SettingsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 4.0 - VoiceOver Audit: Hidden decorative icons in navigation rows
+//  Version 5.0 - Build 10: Alphabetized sections
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v5.0 - Build 10:
+//  ✅ REORDERED: All sections alphabetized (About, Categories, Data, Features, Preferences, Premium, Profile, Security, Support)
+//  ✅ REORDERED: Items within Preferences alphabetized (Appearance, Data & Storage, Notifications)
+//  ✅ REORDERED: Items within Support alphabetized (Contact, EULA, Help, Privacy, Tax, Terms)
+//  ✅ REORDERED: Items within Profile alphabetized (Business Profile, Edit Profile)
+//  ✅ REORDERED: Items within Data alphabetized (Backup, Export, Receipt Storage)
+//
+//  CHANGES v4.1:
+//  ✅ FIXED: Removed redundant Cancel button from ProfileEditView toolbar
+//  ✅ RATIONALE: View is pushed via NavigationLink, system back button handles dismissal
 //
 //  CHANGES v4.0 - VoiceOver Audit:
 //  ✅ ADDED: 25 decorative icons hidden in NavigationLink rows (pencil, building, lock, folder, doc, star, bell, paintbrush, drive, export, receipt, cloud, envelope, question, privacy, terms, EULA, warning, info icons)
@@ -66,17 +77,23 @@
 
 import SwiftUI
 import SwiftData
+import AuthenticationServices
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @AppStorage("userName") private var userName = ""
     @AppStorage("userEmail") private var userEmail = ""
     @AppStorage("preferredColorScheme") private var preferredColorScheme = "system"
+    @AppStorage("hideBalancesOnDashboard") private var hideBalancesOnDashboard = true
     
-    @State private var showingBiometricSetup = false
     @State private var showingAbout = false
     @State private var showingExportOptions = false
+    @State private var showingSignOutAlert = false
+    @State private var showingDeleteAccountAlert = false
     @State private var viewAppeared = false
+
+    @ObservedObject private var appleAuth = AppleAuthService.shared
+    @StateObject private var signInCoordinator = AppleSignInCoordinator()
     
     private var colorScheme: ColorScheme? {
         switch preferredColorScheme {
@@ -88,340 +105,296 @@ struct SettingsView: View {
     
     var body: some View {
         NavigationStack {
+            // Build 10.1: Priority-ordered sections (Profile, Security, Premium, Preferences, Categories, Features, Data, Support, About)
             Form {
-                // User Profile Section
+                // 1. Profile Section — identity first
                 Section {
-                    HStack {
-                        Image(systemName: "person.circle.fill")
-                            .font(.largeTitle)
-                             .foregroundStyle(Color.brandPrimaryText)
-                            .symbolEffect(.bounce, value: viewAppeared)
-                        
-                        VStack(alignment: .leading, spacing: 4) {
+                    // Profile header with branded avatar
+                    HStack(spacing: 14) {
+                        ZStack(alignment: .bottomTrailing) {
+                            // Avatar circle with initials or icon
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Color.brandPrimary, Color.brandPrimary.opacity(0.7)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: 52, height: 52)
+
+                                if userName.isEmpty {
+                                    Image(systemName: "person.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(.white)
+                                } else {
+                                    Text(initials(from: userName))
+                                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                                        .foregroundStyle(.white)
+                                }
+                            }
+
+                            if appleAuth.isSignedIn {
+                                Image(systemName: "checkmark.seal.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(Color.incomeGreen)
+                                    .background(Circle().fill(Color.floSurface).frame(width: 18, height: 18))
+                                    .offset(x: 2, y: 2)
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: 3) {
                             if userName.isEmpty {
-                                Text("Add Your Name")
+                                Text(appleAuth.isSignedIn ? "Apple User" : "Sign In to Get Started")
                                     .font(.headline)
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.7)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(appleAuth.isSignedIn ? .primary : .secondary)
                             } else {
                                 Text(userName)
-                                    .font(.headline)
+                                    .font(.title3.weight(.semibold))
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.7)
                                     .foregroundStyle(.primary)
                             }
-                            
+
                             if !userEmail.isEmpty {
                                 Text(userEmail)
-                                    .font(.subheadline)
+                                    .font(.caption)
                                     .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
+                                    .foregroundStyle(.secondary)
+                            } else if !appleAuth.isSignedIn {
+                                Text("Connect your Apple Account for cross-device sync")
+                                    .font(.caption)
+                                    .lineLimit(2)
                                     .minimumScaleFactor(0.7)
                                     .foregroundStyle(.secondary)
                             }
+
+                            if appleAuth.isSignedIn {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "apple.logo")
+                                        .font(.caption2)
+                                    Text("Verified")
+                                        .font(.caption2.weight(.medium))
+                                }
+                                .foregroundStyle(Color.incomeGreen)
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.leading, 12)
                     }
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 6)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel({
                         var label = userName.isEmpty ? "No name set" : userName
                         if !userEmail.isEmpty { label += ", \(userEmail)" }
+                        if appleAuth.isSignedIn { label += ", verified with Apple" }
                         return label
                     }())
-                    
-                    NavigationLink {
-                        ProfileEditView(userName: $userName, userEmail: $userEmail)
-                    } label: {
-                        Label {
-                            Text("Edit Profile")
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "pencil")
-                                 .foregroundStyle(Color.brandPrimaryText)
-                                .accessibilityHidden(true)
+
+                    // Sign In with Apple button (when not signed in)
+                    if !appleAuth.isSignedIn {
+                        SignInWithAppleButton(.signIn) { request in
+                            request.requestedScopes = [.fullName, .email]
+                        } onCompletion: { result in
+                            switch result {
+                            case .success(let authorization):
+                                HapticService.play(.success)
+                                appleAuth.handleAuthorization(authorization)
+                            case .failure(let error):
+                                HapticService.play(.error)
+                                #if DEBUG
+                                print("[AppleAuth] Sign in failed: \(error.localizedDescription)")
+                                #endif
+                            }
                         }
+                        .signInWithAppleButtonStyle(.whiteOutline)
+                        .frame(height: 44)
+                        .cornerRadius(8)
                     }
-                    
-                    NavigationLink {
-                        BusinessProfileSettingsView()
-                    } label: {
-                        Label {
-                            Text("Business Profile")
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "building.2")
-                                 .foregroundStyle(Color.brandPrimaryText)
-                                .accessibilityHidden(true)
-                        }
-                    }
+
+                    settingsDetailRow(
+                        icon: "person.text.rectangle",
+                        title: "Account Details",
+                        destination: .settingsEditProfile
+                    )
+
+                    settingsDetailRow(
+                        icon: "building.2",
+                        title: "Business Profile",
+                        destination: .settingsBusinessProfile
+                    )
                 } header: {
                     Text("Profile")
                 }
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
-                
-                // Security Section
+
+                // 2. Security & Privacy — protect the account
                 Section {
                     Button {
-                        HapticService.play(.medium)
-                        showingBiometricSetup = true
+                        NavigationService.shared.selectedDetail = .settingsSecurity
                     } label: {
                         HStack {
-                            Label {
-                                Text("Passcode & Biometrics")
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                                    .foregroundStyle(.primary)
-                            } icon: {
-                                Image(systemName: "lock.shield.fill")
-                                     .foregroundStyle(Color.brandPrimaryText)
-                                    .accessibilityHidden(true)
-                            }
-                            
+                            Image(systemName: "lock.shield.fill")
+                                 .foregroundStyle(Color.brandPrimary)
+                                .accessibilityHidden(true)
+
+                            Text("Passcode & Biometrics")
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+
                             Spacer()
-                            
+
                             if BiometricAuthService.shared.biometricEnabled || PasscodeService.shared.hasPasscode() {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
+                                    .foregroundStyle(Color.incomeGreen)
                                     .accessibilityHidden(true)
                             }
-                            
+
                             Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .accessibilityHidden(true)
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(.secondary.opacity(0.5))
                         }
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Passcode and Biometrics\(BiometricAuthService.shared.biometricEnabled || PasscodeService.shared.hasPasscode() ? ", enabled" : ", not configured")")
                     .accessibilityHint("Opens security settings")
+
+                    Toggle(isOn: $hideBalancesOnDashboard) {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Hide Balances")
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                                Text("Blur balances on dashboard until tapped")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                                    .minimumScaleFactor(0.7)
+                            }
+                        } icon: {
+                            Image(systemName: hideBalancesOnDashboard ? "eye.slash.fill" : "eye.fill")
+                                .foregroundStyle(Color.brandPrimary)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .tint(Color.brandPrimary)
+                    .onChange(of: hideBalancesOnDashboard) { _, _ in
+                        HapticService.play(.light)
+                    }
+                    .accessibilityLabel("Hide balances on dashboard")
+                    .accessibilityValue(hideBalancesOnDashboard ? "Enabled" : "Disabled")
                 } header: {
-                    Text("Security")
+                    Text("Security & Privacy")
                 } footer: {
-                    Text("Protect your financial data with Face ID or a passcode")
+                    Text("Protect your financial data with Face ID, passcode, or hidden balances")
                         .lineLimit(2)
                         .minimumScaleFactor(0.7)
                 }
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
-                
-                // Categories Section
-                Section("Categories") {
-                    NavigationLink {
-                        CategoryManagementView()
-                    } label: {
-                        Label {
-                            Text("Manage Categories")
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "folder")
-                                 .foregroundStyle(Color.brandPrimaryText)
-                                .accessibilityHidden(true)
-                        }
-                    }
-                }
-                .opacity(viewAppeared ? 1 : 0.001)
-                .offset(y: viewAppeared ? 0 : 10)
-                .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
-                
-                // Financial Features Section
+
+                // 3. Premium Features — subscription status
                 Section {
-                    NavigationLink {
-                        TaxSettingsView()
-                    } label: {
-                        HStack {
-                            Label {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Tax Settings")
-                                        .font(.body)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.7)
-                                        .foregroundStyle(.primary)
-                                    Text("Quarterly estimates & filing status")
-                                        .font(.caption)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.7)
-                                        .foregroundStyle(.secondary)
-                                }
-                            } icon: {
-                                Image(systemName: "doc.text.fill")
-                                     .foregroundStyle(Color.brandPrimaryText)
-                                    .frame(width: 28)
-                                    .accessibilityHidden(true)
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Features")
-                }
-                .opacity(viewAppeared ? 1 : 0.001)
-                .offset(y: viewAppeared ? 0 : 10)
-                .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
-                
-                // Premium Features Section
-                Section {
-                    NavigationLink {
-                        SubscriptionView()
-                    } label: {
-                        HStack {
-                            Label {
-                                Text("Subscription")
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                                    .foregroundStyle(.primary)
-                            } icon: {
-                                Image(systemName: "star.fill")
-                                     .foregroundStyle(Color.brandPrimaryText)
-                                    .accessibilityHidden(true)
-                            }
-                            Spacer()
-                            Text(SubscriptionManager.shared.currentTier.displayName)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                    settingsDetailRow(
+                        icon: "star.fill",
+                        title: "Subscription",
+                        trailing: SubscriptionManager.shared.currentTier.displayName,
+                        destination: .settingsSubscription
+                    )
                     .accessibilityLabel("Subscription, current plan: \(SubscriptionManager.shared.currentTier.displayName)")
                 } header: {
                     Text("Premium Features")
                 }
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
-                
-                // Preferences Section
+                .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
+
+                // 4. Preferences — daily customization
                 Section {
-                    NavigationLink {
-                        NotificationSettingsView()
-                    } label: {
-                        Label {
-                            Text("Notifications")
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "bell.fill")
-                                 .foregroundStyle(Color.brandPrimaryText)
-                                .accessibilityHidden(true)
-                        }
-                    }
-                    
-                    NavigationLink {
-                        AppearanceSettingsView()
-                    } label: {
-                        HStack {
-                            Label {
-                                Text("Appearance")
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                                    .foregroundStyle(.primary)
-                            } icon: {
-                                Image(systemName: "paintbrush.fill")
-                                     .foregroundStyle(Color.brandPrimaryText)
-                                    .accessibilityHidden(true)
-                            }
-                            Spacer()
-                            Text(ColorSchemeManager.shared.currentScheme.emoji)
-                                .accessibilityHidden(true)
-                        }
-                    }
+                    settingsDetailRow(
+                        icon: "paintbrush.fill",
+                        title: "Appearance",
+                        trailing: ColorSchemeManager.shared.currentScheme.emoji,
+                        destination: .settingsAppearance
+                    )
                     .accessibilityLabel("Appearance, current: \(ColorSchemeManager.shared.currentScheme.name)")
-                    
-                    NavigationLink {
-                        DataManagementView()
-                    } label: {
-                        Label {
-                            Text("Data & Storage")
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "externaldrive.fill")
-                                 .foregroundStyle(Color.brandPrimaryText)
-                                .accessibilityHidden(true)
-                        }
-                    }
+
+                    settingsDetailRow(
+                        icon: "externaldrive.fill",
+                        title: "Data & Storage",
+                        destination: .settingsDataStorage
+                    )
+
+                    settingsDetailRow(
+                        icon: "bell.fill",
+                        title: "Notifications",
+                        destination: .settingsNotifications
+                    )
                 } header: {
                     Text("Preferences")
                 }
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
-                .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
-                
-                // Data Section - NOW INCLUDES RECEIPT STORAGE
+                .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
+
+                // 5. Categories — periodic task
+                Section("Categories") {
+                    settingsDetailRow(
+                        icon: "folder",
+                        title: "Manage Categories",
+                        destination: .settingsCategories
+                    )
+                }
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(y: viewAppeared ? 0 : 10)
+                .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
+
+                // 6. Data — infrequent but important
                 Section {
+                    settingsDetailRow(
+                        icon: "icloud.fill",
+                        title: "Backup & Sync",
+                        destination: .settingsBackup
+                    )
+
                     Button {
                         HapticService.play(.medium)
                         showingExportOptions = true
                     } label: {
-                        Label {
+                        HStack {
+                            Image(systemName: "square.and.arrow.up")
+                                 .foregroundStyle(Color.brandPrimary)
+                                .accessibilityHidden(true)
                             Text("Export Data")
+                                .foregroundColor(.primary)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "square.and.arrow.up")
-                                 .foregroundStyle(Color.brandPrimaryText)
-                                .accessibilityHidden(true)
+                            Spacer()
                         }
                     }
                     .buttonStyle(.plain)
-                    
-                    // NEW: Receipt Storage Navigation
-                    NavigationLink {
-                        ReceiptStorageSettingsView()
-                    } label: {
-                        Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Receipt Storage")
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                                    .foregroundStyle(.primary)
-                                Text("Export & manage receipt images")
-                                    .font(.caption)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                                    .foregroundStyle(.secondary)
-                            }
-                        } icon: {
-                            Image(systemName: "doc.text.image")
-                                 .foregroundStyle(Color.brandPrimaryText)
-                                .accessibilityHidden(true)
-                        }
-                    }
-                    
-                    NavigationLink {
-                        BackupSettingsView()
-                    } label: {
-                        Label {
-                            Text("Backup & Sync")
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "icloud.fill")
-                                 .foregroundStyle(Color.brandPrimaryText)
-                                .accessibilityHidden(true)
-                        }
-                    }
+
+                    settingsDetailRow(
+                        icon: "doc.text.image",
+                        title: "Receipt Storage",
+                        subtitle: "Export & manage receipt images",
+                        destination: .settingsReceiptStorage
+                    )
                 } header: {
                     Text("Data")
                 }
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
-                
-                // Support Section
+
+                // 8. Support — only when needed
                 Section {
                     Link(destination: URL(string: "mailto:flowledgerco@gmail.com")!) {
                         Label {
@@ -431,85 +404,56 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
                         } icon: {
                             Image(systemName: "envelope.fill")
-                                 .foregroundStyle(Color.brandPrimaryText)
+                                 .foregroundStyle(Color.brandPrimary)
                                 .accessibilityHidden(true)
                         }
                     }
                     .buttonStyle(.plain)
-                    
-                    NavigationLink {
-                        HelpCenterView()
-                    } label: {
-                        Label {
-                            Text("Help Center")
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "questionmark.circle.fill")
-                                 .foregroundStyle(Color.brandPrimaryText)
-                                .accessibilityHidden(true)
-                        }
-                    }
-                    
-                    NavigationLink {
-                        PrivacyPolicyView()
-                    } label: {
-                        Label {
-                            Text("Privacy Policy")
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "hand.raised.fill")
-                                 .foregroundStyle(Color.brandPrimaryText)
-                                .accessibilityHidden(true)
-                        }
-                    }
-                    
-                    NavigationLink {
-                        TermsOfServiceView()
-                    } label: {
-                        Label {
-                            Text("Terms of Service")
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "doc.text.fill")
-                                 .foregroundStyle(Color.brandPrimaryText)
-                                .accessibilityHidden(true)
-                        }
-                    }
-                    
-                    // EULA - Added for App Store Guideline 3.1.2 compliance
-                    NavigationLink {
-                        EULAView()
-                    } label: {
-                        Label {
-                            Text("End User License Agreement")
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "signature")
-                                 .foregroundStyle(Color.brandPrimaryText)
-                                .accessibilityHidden(true)
-                        }
-                    }
-                    
-                    NavigationLink {
-                        TaxDisclaimerView()
-                    } label: {
-                        Label {
-                            Text("Tax & Legal Disclaimer")
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(.primary)
-                        } icon: {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                 .foregroundStyle(Color.brandPrimaryText)
-                                .accessibilityHidden(true)
+
+                    settingsDetailRow(
+                        icon: "signature",
+                        title: "End User License Agreement",
+                        destination: .settingsEULA
+                    )
+
+                    settingsDetailRow(
+                        icon: "questionmark.circle.fill",
+                        title: "Help Center",
+                        destination: .settingsHelpCenter
+                    )
+
+                    settingsDetailRow(
+                        icon: "hand.raised.fill",
+                        title: "Privacy Policy",
+                        destination: .settingsPrivacyPolicy
+                    )
+
+                    settingsDetailRow(
+                        icon: "exclamationmark.triangle.fill",
+                        title: "Tax & Legal Disclaimer",
+                        destination: .settingsTaxDisclaimer
+                    )
+
+                    settingsDetailRow(
+                        icon: "doc.text.fill",
+                        title: "Terms of Service",
+                        destination: .settingsTermsOfService
+                    )
+                    // Account deletion (required by App Store when using Sign In with Apple)
+                    if appleAuth.isSignedIn {
+                        Button(role: .destructive) {
+                            HapticService.play(.heavy)
+                            showingDeleteAccountAlert = true
+                        } label: {
+                            Label {
+                                Text("Delete Account")
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                            } icon: {
+                                Image(systemName: "person.crop.circle.badge.minus")
+                                    .foregroundStyle(Color.expenseRed)
+                                    .accessibilityHidden(true)
+                            }
                         }
                     }
                 } header: {
@@ -518,8 +462,8 @@ struct SettingsView: View {
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
-                
-                // About Section
+
+                // 9. About — last, almost never needed
                 Section {
                     Button {
                         HapticService.play(.medium)
@@ -533,12 +477,12 @@ struct SettingsView: View {
                                     .foregroundStyle(.primary)
                             } icon: {
                                 Image(systemName: "info.circle.fill")
-                                     .foregroundStyle(Color.brandPrimaryText)
+                                     .foregroundStyle(Color.brandPrimary)
                                     .accessibilityHidden(true)
                             }
-                            
+
                             Spacer()
-                            
+
                             Image(systemName: "chevron.right")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -546,7 +490,7 @@ struct SettingsView: View {
                         }
                     }
                     .buttonStyle(.plain)
-                    
+
                     HStack {
                         Text("Version")
                             .lineLimit(1)
@@ -566,19 +510,44 @@ struct SettingsView: View {
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
             }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
             .navigationTitle("Settings")
-            .sheet(isPresented: $showingBiometricSetup) {
-                SecuritySettingsView()
-            }
             .sheet(isPresented: $showingAbout) {
                 AboutView()
             }
             .sheet(isPresented: $showingExportOptions) {
                 ExportOptionsView()
             }
+            .alert("Sign Out?", isPresented: $showingSignOutAlert) {
+                Button("Cancel", role: .cancel) {
+                    HapticService.play(.light)
+                }
+                Button("Sign Out", role: .destructive) {
+                    AppleAuthService.shared.signOut()
+                    HapticService.play(.success)
+                }
+            } message: {
+                Text("Your data will remain on this device. You can sign in again anytime to restore cross-device sync.")
+            }
+            .alert("Delete Account?", isPresented: $showingDeleteAccountAlert) {
+                Button("Cancel", role: .cancel) {
+                    HapticService.play(.light)
+                }
+                Button("Delete Account", role: .destructive) {
+                    Task {
+                        await AppleAuthService.shared.deleteAccount()
+                        HapticService.play(.success)
+                    }
+                }
+            } message: {
+                Text("This will remove your Apple ID connection and clear your profile information. Your financial data will remain on this device. This action cannot be undone.")
+            }
             .onAppear {
-                withAnimation(FLOAnimation.standard) {
-                    viewAppeared = true
+                DispatchQueue.main.async {
+                    withAnimation(FLOAnimation.standard) {
+                        viewAppeared = true
+                    }
                 }
                 AccessibilityAnnouncement.screenChanged("Settings")
             }
@@ -591,84 +560,223 @@ struct SettingsView: View {
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         return "\(version) (\(build))"
     }
+
+    /// Extract up to 2 initials from a name (e.g. "Travis A" → "TA")
+    // MARK: - Settings Detail Row Helper
+
+    /// Creates a tappable row that sets NavigationService.selectedDetail.
+    /// Uses Button with .borderless style which works reliably in macOS Form/List.
+    private func settingsDetailRow(
+        icon: String,
+        title: String,
+        subtitle: String? = nil,
+        trailing: String? = nil,
+        destination: NavigationDestination
+    ) -> some View {
+        Button {
+            NavigationService.shared.selectedDetail = destination
+        } label: {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundStyle(Color.brandPrimary)
+                    .accessibilityHidden(true)
+                if let subtitle {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                } else {
+                    Text(title)
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                Spacer()
+                if let trailing {
+                    Text(trailing)
+                        .foregroundColor(.secondary)
+                        .accessibilityHidden(true)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(.secondary.opacity(0.5))
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func initials(from name: String) -> String {
+        let parts = name.split(separator: " ")
+        let firstInitial = parts.first?.prefix(1) ?? ""
+        let lastInitial = parts.count > 1 ? parts.last!.prefix(1) : ""
+        return "\(firstInitial)\(lastInitial)".uppercased()
+    }
 }
 
 // MARK: - Profile Edit View
 
-struct ProfileEditView: View {
+/// Account Details — shows Apple Account info, personal profile editing, and Sign Out.
+/// Replaces the old ProfileEditView + standalone Sign Out button.
+struct AccountDetailsView: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var appleAuth = AppleAuthService.shared
     @Binding var userName: String
     @Binding var userEmail: String
-    
+    @Binding var showingSignOutAlert: Bool
+
     @State private var editedName: String
     @State private var editedEmail: String
     @State private var viewAppeared = false
-    
-    init(userName: Binding<String>, userEmail: Binding<String>) {
+
+    init(userName: Binding<String>, userEmail: Binding<String>, showingSignOutAlert: Binding<Bool>) {
         self._userName = userName
         self._userEmail = userEmail
+        self._showingSignOutAlert = showingSignOutAlert
         self._editedName = State(initialValue: userName.wrappedValue)
         self._editedEmail = State(initialValue: userEmail.wrappedValue)
     }
-    
+
+    private var initials: String {
+        let parts = editedName.split(separator: " ")
+        let first = parts.first?.prefix(1) ?? ""
+        let last = parts.count > 1 ? parts.last!.prefix(1) : ""
+        return "\(first)\(last)".uppercased()
+    }
+
     var body: some View {
-        Form {
-            Section("Personal Information") {
-                TextField("Name", text: $editedName)
-                    .textContentType(.name)
-                
-                TextField("Email", text: $editedEmail)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-            }
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
-            
-            Section {
-                Text("Your profile information is stored locally on your device and is never shared.")
-                    .font(.caption)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.7)
-                    .foregroundStyle(.secondary)
-            }
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
-        }
-        .navigationTitle("Edit Profile")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button("Cancel") {
-                    HapticService.play(.light)
-                    dismiss()
+        ScrollView {
+            VStack(spacing: 16) {
+                // Header
+                ProfileHeaderCard(
+                    icon: editedName.isEmpty ? "person.fill" : initials,
+                    title: "Account Details",
+                    subtitle: appleAuth.isSignedIn
+                        ? "Connected with Apple Account"
+                        : "Your personal profile",
+                    color: .brandPrimary,
+                    isInitials: !editedName.isEmpty
+                )
+
+                // Apple Account Status
+                if appleAuth.isSignedIn {
+                    ProfileSectionCard(title: "Apple Account") {
+                        ProfileDisplayRow(
+                            label: "Status",
+                            value: "Verified",
+                            icon: "checkmark.seal.fill"
+                        )
+
+                        if !userEmail.isEmpty {
+                            ProfileDisplayRow(
+                                label: "Apple Email",
+                                value: userEmail,
+                                icon: "envelope.fill"
+                            )
+                        }
+                    }
+                }
+
+                // Personal Information (editable)
+                ProfileSectionCard(title: "Personal Information") {
+                    ProfileFieldRow(
+                        label: "Display Name",
+                        placeholder: "Your Name",
+                        text: $editedName,
+                        isValid: editedName.isEmpty ? nil : true
+                    )
+
+                    if !appleAuth.isSignedIn {
+                        ProfileFieldRow(
+                            label: "Email",
+                            placeholder: "email@example.com",
+                            text: $editedEmail,
+                            isValid: editedEmail.isEmpty ? nil : editedEmail.contains("@"),
+                            capitalize: false
+                        )
+                    }
+                }
+
+                // Privacy note
+                ProfileFooterNote(
+                    icon: "lock.shield.fill",
+                    text: "Your profile is stored locally on your device and is never shared with third parties."
+                )
+
+                // Sign Out — placed at the bottom, clearly separated
+                if appleAuth.isSignedIn {
+                    VStack(spacing: 8) {
+                        Divider()
+                            .padding(.vertical, 8)
+
+                        Button(role: .destructive) {
+                            HapticService.play(.heavy)
+                            showingSignOutAlert = true
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "rectangle.portrait.and.arrow.right")
+                                Text("Sign Out")
+                                    .fontWeight(.medium)
+                            }
+                            .foregroundStyle(Color.expenseRed)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.expenseRed.opacity(0.08))
+                            .cornerRadius(10)
+                        }
+                        .buttonStyle(.plain)
+
+                        Text("Signing out will disconnect your Apple Account from this device.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
                 }
             }
-            
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Save") {
+            .padding(16)
+            .opacity(viewAppeared ? 1 : 0.001)
+        }
+        .navigationTitle("Account Details")
+        #if !os(macOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button {
                     HapticService.play(.medium)
                     saveProfile()
+                } label: {
+                    Text("Save")
+                        .fontWeight(.semibold)
                 }
             }
         }
         .onAppear {
-            withAnimation(FLOAnimation.standard) {
-                viewAppeared = true
+            DispatchQueue.main.async {
+                withAnimation(FLOAnimation.standard) {
+                    viewAppeared = true
+                }
             }
-            AccessibilityAnnouncement.screenChanged("Edit profile")
+            AccessibilityAnnouncement.screenChanged("Account details")
         }
     }
-    
+
     private func saveProfile() {
         userName = editedName
-        userEmail = editedEmail
+        if !appleAuth.isSignedIn {
+            userEmail = editedEmail
+        }
         HapticService.play(.success)
         dismiss()
     }
 }
+
 
 // MARK: - Notification Settings View
 
@@ -677,49 +785,106 @@ struct NotificationSettingsView: View {
     @AppStorage("taxReminderEnabled") private var taxReminderEnabled = true
     @AppStorage("budgetAlertEnabled") private var budgetAlertEnabled = true
     @AppStorage("weeklyReportEnabled") private var weeklyReportEnabled = false
-    
+    @AppStorage("plaidSyncNotificationsEnabled") private var plaidSyncEnabled = true
+    @AppStorage("plaidErrorNotificationsEnabled") private var plaidErrorEnabled = true
+
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+
     @State private var viewAppeared = false
-    
+
     var body: some View {
-        Form {
-            Section {
-                Toggle("Enable Notifications", isOn: $notificationsEnabled)
-                    .tint(Color.brandPrimary)
+        ScrollView {
+            VStack(spacing: 16) {
+                ProfileHeaderCard(
+                    icon: "bell.fill",
+                    title: "Notifications",
+                    subtitle: "Manage your reminders and alerts",
+                    color: .brandPrimary
+                )
+
+                ProfileSectionCard(title: "General") {
+                    ProfileToggleRow(
+                        icon: "bell.badge",
+                        label: "Enable Notifications",
+                        isOn: $notificationsEnabled,
+                        subtitle: "Allow FLO to send you important reminders and updates"
+                    )
                     .onChange(of: notificationsEnabled) { _, _ in
                         HapticService.play(.light)
                     }
-            } footer: {
-                Text("Allow FLO to send you important reminders and updates")
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.7)
-            }
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
-            
-            if notificationsEnabled {
-                Section("Reminders") {
-                    Toggle("Quarterly Tax Deadlines", isOn: $taxReminderEnabled)
-                        .tint(Color.brandPrimary)
+                }
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(y: viewAppeared ? 0 : 10)
+                .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
+
+                if notificationsEnabled {
+                    ProfileSectionCard(title: "Reminders") {
+                        ProfileToggleRow(
+                            icon: "calendar.badge.exclamationmark",
+                            label: "Quarterly Tax Deadlines",
+                            isOn: $taxReminderEnabled
+                        )
                         .onChange(of: taxReminderEnabled) { _, _ in
                             HapticService.play(.light)
                         }
-                    Toggle("Budget Alerts", isOn: $budgetAlertEnabled)
-                        .tint(Color.brandPrimary)
+
+                        ProfileToggleRow(
+                            icon: "exclamationmark.triangle",
+                            label: "Budget Alerts",
+                            isOn: $budgetAlertEnabled
+                        )
                         .onChange(of: budgetAlertEnabled) { _, _ in
                             HapticService.play(.light)
                         }
-                    Toggle("Weekly Summary", isOn: $weeklyReportEnabled)
-                        .tint(Color.brandPrimary)
+
+                        ProfileToggleRow(
+                            icon: "chart.bar.doc.horizontal",
+                            label: "Weekly Summary",
+                            isOn: $weeklyReportEnabled
+                        )
                         .onChange(of: weeklyReportEnabled) { _, _ in
                             HapticService.play(.light)
                         }
+                    }
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .top).combined(with: .opacity),
+                        removal: .opacity
+                    ))
+
+                    // Bank Sync section — only for Pro subscribers with Plaid
+                    if subscriptionManager.currentTier == .pro {
+                        ProfileSectionCard(title: "Bank Sync") {
+                            ProfileToggleRow(
+                                icon: "arrow.triangle.2.circlepath",
+                                label: "Transaction Updates",
+                                isOn: $plaidSyncEnabled
+                            )
+                            .onChange(of: plaidSyncEnabled) { _, _ in
+                                HapticService.play(.light)
+                            }
+
+                            ProfileToggleRow(
+                                icon: "exclamationmark.shield",
+                                label: "Connection Alerts",
+                                isOn: $plaidErrorEnabled
+                            )
+                            .onChange(of: plaidErrorEnabled) { _, _ in
+                                HapticService.play(.light)
+                            }
+                        }
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .top).combined(with: .opacity),
+                            removal: .opacity
+                        ))
+
+                        ProfileFooterNote(
+                            icon: "info.circle",
+                            text: "Get notified when new transactions sync or if your bank connection needs attention"
+                        )
+                    }
                 }
-                .transition(.asymmetric(
-                    insertion: .move(edge: .top).combined(with: .opacity),
-                    removal: .opacity
-                ))
             }
+            .padding(16)
         }
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
@@ -737,113 +902,89 @@ struct NotificationSettingsView: View {
 
 struct DataManagementView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var transactions: [Transaction]
-    @Query private var trips: [MileageTrip]
-    @Query private var receipts: [ReceiptData]
-    
+
+    @State private var transactions: [Transaction] = []
+    @State private var trips: [MileageTrip] = []
+    @State private var receipts: [ReceiptData] = []
+
     @State private var showingClearDataAlert = false
     @State private var viewAppeared = false
     
     var body: some View {
-        Form {
-            Section("Storage") {
-                HStack {
-                    Label("Transactions", systemImage: "creditcard")
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    Text("\(transactions.count)")
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(.secondary)
-                        .contentTransition(.numericText())
+        ScrollView {
+            VStack(spacing: 16) {
+                ProfileHeaderCard(
+                    icon: "externaldrive.fill",
+                    title: "Data & Storage",
+                    subtitle: "Manage your app data and storage",
+                    color: .brandPrimary
+                )
+
+                // Storage counts
+                ProfileSectionCard(title: "Storage") {
+                    ProfileInfoRow(icon: "creditcard", label: "Transactions", value: "\(transactions.count)")
+                    ProfileInfoRow(icon: "car", label: "Mileage Trips", value: "\(trips.count)")
+                    ProfileInfoRow(icon: "doc.text.image", label: "Receipts", value: "\(receipts.count)")
                 }
-                .accessibilityElement(children: .combine)
-                
-                HStack {
-                    Label("Mileage Trips", systemImage: "car")
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    Text("\(trips.count)")
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(.secondary)
-                        .contentTransition(.numericText())
-                }
-                .accessibilityElement(children: .combine)
-                
-                HStack {
-                    Label("Receipts", systemImage: "doc.text.image")
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    Text("\(receipts.count)")
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(.secondary)
-                        .contentTransition(.numericText())
-                }
-                .accessibilityElement(children: .combine)
-            }
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
-            
-            // Receipt Storage Link
-            Section {
-                NavigationLink {
-                    ReceiptStorageSettingsView()
-                } label: {
-                    HStack {
-                        Label {
+
+                // Receipt storage management
+                ProfileSectionCard(title: "Management") {
+                    NavigationLink {
+                        ReceiptStorageSettingsView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "photo.on.rectangle.angled")
+                                .font(.body)
+                                .foregroundStyle(Color.brandPrimary)
+                                .frame(width: 24, alignment: .center)
+
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Manage Receipt Storage")
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
+                                    .font(.body)
                                     .foregroundStyle(.primary)
+                                    .lineLimit(1)
                                 Text("Export to ZIP, purge by month/year")
                                     .font(.caption)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
                                     .foregroundStyle(.secondary)
+                                    .lineLimit(1)
                             }
-                        } icon: {
-                            Image(systemName: "photo.on.rectangle.angled")
-                                 .foregroundStyle(Color.brandPrimaryText)
-                                .accessibilityHidden(true)
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // Danger zone
+                ProfileSectionCard(title: "Danger Zone") {
+                    ProfileActionRow(
+                        icon: "trash",
+                        label: "Clear All Data",
+                        style: .destructive
+                    ) {
+                        HapticService.play(.heavy)
+                        showingClearDataAlert = true
                     }
                 }
+
+                ProfileFooterNote(
+                    icon: "exclamationmark.triangle.fill",
+                    text: "Clearing data will permanently delete all transactions, trips, receipts, and settings. This action cannot be undone."
+                )
             }
+            .padding(16)
             .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
-            
-            Section {
-                Button(role: .destructive) {
-                    HapticService.play(.heavy)
-                    showingClearDataAlert = true
-                } label: {
-                    Label {
-                        Text("Clear All Data")
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(.red)
-                    } icon: {
-                        Image(systemName: "trash")
-                            .foregroundStyle(.red)
-                            .accessibilityHidden(true)
-                    }
-                }
-            } footer: {
-                Text("This will permanently delete all your transactions, trips, receipts, and settings. This action cannot be undone.")
-                    .lineLimit(3)
-                    .minimumScaleFactor(0.7)
-            }
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
         }
         .navigationTitle("Data & Storage")
+        #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
         .alert("Clear All Data?", isPresented: $showingClearDataAlert) {
             Button("Cancel", role: .cancel) {
                 HapticService.play(.light)
@@ -854,14 +995,28 @@ struct DataManagementView: View {
         } message: {
             Text("This will permanently delete all your data including \(transactions.count) transactions, \(trips.count) trips, and \(receipts.count) receipts. This action cannot be undone.")
         }
+        .task { loadData() }
         .onAppear {
-            withAnimation(FLOAnimation.standard) {
-                viewAppeared = true
+            DispatchQueue.main.async {
+                withAnimation(FLOAnimation.standard) {
+                    viewAppeared = true
+                }
             }
             AccessibilityAnnouncement.screenChanged("Data and storage")
         }
+        .onDisappear {
+            transactions = []
+            trips = []
+            receipts = []
+        }
     }
-    
+
+    private func loadData() {
+        transactions = (try? modelContext.fetch(FetchDescriptor<Transaction>())) ?? []
+        trips = (try? modelContext.fetch(FetchDescriptor<MileageTrip>())) ?? []
+        receipts = (try? modelContext.fetch(FetchDescriptor<ReceiptData>())) ?? []
+    }
+
     private func clearAllData() {
         for transaction in transactions {
             modelContext.delete(transaction)
@@ -886,46 +1041,19 @@ struct DataManagementView: View {
 
 // MARK: - Backup Settings View
 
+/// Backup & Sync settings — now powered by CloudSyncDetailsView.
+/// CloudSyncDetailsView provides full iCloud sync management:
+/// - Sync enable/disable toggle
+/// - Account status & network display
+/// - Sync progress indicator
+/// - Error display with recovery suggestions
+/// - Manual sync refresh / reset buttons
 struct BackupSettingsView: View {
-    @State private var viewAppeared = false
-    
     var body: some View {
-        Form {
-            Section {
-                VStack(spacing: 16) {
-                    Image(systemName: "icloud")
-                        .font(.largeTitle)
-                        .foregroundStyle(Color.brandPrimary)
-                        .symbolEffect(.bounce, value: viewAppeared)
-                        .accessibilityHidden(true)
-                    
-                    Text("iCloud sync coming soon")
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .accessibilityElement(children: .combine)
-            } header: {
-                Text("Backup")
-            } footer: {
-                Text("Your data is automatically included in your device's iCloud backup if enabled in iOS Settings.")
-                    .lineLimit(3)
-                    .minimumScaleFactor(0.7)
+        CloudSyncDetailsView()
+            .onAppear {
+                AccessibilityAnnouncement.screenChanged("Backup and sync")
             }
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
-        }
-        .navigationTitle("Backup & Sync")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            withAnimation(FLOAnimation.standard) {
-                viewAppeared = true
-            }
-            AccessibilityAnnouncement.screenChanged("Backup and sync")
-        }
     }
 }
 
@@ -1309,7 +1437,7 @@ struct HelpCenterView: View {
                         }
                     } icon: {
                         Image(systemName: "envelope.fill")
-                             .foregroundStyle(Color.brandPrimaryText)
+                             .foregroundStyle(Color.brandPrimary)
                             .accessibilityHidden(true)
                     }
                 }
@@ -1333,7 +1461,7 @@ struct HelpCenterView: View {
                         }
                     } icon: {
                         Image(systemName: "book.fill")
-                             .foregroundStyle(Color.brandPrimaryText)
+                             .foregroundStyle(Color.brandPrimary)
                             .accessibilityHidden(true)
                     }
                 }
@@ -1399,7 +1527,7 @@ struct HelpArticleView: View {
                 HStack {
                     Image(systemName: icon)
                         .font(.largeTitle)
-                         .foregroundStyle(Color.brandPrimaryText)
+                         .foregroundStyle(Color.brandPrimary)
                         .symbolEffect(.bounce, value: viewAppeared)
                     
                     Text(title)
@@ -1420,7 +1548,7 @@ struct HelpArticleView: View {
                             .font(.headline)
                             .lineLimit(2)
                             .minimumScaleFactor(0.7)
-                             .foregroundStyle(Color.brandPrimaryText)
+                             .foregroundStyle(Color.brandPrimary)
                             .accessibilityAddTraits(.isHeader)
                         
                         Text(section.content)
@@ -1432,7 +1560,7 @@ struct HelpArticleView: View {
                     }
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(.secondarySystemBackground))
+                    .background(Color.floSecondarySystemBackground)
                     .cornerRadius(12)
                     .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 15)

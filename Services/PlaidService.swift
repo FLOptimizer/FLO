@@ -1,7 +1,7 @@
 //  PlaidService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.3 - Added Supabase Authorization header
+//  Version 1.4 - Credit card balance fix
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  PURPOSE:
@@ -11,6 +11,10 @@
 //  - Account balance updates
 //  - Keychain-based credential storage
 //  - Subscription tier enforcement (Pro required)
+//
+//  CHANGES v1.4:
+//  - Credit cards/loans now show 'current' balance (amount owed) instead of 'available' (remaining credit)
+//  - Depository accounts continue using 'available' (spendable amount)
 //
 //  CHANGES v1.3:
 //  - Added Authorization header with Supabase anon key to all requests
@@ -227,7 +231,7 @@ final class PlaidService: ObservableObject {
                     account.plaidStatus = .error
                 }
                 // Continue with other accounts
-                print("âš ï¸ Sync error for account \(account.name): \(error.localizedDescription)")
+                print("⚠️ Sync error for account \(account.name): \(error.localizedDescription)")
             }
             
             // Update progress
@@ -528,9 +532,15 @@ final class PlaidService: ObservableObject {
                 
                 // Find matching Plaid account
                 if let plaidAccount = response.accounts.first(where: { $0.accountId == account.plaidAccountId }) {
-                    account.currentBalance = plaidAccount.balances.effectiveBalance
+                    // Credit cards & loans: use 'current' (amount owed)
+                    // Depository (checking/savings): use 'available' (spendable amount)
+                    if plaidAccount.type == .credit || plaidAccount.type == .loan {
+                        account.currentBalance = plaidAccount.balances.current ?? 0.0
+                    } else {
+                        account.currentBalance = plaidAccount.balances.effectiveBalance
+                    }
                     account.lastBalanceUpdate = Date()
-                    
+
                     // Update credit limit if credit card
                     if account.accountType == .creditCard, let limit = plaidAccount.balances.limit {
                         account.creditLimit = limit
@@ -538,7 +548,7 @@ final class PlaidService: ObservableObject {
                 }
                 
             } catch {
-                print("âš ï¸ Failed to update balance for \(account.name): \(error)")
+                print("⚠️ Failed to update balance for \(account.name): \(error)")
             }
         }
         

@@ -1,11 +1,31 @@
 //  ModelContainer_Shared.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 4.5 - Fixed CloudKit validation in preview/testing containers
+//  Version 5.0 - Enabled iCloud Sync with CloudKit (Build 8)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 // Centralized ModelContainer factory with shared schema definition
 // Eliminates duplication and ensures consistency across app, previews, and tests
+//
+// CHANGES FROM v4.8:
+// ✅ Enabled CloudKit sync: cloudKitDatabase: .automatic in shared() container
+// ✅ All 20 models now CloudKit-compatible (no @Attribute(.unique), all defaults set)
+// ✅ Preview/test containers remain .none (no CloudKit in tests)
+// ✅ SwiftData handles all CloudKit mirroring via NSPersistentCloudKitContainer
+//
+// CHANGES FROM v4.7:
+// ✅ Added Household.self and HouseholdMember.self for household sharing
+// ✅ Now 20 total models (up from 18)
+//
+// CHANGES FROM v4.6:
+// ✅ Added BalanceAnchor.self for anchor-based balance reconciliation
+// ✅ Now 18 total models (up from 17)
+// ✅ Supports CSV import reconciliation (Issue #3)
+//
+// CHANGES FROM v4.5:
+// ✅ Added Transfer.self and RecurringTransfer.self
+// ✅ Now 17 total models (up from 15)
+// ✅ Supports new "Move Money" feature with double-entry transfers
 //
 // CHANGES FROM v4.4:
 // ✅ Added cloudKitDatabase: .none to preview() container
@@ -22,9 +42,8 @@
 // ✅ Prevents "Cannot migrate store in-place" crashes
 //
 // CHANGES FROM v4.1:
-// ✅ Disabled CloudKit sync with cloudKitDatabase: .none
-// ✅ CloudKit requires optional attributes, no unique constraints, relationship inverses
-// ✅ Can re-enable later when models are CloudKit-ready
+// ✅ Originally disabled CloudKit sync with cloudKitDatabase: .none
+// ✅ Re-enabled in v5.0 after making all models CloudKit-compatible
 
 import SwiftData
 import Foundation
@@ -51,13 +70,14 @@ extension ModelContainer {
         // Use the same unique store name: FLOSwiftData.store
         let storeURL = groupURL.appendingPathComponent("FLOSwiftData.store")
         
-        // IMPORTANT: Disable CloudKit sync - our models aren't CloudKit-compatible yet
-        // CloudKit requires: all optional attributes, no unique constraints, all relationship inverses
-        // We can enable this later when we make models CloudKit-ready
-        let config = ModelConfiguration(url: storeURL, cloudKitDatabase: .none)
+        // CloudKit sync ENABLED — all 20 models are now CloudKit-compatible
+        // Models have: inline defaults on all stored properties, no @Attribute(.unique)
+        // SwiftData handles CloudKit mirroring automatically via NSPersistentCloudKitContainer
+        let config = ModelConfiguration(url: storeURL, cloudKitDatabase: .automatic)
         
         do {
-            // Create ModelContainer with ALL 15 models
+            // Create ModelContainer with ALL 20 models
+            // Create ModelContainer with ALL 21 models
             return try ModelContainer(
                 for: Transaction.self,
                 Category.self,
@@ -74,6 +94,12 @@ extension ModelContainer {
                 ReceiptLineItem.self,      // ✅ Added in v4.4 (was missing!)
                 Account.self,
                 InvoicePayment.self,
+                Transfer.self,             // ✅ Added in v4.6 for Move Money feature
+                RecurringTransfer.self,    // ✅ Added in v4.6 for recurring transfers
+                BalanceAnchor.self,        // ✅ Added in v4.7 for reconciliation
+                Household.self,            // ✅ Added in v4.8 for household sharing
+                HouseholdMember.self,      // ✅ Added in v4.8 for household sharing
+                AssistantMessage.self,     // ✅ Added in v5.1 for My Assistant
                 configurations: config
             )
         } catch {
@@ -119,13 +145,19 @@ extension ModelContainer {
                 ReceiptLineItem.self,
                 Account.self,
                 InvoicePayment.self,
+                Transfer.self,             // ✅ Added in v4.6
+                RecurringTransfer.self,    // ✅ Added in v4.6
+                BalanceAnchor.self,        // ✅ Added in v4.7
+                Household.self,            // ✅ Added in v4.8
+                HouseholdMember.self,      // ✅ Added in v4.8
+                AssistantMessage.self,     // ✅ Added in v5.1
                 configurations: config
             )
         }
     }
-    
+
     // MARK: - Preview & Testing Container
-    
+
     /// Creates an in-memory only container ideal for SwiftUI previews and unit tests.
     /// Data is never persisted to disk and is discarded when the container is deallocated.
     static func preview() -> ModelContainer {
@@ -149,6 +181,12 @@ extension ModelContainer {
                 ReceiptLineItem.self,      // ✅ Added in v4.4
                 Account.self,
                 InvoicePayment.self,
+                Transfer.self,             // ✅ Added in v4.6 for Move Money feature
+                RecurringTransfer.self,    // ✅ Added in v4.6 for recurring transfers
+                BalanceAnchor.self,        // ✅ Added in v4.7 for reconciliation
+                Household.self,            // ✅ Added in v4.8 for household sharing
+                HouseholdMember.self,      // ✅ Added in v4.8 for household sharing
+                AssistantMessage.self,     // ✅ Added in v5.1 for My Assistant
                 configurations: config
             )
         } catch {

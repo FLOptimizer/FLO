@@ -1,8 +1,11 @@
 //  SecuritySettingsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.4 - VoiceOver Audit: Decorative icons hidden, hints added
+//  Version 1.5 - Fixed invalid SF Symbol
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.5:
+//  ✅ FIXED: Invalid SF Symbol "lock.badge.plus" → "key.fill" (symbol doesn't exist)
 //
 //  CHANGES v1.4 - VoiceOver Audit:
 //  ✅ ADDED: Biometric icon (Face ID/Touch ID) hidden from VoiceOver (text describes it)
@@ -56,66 +59,69 @@ struct SecuritySettingsView: View {
     // Haptic Generators
                         
     var body: some View {
-        NavigationStack {
-            List {
-                // Biometric Section
-                if authService.isBiometricAvailable {
-                    Section {
-                        Toggle(isOn: Binding(
-                            get: { authService.biometricEnabled },
-                            set: { newValue in
-                                if newValue {
-                                    HapticService.play(.medium)
-                                    authService.setBiometricEnabled(true)
-                                    HapticService.play(.success)
-                                } else {
-                                    if passcodeService.hasPasscode() {
-                                        HapticService.play(.light)
-                                        authService.setBiometricEnabled(false)
-                                    } else {
-                                        HapticService.play(.heavy)
-                                        showingDisableBiometricAlert = true
+            ScrollView {
+                VStack(spacing: 16) {
+                    ProfileHeaderCard(
+                        icon: "lock.shield.fill",
+                        title: "Security & Privacy",
+                        subtitle: "Manage authentication and app protection",
+                        color: .brandPrimary
+                    )
+
+                    // Biometric Section
+                    if authService.isBiometricAvailable {
+                        ProfileSectionCard(title: "Biometric Authentication") {
+                            ProfileToggleRow(
+                                icon: biometricIcon,
+                                label: authService.biometricTypeString,
+                                isOn: Binding(
+                                    get: { authService.biometricEnabled },
+                                    set: { newValue in
+                                        if newValue {
+                                            HapticService.play(.medium)
+                                            authService.setBiometricEnabled(true)
+                                            HapticService.play(.success)
+                                        } else {
+                                            if passcodeService.hasPasscode() {
+                                                HapticService.play(.light)
+                                                authService.setBiometricEnabled(false)
+                                            } else {
+                                                HapticService.play(.heavy)
+                                                showingDisableBiometricAlert = true
+                                            }
+                                        }
                                     }
-                                }
-                            }
-                        )) {
-                            Label {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(authService.biometricTypeString)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.7)
-                                    Text("Quick unlock with \(authService.biometricTypeString)")
-                                        .font(.caption)
-                                        .lineLimit(2)
-                                        .minimumScaleFactor(0.7)
-                                        .foregroundStyle(.secondary)
-                                }
-                            } icon: {
-                                Image(systemName: biometricIcon)
-                                    .foregroundStyle(Color.brandPrimary)
-                                    .accessibilityHidden(true)
-                            }
+                                ),
+                                subtitle: "Quick unlock with \(authService.biometricTypeString)",
+                                iconColor: .brandPrimary
+                            )
+                            .accessibilityHint("Enables \(authService.biometricTypeString) to unlock FLO")
+
+                            ProfileFooterNote(
+                                icon: biometricIcon,
+                                text: "Use \(authService.biometricTypeString) to quickly unlock FLO"
+                            )
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 4)
                         }
-                        .accessibilityHint("Enables \(authService.biometricTypeString) to unlock FLO")
-                    } header: {
-                        Text("Biometric Authentication")
-                    } footer: {
-                        Text("Use \(authService.biometricTypeString) to quickly unlock FLO")
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.7)
+                        .opacity(viewAppeared ? 1 : 0.001)
+                        .offset(y: viewAppeared ? 0 : 10)
+                        .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
                     }
-                    .opacity(viewAppeared ? 1 : 0.001)
-                    .offset(y: viewAppeared ? 0 : 10)
-                    .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
-                }
-                
-                // Passcode Section
-                Section {
-                    if passcodeService.hasPasscode() {
-                        HStack {
-                            Label {
+
+                    // Passcode Section
+                    ProfileSectionCard(title: "Passcode") {
+                        if passcodeService.hasPasscode() {
+                            HStack(spacing: 12) {
+                                Image(systemName: "lock.fill")
+                                    .font(.body)
+                                    .foregroundStyle(Color.brandPrimary)
+                                    .frame(width: 24, alignment: .center)
+                                    .accessibilityHidden(true)
+
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Passcode")
+                                        .font(.body)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.7)
                                     Text("\(passcodeService.getPasscodeLength())-digit passcode enabled")
@@ -124,142 +130,113 @@ struct SecuritySettingsView: View {
                                         .minimumScaleFactor(0.7)
                                         .foregroundStyle(.secondary)
                                 }
-                            } icon: {
-                                Image(systemName: "lock.fill")
-                                    .foregroundStyle(Color.brandPrimary)
-                                    .accessibilityHidden(true)
-                            }
-                            
-                            Spacer()
-                            
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
-                                .symbolEffect(.bounce, value: viewAppeared)
-                                .accessibilityHidden(true)
-                        }
-                        .accessibilityElement(children: .combine)
-                        
-                        Button {
-                            HapticService.play(.medium)
-                            showingChangePasscode = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "pencil")
-                                    .accessibilityHidden(true)
-                                Text("Change Passcode")
-                            }
-                        }
-                        
-                        Button(role: .destructive) {
-                            HapticService.play(.heavy)
-                            showingRemovePasscodeAlert = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "trash")
-                                    .accessibilityHidden(true)
-                                Text("Remove Passcode")
-                            }
-                        }
-                    } else {
-                        Button {
-                            HapticService.play(.medium)
-                            showingPasscodeSetup = true
-                        } label: {
-                            Label {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Set Up Passcode")
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.7)
-                                    Text("Add a backup unlock method")
-                                        .font(.caption)
-                                        .lineLimit(2)
-                                        .minimumScaleFactor(0.7)
-                                        .foregroundStyle(.secondary)
-                                }
-                            } icon: {
-                                Image(systemName: "lock.badge.plus")
-                                    .foregroundStyle(Color.brandPrimary)
-                                    .accessibilityHidden(true)
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Passcode")
-                } footer: {
-                    if passcodeService.hasPasscode() {
-                        Text("Passcode can be used as an alternative to \(authService.biometricTypeString)")
-                            .lineLimit(3)
-                            .minimumScaleFactor(0.7)
-                    } else {
-                        Text("Set a passcode for an alternative unlock method")
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.7)
-                    }
-                }
-                .opacity(viewAppeared ? 1 : 0.001)
-                .offset(y: viewAppeared ? 0 : 10)
-                .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
-                
-                // Security Status Section
-                Section {
-                    HStack {
-                        Label {
-                            Text("Security Status")
-                        } icon: {
-                            Image(systemName: "shield.fill")
-                                .accessibilityHidden(true)
-                        }
-                        Spacer()
-                        if authService.biometricEnabled || passcodeService.hasPasscode() {
-                            HStack(spacing: 4) {
-                                Image(systemName: "checkmark.shield.fill")
+
+                                Spacer()
+
+                                Image(systemName: "checkmark.circle.fill")
                                     .foregroundStyle(.green)
                                     .symbolEffect(.bounce, value: viewAppeared)
                                     .accessibilityHidden(true)
-                                Text("Protected")
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                                    .foregroundStyle(.green)
-                                    .font(.subheadline)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .accessibilityElement(children: .combine)
+
+                            ProfileActionRow(icon: "pencil", label: "Change Passcode", style: .branded) {
+                                HapticService.play(.medium)
+                                showingChangePasscode = true
+                            }
+
+                            ProfileActionRow(icon: "trash", label: "Remove Passcode", style: .destructive) {
+                                HapticService.play(.heavy)
+                                showingRemovePasscodeAlert = true
                             }
                         } else {
-                            HStack(spacing: 4) {
-                                Image(systemName: "exclamationmark.shield.fill")
-                                    .foregroundStyle(.orange)
-                                    .symbolEffect(.pulse, value: viewAppeared)
-                                    .accessibilityHidden(true)
-                                Text("Not Protected")
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                                    .foregroundStyle(.orange)
-                                    .font(.subheadline)
+                            ProfileActionRow(icon: "key.fill", label: "Set Up Passcode", style: .branded) {
+                                HapticService.play(.medium)
+                                showingPasscodeSetup = true
                             }
                         }
+
+                        ProfileFooterNote(
+                            icon: "info.circle",
+                            text: passcodeService.hasPasscode()
+                                ? "Passcode can be used as an alternative to \(authService.biometricTypeString)"
+                                : "Set a passcode for an alternative unlock method"
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 4)
                     }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Security status: \(authService.biometricEnabled || passcodeService.hasPasscode() ? "Protected" : "Not protected")")
-                } footer: {
-                    if !authService.biometricEnabled && !passcodeService.hasPasscode() {
-                        Text("Enable \(authService.biometricTypeString) or set a passcode to protect your financial data")
-                            .lineLimit(3)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(.orange)
+                    .opacity(viewAppeared ? 1 : 0.001)
+                    .offset(y: viewAppeared ? 0 : 10)
+                    .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
+
+                    // Security Status Section
+                    ProfileSectionCard(title: "Security Status") {
+                        HStack(spacing: 12) {
+                            Image(systemName: "shield.fill")
+                                .font(.body)
+                                .foregroundStyle(Color.brandPrimary)
+                                .frame(width: 24, alignment: .center)
+                                .accessibilityHidden(true)
+
+                            Text("Security Status")
+                                .font(.body)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+
+                            Spacer()
+
+                            if authService.biometricEnabled || passcodeService.hasPasscode() {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "checkmark.shield.fill")
+                                        .foregroundStyle(.green)
+                                        .symbolEffect(.bounce, value: viewAppeared)
+                                        .accessibilityHidden(true)
+                                    Text("Protected")
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                        .foregroundStyle(.green)
+                                        .font(.subheadline)
+                                }
+                            } else {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "exclamationmark.shield.fill")
+                                        .foregroundStyle(.orange)
+                                        .symbolEffect(.pulse, value: viewAppeared)
+                                        .accessibilityHidden(true)
+                                    Text("Not Protected")
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                        .foregroundStyle(.orange)
+                                        .font(.subheadline)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Security status: \(authService.biometricEnabled || passcodeService.hasPasscode() ? "Protected" : "Not protected")")
+
+                        if !authService.biometricEnabled && !passcodeService.hasPasscode() {
+                            ProfileFooterNote(
+                                icon: "exclamationmark.triangle",
+                                text: "Enable \(authService.biometricTypeString) or set a passcode to protect your financial data"
+                            )
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 4)
+                        }
                     }
+                    .opacity(viewAppeared ? 1 : 0.001)
+                    .offset(y: viewAppeared ? 0 : 10)
+                    .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
                 }
-                .opacity(viewAppeared ? 1 : 0.001)
-                .offset(y: viewAppeared ? 0 : 10)
-                .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
+                .padding(16)
             }
             .navigationTitle("Security")
+            #if !os(macOS)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        HapticService.play(.light)
-                        dismiss()
-                    }
-                }
-            }
+            #endif
             .sheet(isPresented: $showingPasscodeSetup) {
                 PasscodeSetupView(isChanging: false) {
                     showingPasscodeSetup = false
@@ -308,7 +285,6 @@ struct SecuritySettingsView: View {
                 }
                 AccessibilityAnnouncement.screenChanged("Security settings")
             }
-        }
     }
     
     // MARK: - Haptic Preparation

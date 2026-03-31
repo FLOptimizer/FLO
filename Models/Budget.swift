@@ -1,10 +1,14 @@
 //  Budget.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.3 - Added Account relationship for multi-account budgeting
+//  Version 2.4 - Predictive Budgeting Support
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Budget model with envelope, simple, zero-based, and percentage-based budgeting
+//
+//  CHANGES FROM v2.3:
+//  ✅ Added suggestedAmount property for ML-predicted budget amounts
+//  ✅ Added isUserOverridden flag to track manual overrides of predictions
 //
 //  CHANGES FROM v2.2:
 //  ✅ Added optional account relationship for account-specific budgets
@@ -27,43 +31,55 @@ import SwiftData
 final class Budget {
     
     // MARK: - Identifiers
-    @Attribute(.unique) private(set) var id: UUID
+    private(set) var id: UUID = UUID()
     
     // MARK: - Core Budget Data
     /// First day of the month this budget applies to – always normalized to midnight on the 1st.
-    var month: Date
+    var month: Date = Date()
     
     /// Amount intentionally planned/allocated for this month.
-    var planned: Double
+    var planned: Double = 0.0
     
     /// Rollover amount from previous month (only meaningful for envelope budgeting).
-    var carryOver: Double
+    var carryOver: Double = 0.0
     
     /// The budgeting methodology used.
-    var budgetType: BudgetType
+    var budgetType: BudgetType = BudgetType.envelope
     
     /// Personal vs Business classification – affects UI, reporting, and tax logic.
-    var financeType: Transaction.FinanceType
+    var financeType: Transaction.FinanceType = Transaction.FinanceType.personal
     
-    // MARK: - Relationships
-    // NOTE: Do NOT add inverse parameter here - Category defines the inverse
-    
+    // MARK: - Relationships (All inverses required for CloudKit)
+    // NOTE: Category defines the inverse for category relationship
+
     /// Optional category this budget belongs to. Nil = overall/unallocated budget.
     @Relationship(deleteRule: .nullify)
     var category: Category?
-    
+
     /// Optional account this budget is specific to (NEW in v2.3 - Premium feature)
     /// Nil = budget applies across all accounts of matching financeType
     @Relationship(deleteRule: .nullify)
     var account: Account?
+
+    /// Transactions assigned to this budget (inverse of Transaction.budget)
+    @Relationship(deleteRule: .nullify, inverse: \Transaction.budget)
+    var transactions: [Transaction]?
     
+    // MARK: - Prediction Properties (NEW in v2.4)
+
+    /// ML-predicted suggested amount for this budget (nil if no prediction available)
+    var suggestedAmount: Double?
+
+    /// Whether the user manually overrode the ML-suggested amount
+    var isUserOverridden: Bool = false
+
     // MARK: - Metadata
-    
+
     /// When budget was created
-    var createdAt: Date
-    
+    var createdAt: Date = Date()
+
     /// When budget was last modified
-    var updatedAt: Date
+    var updatedAt: Date = Date()
     
     // MARK: - Initialization
     
@@ -153,23 +169,17 @@ final class Budget {
     
     /// Month and year formatted for display
     var monthYearDisplay: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: month)
+        DateFormatter.monthYear.string(from: month)
     }
-    
+
     /// Short month display
     var shortMonthDisplay: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM yyyy"
-        return formatter.string(from: month)
+        DateFormatter.shortMonthYear.string(from: month)
     }
-    
+
     /// Month key for grouping (YYYY-MM format)
     var monthKey: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM"
-        return formatter.string(from: month)
+        DateFormatter.yearMonth.string(from: month)
     }
     
     /// Year of this budget
@@ -186,9 +196,7 @@ final class Budget {
     
     /// Full accessibility label for VoiceOver and Dynamic Type.
     var accessibilityLabel: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        let monthYear = formatter.string(from: month)
+        let monthYear = DateFormatter.monthYear.string(from: month)
         
         let currency = planned.formatted(.currency(code: Locale.current.currency?.identifier ?? "USD"))
         

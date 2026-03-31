@@ -1,8 +1,16 @@
 //  MarkAsPaidView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.3 - Dynamic Type verification
+//  Version 2.4 - Penny-Up Currency Input
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.4 - Penny-Up Currency Input:
+//  ✅ REPLACED: Old TextField + String paymentAmount with CurrencyInputField component
+//  ✅ CHANGED: paymentAmount state from String to Double
+//  ✅ REMOVED: parsedAmount computed property (String parsing no longer needed)
+//  ✅ UPDATED: isValidAmount, isFullPayment, remainingAfterPayment to use Double directly
+//  ✅ UPDATED: QuickAmountButton binding from String to Double
+//  ✅ UPDATED: setupDefaults(), recordPayment() to use Double directly
 //
 //  CHANGES v2.2:
 //  ✅ ADDED: Invoice summary header accessible (number, client, status combined)
@@ -41,7 +49,7 @@ struct MarkAsPaidView: View {
     let invoice: Invoice
     
     // Payment Details
-    @State private var paymentAmount: String = ""
+    @State private var paymentAmount: Double = 0
     @State private var paymentDate = Date()
     @State private var paymentMethod: PaymentMethod = .bankTransfer
     @State private var selectedAccount: Account?
@@ -53,7 +61,7 @@ struct MarkAsPaidView: View {
     
     // UI State
     @State private var isProcessing = false
-    @State private var showingSuccess = false
+    @State private var showCelebration = false
     @State private var showingPartialPaymentInfo = false
     
     // Animation States
@@ -64,26 +72,17 @@ struct MarkAsPaidView: View {
     @State private var amountFieldShake = false
     
     // Computed Properties
-    private var parsedAmount: Double? {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.locale = Locale.current
-        return formatter.number(from: paymentAmount)?.doubleValue
-    }
-    
     private var isValidAmount: Bool {
-        guard let amount = parsedAmount else { return false }
-        return amount > 0 && amount <= invoice.remainingBalance + 0.01
+        paymentAmount > 0 && paymentAmount <= invoice.remainingBalance + 0.01
     }
-    
+
     private var isFullPayment: Bool {
-        guard let amount = parsedAmount else { return false }
-        return abs(amount - invoice.remainingBalance) < 0.01
+        abs(paymentAmount - invoice.remainingBalance) < 0.01
     }
-    
+
     private var remainingAfterPayment: Double {
-        guard let amount = parsedAmount else { return invoice.remainingBalance }
-        return max(invoice.remainingBalance - amount, 0)
+        guard paymentAmount > 0 else { return invoice.remainingBalance }
+        return max(invoice.remainingBalance - paymentAmount, 0)
     }
     
     private var primaryAccount: Account? {
@@ -145,20 +144,18 @@ struct MarkAsPaidView: View {
                 // v2.2: Announce screen
                 AccessibilityAnnouncement.screenChanged("Record Payment for \(invoice.invoiceNumber). Remaining balance: \(AccessibilityFormatters.spokenCurrency(invoice.remainingBalance))")
             }
-            .alert("Payment Recorded!", isPresented: $showingSuccess) {
-                Button("Done") {
-                    dismiss()
-                }
-            } message: {
-                if isFullPayment {
-                    Text("Invoice \(invoice.invoiceNumber) has been paid in full!")
-                } else {
-                    Text("Payment of \(parsedAmount?.formatted(.currency(code: "USD")) ?? "$0") recorded.\n\nRemaining balance: \(remainingAfterPayment.formatted(.currency(code: "USD")))")
-                }
-            }
             .sheet(isPresented: $showingPartialPaymentInfo) {
                 partialPaymentInfoSheet
             }
+            .celebrationOverlay(
+                isPresented: $showCelebration,
+                style: .invoicePaid,
+                amount: paymentAmount > 0 ? paymentAmount : nil,
+                message: isFullPayment ? "Paid in Full!" : "Payment Recorded",
+                onDismiss: {
+                    dismiss()
+                }
+            )
         }
     }
     
@@ -166,7 +163,7 @@ struct MarkAsPaidView: View {
     private var saveButtonHint: String {
         if isProcessing {
             return "Processing payment"
-        } else if parsedAmount == nil {
+        } else if paymentAmount <= 0 {
             return "Enter a payment amount to enable saving"
         } else if !isValidAmount {
             return "Amount exceeds remaining balance"
@@ -331,7 +328,7 @@ struct MarkAsPaidView: View {
     
     private var paymentHistorySection: some View {
         Section {
-            ForEach(invoice.payments.sorted(by: { $0.date > $1.date })) { payment in
+            ForEach((invoice.payments ?? []).sorted(by: { $0.date > $1.date })) { payment in
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(payment.date.formatted(.dateTime.month(.abbreviated).day()))
@@ -384,26 +381,15 @@ struct MarkAsPaidView: View {
         Section {
             // Amount Field with validation feedback
             VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("$")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                        // v2.2: Decorative
-                        .accessibilityHidden(true)
-                    
-                    TextField("0.00", text: $paymentAmount)
-                        .font(.title2)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.leading)
-                        .offset(x: amountFieldShake ? -5 : 0)
-                        .animation(amountFieldShake ? .easeInOut(duration: 0.05).repeatCount(5, autoreverses: true) : .default, value: amountFieldShake)
-                        // v2.2: VoiceOver
-                        .accessibilityLabel("Payment amount in dollars")
-                        .accessibilityHint("Enter the payment amount. Remaining balance is \(AccessibilityFormatters.spokenCurrency(invoice.remainingBalance))")
-                }
+                CurrencyInputField(
+                    amount: $paymentAmount,
+                    accessibilityLabelText: "Payment amount"
+                )
+                .offset(x: amountFieldShake ? -5 : 0)
+                .animation(amountFieldShake ? .easeInOut(duration: 0.05).repeatCount(5, autoreverses: true) : .default, value: amountFieldShake)
                 
                 // Validation indicator
-                if parsedAmount != nil {
+                if paymentAmount > 0 {
                     HStack(spacing: 4) {
                         Image(systemName: isValidAmount ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                             .font(.caption)
@@ -617,14 +603,15 @@ struct MarkAsPaidView: View {
     // MARK: - Setup & Actions
     
     private func setupDefaults() {
-        paymentAmount = String(format: "%.2f", invoice.remainingBalance)
+        paymentAmount = invoice.remainingBalance
         selectedAccount = primaryAccount
         selectedCategory = incomeCategories.first { $0.name.contains("Client") || $0.name.contains("Payment") }
             ?? incomeCategories.first
     }
     
     private func recordPayment() {
-        guard let amount = parsedAmount, isValidAmount else {
+        let amount = paymentAmount
+        guard isValidAmount else {
             withAnimation(.easeInOut(duration: 0.05).repeatCount(5, autoreverses: true)) {
                 amountFieldShake = true
             }
@@ -672,12 +659,6 @@ struct MarkAsPaidView: View {
         do {
             try modelContext.save()
             
-            HapticService.shared.success()
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                HapticService.play(.heavy)
-            }
-            
             // v2.2: Announce success
             if isFullPayment {
                 AccessibilityAnnouncement.announce("Payment recorded. Invoice \(invoice.invoiceNumber) paid in full.")
@@ -685,7 +666,8 @@ struct MarkAsPaidView: View {
                 AccessibilityAnnouncement.announce("Payment of \(AccessibilityFormatters.spokenCurrency(amount)) recorded. \(AccessibilityFormatters.spokenCurrency(remainingAfterPayment)) remaining.")
             }
             
-            showingSuccess = true
+            // Show celebration overlay (replaces success alert)
+            showCelebration = true
             
             #if DEBUG
             print("✅ Payment recorded: \(amount.formatted(.currency(code: "USD")))")
@@ -707,20 +689,20 @@ struct MarkAsPaidView: View {
 private struct QuickAmountButton: View {
     let label: String
     let amount: Double
-    @Binding var paymentAmount: String
-    
+    @Binding var paymentAmount: Double
+
     @State private var isPressed = false
-    
+
     var body: some View {
         Button {
             HapticService.play(.medium)
-            
+
             withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                 isPressed = true
             }
-            
-            paymentAmount = String(format: "%.2f", amount)
-            
+
+            paymentAmount = amount
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                     isPressed = false
@@ -773,15 +755,15 @@ private struct QuickAmountButton: View {
         quantity: 1,
         unitPrice: 5000
     )
-    invoice.items.append(item)
+    invoice.items = [item]
     context.insert(invoice)
-    
+
     let account = Account(name: "Chase Business", accountType: .checking, isPrimary: true)
     context.insert(account)
-    
+
     let category = Category(name: "Client Payment", icon: "dollarsign.circle.fill", colorHex: "#14B8A6", isIncome: true)
     context.insert(category)
-    
+
     return MarkAsPaidView(invoice: invoice)
         .modelContainer(container)
 }
@@ -791,12 +773,12 @@ private struct QuickAmountButton: View {
         for: Invoice.self, Client.self, InvoiceItem.self, Account.self, InvoicePayment.self, Category.self, Transaction.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
-    
+
     let context = container.mainContext
-    
+
     let client = Client(name: "TechStart Inc", email: "ap@techstart.com")
     context.insert(client)
-    
+
     let invoice = Invoice(
         invoiceNumber: "INV-2026-002",
         client: client,
@@ -804,15 +786,15 @@ private struct QuickAmountButton: View {
         dueDate: Date().addingTimeInterval(86400),
         status: .partiallyPaid
     )
-    
+
     let item = InvoiceItem(
         invoice: invoice,
         itemDescription: "Mobile App Development",
         quantity: 1,
         unitPrice: 10000
     )
-    invoice.items.append(item)
-    
+    invoice.items = [item]
+
     let existingPayment = InvoicePayment(
         amount: 5000,
         date: Date().addingTimeInterval(-86400 * 7),
@@ -820,13 +802,13 @@ private struct QuickAmountButton: View {
         notes: "50% deposit"
     )
     existingPayment.invoice = invoice
-    invoice.payments.append(existingPayment)
-    
+    invoice.payments = [existingPayment]
+
     context.insert(invoice)
-    
+
     let account = Account(name: "Chase Business", accountType: .checking, isPrimary: true)
     context.insert(account)
-    
+
     return MarkAsPaidView(invoice: invoice)
         .modelContainer(container)
 }

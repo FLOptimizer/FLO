@@ -1,8 +1,19 @@
 //  Account.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.4
+//  Version 3.6
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.6:
+//  ✅ ADDED: Loan-specific fields (originalLoanAmount, loanTermMonths, monthlyPaymentAmount, loanStartDate, loanTypeRaw)
+//  ✅ ADDED: hasLoanFields computed property on AccountType
+//  ✅ ADDED: hasDebtFields computed property (true for creditCard and loan)
+//  ✅ ADDED: Account.loan() convenience initializer
+//  ✅ UPDATED: init() to accept new loan parameters
+//
+//  CHANGES v3.5:
+//  ✅ ADDED: effectiveAnchor(from:) — finds the latest anchor for balance calculation
+//  ✅ NOTE: Used by AccountBalanceService for anchor-based reconciliation (Issue #3)
 //
 //  CHANGES v3.4:
 //  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters (multiplication symbols)
@@ -50,24 +61,24 @@ final class Account {
     
     // MARK: - Identifiers
     
-    @Attribute(.unique) private(set) var id: UUID
+    private(set) var id: UUID = UUID()
     
     // MARK: - Core Properties
     
     /// Account display name
-    var name: String
+    var name: String = ""
     
     /// Type of account (checking, savings, credit card, etc.)
-    var accountType: AccountType
+    var accountType: AccountType = AccountType.checking
     
     /// Whether this is the primary/default account
-    var isPrimary: Bool
+    var isPrimary: Bool = false
     
     /// Whether the account is active
-    var isActive: Bool
+    var isActive: Bool = true
     
     /// Optional notes about the account
-    var notes: String
+    var notes: String = ""
     
     // MARK: - Dashboard Display
     
@@ -122,7 +133,24 @@ final class Account {
     
     /// Day of month when payment is due (1-31)
     var paymentDueDay: Int?
-    
+
+    // MARK: - Loan Specific Fields
+
+    /// Original principal amount of the loan (e.g., $150,000 for SBA loan)
+    var originalLoanAmount: Double?
+
+    /// Original loan term in months (e.g., 360 for 30-year SBA loan)
+    var loanTermMonths: Int?
+
+    /// Fixed monthly payment amount (principal + interest)
+    var monthlyPaymentAmount: Double?
+
+    /// Loan origination date
+    var loanStartDate: Date?
+
+    /// Loan type classification (maps to DebtType: sba, mortgage, auto, personal, student)
+    var loanTypeRaw: String?
+
     // MARK: - Plaid Integration (Pro tier)
     
     /// Plaid account ID (for linked accounts)
@@ -143,21 +171,49 @@ final class Account {
     // MARK: - Metadata
     
     /// When the account was created
-    var createdDate: Date
-    
+    var createdDate: Date = Date()
+
     /// When the account was last modified
-    var modifiedDate: Date
+    var modifiedDate: Date = Date()
     
-    // MARK: - Relationships
-    
+    // MARK: - Relationships (All inverses required for CloudKit)
+
     /// Transactions associated with this account
-    @Relationship(deleteRule: .nullify)
+    @Relationship(deleteRule: .nullify, inverse: \Transaction.account)
     var transactions: [Transaction]?
-    
+
     /// Budgets associated with this account
-    @Relationship(deleteRule: .nullify)
+    @Relationship(deleteRule: .nullify, inverse: \Budget.account)
     var budgets: [Budget]?
-    
+
+    /// Invoice payments deposited to this account
+    @Relationship(deleteRule: .nullify, inverse: \InvoicePayment.account)
+    var invoicePayments: [InvoicePayment]?
+
+    /// Recurring transactions linked to this account
+    @Relationship(deleteRule: .nullify, inverse: \RecurringTransaction.account)
+    var recurringTransactions: [RecurringTransaction]?
+
+    /// Transfers where this account is the source
+    @Relationship(deleteRule: .nullify, inverse: \Transfer.fromAccount)
+    var outgoingTransfers: [Transfer]?
+
+    /// Transfers where this account is the destination
+    @Relationship(deleteRule: .nullify, inverse: \Transfer.toAccount)
+    var incomingTransfers: [Transfer]?
+
+    /// Recurring transfers where this account is the source
+    @Relationship(deleteRule: .nullify, inverse: \RecurringTransfer.fromAccount)
+    var outgoingRecurringTransfers: [RecurringTransfer]?
+
+    /// Recurring transfers where this account is the destination
+    @Relationship(deleteRule: .nullify, inverse: \RecurringTransfer.toAccount)
+    var incomingRecurringTransfers: [RecurringTransfer]?
+
+    /// Balance anchors for reconciliation
+    @Relationship(deleteRule: .nullify, inverse: \BalanceAnchor.account)
+    var balanceAnchors: [BalanceAnchor]?
+
     // MARK: - Initialization
     
     init(
@@ -178,7 +234,12 @@ final class Account {
         minimumPaymentPercent: Double? = nil,
         minimumPaymentFloor: Double? = nil,
         statementCloseDay: Int? = nil,
-        paymentDueDay: Int? = nil
+        paymentDueDay: Int? = nil,
+        originalLoanAmount: Double? = nil,
+        loanTermMonths: Int? = nil,
+        monthlyPaymentAmount: Double? = nil,
+        loanStartDate: Date? = nil,
+        loanTypeRaw: String? = nil
     ) {
         self.id = UUID()
         self.name = name
@@ -200,6 +261,11 @@ final class Account {
         self.minimumPaymentFloor = minimumPaymentFloor
         self.statementCloseDay = statementCloseDay
         self.paymentDueDay = paymentDueDay
+        self.originalLoanAmount = originalLoanAmount
+        self.loanTermMonths = loanTermMonths
+        self.monthlyPaymentAmount = monthlyPaymentAmount
+        self.loanStartDate = loanStartDate
+        self.loanTypeRaw = loanTypeRaw
         self.isLinked = false
         self.plaidStatus = .notConnected
         self.createdDate = Date()
@@ -247,8 +313,66 @@ final class Account {
         )
     }
     
+    /// Convenience initializer for loan accounts
+    /// - Parameters:
+    ///   - name: Display name for the loan (e.g., "SBA EIDL Loan")
+    ///   - institutionName: Lender name (e.g., "SBA", "Chase")
+    ///   - apr: Annual Percentage Rate (as percentage, e.g., 3.75)
+    ///   - originalLoanAmount: Original principal borrowed
+    ///   - loanTermMonths: Term in months (e.g., 360 for 30-year)
+    ///   - monthlyPaymentAmount: Fixed monthly P&I payment
+    ///   - loanStartDate: Origination date
+    ///   - loanType: Loan classification (sba, mortgage, auto, personal, student)
+    ///   - paymentDueDay: Day of month payment is due (1-31)
+    ///   - financeType: Business or Personal classification
+    ///   - currentBalance: Current balance (negative for amount owed)
+    /// - Returns: Configured Account instance for a loan
+    static func loan(
+        name: String,
+        institutionName: String,
+        apr: Double,
+        originalLoanAmount: Double,
+        loanTermMonths: Int,
+        monthlyPaymentAmount: Double,
+        loanStartDate: Date? = nil,
+        loanType: LoanType = .personal,
+        paymentDueDay: Int = 1,
+        financeType: Transaction.FinanceType = .personal,
+        currentBalance: Double = 0.0
+    ) -> Account {
+        Account(
+            name: name,
+            accountType: .loan,
+            currentBalance: currentBalance,
+            financeType: financeType,
+            institutionName: institutionName,
+            apr: apr,
+            paymentDueDay: paymentDueDay,
+            originalLoanAmount: originalLoanAmount,
+            loanTermMonths: loanTermMonths,
+            monthlyPaymentAmount: monthlyPaymentAmount,
+            loanStartDate: loanStartDate,
+            loanTypeRaw: loanType.rawValue
+        )
+    }
+
+    // MARK: - Typed Loan Accessors
+
+    /// Typed accessor for loanTypeRaw
+    var loanType: LoanType {
+        get { loanTypeRaw.flatMap { LoanType(rawValue: $0) } ?? .personal }
+        set { loanTypeRaw = newValue.rawValue }
+    }
+
+    /// Estimated remaining term in months based on loan start date and original term
+    var estimatedRemainingTermMonths: Int? {
+        guard let start = loanStartDate, let term = loanTermMonths else { return nil }
+        let elapsed = Calendar.current.dateComponents([.month], from: start, to: Date()).month ?? 0
+        return max(0, term - elapsed)
+    }
+
     // MARK: - Validation
-    
+
     /// Validates credit card specific fields
     /// - Returns: Array of validation error messages (empty if valid)
     func validateCreditCardFields() -> [String] {
@@ -344,10 +468,7 @@ final class Account {
     
     /// Formatted balance string
     var formattedBalance: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: NSNumber(value: currentBalance)) ?? "$0.00"
+        NumberFormatter.appCurrency.string(from: NSNumber(value: currentBalance)) ?? "$0.00"
     }
     
     /// Balance status indicator
@@ -542,6 +663,22 @@ final class Account {
         return days < 0
     }
     
+    // MARK: - Reconciliation
+
+    /// The effective starting point for balance calculation.
+    /// If anchors exist, the latest anchor supersedes startingBalance.
+    /// Call this from AccountBalanceService, passing the fetched anchors.
+    func effectiveAnchor(from anchors: [BalanceAnchor]) -> (date: Date, balance: Double) {
+        if let latest = anchors
+            .filter({ $0.account?.id == self.id })
+            .sorted(by: { $0.anchorDate > $1.anchorDate })
+            .first {
+            return (latest.anchorDate, latest.anchorBalance)
+        }
+        // Fallback: account creation is the implicit first anchor
+        return (createdDate, startingBalance)
+    }
+
     // MARK: - Transaction Statistics
     
     /// Total income into this account
@@ -738,6 +875,17 @@ enum AccountType: String, Codable, CaseIterable {
     var hasCreditCardFields: Bool {
         self == .creditCard
     }
+
+    /// Whether this account type has loan-specific fields (APR, term, original amount)
+    var hasLoanFields: Bool {
+        self == .loan
+    }
+
+    /// Whether this account type has debt-related fields (APR, payment due day)
+    /// True for both credit cards and loans
+    var hasDebtFields: Bool {
+        self == .creditCard || self == .loan
+    }
     
     /// Account types that are typically business accounts
     static var businessTypes: [AccountType] {
@@ -786,6 +934,45 @@ enum PlaidConnectionStatus: String, Codable {
         case .syncing: return "#3B82F6"       // Blue
         case .needsReauth: return "#F59E0B"   // Amber
         case .error: return "#EF4444"         // Red
+        }
+    }
+}
+
+// MARK: - Loan Type
+
+/// Classification of loan types for display and DebtType mapping
+enum LoanType: String, Codable, CaseIterable, Identifiable {
+    case sba = "sba"
+    case mortgage = "mortgage"
+    case auto = "auto"
+    case personal = "personal"
+    case student = "student"
+    case business = "business"
+    case other = "other"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .sba:       return "SBA Loan"
+        case .mortgage:  return "Mortgage"
+        case .auto:      return "Auto Loan"
+        case .personal:  return "Personal Loan"
+        case .student:   return "Student Loan"
+        case .business:  return "Business Loan"
+        case .other:     return "Other Loan"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .sba:       return "building.columns.fill"
+        case .mortgage:  return "house.fill"
+        case .auto:      return "car.fill"
+        case .personal:  return "person.fill"
+        case .student:   return "graduationcap.fill"
+        case .business:  return "briefcase.fill"
+        case .other:     return "banknote.fill"
         }
     }
 }

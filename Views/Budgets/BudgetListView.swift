@@ -1,8 +1,22 @@
 //  BudgetListView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.2
+//  Version 4.0 — Build 10: Budget Circles Grid
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v4.0 — Build 10 Budget Circles:
+//  ✅ REPLACED: Individual BudgetCardWithComparison list → DashboardBudgetCircles grid
+//  ✅ ADDED: Alphabetical sorting of budget circles by display name
+//  ✅ ADDED: Circle tap opens budget detail as sheet
+//  ✅ KEPT: Monthly summary card, wrap-up banner, carryover, view history
+//
+//  CHANGES v3.3 — Monthly Budget Summary Card:
+//  ✅ ADDED: Monthly budget summary card between month header and individual budget cards
+//  ✅ ADDED: Shows Total Budgeted, Total Spent, Remaining with progress bar
+//  ✅ ADDED: Progress bar color-coded green/orange/red matching individual card pattern
+//  ✅ ADDED: Adaptive layout for accessibility sizes (VStack at large text)
+//  ✅ ADDED: VoiceOver summary element with spoken currency totals
+//  ✅ ADDED: Works across Business, Personal, and All finance modes
 //
 //  CHANGES v3.2:
 //  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters (person emoji)
@@ -66,6 +80,7 @@ struct BudgetListView: View {
     @State private var showingBudgetHistory = false
     @State private var wrapUpBannerDismissed = false
     @State private var viewAppeared = false
+    @State private var selectedBudgetForDetail: Budget?  // Build 10: Circle tap navigation
     
     @AppStorage("lastWrapUpBannerDismissedMonth") private var lastDismissedMonth: String = ""
     
@@ -99,15 +114,11 @@ struct BudgetListView: View {
     }
     
     private var currentMonthName: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM"
-        return formatter.string(from: Date())
+        DateFormatter.fullMonth.string(from: Date())
     }
-    
+
     private var previousMonthName: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM"
-        return formatter.string(from: previousMonthStart)
+        DateFormatter.fullMonth.string(from: previousMonthStart)
     }
     
     private var dayOfMonth: Int {
@@ -122,9 +133,7 @@ struct BudgetListView: View {
     }
     
     private func formatMonthKey(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM"
-        return formatter.string(from: date)
+        DateFormatter.yearMonth.string(from: date)
     }
     
     // MARK: - Filtered Data
@@ -207,7 +216,52 @@ struct BudgetListView: View {
         
         return abs(relevantTransactions.reduce(0) { $0 + $1.amount })
     }
-    
+
+    // MARK: - Monthly Budget Totals (v3.3)
+
+    /// Total budgeted amount across all current month budgets (filtered by finance mode)
+    private var monthlyBudgetTotal: Double {
+        currentMonthBudgets.reduce(0) { $0 + $1.totalAvailable }
+    }
+
+    /// Total spent across all current month budgets (filtered by finance mode)
+    private var monthlySpentTotal: Double {
+        currentMonthBudgets.reduce(0) { total, budget in
+            total + calculateSpent(for: budget, in: currentMonthStart)
+        }
+    }
+
+    /// Total remaining across all current month budgets
+    private var monthlyRemainingTotal: Double {
+        monthlyBudgetTotal - monthlySpentTotal
+    }
+
+    /// Overall spending progress (0.0 to 1.0, capped at 1.0)
+    private var monthlyProgress: Double {
+        guard monthlyBudgetTotal > 0 else { return 0 }
+        return min(monthlySpentTotal / monthlyBudgetTotal, 1.0)
+    }
+
+    /// Progress bar color matching individual budget card pattern
+    private var monthlyProgressColor: Color {
+        if monthlyProgress >= 1.0 {
+            return .expenseRed
+        } else if monthlyProgress >= 0.8 {
+            return .orange
+        } else {
+            return .incomeGreen
+        }
+    }
+
+    /// Build 10: Budget items paired with spent amounts for circle grid, alphabetically sorted
+    private var budgetCircleItems: [(budget: Budget, spent: Double)] {
+        currentMonthBudgets
+            .map { budget in
+                (budget: budget, spent: calculateSpent(for: budget, in: currentMonthStart))
+            }
+            .sorted { $0.budget.displayName.localizedCaseInsensitiveCompare($1.budget.displayName) == .orderedAscending }
+    }
+
     // MARK: - Body
     
     var body: some View {
@@ -234,6 +288,12 @@ struct BudgetListView: View {
             .sheet(isPresented: $showingBudgetHistory) {
                 BudgetHistoryView(allBudgets: allBudgets, allTransactions: allTransactions)
             }
+            // Build 10: Navigate to budget detail when circle tapped
+            .sheet(item: $selectedBudgetForDetail) { budget in
+                NavigationStack {
+                    EditBudgetView(budget: budget)
+                }
+            }
             .onChange(of: financeMode) { oldValue, newValue in
                 HapticService.play(.selection)
             }
@@ -241,8 +301,10 @@ struct BudgetListView: View {
                 HapticService.play(.selection)
             }
             .onAppear {
-                withAnimation(FLOAnimation.standard) {
-                    viewAppeared = true
+                DispatchQueue.main.async {
+                    withAnimation(FLOAnimation.standard) {
+                        viewAppeared = true
+                    }
                 }
             }
         }
@@ -341,7 +403,7 @@ struct BudgetListView: View {
         case .business:
             return "🏢 \(content)"
         case .personal:
-            return "ðŸ‘¤ \(content)"
+            return "👤 \(content)"
         case .all:
             return content
         }
@@ -426,8 +488,17 @@ struct BudgetListView: View {
                     .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
-                
-                // Current month budgets
+
+                // v3.3: Monthly budget summary card
+                if !currentMonthBudgets.isEmpty {
+                    monthBudgetSummaryCard
+                        .padding(.horizontal)
+                        .opacity(viewAppeared ? 1 : 0.001)
+                        .offset(y: viewAppeared ? 0 : 15)
+                        .animation(FLOAnimation.standard.delay(0.17), value: viewAppeared)
+                }
+
+                // Build 10: Budget Circles Grid (replaces individual card list)
                 if currentMonthBudgets.isEmpty {
                     noBudgetsThisMonth
                         .padding(.horizontal)
@@ -435,27 +506,15 @@ struct BudgetListView: View {
                         .scaleEffect(viewAppeared ? 1 : 0.95)
                         .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                 } else {
-                    ForEach(Array(currentMonthBudgets.enumerated()), id: \.element.id) { index, budget in
-                        NavigationLink(destination: EditBudgetView(budget: budget)) {
-                            BudgetCardWithComparison(
-                                budget: budget,
-                                currentMonthStart: currentMonthStart,
-                                previousMonthStart: previousMonthStart,
-                                previousMonthBudgets: previousMonthBudgets,
-                                allTransactions: allTransactions,
-                                previousMonthName: previousMonthName
-                            )
+                    DashboardBudgetCircles(
+                        budgets: budgetCircleItems,
+                        onTap: { budget in
+                            selectedBudgetForDetail = budget
                         }
-                        .buttonStyle(PlainButtonStyle())
-                        .padding(.horizontal)
-                        .opacity(viewAppeared ? 1 : 0.001)
-                        .offset(y: viewAppeared ? 0 : 20)
-                        .animation(
-                            FLOAnimation.standard
-                            .delay(0.2 + Double(index) * 0.05),
-                            value: viewAppeared
-                        )
-                    }
+                    )
+                    .opacity(viewAppeared ? 1 : 0.001)
+                    .offset(y: viewAppeared ? 0 : 20)
+                    .animation(FLOAnimation.standard.delay(0.22), value: viewAppeared)
                 }
                 
                 // View History button
@@ -544,9 +603,9 @@ struct BudgetListView: View {
             .accessibilityHint("Double tap to see detailed budget history")
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .floCardShadow()
         .accessibilityElement(children: .contain)
         .accessibilityLabel(wrapUpBannerAccessibilityLabel)
     }
@@ -615,8 +674,147 @@ struct BudgetListView: View {
         }
     }
     
+    // MARK: - Monthly Budget Summary Card (v3.3)
+
+    @State private var animatedMonthlyProgress: Double = 0
+
+    private var monthBudgetSummaryCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            HStack {
+                Image(systemName: "chart.pie.fill")
+                    .foregroundStyle(Color.brandPrimary)
+                    .accessibilityHidden(true)
+
+                Text("\(currentMonthName) Budget Summary")
+                    .font(.headline)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                Spacer()
+
+                Text("\(Int(monthlyProgress * 100))%")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(monthlyProgressColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+            }
+
+            // Progress bar
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.1))
+                        .frame(height: 10)
+
+                    Rectangle()
+                        .fill(monthlyProgressColor)
+                        .frame(width: geometry.size.width * animatedMonthlyProgress, height: 10)
+                }
+                .cornerRadius(5)
+            }
+            .frame(height: 10)
+            .accessibilityHidden(true)
+
+            // Amounts row — adaptive layout for accessibility sizes
+            if isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    summaryAmountsContent
+                }
+            } else {
+                HStack {
+                    summaryAmountsContent
+                }
+            }
+        }
+        .padding()
+        .background(Color.floSecondarySystemBackground)
+        .cornerRadius(12)
+        .floCardShadow()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(monthlySummaryAccessibilityLabel)
+        .accessibilityAddTraits(.isSummaryElement)
+        .onAppear {
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.2)) {
+                animatedMonthlyProgress = monthlyProgress
+            }
+        }
+        .onChange(of: monthlyProgress) { oldValue, newValue in
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                animatedMonthlyProgress = newValue
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var summaryAmountsContent: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Spent")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Text(monthlySpentTotal.formatted(.currency(code: "USD")))
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .contentTransition(.numericText())
+        }
+
+        if !isAccessibilitySize {
+            Spacer()
+        }
+
+        VStack(alignment: isAccessibilitySize ? .leading : .center, spacing: 2) {
+            Text("Budgeted")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Text(monthlyBudgetTotal.formatted(.currency(code: "USD")))
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+        }
+
+        if !isAccessibilitySize {
+            Spacer()
+        }
+
+        VStack(alignment: isAccessibilitySize ? .leading : .trailing, spacing: 2) {
+            Text("Remaining")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Text(monthlyRemainingTotal.formatted(.currency(code: "USD")))
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(monthlyRemainingTotal < 0 ? Color.expenseRed : Color.incomeGreen)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .contentTransition(.numericText())
+        }
+    }
+
+    private var monthlySummaryAccessibilityLabel: String {
+        let spent = AccessibilityFormatters.spokenCurrency(monthlySpentTotal)
+        let budgeted = AccessibilityFormatters.spokenCurrency(monthlyBudgetTotal)
+        let remaining = AccessibilityFormatters.spokenCurrency(monthlyRemainingTotal)
+        var label = "Monthly budget summary. Spent \(spent) of \(budgeted) budgeted, \(remaining) remaining."
+        if monthlyRemainingTotal < 0 {
+            label += " Over budget."
+        } else if monthlyProgress >= 0.8 {
+            label += " Approaching budget limit."
+        }
+        return label
+    }
+
     // MARK: - No Budgets This Month
-    
+
     private var noBudgetsThisMonth: some View {
         VStack(spacing: 16) {
             Image(systemName: "calendar.badge.plus")
@@ -656,9 +854,9 @@ struct BudgetListView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(32)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .floCardShadow()
         .accessibilityElement(children: .combine)
         .accessibilityLabel(noBudgetsAccessibilityLabel)
     }
@@ -724,7 +922,7 @@ struct BudgetListView: View {
             .foregroundStyle(Color.brandPrimary)
             .frame(maxWidth: .infinity)
             .padding()
-            .background(Color(.secondarySystemBackground))
+            .background(Color.floSecondarySystemBackground)
             .cornerRadius(12)
         }
         .accessibilityLabel("View Budget History")
@@ -781,8 +979,9 @@ struct BudgetListView: View {
             .onDelete(perform: deleteRecurring)
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
-    
+
     // MARK: - Empty State Messages
     
     private var emptyBudgetsTitle: String {
@@ -931,7 +1130,7 @@ struct BudgetCardWithComparison: View {
                 
                 Spacer()
                 
-                Text(budget.financeType == .business ? "🏢" : "🏤")
+                Text(budget.financeType == .business ? "🏢" : "👤")
                     .font(.caption)
                     .accessibilityLabel(budget.financeType == .business ? "Business" : "Personal")
             }
@@ -981,9 +1180,9 @@ struct BudgetCardWithComparison: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .floCardShadow()
         .accessibilityElement(children: .combine)
         .accessibilityLabel(budgetAccessibilityLabel)
         .accessibilityHint("Double tap to edit this budget")

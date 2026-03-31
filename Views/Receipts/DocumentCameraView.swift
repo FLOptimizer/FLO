@@ -29,6 +29,7 @@
 import SwiftUI
 import VisionKit
 
+#if canImport(UIKit)
 struct DocumentCameraView: UIViewControllerRepresentable {
     @Binding var image: UIImage?
     @Environment(\.dismiss) var dismiss
@@ -108,7 +109,7 @@ struct DocumentCameraView: UIViewControllerRepresentable {
             }
             
             #if DEBUG
-            print("âŒ Document Camera Error: \(error.localizedDescription)")
+            print("❌ Document Camera Error: \(error.localizedDescription)")
             #endif
             
             parent.dismiss()
@@ -132,3 +133,4 @@ struct DocumentCameraView: UIViewControllerRepresentable {
             .foregroundStyle(.secondary)
     }
 }
+#endif

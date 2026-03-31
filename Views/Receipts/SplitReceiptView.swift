@@ -73,10 +73,7 @@ struct SplitReceiptView: View {
     
     // Helper to format currency for accessibility
     private func formatCurrency(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = currencyCode
-        return formatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
+        NumberFormatter.appCurrency.string(from: NSNumber(value: amount)) ?? "\(amount)"
     }
     
     init(receipt: ReceiptData) {
@@ -84,7 +81,7 @@ struct SplitReceiptView: View {
         _businessPercentage = State(initialValue: receipt.businessPercentage)
         _splitNotes = State(initialValue: receipt.splitNotes ?? "")
         
-        let preselected = Set(receipt.lineItems
+        let preselected = Set((receipt.lineItems ?? [])
             .filter { $0.isBusiness }
             .map { $0.id })
         _selectedLineItems = State(initialValue: preselected)
@@ -337,7 +334,7 @@ struct SplitReceiptView: View {
     private var lineItemsSplitSection: some View {
         Section {
             if receipt.hasLineItems {
-                ForEach(receipt.lineItems, id: \.id) { item in
+                ForEach(receipt.lineItems ?? [], id: \.id) { item in
                     AnimatedLineItemRow(
                         item: item,
                         isSelected: selectedLineItems.contains(item.id),
@@ -539,7 +536,7 @@ struct SplitReceiptView: View {
         case .percentage:
             return receipt.totalAmount * (businessPercentage / 100.0)
         case .lineItems:
-            return receipt.lineItems
+            return (receipt.lineItems ?? [])
                 .filter { selectedLineItems.contains($0.id) }
                 .reduce(0) { $0 + $1.totalAmount }
         case .fixedAmount:
@@ -595,7 +592,7 @@ struct SplitReceiptView: View {
             selectedLineItems.insert(id)
         }
         
-        let businessTotal = receipt.lineItems
+        let businessTotal = (receipt.lineItems ?? [])
             .filter { selectedLineItems.contains($0.id) }
             .reduce(0) { $0 + $1.totalAmount }
         
@@ -626,8 +623,8 @@ struct SplitReceiptView: View {
         receipt.modifiedDate = Date()
         
         if splitMode == .lineItems {
-            for index in receipt.lineItems.indices {
-                receipt.lineItems[index].isBusiness = selectedLineItems.contains(receipt.lineItems[index].id)
+            for index in (receipt.lineItems ?? []).indices {
+                receipt.lineItems?[index].isBusiness = selectedLineItems.contains(receipt.lineItems?[index].id ?? UUID())
             }
         }
         
@@ -695,12 +692,9 @@ private struct AnimatedLineItemRow: View {
     @State private var checkmarkScale: CGFloat = 1.0
     
     private func formatCurrency(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = currencyCode
-        return formatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
+        NumberFormatter.appCurrency.string(from: NSNumber(value: amount)) ?? "\(amount)"
     }
-    
+
     var body: some View {
         Button(action: {
             onToggle()

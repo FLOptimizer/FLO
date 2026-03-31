@@ -70,9 +70,9 @@ struct BusinessDeductionsSummaryCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .floCardShadow()
         // v1.1: Card accessible
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Tax Deductions: \(AccessibilityFormatters.spokenCurrency(deductions)). Reducing taxable income.")

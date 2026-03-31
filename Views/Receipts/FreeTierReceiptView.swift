@@ -1,8 +1,13 @@
 //  FreeTierReceiptView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.4 - Accessibility Audit Pass (Sprint 10a)
+//  Version 1.5 - Penny-Up Currency Input
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.5 - Penny-Up Currency Input:
+//  ✅ REPLACED: Old TextField + String amount with CurrencyInputField component
+//  ✅ CHANGED: Amount state from String to Double
+//  ✅ UPDATED: isFormValid, saveReceipt(), extractBasicInfo() to use Double directly
 //
 //  CHANGES v1.3:
 //  ✅ Screen change announcement on appear
@@ -45,6 +50,9 @@ import SwiftUI
 import SwiftData
 import PhotosUI
 import Vision
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct FreeTierReceiptView: View {
     @Environment(\.dismiss) private var dismiss
@@ -66,7 +74,7 @@ struct FreeTierReceiptView: View {
     
     // Manual entry fields
     @State private var merchantName = ""
-    @State private var amount = ""
+    @State private var amount: Double = 0
     @State private var transactionDate = Date()
     @State private var selectedCategory: Category?
     @State private var financeType: Transaction.FinanceType = .business
@@ -87,7 +95,7 @@ struct FreeTierReceiptView: View {
     }
     
     private var isFormValid: Bool {
-        !merchantName.isEmpty && Double(amount) != nil && Double(amount)! > 0
+        !merchantName.isEmpty && amount > 0
     }
     
     // v1.2: Check if within receipt limit
@@ -140,7 +148,7 @@ struct FreeTierReceiptView: View {
                             showingSubscription: $showingSubscription
                         )
                         .padding()
-                        .background(Color(.secondarySystemBackground))
+                        .background(Color.floSecondarySystemBackground)
                         .cornerRadius(12)
                     }
                     
@@ -148,7 +156,7 @@ struct FreeTierReceiptView: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.floSystemGroupedBackground)
             .navigationTitle("Capture Receipt")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -176,9 +184,11 @@ struct FreeTierReceiptView: View {
                     }
                 }
             }
+            #if canImport(UIKit)
             .sheet(isPresented: $showingCamera) {
                 FreeTierCameraView(image: $selectedImage)
             }
+            #endif
             .photosPicker(isPresented: $showingPhotoPicker, selection: $photoPickerItem, matching: .images)
             .onChange(of: photoPickerItem) { _, newItem in
                 Task {
@@ -200,6 +210,20 @@ struct FreeTierReceiptView: View {
                 SubscriptionView()
             }
             // v1.2: Limit reached overlay
+            #if os(macOS)
+            .sheet(isPresented: $showingLimitReached) {
+                LimitReachedOverlay(
+                    limitType: .receipts,
+                    currentCount: usageLimitService?.totalReceiptCount ?? 20,
+                    limit: subscriptionManager.currentTier.receiptStorageLimit ?? 20,
+                    showingSubscription: $showingSubscription,
+                    onDismiss: {
+                        showingLimitReached = false
+                        dismiss()
+                    }
+                )
+            }
+            #else
             .fullScreenCover(isPresented: $showingLimitReached) {
                 LimitReachedOverlay(
                     limitType: .receipts,
@@ -212,6 +236,7 @@ struct FreeTierReceiptView: View {
                     }
                 )
             }
+            #endif
             .alert("Receipt Saved", isPresented: $showingSaveConfirmation) {
                 Button("OK") {
                     dismiss()
@@ -293,12 +318,12 @@ struct FreeTierReceiptView: View {
             if let image = selectedImage {
                 // Show captured image
                 ZStack(alignment: .topTrailing) {
-                    Image(uiImage: image)
+                    Image(platformImage: image)
                         .resizable()
                         .scaledToFit()
                         .frame(maxHeight: 250)
                         .cornerRadius(12)
-                        .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
+                        .floCardShadow(y: 4)
                         .accessibilityLabel("Captured receipt image")
                     
                     // Replace image button
@@ -307,7 +332,7 @@ struct FreeTierReceiptView: View {
                         selectedImage = nil
                         extractedText = ""
                         merchantName = ""
-                        amount = ""
+                        amount = 0
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title2)
@@ -336,7 +361,7 @@ struct FreeTierReceiptView: View {
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(8)
-                            .background(Color(.tertiarySystemBackground))
+                            .background(Color.floTertiarySystemBackground)
                             .cornerRadius(8)
                     } label: {
                         HStack {
@@ -400,14 +425,14 @@ struct FreeTierReceiptView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 20)
-                            .background(Color(.secondarySystemBackground))
+                            .background(Color.floSecondarySystemBackground)
                             .foregroundStyle(.primary)
                             .cornerRadius(12)
                         }
                     }
                 }
                 .padding(24)
-                .background(Color(.secondarySystemBackground))
+                .background(Color.floSecondarySystemBackground)
                 .cornerRadius(16)
             }
         }
@@ -443,14 +468,11 @@ struct FreeTierReceiptView: View {
                 Text("Amount")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                
-                HStack {
-                    Text("$")
-                        .foregroundStyle(.secondary)
-                    TextField("0.00", text: $amount)
-                        .keyboardType(.decimalPad)
-                        .textFieldStyle(.roundedBorder)
-                }
+
+                CurrencyInputField(
+                    amount: $amount,
+                    accessibilityLabelText: "Receipt amount"
+                )
             }
             
             // Date
@@ -505,7 +527,7 @@ struct FreeTierReceiptView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(16)
     }
     
@@ -557,8 +579,8 @@ struct FreeTierReceiptView: View {
            let range = Range(match.range(at: 1), in: text) {
             let extractedAmount = String(text[range])
             // Only auto-fill if user hasn't entered anything
-            if amount.isEmpty {
-                amount = extractedAmount
+            if amount == 0, let parsedOCR = Double(extractedAmount) {
+                amount = parsedOCR
             }
         }
         
@@ -586,8 +608,8 @@ struct FreeTierReceiptView: View {
             return
         }
         
+        let amountValue = amount
         guard let image = selectedImage,
-              let amountValue = Double(amount),
               amountValue > 0 else {
             HapticService.play(.error)
             return
@@ -650,6 +672,7 @@ struct FreeTierReceiptView: View {
 
 // MARK: - Free Tier Camera View (renamed to avoid conflict with existing CameraView)
 
+#if canImport(UIKit)
 struct FreeTierCameraView: UIViewControllerRepresentable {
     @Binding var image: UIImage?
     @Environment(\.dismiss) private var dismiss
@@ -686,6 +709,7 @@ struct FreeTierCameraView: UIViewControllerRepresentable {
         }
     }
 }
+#endif
 
 // NOTE: PhotoStorageManager already exists in the project - using existing implementation
 

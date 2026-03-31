@@ -166,7 +166,7 @@ struct InvoiceDetailView: View {
             }
             .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
         .navigationTitle(invoice.invoiceNumber)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -401,7 +401,7 @@ struct InvoiceDetailView: View {
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     Rectangle()
-                        .fill(Color(.separator))
+                        .fill(Color.secondary.opacity(0.3))
                         .frame(height: 12)
                     
                     Rectangle()
@@ -499,7 +499,7 @@ struct InvoiceDetailView: View {
                 .accessibilityAddTraits(.isHeader)
             
             VStack(spacing: 8) {
-                ForEach(Array(invoice.payments.enumerated()), id: \.element.id) { index, payment in
+                ForEach(Array((invoice.payments ?? []).enumerated()), id: \.element.id) { index, payment in
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(payment.amount.formatted(.currency(code: "USD")))
@@ -535,7 +535,7 @@ struct InvoiceDetailView: View {
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(paymentRowLabel(payment))
                     
-                    if payment != invoice.payments.last {
+                    if payment != invoice.payments?.last {
                         Divider()
                     }
                 }
@@ -683,13 +683,13 @@ struct InvoiceDetailView: View {
                 .accessibilityAddTraits(.isHeader)
             
             VStack(spacing: 8) {
-                ForEach(Array(invoice.items.enumerated()), id: \.element.id) { index, item in
+                ForEach(Array((invoice.items ?? []).enumerated()), id: \.element.id) { index, item in
                     LineItemRow(item: item)
                         .opacity(contentAppeared ? 1 : 0.001)
                         .offset(x: contentAppeared ? 0 : -15)
                         .animation(FLOAnimation.standard.delay(Double(index) * 0.03), value: contentAppeared)
                     
-                    if item != invoice.items.last {
+                    if item != invoice.items?.last {
                         Divider()
                     }
                 }
@@ -1116,11 +1116,11 @@ struct AnimatedSecondaryButtonStyle: ButtonStyle {
             .foregroundStyle(.primary)
             .padding()
             .frame(maxWidth: .infinity)
-            .background(Color(.secondarySystemBackground))
+            .background(Color.floSecondarySystemBackground)
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color(.separator))
+                    .stroke(Color.secondary.opacity(0.3))
             )
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .opacity(configuration.isPressed ? 0.8 : 1.0)
@@ -1214,24 +1214,33 @@ struct PaymentLinkRow: View {
     }
 }
 
+#if canImport(UIKit)
 private struct ActivityView: UIViewControllerRepresentable {
     let activityItems: [Any]
-    
+
     func makeUIViewController(context: Context) -> UIActivityViewController {
         UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
     }
-    
+
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
+#else
+private struct ActivityView: View {
+    let activityItems: [Any]
+    var body: some View {
+        Text("Share not available on macOS")
+    }
+}
+#endif
 
 extension View {
     func card() -> some View {
         self
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(Color(.systemBackground))
+            .background(Color.floSystemBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.05), radius: 8)
+            .floCardShadow()
     }
 }
 

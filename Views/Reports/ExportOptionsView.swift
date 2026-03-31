@@ -55,7 +55,9 @@
 
 import SwiftUI
 import SwiftData
+#if canImport(UIKit)
 import UIKit
+#endif
 import UniformTypeIdentifiers
 
 struct ExportOptionsView: View {
@@ -208,7 +210,7 @@ struct ExportOptionsView: View {
                                 .foregroundStyle(.secondary)
                         }
                         .padding()
-                        .background(Color(.secondarySystemBackground))
+                        .background(Color.floSecondarySystemBackground)
                         .cornerRadius(10)
                         
                         // Export buttons preview
@@ -224,7 +226,7 @@ struct ExportOptionsView: View {
                                     .foregroundStyle(.secondary)
                             }
                             .padding()
-                            .background(Color(.secondarySystemBackground))
+                            .background(Color.floSecondarySystemBackground)
                             .cornerRadius(10)
                             
                             HStack {
@@ -238,7 +240,7 @@ struct ExportOptionsView: View {
                                     .foregroundStyle(.secondary)
                             }
                             .padding()
-                            .background(Color(.secondarySystemBackground))
+                            .background(Color.floSecondarySystemBackground)
                             .cornerRadius(10)
                         }
                     }
@@ -323,7 +325,7 @@ struct ExportOptionsView: View {
                     )
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground))
+                .background(Color.floSecondarySystemBackground)
                 .cornerRadius(12)
                 .padding(.horizontal)
                 .opacity(viewAppeared ? 1 : 0.001)
@@ -399,7 +401,7 @@ struct ExportOptionsView: View {
             }
             .padding(.vertical)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
     }
     
     // MARK: - Export Content (Pro Users Only)
@@ -703,25 +705,14 @@ struct ExportOptionsView: View {
         csvLines.append("# Generated: \(Date().formatted(date: .long, time: .shortened))")
         csvLines.append("")
         
-        // Configure formatters
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .short
-        dateFormatter.timeStyle = .none
-        
-        let amountFormatter = NumberFormatter()
-        amountFormatter.numberStyle = .decimal
-        amountFormatter.minimumFractionDigits = 2
-        amountFormatter.maximumFractionDigits = 2
-        amountFormatter.locale = Locale(identifier: "en_US_POSIX")
-        
         // Data rows
         for trip in filteredBusinessTrips.sorted(by: { $0.startDate < $1.startDate }) {
-            let date = dateFormatter.string(from: trip.startDate)
+            let date = DateFormatter.shortDate.string(from: trip.startDate)
             let startLocation = escapeCSVField(trip.startAddress ?? "Unknown")
             let endLocation = escapeCSVField(trip.endAddress ?? "Unknown")
             let distance = String(format: "%.2f", trip.distanceMiles)
             let purpose = escapeCSVField(trip.purpose.displayName)
-            let deduction = amountFormatter.string(from: NSNumber(value: trip.deductionAmount)) ?? String(format: "%.2f", trip.deductionAmount)
+            let deduction = NumberFormatter.csvDecimal.string(from: NSNumber(value: trip.deductionAmount)) ?? String(format: "%.2f", trip.deductionAmount)
             let notes = escapeCSVField(trip.notes ?? "")
             
             csvLines.append("\(date),\(startLocation),\(endLocation),\(distance),\(purpose),\(deduction),\(notes)")
@@ -855,9 +846,10 @@ struct ExportOptionsView: View {
     }
     
     private func presentShareSheet(url: URL) {
+        #if canImport(UIKit)
         // Create activity items with proper type
         let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-        
+
         // Exclude activities that don't make sense for CSV files
         activityVC.excludedActivityTypes = [
             .assignToContact,
@@ -869,28 +861,32 @@ struct ExportOptionsView: View {
             .postToVimeo,
             .postToTencentWeibo
         ]
-        
+
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let rootVC = windowScene.windows.first?.rootViewController {
             var topVC = rootVC
             while let presented = topVC.presentedViewController {
                 topVC = presented
             }
-            
+
             // iPad support
             activityVC.popoverPresentationController?.sourceView = topVC.view
             activityVC.popoverPresentationController?.sourceRect = CGRect(x: topVC.view.bounds.midX, y: 100, width: 0, height: 0)
             activityVC.popoverPresentationController?.permittedArrowDirections = .up
-            
+
             topVC.present(activityVC, animated: true)
         }
+        #else
+        let picker = NSSharingServicePicker(items: [url])
+        if let window = NSApplication.shared.keyWindow,
+           let contentView = window.contentView {
+            picker.show(relativeTo: .zero, of: contentView, preferredEdge: .minY)
+        }
+        #endif
     }
     
     private func formatCurrency(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: amount)) ?? "$0"
+        NumberFormatter.appCurrencyCompact.string(from: NSNumber(value: amount)) ?? "$0"
     }
 }
 

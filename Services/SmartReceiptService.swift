@@ -25,7 +25,9 @@
 import Foundation
 import SwiftData
 import Vision
+#if canImport(UIKit)
 import UIKit
+#endif
 
 @MainActor
 class SmartReceiptService {

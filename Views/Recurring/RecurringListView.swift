@@ -1,8 +1,15 @@
 //  RecurringListView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.4
+//  Version 2.6 - Accessibility Audit Fixes
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.6 - Accessibility Audit:
+//  ✅ FIXED: Active rows missing .isButton trait for onTapGesture
+//  ✅ FIXED: Paused rows missing accessibility hint for swipe actions
+//
+//  CHANGES v2.5:
+//  ✅ ADDED: DetectedPatternsSection as first section in List (auto-detected recurring patterns)
 //
 //  CHANGES v2.4:
 //  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters (building and person emoji)
@@ -46,6 +53,7 @@ struct RecurringListView: View {
     var body: some View {
         NavigationStack {
             List {
+                DetectedPatternsSection()  // v2.5: Auto-detected recurring patterns
                 activeSection
                 pausedSection
             }
@@ -106,6 +114,7 @@ struct RecurringListView: View {
                             HapticService.play(.light)
                             recurringToEdit = recur
                         }
+                        .accessibilityAddTraits(.isButton)
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
                                 HapticService.play(.heavy)
@@ -141,6 +150,7 @@ struct RecurringListView: View {
                 ForEach(Array(pausedRecurring.enumerated()), id: \.element.id) { index, recur in
                     RecurringRow(recurring: recur)
                         .opacity(0.6)
+                        .accessibilityHint("Swipe right to resume, swipe left to delete")
                         .swipeActions(edge: .leading) {
                             Button {
                                 HapticService.play(.medium)
@@ -191,7 +201,7 @@ struct RecurringListView: View {
                 HapticService.play(.success)
             } catch {
                 HapticService.play(.error)
-                print("âŒ Failed to toggle recurring: \(error)")
+                print("❌ Failed to toggle recurring: \(error)")
             }
         }
     }
@@ -205,7 +215,7 @@ struct RecurringListView: View {
                 HapticService.play(.success)
             } catch {
                 HapticService.play(.error)
-                print("âŒ Failed to delete recurring: \(error)")
+                print("❌ Failed to delete recurring: \(error)")
             }
         }
     }
@@ -291,7 +301,7 @@ struct RecurringRow: View {
                 }
             }
             
-            Text(recurring.financeType == .business ? "ðŸ¢ Business" : "ðŸ‘¤ Personal")
+            Text(recurring.financeType == .business ? "🏢 Business" : "👤 Personal")
                 .font(.caption2)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)

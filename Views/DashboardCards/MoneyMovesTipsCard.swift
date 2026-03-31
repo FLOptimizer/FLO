@@ -46,10 +46,11 @@ import SwiftUI
 import SwiftData
 
 struct MoneyMovesTipsCard: View {
-    
+
     @Query private var accounts: [Account]
-    @Query private var transactions: [Transaction]
-    
+    @State private var transactions: [Transaction] = []
+
+    @Environment(\.modelContext) private var modelContext
     @ObservedObject private var subscriptionManager = SubscriptionManager.shared
     @ObservedObject private var insightsService = InsightsService.shared
     
@@ -85,12 +86,16 @@ struct MoneyMovesTipsCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(16)
         .opacity(cardOpacity)
-        .onAppear {
+        .task {
+            loadData()
             loadTips()
             animateEntrance()
+        }
+        .onDisappear {
+            transactions = []
         }
         .onChange(of: accounts.count) { _, _ in
             loadTips()
@@ -111,10 +116,7 @@ struct MoneyMovesTipsCard: View {
     private var headerView: some View {
         HStack {
             HStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                    .foregroundStyle(.yellow)
-                    .font(.title3)
-                    .accessibilityHidden(true)
+                FLOBrandedIcon(icon: .moveMoney, size: .medium, color: .yellow)
                 
                 Text("Money Moves")
                     .font(.headline)
@@ -221,7 +223,7 @@ struct MoneyMovesTipsCard: View {
             }
         }
         .padding()
-        .background(Color(.tertiarySystemGroupedBackground))
+        .background(Color.floTertiarySystemBackground)
         .cornerRadius(12)
         .gesture(
             DragGesture(minimumDistance: 30)
@@ -315,8 +317,25 @@ struct MoneyMovesTipsCard: View {
         .accessibilityHint("Opens subscription options")
     }
     
+    // MARK: - Data Loading
+
+    private func loadData() {
+        let threeMonthsAgo = Calendar.current.date(byAdding: .month, value: -3, to: Date())!
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= threeMonthsAgo }
+        )
+
+        do {
+            transactions = try modelContext.fetch(descriptor)
+        } catch {
+            #if DEBUG
+            print("MoneyMovesTipsCard loadData error: \(error)")
+            #endif
+        }
+    }
+
     // MARK: - Actions
-    
+
     private func loadTips() {
         tips = insightsService.generateMoneyMovesTips(
             accounts: accounts,
@@ -350,13 +369,9 @@ struct MoneyMovesTipsCard: View {
     // MARK: - Helpers
     
     private func formatCurrency(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: amount)) ?? "$\(Int(amount))"
+        NumberFormatter.appCurrencyCompact.string(from: NSNumber(value: amount)) ?? "$\(Int(amount))"
     }
-    
+
     private func tipAccessibilityLabel(_ tip: MoneyMove) -> String {
         var label = "\(tip.title). \(tip.description)"
         if let savings = tip.potentialSavings {
@@ -544,10 +559,7 @@ struct MoneyMoveTipRow: View {
     }
     
     private func formatCurrency(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: amount)) ?? "$\(Int(amount))"
+        NumberFormatter.appCurrencyCompact.string(from: NSNumber(value: amount)) ?? "$\(Int(amount))"
     }
 }
 
@@ -649,10 +661,7 @@ struct CompactMoneyMoveChip: View {
     }
     
     private func formatCurrency(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: amount)) ?? "$\(Int(amount))"
+        NumberFormatter.appCurrencyCompact.string(from: NSNumber(value: amount)) ?? "$\(Int(amount))"
     }
 }
 
@@ -663,11 +672,11 @@ struct CompactMoneyMoveChip: View {
         MoneyMovesTipsCard()
             .padding()
     }
-    .background(Color(.systemGroupedBackground))
+    .background(Color.floSystemGroupedBackground)
 }
 
 #Preview("Compact Row") {
     CompactMoneyMovesRow()
         .padding(.vertical)
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
 }

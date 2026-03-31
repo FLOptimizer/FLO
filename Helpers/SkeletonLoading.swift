@@ -35,7 +35,7 @@ struct SkeletonShape: View {
     
     var body: some View {
         RoundedRectangle(cornerRadius: cornerRadius)
-            .fill(Color(.systemGray5))
+            .fill(Color.gray.opacity(0.2))
             .floShimmer()
     }
 }
@@ -47,7 +47,7 @@ struct SkeletonCircle: View {
     
     var body: some View {
         Circle()
-            .fill(Color(.systemGray5))
+            .fill(Color.gray.opacity(0.2))
             .frame(width: size, height: size)
             .floShimmer()
     }
@@ -209,7 +209,7 @@ struct DashboardCardSkeleton: View {
                 .frame(width: 100, height: 12)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
     }
 }
@@ -231,7 +231,7 @@ struct StatisticsCardSkeleton: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
     }
 }

@@ -1,8 +1,14 @@
 //  DebtPayoffCalculatorView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.2 - Dynamic Type verification
+//  Version 1.3 - Penny-Up Currency Input
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.3 - Penny-Up Currency Input:
+//  ✅ REPLACED: currentBalance and monthlyPayment TextFields with CurrencyInputField
+//  ✅ CHANGED: currentBalance and monthlyPayment state from String to Double
+//  ✅ SIMPLIFIED: balanceValue and paymentValue computed properties
+//  ✅ SKIPPED: interestRate (percentage) and remainingYears (integer) — not currency
 //
 //  CHANGES v1.1:
 //  ✅ Full VoiceOver accessibility coverage
@@ -48,9 +54,9 @@ struct DebtPayoffCalculatorView: View {
     
     @State private var debtType: DebtType = .mortgage
     @State private var debtName: String = "My Mortgage"
-    @State private var currentBalance: String = ""
+    @State private var currentBalance: Double = 0
     @State private var interestRate: String = ""
-    @State private var monthlyPayment: String = ""
+    @State private var monthlyPayment: Double = 0
     @State private var remainingYears: String = ""
     @State private var extraPayment: Double = 0
     @State private var selectedStrategy: PayoffStrategy = .oneSixthTrick
@@ -59,7 +65,9 @@ struct DebtPayoffCalculatorView: View {
     @State private var isCalculating = false
     @State private var showScheduleSheet = false
     @State private var showUpgradePrompt = false
-    
+
+    @FocusState private var isAnyFieldFocused: Bool
+
     private let debtService = DebtCalculationService.shared
     
     // MARK: - Computed Properties
@@ -69,15 +77,15 @@ struct DebtPayoffCalculatorView: View {
     }
     
     private var balanceValue: Double {
-        Double(currentBalance.replacingOccurrences(of: ",", with: "")) ?? 0
+        currentBalance
     }
-    
+
     private var rateValue: Double {
         Double(interestRate) ?? 0
     }
-    
+
     private var paymentValue: Double {
-        Double(monthlyPayment.replacingOccurrences(of: ",", with: "")) ?? 0
+        monthlyPayment
     }
     
     private var yearsValue: Int {
@@ -94,13 +102,27 @@ struct DebtPayoffCalculatorView: View {
             termMonths: yearsValue * 12
         )
     }
-    
-    private var oneSixthAmount: Double {
-        calculatedMonthlyPayment / 6.0
+
+    /// Effective monthly payment for the current debt type.
+    /// For amortized loans: the P&I payment. For credit cards: the average minimum from results, or estimated minimum.
+    private var effectiveMonthlyPayment: Double {
+        if debtType.isAmortized {
+            return calculatedMonthlyPayment
+        }
+        // For credit cards, use the avg min payment from results if available
+        if let minResult = results[.minimumOnly], minResult.monthlyPayment > 0 {
+            return minResult.monthlyPayment
+        }
+        // Fallback: estimate minimum payment
+        return max(balanceValue * 0.02, 25.0)
     }
-    
+
+    private var oneSixthAmount: Double {
+        effectiveMonthlyPayment / 6.0
+    }
+
     private var canCalculate: Bool {
-        balanceValue > 0 && rateValue > 0 && (paymentValue > 0 || yearsValue > 0)
+        balanceValue > 0 && rateValue > 0 && (paymentValue > 0 || yearsValue > 0 || !debtType.isAmortized)
     }
     
     // MARK: - Body
@@ -127,17 +149,18 @@ struct DebtPayoffCalculatorView: View {
                     // Results
                     if !results.isEmpty && isPremiumUser {
                         resultsSection
-                        
-                        // Comparison Chart
-                        comparisonChart
-                        
-                        // Action Buttons
-                        actionButtons
+
+                        // Chart & Actions (only if we have valid schedule data)
+                        if let selected = results[selectedStrategy] ?? results[.minimumOnly],
+                           !selected.schedule.isEmpty {
+                            comparisonChart
+                            actionButtons
+                        }
                     }
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.floSystemGroupedBackground)
             .navigationTitle("Debt Payoff Calculator")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -146,9 +169,26 @@ struct DebtPayoffCalculatorView: View {
                         dismiss()
                     }
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        isAnyFieldFocused = false
+                        #if canImport(UIKit)
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil
+                        )
+                        #endif
+                    }
+                }
             }
             .onChange(of: debtType) { _, newType in
                 updateDefaultsForDebtType(newType)
+            }
+            .onChange(of: selectedStrategy) { _, _ in
+                if !results.isEmpty {
+                    calculatePayoff()
+                }
             }
             .sheet(isPresented: $showScheduleSheet) {
                 if let result = results[selectedStrategy] {
@@ -194,7 +234,7 @@ struct DebtPayoffCalculatorView: View {
             .accessibilityHint("Opens subscription options")
         }
         .padding(24)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(16)
     }
     
@@ -232,17 +272,16 @@ struct DebtPayoffCalculatorView: View {
                 Text("Current Balance")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                
-                HStack {
-                    Text("$")
-                        .foregroundStyle(.secondary)
-                        .accessibilityHidden(true)
-                    TextField("250,000", text: $currentBalance)
-                        .keyboardType(.decimalPad)
-                        .accessibilityLabel("Current balance in dollars")
-                }
+
+                CurrencyInputField(
+                    amount: $currentBalance,
+                    placeholder: "$0.00",
+                    accessibilityLabelText: "Current balance",
+                    showDoneButton: false
+                )
+                .focused($isAnyFieldFocused)
                 .padding()
-                .background(Color(.tertiarySystemGroupedBackground))
+                .background(Color.floTertiarySystemBackground)
                 .cornerRadius(10)
             }
             
@@ -255,13 +294,14 @@ struct DebtPayoffCalculatorView: View {
                 HStack {
                     TextField("6.5", text: $interestRate)
                         .keyboardType(.decimalPad)
+                        .focused($isAnyFieldFocused)
                         .accessibilityLabel("Annual interest rate, percent")
                     Text("%")
                         .foregroundStyle(.secondary)
                         .accessibilityHidden(true)
                 }
                 .padding()
-                .background(Color(.tertiarySystemGroupedBackground))
+                .background(Color.floTertiarySystemBackground)
                 .cornerRadius(10)
             }
             
@@ -273,16 +313,15 @@ struct DebtPayoffCalculatorView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     
-                    HStack {
-                        Text("$")
-                            .foregroundStyle(.secondary)
-                            .accessibilityHidden(true)
-                        TextField("1,704", text: $monthlyPayment)
-                            .keyboardType(.decimalPad)
-                            .accessibilityLabel("Monthly principal and interest payment in dollars")
-                    }
+                    CurrencyInputField(
+                        amount: $monthlyPayment,
+                        placeholder: "$0.00",
+                        accessibilityLabelText: "Monthly payment",
+                        showDoneButton: false
+                    )
+                    .focused($isAnyFieldFocused)
                     .padding()
-                    .background(Color(.tertiarySystemGroupedBackground))
+                    .background(Color.floTertiarySystemBackground)
                     .cornerRadius(10)
                     
                     Text("Or leave blank and enter remaining years")
@@ -290,7 +329,7 @@ struct DebtPayoffCalculatorView: View {
                         .foregroundStyle(.secondary)
                 }
                 
-                if monthlyPayment.isEmpty {
+                if monthlyPayment == 0 {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Remaining Years")
                             .font(.subheadline)
@@ -299,13 +338,14 @@ struct DebtPayoffCalculatorView: View {
                         HStack {
                             TextField("30", text: $remainingYears)
                                 .keyboardType(.numberPad)
+                                .focused($isAnyFieldFocused)
                                 .accessibilityLabel("Remaining years on loan")
                             Text("years")
                                 .foregroundStyle(.secondary)
                                 .accessibilityHidden(true)
                         }
                         .padding()
-                        .background(Color(.tertiarySystemGroupedBackground))
+                        .background(Color.floTertiarySystemBackground)
                         .cornerRadius(10)
                     }
                 }
@@ -339,7 +379,7 @@ struct DebtPayoffCalculatorView: View {
             .accessibilityHint(canCalculate ? "Calculates payoff timeline and savings" : "Enter balance and interest rate first")
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(16)
     }
     
@@ -401,24 +441,31 @@ struct DebtPayoffCalculatorView: View {
                     }
                 }
                 .padding()
-                .background(Color(.tertiarySystemGroupedBackground))
+                .background(Color.floTertiarySystemBackground)
                 .cornerRadius(10)
             }
             
             // 1/6 Trick Explanation
-            if selectedStrategy == .oneSixthTrick && debtType.isAmortized {
+            if selectedStrategy == .oneSixthTrick {
                 oneSixthExplanation
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.floSecondarySystemGroupedBackground)
         .cornerRadius(16)
     }
     
     // MARK: - 1/6 Trick Explanation
     
     private var oneSixthExplanation: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let basePayment = effectiveMonthlyPayment
+        let extraAmount = basePayment / 6.0
+        let paymentLabel = debtType.isAmortized ? "Your P&I Payment" : "Avg Min Payment"
+        let explanationText = debtType.isAmortized
+            ? "Take your monthly P&I payment and divide by 6. Add that amount as extra principal each month."
+            : "Take your average minimum payment and divide by 6. Add that amount as extra payment each month."
+
+        return VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "lightbulb.fill")
                     .foregroundStyle(.yellow)
@@ -428,23 +475,23 @@ struct DebtPayoffCalculatorView: View {
                     .fontWeight(.semibold)
             }
             .accessibilityAddTraits(.isHeader)
-            
-            Text("Take your monthly P&I payment and divide by 6. Add that amount as extra principal each month.")
+
+            Text(explanationText)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            
+
             HStack(spacing: 8) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Your P&I Payment")
+                    Text(paymentLabel)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(debtService.formatCurrency(calculatedMonthlyPayment))
+                    Text(debtService.formatCurrency(basePayment))
                         .font(.headline)
                 }
-                
+
                 Image(systemName: "divide")
                     .foregroundStyle(.secondary)
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Divided by 6")
                         .font(.caption)
@@ -452,24 +499,24 @@ struct DebtPayoffCalculatorView: View {
                     Text("6")
                         .font(.headline)
                 }
-                
+
                 Image(systemName: "equal")
                     .foregroundStyle(.secondary)
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Extra Payment")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(debtService.formatCurrency(oneSixthAmount))
+                    Text(debtService.formatCurrency(extraAmount))
                         .font(.headline)
                         .foregroundStyle(.teal)
                 }
             }
             .padding()
-            .background(Color(.systemBackground))
+            .background(Color.floSystemBackground)
             .cornerRadius(10)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Your payment \(debtService.formatCurrency(calculatedMonthlyPayment)) divided by 6 equals \(debtService.formatCurrency(oneSixthAmount)) extra per month")
+            .accessibilityLabel("\(paymentLabel) \(debtService.formatCurrency(basePayment)) divided by 6 equals \(debtService.formatCurrency(extraAmount)) extra per month")
         }
         .padding()
         .background(Color.yellow.opacity(0.1))
@@ -477,138 +524,268 @@ struct DebtPayoffCalculatorView: View {
     }
     
     // MARK: - Results Section
-    
+
     private var resultsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
+            // Interest trap warning
+            if let standardResult = results[.minimumOnly], standardResult.interestTrap {
+                interestTrapWarning
+            }
+
             Text("Your Savings")
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
-            
+
             if let standardResult = results[.minimumOnly],
-               let selectedResult = results[selectedStrategy] {
-                
-                // Main Savings Card
+               !standardResult.interestTrap,
+               let selectedResult = results[selectedStrategy] ?? results[.minimumOnly] {
+
+                // Main Results Card
                 VStack(spacing: 20) {
-                    // Interest Saved
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Interest Saved")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Text(debtService.formatCurrency(selectedResult.interestSaved))
-                                .font(.title)
-                                .fontWeight(.bold)
-                                .foregroundStyle(.green)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.6)
-                        }
-                        
-                        Spacer()
-                        
-                        Image(systemName: "dollarsign.circle.fill")
-                            .font(.largeTitle)
-                            .foregroundStyle(.green.opacity(0.3))
-                            .accessibilityHidden(true)
-                    }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Interest saved: \(debtService.formatCurrency(selectedResult.interestSaved))")
-                    
-                    Divider()
-                    
-                    // Time Saved
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Time Saved")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            
-                            let yearsSaved = selectedResult.monthsSaved / 12
-                            let monthsRemaining = selectedResult.monthsSaved % 12
-                            
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                if yearsSaved > 0 {
-                                    Text("\(yearsSaved)")
-                                        .font(.title)
-                                        .fontWeight(.bold)
-                                        .foregroundStyle(.teal)
-                                    Text(yearsSaved == 1 ? "year" : "years")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                                if monthsRemaining > 0 {
-                                    Text("\(monthsRemaining)")
-                                        .font(.title)
-                                        .fontWeight(.bold)
-                                        .foregroundStyle(.teal)
-                                    Text(monthsRemaining == 1 ? "month" : "months")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        
-                        Spacer()
-                        
-                        Image(systemName: "clock.fill")
-                            .font(.largeTitle)
-                            .foregroundStyle(.teal.opacity(0.3))
-                            .accessibilityHidden(true)
-                    }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Time saved: \(formatMonths(selectedResult.monthsSaved))")
-                    
-                    Divider()
-                    
-                    // Comparison Row
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Standard Payoff")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(formatMonths(standardResult.totalMonths))
-                                .font(.subheadline)
-                        }
-                        
-                        Spacer()
-                        
-                        Image(systemName: "arrow.right")
-                            .foregroundStyle(.secondary)
-                            .accessibilityHidden(true)
-                        
-                        Spacer()
-                        
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text("Accelerated Payoff")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(formatMonths(selectedResult.totalMonths))
-                                .font(.subheadline)
-                                .foregroundStyle(.teal)
-                        }
-                    }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Standard payoff: \(formatMonths(standardResult.totalMonths)), accelerated payoff: \(formatMonths(selectedResult.totalMonths))")
-                    
-                    // Monthly Payment Increase
-                    if selectedResult.extraPayment > 0 {
-                        HStack {
-                            Image(systemName: "info.circle")
-                                .foregroundStyle(.secondary)
-                                .accessibilityHidden(true)
-                            Text("This requires paying \(debtService.formatCurrency(selectedResult.extraPayment)) extra per month")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .accessibilityElement(children: .combine)
+                    if selectedStrategy == .minimumOnly {
+                        // Show baseline payoff summary (no savings comparison)
+                        baselinePayoffSummary(result: standardResult)
+                    } else {
+                        // Show savings comparison vs minimum payments
+                        savingsComparison(standard: standardResult, selected: selectedResult)
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground))
+                .background(Color.floSecondarySystemGroupedBackground)
                 .cornerRadius(16)
             }
         }
     }
     
+    // MARK: - Interest Trap Warning
+
+    private var interestTrapWarning: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.red)
+                    .accessibilityHidden(true)
+                Text("Interest Trap Detected")
+                    .font(.headline)
+                    .foregroundStyle(.red)
+            }
+
+            Text("Your minimum payments don't cover the monthly interest. This debt will never be paid off with minimum payments alone. Increase your monthly payment above the interest charge to start reducing the balance.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            let monthlyInterest = balanceValue * (rateValue / 100.0 / 12.0)
+            if monthlyInterest > 0 {
+                Text("Monthly interest: \(debtService.formatCurrencyPrecise(monthlyInterest))")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.red.opacity(0.8))
+            }
+        }
+        .padding()
+        .background(Color.red.opacity(0.08))
+        .cornerRadius(16)
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: - Baseline Payoff Summary (Minimum Only)
+
+    @ViewBuilder
+    private func baselinePayoffSummary(result: PayoffResult) -> some View {
+        // Total Interest
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Total Interest")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(debtService.formatCurrency(result.totalInterest))
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.red)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            Spacer()
+            Image(systemName: "percent")
+                .font(.largeTitle)
+                .foregroundStyle(.red.opacity(0.3))
+                .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Total interest: \(debtService.formatCurrency(result.totalInterest))")
+
+        Divider()
+
+        // Payoff Timeline
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Payoff Timeline")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(formatMonths(result.totalMonths))
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.teal)
+            }
+            Spacer()
+            Image(systemName: "calendar")
+                .font(.largeTitle)
+                .foregroundStyle(.teal.opacity(0.3))
+                .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Payoff timeline: \(formatMonths(result.totalMonths))")
+
+        Divider()
+
+        // Total Cost
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Total Cost")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(debtService.formatCurrency(result.totalPaid))
+                    .font(.title2)
+                    .fontWeight(.bold)
+            }
+            Spacer()
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Total cost: \(debtService.formatCurrency(result.totalPaid))")
+
+        // Nudge to try accelerated strategy
+        HStack {
+            Image(systemName: "lightbulb.fill")
+                .foregroundStyle(.yellow)
+                .accessibilityHidden(true)
+            Text("Try the 1/6 Trick or Fixed Extra strategy to see how much you could save!")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: - Savings Comparison (Accelerated vs Minimum)
+
+    @ViewBuilder
+    private func savingsComparison(standard: PayoffResult, selected: PayoffResult) -> some View {
+        // Interest Saved
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Interest Saved")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(debtService.formatCurrency(selected.interestSaved))
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.green)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            Spacer()
+            Image(systemName: "dollarsign.circle.fill")
+                .font(.largeTitle)
+                .foregroundStyle(.green.opacity(0.3))
+                .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Interest saved: \(debtService.formatCurrency(selected.interestSaved))")
+
+        Divider()
+
+        // Time Saved
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Time Saved")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                timeSavedDisplay(months: selected.monthsSaved)
+            }
+            Spacer()
+            Image(systemName: "clock.fill")
+                .font(.largeTitle)
+                .foregroundStyle(.teal.opacity(0.3))
+                .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Time saved: \(formatMonths(selected.monthsSaved))")
+
+        Divider()
+
+        // Comparison Row
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Standard Payoff")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(formatMonths(standard.totalMonths))
+                    .font(.subheadline)
+            }
+            Spacer()
+            Image(systemName: "arrow.right")
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            Spacer()
+            VStack(alignment: .trailing, spacing: 4) {
+                Text("Accelerated Payoff")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(formatMonths(selected.totalMonths))
+                    .font(.subheadline)
+                    .foregroundStyle(.teal)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Standard payoff: \(formatMonths(standard.totalMonths)), accelerated payoff: \(formatMonths(selected.totalMonths))")
+
+        // Monthly Payment Increase
+        if selected.extraPayment > 0 {
+            HStack {
+                Image(systemName: "info.circle")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                Text("This requires paying \(debtService.formatCurrency(selected.extraPayment)) extra per month")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    @ViewBuilder
+    private func timeSavedDisplay(months: Int) -> some View {
+        let yearsSaved = months / 12
+        let monthsRemaining = months % 12
+
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            if yearsSaved > 0 {
+                Text("\(yearsSaved)")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.teal)
+                Text(yearsSaved == 1 ? "year" : "years")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            if monthsRemaining > 0 {
+                Text("\(monthsRemaining)")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.teal)
+                Text(monthsRemaining == 1 ? "month" : "months")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            if yearsSaved == 0 && monthsRemaining == 0 {
+                Text("—")
+                    .font(.title)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     // MARK: - Comparison Chart
     
     private var comparisonChart: some View {
@@ -618,7 +795,10 @@ struct DebtPayoffCalculatorView: View {
                 .accessibilityAddTraits(.isHeader)
             
             if let standardResult = results[.minimumOnly],
-               let selectedResult = results[selectedStrategy] {
+               !standardResult.interestTrap,
+               !standardResult.schedule.isEmpty,
+               let selectedResult = results[selectedStrategy] ?? results[.minimumOnly],
+               !selectedResult.schedule.isEmpty {
                 
                 Chart {
                     // Standard timeline
@@ -657,9 +837,16 @@ struct DebtPayoffCalculatorView: View {
                 .chartXAxis {
                     AxisMarks { value in
                         if let month = value.as(Int.self) {
+                            let maxMonths = standardResult.totalMonths
+                            // Adaptive label interval: show ~4-6 labels regardless of timeline
+                            let interval = max(6, (maxMonths / 5 / 12) * 12) // Round to nearest year
                             AxisValueLabel {
-                                Text(month % 60 == 0 ? "\(month/12)yr" : "")
-                                    .font(.caption2)
+                                if month == 0 || month % max(interval, 12) == 0 {
+                                    Text(month >= 12 ? "\(month/12)yr" : "\(month)mo")
+                                        .font(.caption2)
+                                } else {
+                                    Text("")
+                                }
                             }
                         }
                         AxisGridLine()
@@ -667,7 +854,7 @@ struct DebtPayoffCalculatorView: View {
                 }
                 .frame(height: 200)
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground))
+                .background(Color.floSecondarySystemGroupedBackground)
                 .cornerRadius(16)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Payoff timeline comparison chart")
@@ -691,7 +878,7 @@ struct DebtPayoffCalculatorView: View {
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground))
+                .background(Color.floSecondarySystemGroupedBackground)
                 .foregroundStyle(.teal)
                 .cornerRadius(12)
             }
@@ -717,43 +904,34 @@ struct DebtPayoffCalculatorView: View {
     
     private func calculatePayoff() {
         guard canCalculate else { return }
-        
+
         isCalculating = true
-        
+
+        let termMonths: Int? = debtType.isAmortized ? yearsValue * 12 : nil
         let debt = DebtInput(
             name: debtName,
             debtType: debtType,
             currentBalance: balanceValue,
             interestRate: rateValue,
             monthlyPayment: paymentValue > 0 ? paymentValue : 0,
-            remainingTermMonths: yearsValue * 12,
+            remainingTermMonths: termMonths,
             minimumPaymentPercent: 2.0,
             minimumPaymentFloor: 25.0
         )
-        
-        // Calculate with different extra payment based on strategy
-        let extra: Double?
-        switch selectedStrategy {
-        case .minimumOnly:
-            extra = nil
-        case .oneSixthTrick:
-            extra = calculatedMonthlyPayment / 6.0
-        case .fixed:
-            extra = extraPayment > 0 ? extraPayment : nil
-        default:
-            extra = nil
-        }
-        
+
+        // Extra payment for the fixed strategy (service handles 1/6 internally)
+        let extra: Double? = (selectedStrategy == .fixed && extraPayment > 0) ? extraPayment : nil
+
         results = debtService.calculatePayoff(debt: debt, extraPayment: extra)
-        
-        // Always calculate minimum as baseline
+
+        // Always ensure minimum baseline exists
         if results[.minimumOnly] == nil {
             let baselineResults = debtService.calculatePayoff(debt: debt, extraPayment: nil)
             if let baseline = baselineResults[.minimumOnly] {
                 results[.minimumOnly] = baseline
             }
         }
-        
+
         isCalculating = false
     }
     
@@ -772,9 +950,11 @@ struct DebtPayoffCalculatorView: View {
     
     private func formatCompactCurrency(_ amount: Double) -> String {
         if amount >= 1_000_000 {
-            return "$\(Int(amount / 1_000_000))M"
-        } else if amount >= 1_000 {
+            return String(format: "$%.1fM", amount / 1_000_000)
+        } else if amount >= 100_000 {
             return "$\(Int(amount / 1_000))K"
+        } else if amount >= 1_000 {
+            return String(format: "$%.1fK", amount / 1_000)
         } else {
             return "$\(Int(amount))"
         }
@@ -797,7 +977,7 @@ struct DebtTypeButton: View {
                     .font(.caption)
             }
             .frame(width: 80, height: 70)
-            .background(isSelected ? Color.teal.opacity(0.15) : Color(.tertiarySystemGroupedBackground))
+            .background(isSelected ? Color.teal.opacity(0.15) : Color.floTertiarySystemBackground)
             .foregroundStyle(isSelected ? .teal : .primary)
             .cornerRadius(12)
             .overlay(
@@ -824,7 +1004,7 @@ struct StrategyPill: View {
                 .fontWeight(isSelected ? .semibold : .regular)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(isSelected ? Color.teal : Color(.tertiarySystemGroupedBackground))
+                .background(isSelected ? Color.teal : Color.floTertiarySystemBackground)
                 .foregroundStyle(isSelected ? .white : .primary)
                 .cornerRadius(20)
         }
@@ -932,11 +1112,7 @@ struct AmortizationScheduleSheet: View {
     }
     
     private func formatCurrency(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: amount)) ?? "$\(Int(amount))"
+        NumberFormatter.appCurrencyCompact.string(from: NSNumber(value: amount)) ?? "$\(Int(amount))"
     }
 }
 

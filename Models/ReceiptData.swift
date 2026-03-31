@@ -14,51 +14,53 @@
 
 import Foundation
 import SwiftData
+#if canImport(UIKit)
 import UIKit
+#endif
 
 @Model
 final class ReceiptData {
-    @Attribute(.unique) var id: UUID
+    var id: UUID = UUID()
     var transactionID: UUID?  // Link to associated Transaction (if created)
     var bankTransactionID: String?  // For matching to imported bank transactions
-    
+
     // OCR Extracted Data
-    var merchantName: String
-    var totalAmount: Double
-    var date: Date
-    var rawOCRText: String  // Full OCR text for reference
-    
+    var merchantName: String = ""
+    var totalAmount: Double = 0.0
+    var date: Date = Date()
+    var rawOCRText: String = ""  // Full OCR text for reference
+
     // Enhanced Data
     var suggestedCategoryID: UUID?
     var suggestedCategoryName: String?
-    var categorySuggestionConfidence: Double  // 0.0 to 1.0
-    
+    var categorySuggestionConfidence: Double = 0.0  // 0.0 to 1.0
+
     // Receipt Image
     var imageData: Data?  // Compressed receipt image
     var imageURL: String?  // Alternative: store in file system
-    
+
     // Line Items (for split receipts) - FIXED: Use @Relationship
     @Relationship(deleteRule: .cascade, inverse: \ReceiptLineItem.receipt)
-    var lineItems: [ReceiptLineItem] = []
-    
+    var lineItems: [ReceiptLineItem]?
+
     // Business/Personal Split
-    var businessPercentage: Double  // 0-100: what % is business expense
+    var businessPercentage: Double = 100.0  // 0-100: what % is business expense
     var splitNotes: String?
-    
+
     // Matching Status
-    var matchStatus: MatchStatus
+    var matchStatus: MatchStatus = MatchStatus.unmatched
     var matchedDate: Date?
     var matchScore: Double?  // Confidence score for automatic matching
-    
+
     // Tax & Deduction
-    var isTaxDeductible: Bool
+    var isTaxDeductible: Bool = false
     var taxCategory: String?
-    var deductionFlagged: Bool  // Has user been reminded about this?
+    var deductionFlagged: Bool = false  // Has user been reminded about this?
     var deductionFlaggedDate: Date?
-    
+
     // Metadata
-    var createdDate: Date
-    var modifiedDate: Date
+    var createdDate: Date = Date()
+    var modifiedDate: Date = Date()
     var notes: String?
     
     init(
@@ -117,7 +119,7 @@ final class ReceiptData {
     }
     
     var hasLineItems: Bool {
-        !lineItems.isEmpty
+        !(lineItems ?? []).isEmpty
     }
     
     var isSplit: Bool {
@@ -159,12 +161,12 @@ extension ReceiptData {
 
 @Model
 final class ReceiptLineItem {
-    @Attribute(.unique) var id: UUID
+    var id: UUID = UUID()
     var receipt: ReceiptData?  // Back reference
-    var itemDescription: String  // Renamed from 'description' to avoid keyword conflict
-    var amount: Double
-    var quantity: Int
-    var isBusiness: Bool  // For split receipts
+    var itemDescription: String = ""  // Renamed from 'description' to avoid keyword conflict
+    var amount: Double = 0.0
+    var quantity: Int = 1
+    var isBusiness: Bool = true  // For split receipts
     var categoryID: UUID?
     var categoryName: String?
     

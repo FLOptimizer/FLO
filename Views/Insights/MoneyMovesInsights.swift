@@ -1,8 +1,11 @@
 //  MoneyMovesInsights.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - Updated IRS rates & UTF-8 fixes
+//  Version 1.2 — Transfer Exclusion Fix
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.2 — Transfer Exclusion:
+//  ✅ FIXED: personalizedSpendingTips() excludes transfers from spending analysis
 //
 //  Extension to InsightsService that adds "Money Moves" financial tips
 //  and debt optimization insights. Provides proactive guidance based on
@@ -131,16 +134,17 @@ extension InsightsService {
             let minFloor = card.minimumPaymentFloor ?? 25.0
             
             // Calculate minimum payment payoff
-            let schedule = debtService.generateCreditCardSchedule(
+            let scheduleResult = debtService.generateCreditCardSchedule(
                 balance: balance,
                 apr: apr,
                 minimumPercent: minPercent,
                 minimumFloor: minFloor,
                 extraPayment: 0
             )
-            
+            let schedule = scheduleResult.schedule
+
             guard schedule.count > 0 else { continue }
-            
+
             let totalInterestAtMinimum = schedule.last?.cumulativeInterest ?? 0
             
             // High interest warning
@@ -165,14 +169,15 @@ extension InsightsService {
             
             // Extra payment opportunity
             // Calculate savings from doubling minimum payment
-            let extraSchedule = debtService.generateCreditCardSchedule(
+            let extraScheduleResult = debtService.generateCreditCardSchedule(
                 balance: balance,
                 apr: apr,
                 minimumPercent: minPercent,
                 minimumFloor: minFloor,
                 extraPayment: minFloor // Add one minimum as extra
             )
-            
+            let extraSchedule = extraScheduleResult.schedule
+
             if extraSchedule.count > 0 {
                 let interestSaved = totalInterestAtMinimum - (extraSchedule.last?.cumulativeInterest ?? 0)
                 let monthsSaved = schedule.count - extraSchedule.count
@@ -409,7 +414,7 @@ extension InsightsService {
         
         // Get this month's transactions
         let thisMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
-        let thisMonthTxs = transactions.filter { $0.date >= thisMonth && !$0.isIncome }
+        let thisMonthTxs = transactions.filter { $0.date >= thisMonth && !$0.isIncome && !$0.isTransfer }
         
         // Group by category and find high spending
         let byCategory = Dictionary(grouping: thisMonthTxs) { $0.category?.name ?? "Uncategorized" }
@@ -456,11 +461,7 @@ extension InsightsService {
     }
     
     private func formatCurrency(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: amount)) ?? "$\(Int(amount))"
+        NumberFormatter.appCurrencyCompact.string(from: NSNumber(value: amount)) ?? "$\(Int(amount))"
     }
 }
 

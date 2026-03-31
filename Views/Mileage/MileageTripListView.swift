@@ -392,7 +392,7 @@ struct StatisticsCard: View {
             )
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
         .opacity(appeared ? 1 : 0.001)
         .offset(y: appeared ? 0 : 10)

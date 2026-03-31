@@ -519,9 +519,7 @@ struct PaymentScheduleEntry: Identifiable {
     
     /// Formatted date string (e.g., "Jan 2026")
     var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM yyyy"
-        return formatter.string(from: date)
+        return DateFormatter.shortMonthYear.string(from: date)
     }
     
     /// Percentage of payment going to principal

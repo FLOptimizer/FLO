@@ -1,8 +1,20 @@
 //  CSVCategorizationService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.0 - CSV Import auto-categorization engine
+//  Version 2.0 - Transfer Detection Engine
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.0:
+//  ✅ ADDED: detectTransfers() method — scans merchant names for transfer keywords
+//  ✅ ADDED: TransferKeyword struct — pattern matching with confidence scores
+//  ✅ ADDED: transferKeywords static array — comprehensive list of transfer indicators
+//  ✅ ADDED: Bank-provided category "Transfer" detection
+//  ✅ ADDED: Account number pattern detection (e.g., "TO CHK 4521")
+//  ✅ Sets detectedAsTransfer = true and isTransfer = true for auto-detected transfers
+//  ✅ User can override in review UI before commit
+//
+//  Version 1.0:
+//  - CSV Import auto-categorization engine
 //
 
 import Foundation
@@ -18,6 +30,210 @@ final class CSVCategorizationService {
         subsystem: "com.finchandpoppy.flo",
         category: "CSVCategorizationService"
     )
+    
+    // MARK: - Transfer Keyword Patterns
+    
+    /// Transfer keyword with associated confidence score
+    private struct TransferKeyword {
+        let pattern: String
+        let confidence: Double
+        let requiresWordBoundary: Bool
+        
+        init(_ pattern: String, confidence: Double, wordBoundary: Bool = false) {
+            self.pattern = pattern
+            self.confidence = confidence
+            self.requiresWordBoundary = wordBoundary
+        }
+    }
+    
+    /// Keywords that indicate a transaction is likely a transfer between accounts.
+    /// Higher confidence = more certain it's a transfer.
+    /// These patterns cover common bank descriptions for internal transfers.
+    private static let transferKeywords: [TransferKeyword] = [
+        // === HIGH CONFIDENCE (0.95-1.0) — Almost certainly transfers ===
+        TransferKeyword("TRANSFER TO", confidence: 1.0),
+        TransferKeyword("TRANSFER FROM", confidence: 1.0),
+        TransferKeyword("XFER TO", confidence: 1.0),
+        TransferKeyword("XFER FROM", confidence: 1.0),
+        TransferKeyword("ONLINE TRANSFER TO", confidence: 1.0),
+        TransferKeyword("ONLINE TRANSFER FROM", confidence: 1.0),
+        TransferKeyword("MOBILE TRANSFER TO", confidence: 1.0),
+        TransferKeyword("MOBILE TRANSFER FROM", confidence: 1.0),
+        TransferKeyword("INTERNAL TRANSFER", confidence: 1.0),
+        TransferKeyword("ACCOUNT TRANSFER", confidence: 1.0),
+        TransferKeyword("FUNDS TRANSFER", confidence: 1.0),
+        TransferKeyword("MOVE MONEY", confidence: 1.0),
+        TransferKeyword("OWNER'S DRAW", confidence: 1.0),
+        TransferKeyword("OWNERS DRAW", confidence: 1.0),
+        TransferKeyword("OWNER DRAW", confidence: 1.0),
+        TransferKeyword("OWNER CONTRIBUTION", confidence: 1.0),
+        TransferKeyword("CAPITAL CONTRIBUTION", confidence: 1.0),
+        
+        // === STRONG INDICATORS (0.85-0.94) — Very likely transfers ===
+        TransferKeyword("ZELLE TO", confidence: 0.90),
+        TransferKeyword("ZELLE FROM", confidence: 0.90),
+        TransferKeyword("ZELLE PAYMENT TO", confidence: 0.90),
+        TransferKeyword("ZELLE PAYMENT FROM", confidence: 0.90),
+        TransferKeyword("VENMO TO", confidence: 0.90),
+        TransferKeyword("VENMO FROM", confidence: 0.90),
+        TransferKeyword("VENMO CASHOUT", confidence: 0.95),
+        TransferKeyword("PAYPAL TRANSFER", confidence: 0.90),
+        TransferKeyword("PAYPAL INSTANT TRANSFER", confidence: 0.95),
+        TransferKeyword("CASH APP TO", confidence: 0.90),
+        TransferKeyword("CASH APP FROM", confidence: 0.90),
+        TransferKeyword("CASHAPP", confidence: 0.85),
+        TransferKeyword("WIRE TRANSFER", confidence: 0.90),
+        TransferKeyword("WIRE IN", confidence: 0.90),
+        TransferKeyword("WIRE OUT", confidence: 0.90),
+        TransferKeyword("INCOMING WIRE", confidence: 0.90),
+        TransferKeyword("OUTGOING WIRE", confidence: 0.90),
+        
+        // === MODERATE INDICATORS (0.70-0.84) — Likely transfers, verify ===
+        TransferKeyword("ACH TRANSFER", confidence: 0.80),
+        TransferKeyword("ACH CREDIT", confidence: 0.75),
+        TransferKeyword("ACH DEBIT", confidence: 0.70),
+        TransferKeyword("DIRECT DEPOSIT", confidence: 0.65),  // Could be payroll
+        TransferKeyword("ONLINE BANKING TRANSFER", confidence: 0.85),
+        TransferKeyword("TO SAVINGS", confidence: 0.90),
+        TransferKeyword("FROM SAVINGS", confidence: 0.90),
+        TransferKeyword("TO CHECKING", confidence: 0.90),
+        TransferKeyword("FROM CHECKING", confidence: 0.90),
+        TransferKeyword("TO CHK", confidence: 0.90),
+        TransferKeyword("FROM CHK", confidence: 0.90),
+        TransferKeyword("TO SAV", confidence: 0.90),
+        TransferKeyword("FROM SAV", confidence: 0.90),
+        TransferKeyword("SAVINGS TRANSFER", confidence: 0.90),
+        TransferKeyword("CHECKING TRANSFER", confidence: 0.90),
+        
+        // === BANK-SPECIFIC PATTERNS (0.80-0.95) ===
+        // Chase
+        TransferKeyword("CHASE QUICKPAY", confidence: 0.85),
+        TransferKeyword("CHASE TRANSFER", confidence: 0.90),
+        // Bank of America
+        TransferKeyword("BANK OF AMER MOBILE", confidence: 0.75),
+        TransferKeyword("BOFA TRANSFER", confidence: 0.90),
+        // Wells Fargo
+        TransferKeyword("WELLS FARGO TRANSFER", confidence: 0.90),
+        TransferKeyword("WF TRANSFER", confidence: 0.90),
+        // Capital One
+        TransferKeyword("CAPITAL ONE TRANSFER", confidence: 0.90),
+        // Generic bank transfers
+        TransferKeyword("MOBILE BANKING", confidence: 0.70),
+        TransferKeyword("INTERNET BANKING", confidence: 0.70),
+        
+        // === ACCOUNT NUMBER PATTERNS (handled separately) ===
+        // Pattern like "TO 1234" or "FROM ACCT 5678" detected via regex
+        
+        // === LOWER CONFIDENCE (0.50-0.69) — Possible transfers, review carefully ===
+        TransferKeyword("TRANSFER", confidence: 0.60, wordBoundary: true),
+        TransferKeyword("XFER", confidence: 0.60, wordBoundary: true),
+        TransferKeyword("ZELLE", confidence: 0.70, wordBoundary: true),
+        TransferKeyword("VENMO", confidence: 0.70, wordBoundary: true),
+    ]
+    
+    /// Bank-provided category values that indicate transfers
+    private static let transferBankCategories: Set<String> = [
+        "transfer",
+        "transfers",
+        "bank transfer",
+        "internal transfer",
+        "account transfer",
+        "wire transfer",
+        "money transfer",
+        "funds transfer",
+        "payment transfer",
+    ]
+    
+    // MARK: - Transfer Detection
+    
+    /// Detects likely transfers in parsed transactions based on keyword matching.
+    /// Sets `detectedAsTransfer` and `isTransfer` flags, plus `transferConfidence` score.
+    ///
+    /// - Parameter parsed: Array of parsed transactions to analyze
+    /// - Returns: Updated transactions with transfer detection applied
+    func detectTransfers(
+        parsed: [CSVParsedTransaction]
+    ) -> [CSVParsedTransaction] {
+        var transfersDetected = 0
+        
+        let updatedTransactions = parsed.map { transaction -> CSVParsedTransaction in
+            var updated = transaction
+            
+            // Check 1: Bank-provided category indicates transfer
+            if let bankCategory = transaction.bankCategory?.lowercased(),
+               Self.transferBankCategories.contains(bankCategory) {
+                updated.detectedAsTransfer = true
+                updated.isTransfer = true
+                updated.transferConfidence = 0.95  // High confidence from bank category
+                transfersDetected += 1
+                Self.logger.debug("Transfer detected via bank category: '\(transaction.merchantName)' (category: '\(bankCategory)')")
+                return updated
+            }
+            
+            // Check 2: Keyword matching in merchant name and description
+            let textToSearch = "\(transaction.merchantName) \(transaction.description)".uppercased()
+            var bestMatch: (pattern: String, confidence: Double)?
+            
+            for keyword in Self.transferKeywords {
+                let pattern = keyword.pattern.uppercased()
+                
+                if keyword.requiresWordBoundary {
+                    // Use word boundary matching for generic terms
+                    let wordPattern = "\\b\(NSRegularExpression.escapedPattern(for: pattern))\\b"
+                    if let regex = try? NSRegularExpression(pattern: wordPattern, options: .caseInsensitive) {
+                        let range = NSRange(textToSearch.startIndex..., in: textToSearch)
+                        if regex.firstMatch(in: textToSearch, options: [], range: range) != nil {
+                            if bestMatch == nil || keyword.confidence > bestMatch!.confidence {
+                                bestMatch = (keyword.pattern, keyword.confidence)
+                            }
+                        }
+                    }
+                } else {
+                    // Direct substring match for specific phrases
+                    if textToSearch.contains(pattern) {
+                        if bestMatch == nil || keyword.confidence > bestMatch!.confidence {
+                            bestMatch = (keyword.pattern, keyword.confidence)
+                        }
+                    }
+                }
+            }
+            
+            // Check 3: Account number pattern detection
+            // Matches patterns like "TO 1234", "FROM ACCT 5678", "CHK 9012", etc.
+            let accountPatterns = [
+                "(?:TO|FROM)\\s+(?:ACCT?|ACCOUNT)?\\s*#?\\d{4,}",  // TO ACCT 1234, FROM 5678
+                "(?:TO|FROM)\\s+(?:CHK|CHECKING|SAV|SAVINGS)\\s*#?\\d{4}",  // TO CHK 1234
+                "(?:ACCT?|ACCOUNT)\\s*#?\\d{4,}\\s*(?:TO|FROM)",  // ACCT 1234 TO
+            ]
+            
+            for pattern in accountPatterns {
+                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                    let range = NSRange(textToSearch.startIndex..., in: textToSearch)
+                    if regex.firstMatch(in: textToSearch, options: [], range: range) != nil {
+                        let accountConfidence = 0.85
+                        if bestMatch == nil || accountConfidence > bestMatch!.confidence {
+                            bestMatch = ("Account Number Pattern", accountConfidence)
+                        }
+                    }
+                }
+            }
+            
+            // Apply best match if found
+            if let match = bestMatch {
+                updated.detectedAsTransfer = true
+                updated.isTransfer = true  // Auto-select, user can override
+                updated.transferConfidence = match.confidence
+                transfersDetected += 1
+                Self.logger.debug("Transfer detected: '\(transaction.merchantName)' matched '\(match.pattern)' (confidence: \(String(format: "%.2f", match.confidence)))")
+            }
+            
+            return updated
+        }
+        
+        Self.logger.info("Transfer detection complete: \(transfersDetected) transfers detected out of \(parsed.count) transactions")
+        
+        return updatedTransactions
+    }
     
     // MARK: - Auto-Categorization
     
@@ -138,6 +354,31 @@ final class CSVCategorizationService {
         return updated
     }
     
+    /// Toggle transfer status for all detected transfers
+    /// - Parameters:
+    ///   - transactions: Array of parsed transactions
+    ///   - markAsTransfer: Whether to mark detected transfers as transfers
+    /// - Returns: Updated transactions with transfer status applied
+    func applyTransferStatus(
+        to transactions: [CSVParsedTransaction],
+        markAsTransfer: Bool
+    ) -> [CSVParsedTransaction] {
+        var appliedCount = 0
+        
+        let updated = transactions.map { transaction -> CSVParsedTransaction in
+            var updated = transaction
+            if updated.detectedAsTransfer {
+                updated.isTransfer = markAsTransfer
+                appliedCount += 1
+            }
+            return updated
+        }
+        
+        Self.logger.info("Applied transfer status (\(markAsTransfer)) to \(appliedCount) detected transfers")
+        
+        return updated
+    }
+    
     // MARK: - Learning from Import
     
     /// Learn from committed transactions to improve future categorization
@@ -161,7 +402,8 @@ final class CSVCategorizationService {
         }
         
         // Process each committed transaction that has a category
-        for transaction in committed {
+        // Skip transfers — they don't need category learning
+        for transaction in committed where !transaction.isTransfer {
             guard let category = transaction.suggestedCategory else {
                 continue
             }

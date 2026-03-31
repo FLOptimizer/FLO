@@ -46,6 +46,8 @@ struct GettingStartedCard: View {
     @State private var showingInvoiceCreate = false
     @State private var showingAccountsView = false
     @State private var showingReportsView = false
+    @State private var showingTaxSettings = false
+    @State private var showingBusinessProfile = false
     
     // Persistence
     @AppStorage("hasDismissedGettingStarted") private var hasDismissed = false
@@ -55,14 +57,16 @@ struct GettingStartedCard: View {
     @AppStorage("hasMileageSetupCompleted") private var hasMileageSetupCompleted = false
     @AppStorage("hasExploredReports") private var hasExploredReports = false
     
-    // Query data for completion checks
-    @Query private var transactions: [Transaction]
-    @Query private var budgets: [Budget]
-    @Query private var accounts: [Account]
-    @Query private var taxSettings: [TaxSettings]
-    @Query private var clients: [Client]
-    @Query private var invoices: [Invoice]
-    @Query private var receipts: [ReceiptData]
+    // Completion status (uses fetchCount for performance — no object deserialization)
+    @State private var hasTransactions = false
+    @State private var hasBudgets = false
+    @State private var hasAccounts = false
+    @State private var hasTaxSettings = false
+    @State private var hasClients = false
+    @State private var hasInvoices = false
+    @State private var hasReceipts = false
+    @State private var hasBusinessProfiles = false
+    @State private var hasMileageTrips = false
     
     // UI State
     @State private var isExpanded = true
@@ -125,7 +129,7 @@ struct GettingStartedCard: View {
                 subtitle: "Track your money in one place",
                 icon: "banknote.fill",
                 iconColor: .green,
-                isCompleted: !accounts.isEmpty
+                isCompleted: hasAccounts
             ),
             FLOSetupTask(
                 id: "transaction",
@@ -133,7 +137,7 @@ struct GettingStartedCard: View {
                 subtitle: "Track income or expenses",
                 icon: "plus.circle.fill",
                 iconColor: .blue,
-                isCompleted: !transactions.isEmpty
+                isCompleted: hasTransactions
             ),
             FLOSetupTask(
                 id: "tax_profile",
@@ -141,7 +145,7 @@ struct GettingStartedCard: View {
                 subtitle: "For accurate quarterly estimates",
                 icon: "percent",
                 iconColor: .orange,
-                isCompleted: !taxSettings.isEmpty || hasTaxProfileSetup
+                isCompleted: hasTaxSettings || hasTaxProfileSetup
             ),
             FLOSetupTask(
                 id: "budget",
@@ -149,7 +153,7 @@ struct GettingStartedCard: View {
                 subtitle: "Stay on track with spending",
                 icon: "chart.pie.fill",
                 iconColor: .teal,
-                isCompleted: !budgets.isEmpty
+                isCompleted: hasBudgets
             ),
             FLOSetupTask(
                 id: "reports",
@@ -171,7 +175,7 @@ struct GettingStartedCard: View {
                 subtitle: "Track your money in one place",
                 icon: "banknote.fill",
                 iconColor: .green,
-                isCompleted: !accounts.isEmpty
+                isCompleted: hasAccounts
             ),
             FLOSetupTask(
                 id: "transaction",
@@ -179,7 +183,7 @@ struct GettingStartedCard: View {
                 subtitle: "Track income or expenses",
                 icon: "plus.circle.fill",
                 iconColor: .blue,
-                isCompleted: !transactions.isEmpty
+                isCompleted: hasTransactions
             ),
             FLOSetupTask(
                 id: "receipt",
@@ -187,7 +191,7 @@ struct GettingStartedCard: View {
                 subtitle: "Auto-extract expense details",
                 icon: "camera.fill",
                 iconColor: .orange,
-                isCompleted: !receipts.isEmpty
+                isCompleted: hasReceipts
             ),
             FLOSetupTask(
                 id: "tax_profile",
@@ -195,7 +199,7 @@ struct GettingStartedCard: View {
                 subtitle: "For accurate quarterly estimates",
                 icon: "percent",
                 iconColor: .cyan,
-                isCompleted: !taxSettings.isEmpty || hasTaxProfileSetup
+                isCompleted: hasTaxSettings || hasTaxProfileSetup
             ),
             FLOSetupTask(
                 id: "budget",
@@ -203,7 +207,7 @@ struct GettingStartedCard: View {
                 subtitle: "Stay on track with spending",
                 icon: "chart.pie.fill",
                 iconColor: .teal,
-                isCompleted: !budgets.isEmpty
+                isCompleted: hasBudgets
             ),
             FLOSetupTask(
                 id: "client",
@@ -211,7 +215,7 @@ struct GettingStartedCard: View {
                 subtitle: "Prepare for invoicing",
                 icon: "person.crop.circle.fill",
                 iconColor: .indigo,
-                isCompleted: !clients.isEmpty
+                isCompleted: hasClients
             ),
             FLOSetupTask(
                 id: "mileage",
@@ -219,11 +223,11 @@ struct GettingStartedCard: View {
                 subtitle: "Maximize your deductions",
                 icon: "car.fill",
                 iconColor: .purple,
-                isCompleted: hasMileageSetupCompleted
+                isCompleted: hasMileageTrips || hasMileageSetupCompleted
             )
         ]
     }
-    
+
     // PRO TIER: 8 tasks (all features)
     private var proTierTasks: [FLOSetupTask] {
         [
@@ -233,7 +237,7 @@ struct GettingStartedCard: View {
                 subtitle: "Auto-import your transactions",
                 icon: "building.columns.fill",
                 iconColor: .green,
-                isCompleted: !accounts.filter { $0.plaidAccountId != nil }.isEmpty || !accounts.isEmpty
+                isCompleted: hasAccounts
             ),
             FLOSetupTask(
                 id: "transaction",
@@ -241,7 +245,7 @@ struct GettingStartedCard: View {
                 subtitle: "Or let Plaid sync them automatically",
                 icon: "plus.circle.fill",
                 iconColor: .blue,
-                isCompleted: !transactions.isEmpty
+                isCompleted: hasTransactions
             ),
             FLOSetupTask(
                 id: "receipt",
@@ -249,7 +253,7 @@ struct GettingStartedCard: View {
                 subtitle: "Auto-extract expense details",
                 icon: "camera.fill",
                 iconColor: .orange,
-                isCompleted: !receipts.isEmpty
+                isCompleted: hasReceipts
             ),
             FLOSetupTask(
                 id: "tax_profile",
@@ -257,7 +261,7 @@ struct GettingStartedCard: View {
                 subtitle: "For accurate quarterly estimates",
                 icon: "percent",
                 iconColor: .cyan,
-                isCompleted: !taxSettings.isEmpty || hasTaxProfileSetup
+                isCompleted: hasTaxSettings || hasTaxProfileSetup
             ),
             FLOSetupTask(
                 id: "business_profile",
@@ -265,7 +269,7 @@ struct GettingStartedCard: View {
                 subtitle: "Your info for professional invoices",
                 icon: "building.2.fill",
                 iconColor: .indigo,
-                isCompleted: hasBusinessProfileSetup
+                isCompleted: hasBusinessProfiles || hasBusinessProfileSetup
             ),
             FLOSetupTask(
                 id: "budget",
@@ -273,7 +277,7 @@ struct GettingStartedCard: View {
                 subtitle: "Stay on track with spending",
                 icon: "chart.pie.fill",
                 iconColor: .teal,
-                isCompleted: !budgets.isEmpty
+                isCompleted: hasBudgets
             ),
             FLOSetupTask(
                 id: "invoice",
@@ -281,7 +285,7 @@ struct GettingStartedCard: View {
                 subtitle: "Get paid for your work",
                 icon: "doc.text.fill",
                 iconColor: .purple,
-                isCompleted: !invoices.isEmpty
+                isCompleted: hasInvoices
             ),
             FLOSetupTask(
                 id: "mileage",
@@ -289,7 +293,7 @@ struct GettingStartedCard: View {
                 subtitle: "Maximize your deductions",
                 icon: "car.fill",
                 iconColor: .mint,
-                isCompleted: hasMileageSetupCompleted
+                isCompleted: hasMileageTrips || hasMileageSetupCompleted
             )
         ]
     }
@@ -352,6 +356,63 @@ struct GettingStartedCard: View {
                 ReportsView()
             }
         }
+        .sheet(isPresented: $showingTaxSettings) {
+            NavigationStack {
+                TaxSettingsView()
+            }
+        }
+        .sheet(isPresented: $showingBusinessProfile) {
+            NavigationStack {
+                BusinessProfileSettingsView()
+            }
+        }
+        .task {
+            checkCompletionStatus()
+        }
+        // Re-check completion when any sheet dismisses (user may have created data)
+        .onChange(of: showingAddTransaction) { _, isShowing in
+            if !isShowing { checkCompletionStatus() }
+        }
+        .onChange(of: showingReceiptScanner) { _, isShowing in
+            if !isShowing { checkCompletionStatus() }
+        }
+        .onChange(of: showingBudgetList) { _, isShowing in
+            if !isShowing { checkCompletionStatus() }
+        }
+        .onChange(of: showingAccountsView) { _, isShowing in
+            if !isShowing { checkCompletionStatus() }
+        }
+        .onChange(of: showingTaxSettings) { _, isShowing in
+            if !isShowing { checkCompletionStatus() }
+        }
+        .onChange(of: showingClientManagement) { _, isShowing in
+            if !isShowing { checkCompletionStatus() }
+        }
+        .onChange(of: showingInvoiceCreate) { _, isShowing in
+            if !isShowing { checkCompletionStatus() }
+        }
+        .onChange(of: showingMileageSetup) { _, isShowing in
+            if !isShowing { checkCompletionStatus() }
+        }
+        .onChange(of: showingBusinessProfile) { _, isShowing in
+            if !isShowing { checkCompletionStatus() }
+        }
+    }
+
+    // MARK: - Completion Status Check
+
+    /// Uses fetchCount for O(1) existence checks — no object deserialization needed.
+    /// Replaces 9 @Query declarations that each triggered full deserialization passes.
+    private func checkCompletionStatus() {
+        hasTransactions = (try? modelContext.fetchCount(FetchDescriptor<Transaction>())) ?? 0 > 0
+        hasBudgets = (try? modelContext.fetchCount(FetchDescriptor<Budget>())) ?? 0 > 0
+        hasAccounts = (try? modelContext.fetchCount(FetchDescriptor<Account>())) ?? 0 > 0
+        hasTaxSettings = (try? modelContext.fetchCount(FetchDescriptor<TaxSettings>())) ?? 0 > 0
+        hasClients = (try? modelContext.fetchCount(FetchDescriptor<Client>())) ?? 0 > 0
+        hasInvoices = (try? modelContext.fetchCount(FetchDescriptor<Invoice>())) ?? 0 > 0
+        hasReceipts = (try? modelContext.fetchCount(FetchDescriptor<ReceiptData>())) ?? 0 > 0
+        hasBusinessProfiles = (try? modelContext.fetchCount(FetchDescriptor<BusinessProfile>())) ?? 0 > 0
+        hasMileageTrips = (try? modelContext.fetchCount(FetchDescriptor<MileageTrip>())) ?? 0 > 0
     }
     
     // MARK: - Card Content
@@ -379,9 +440,9 @@ struct GettingStartedCard: View {
                 .animation(.spring(response: 0.4, dampingFraction: 0.8), value: visibleTasks.count)
             }
         }
-        .background(Color(.systemBackground))
+        .background(Color.floSystemBackground)
         .cornerRadius(16)
-        .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
+        .floCardShadow(y: 4)
         .opacity(viewAppeared ? 1 : 0.001)
         .offset(y: viewAppeared ? 0 : 20)
         .onAppear {
@@ -422,9 +483,9 @@ struct GettingStartedCard: View {
             Spacer()
         }
         .padding(16)
-        .background(Color(.systemBackground))
+        .background(Color.floSystemBackground)
         .cornerRadius(16)
-        .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
+        .floCardShadow(y: 4)
         .transition(.scale(scale: 0.95).combined(with: .opacity))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Setup complete! You're all set. Great job completing your setup.")
@@ -492,7 +553,7 @@ struct GettingStartedCard: View {
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color(.systemGray5))
+                        .fill(Color.gray.opacity(0.2))
                         .frame(height: 8)
                     
                     RoundedRectangle(cornerRadius: 4)
@@ -565,7 +626,7 @@ struct GettingStartedCard: View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(Color.floSecondarySystemBackground)
             )
         }
         .buttonStyle(.plain)
@@ -591,14 +652,10 @@ struct GettingStartedCard: View {
             showingReceiptScanner = true
             
         case "tax_profile":
-            // Navigate to More tab, then user taps Tax Settings
-            // Set a flag to auto-navigate
-            UserDefaults.standard.set(true, forKey: "shouldOpenTaxSettings")
-            navigation.navigateTo(.more)
-            
+            showingTaxSettings = true
+
         case "business_profile":
-            UserDefaults.standard.set(true, forKey: "shouldOpenBusinessProfile")
-            navigation.navigateTo(.more)
+            showingBusinessProfile = true
             
         case "bank_account":
             showingAccountsView = true
@@ -653,6 +710,6 @@ struct FLOSetupTask: Identifiable, Equatable {
         
         Spacer()
     }
-    .background(Color(.systemGroupedBackground))
+    .background(Color.floSystemGroupedBackground)
     .modelContainer(for: [Transaction.self, Budget.self, Account.self, TaxSettings.self, Client.self, Invoice.self, ReceiptData.self], inMemory: true)
 }

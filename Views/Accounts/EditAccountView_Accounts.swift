@@ -1,11 +1,23 @@
 //  EditAccountView_Accounts.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.1 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
+//  Version 1.4 - Loan Detail Fields
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  NOTE: Named EditAccountView_Accounts to avoid collision with any other
 //  EditAccountView if one exists elsewhere. Contains EditAccountView struct.
+//
+//  CHANGES v1.3 - Penny-Up Currency Input:
+//  ✅ REPLACED: Old TextField + String for currentBalance with CurrencyInputField component
+//  ✅ REPLACED: Old TextField + String for creditLimit with CurrencyInputField component
+//  ✅ REPLACED: Old TextField + String for minimumPaymentFloor with CurrencyInputField component
+//  ✅ CHANGED: currentBalance, creditLimit, minimumPaymentFloor from String to Double
+//  ✅ UPDATED: init() and saveChanges() to use Double values directly
+//
+//  CHANGES v1.2 - Credit Card Balance Polarity Fix:
+//  ✅ FIXED: Init shows abs() value for liability accounts (user sees "1500.00" not "-1500.00")
+//  ✅ FIXED: Auto-negate balance for liability accounts in saveChanges()
+//  ✅ UPDATED: Balance section header says "Amount Owed" for liability accounts
 //
 //  CHANGES v1.1 - Dynamic Type Verification:
 //  ✅ FIXED: Next payment due date text missing lineLimit + minimumScaleFactor
@@ -44,16 +56,23 @@ struct EditAccountView: View {
     @State private var isActive: Bool
     @State private var showOnDashboard: Bool
     @State private var notes: String
-    @State private var currentBalance: String
+    @State private var currentBalance: Double
     @State private var lastFourDigits: String
     @State private var institutionName: String
     
     // Credit card fields
-    @State private var creditLimit: String
+    @State private var creditLimit: Double
     @State private var apr: String
     @State private var minimumPaymentPercent: String
-    @State private var minimumPaymentFloor: String
+    @State private var minimumPaymentFloor: Double
     @State private var paymentDueDay: Int
+
+    // Loan fields
+    @State private var originalLoanAmount: Double
+    @State private var loanTermMonths: Int
+    @State private var monthlyPaymentAmount: Double
+    @State private var loanStartDate: Date
+    @State private var loanType: LoanType
     
     init(account: Account) {
         self.account = account
@@ -64,15 +83,23 @@ struct EditAccountView: View {
         _isActive = State(initialValue: account.isActive)
         _showOnDashboard = State(initialValue: account.showOnDashboard)
         _notes = State(initialValue: account.notes)
-        _currentBalance = State(initialValue: String(format: "%.2f", account.currentBalance))
+        // For liability accounts, show the absolute value since negation is automatic
+        let displayBalance = account.isLiability ? abs(account.currentBalance) : account.currentBalance
+        _currentBalance = State(initialValue: displayBalance)
         _lastFourDigits = State(initialValue: account.lastFourDigits ?? "")
         _institutionName = State(initialValue: account.institutionName ?? "")
         
-        _creditLimit = State(initialValue: account.creditLimit.map { String(format: "%.2f", $0) } ?? "")
+        _creditLimit = State(initialValue: account.creditLimit ?? 0)
         _apr = State(initialValue: account.apr.map { String(format: "%.2f", $0) } ?? "")
         _minimumPaymentPercent = State(initialValue: account.minimumPaymentPercent.map { String(format: "%.1f", $0) } ?? "2")
-        _minimumPaymentFloor = State(initialValue: account.minimumPaymentFloor.map { String(format: "%.0f", $0) } ?? "25")
+        _minimumPaymentFloor = State(initialValue: account.minimumPaymentFloor ?? 25)
         _paymentDueDay = State(initialValue: account.paymentDueDay ?? 1)
+
+        _originalLoanAmount = State(initialValue: account.originalLoanAmount ?? 0)
+        _loanTermMonths = State(initialValue: account.loanTermMonths ?? 360)
+        _monthlyPaymentAmount = State(initialValue: account.monthlyPaymentAmount ?? 0)
+        _loanStartDate = State(initialValue: account.loanStartDate ?? Date())
+        _loanType = State(initialValue: account.loanType)
     }
     
     var body: some View {
@@ -103,14 +130,16 @@ struct EditAccountView: View {
                 
                 // Balance (Premium feature)
                 if subscriptionManager.currentTier.hasBalanceTracking {
-                    Section("Current Balance") {
-                        HStack {
-                            Text("$")
+                    Section(accountType.isAsset ? "Current Balance" : "Amount Owed") {
+                        CurrencyInputField(
+                            amount: $currentBalance,
+                            accessibilityLabelText: accountType.isAsset ? "Current balance in dollars" : "Amount owed in dollars",
+                            showDoneButton: false
+                        )
+                        if !accountType.isAsset {
+                            Text("Enter the amount you currently owe")
+                                .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .accessibilityHidden(true)
-                            TextField("0.00", text: $currentBalance)
-                                .keyboardType(.decimalPad)
-                                .accessibilityLabel("Current balance in dollars")
                         }
                     }
                 }
@@ -121,17 +150,16 @@ struct EditAccountView: View {
                         HStack {
                             Text("Credit Limit")
                             Spacer()
-                            Text("$")
-                                .foregroundStyle(.secondary)
-                                .accessibilityHidden(true)
-                            TextField("5000", text: $creditLimit)
-                                .keyboardType(.decimalPad)
-                                .frame(width: 100)
-                                .multilineTextAlignment(.trailing)
+                            CurrencyInputField(
+                                amount: $creditLimit,
+                                placeholder: "$0.00",
+                                font: .body,
+                                fontWeight: .regular,
+                                accessibilityLabelText: "Credit limit in dollars",
+                                showDoneButton: false
+                            )
+                            .frame(maxWidth: 150)
                         }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Credit limit")
-                        .accessibilityValue(creditLimit.isEmpty ? "Not set" : "$\(creditLimit)")
                         
                         HStack {
                             Text("APR")
@@ -173,16 +201,16 @@ struct EditAccountView: View {
                         HStack {
                             Text("Minimum Floor")
                             Spacer()
-                            Text("$")
-                                .foregroundStyle(.secondary)
-                            TextField("25", text: $minimumPaymentFloor)
-                                .keyboardType(.decimalPad)
-                                .frame(width: 60)
-                                .multilineTextAlignment(.trailing)
+                            CurrencyInputField(
+                                amount: $minimumPaymentFloor,
+                                placeholder: "$0.00",
+                                font: .body,
+                                fontWeight: .regular,
+                                accessibilityLabelText: "Minimum payment floor in dollars",
+                                showDoneButton: false
+                            )
+                            .frame(maxWidth: 120)
                         }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Minimum payment floor")
-                        .accessibilityValue("$\(minimumPaymentFloor)")
                     }
                     
                     // Credit Card Summary (read-only)
@@ -191,12 +219,95 @@ struct EditAccountView: View {
                     }
                 }
                 
+                // Loan Details
+                if accountType == .loan {
+                    Section {
+                        Picker("Loan Type", selection: $loanType) {
+                            ForEach(LoanType.allCases) { type in
+                                Label(type.displayName, systemImage: type.icon)
+                                    .tag(type)
+                            }
+                        }
+                        .accessibilityLabel("Loan type: \(loanType.displayName)")
+
+                        HStack {
+                            Text("APR")
+                            Spacer()
+                            TextField("3.75", text: $apr)
+                                .keyboardType(.decimalPad)
+                                .frame(width: 80)
+                                .multilineTextAlignment(.trailing)
+                            Text("%")
+                                .foregroundStyle(.secondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Annual percentage rate")
+                        .accessibilityValue(apr.isEmpty ? "Not set" : "\(apr) percent")
+
+                        HStack {
+                            Text("Original Amount")
+                            Spacer()
+                            CurrencyInputField(
+                                amount: $originalLoanAmount,
+                                placeholder: "$0.00",
+                                font: .body,
+                                fontWeight: .regular,
+                                accessibilityLabelText: "Original loan amount in dollars",
+                                showDoneButton: false
+                            )
+                            .frame(maxWidth: 150)
+                        }
+
+                        Picker("Term (Months)", selection: $loanTermMonths) {
+                            Text("12 months (1 yr)").tag(12)
+                            Text("24 months (2 yr)").tag(24)
+                            Text("36 months (3 yr)").tag(36)
+                            Text("48 months (4 yr)").tag(48)
+                            Text("60 months (5 yr)").tag(60)
+                            Text("84 months (7 yr)").tag(84)
+                            Text("120 months (10 yr)").tag(120)
+                            Text("180 months (15 yr)").tag(180)
+                            Text("240 months (20 yr)").tag(240)
+                            Text("360 months (30 yr)").tag(360)
+                        }
+                        .accessibilityLabel("Loan term: \(loanTermMonths) months")
+
+                        HStack {
+                            Text("Monthly Payment")
+                            Spacer()
+                            CurrencyInputField(
+                                amount: $monthlyPaymentAmount,
+                                placeholder: "$0.00",
+                                font: .body,
+                                fontWeight: .regular,
+                                accessibilityLabelText: "Monthly payment amount in dollars",
+                                showDoneButton: false
+                            )
+                            .frame(maxWidth: 150)
+                        }
+
+                        Picker("Payment Due Day", selection: $paymentDueDay) {
+                            ForEach(1...31, id: \.self) { day in
+                                Text("\(day)").tag(day)
+                            }
+                        }
+                        .accessibilityLabel("Payment due day: \(paymentDueDay)")
+
+                        DatePicker("Loan Start Date", selection: $loanStartDate, displayedComponents: .date)
+                            .accessibilityLabel("Loan origination date")
+                    } header: {
+                        Text("Loan Details")
+                    } footer: {
+                        Text("APR and monthly payment are used for interest/principal split calculations and debt payoff projections")
+                    }
+                }
+
                 // Bank Details
                 Section("Bank Details (Optional)") {
                     TextField("Institution Name", text: $institutionName)
                         .textInputAutocapitalization(.words)
                         .accessibilityLabel("Bank or institution name")
-                    
+
                     TextField("Last 4 Digits", text: $lastFourDigits)
                         .keyboardType(.numberPad)
                         .onChange(of: lastFourDigits) { _, newValue in
@@ -293,6 +404,19 @@ struct EditAccountView: View {
             .navigationTitle("Edit Account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // Single keyboard Done button for all numberPad/decimalPad fields
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        #if canImport(UIKit)
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil
+                        )
+                        #endif
+                    }
+                }
+
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         HapticService.play(.light)
@@ -404,23 +528,53 @@ struct EditAccountView: View {
         account.isActive = isActive
         account.showOnDashboard = showOnDashboard
         account.notes = notes
-        account.currentBalance = Double(currentBalance) ?? account.currentBalance
+        // Auto-negate for liability accounts (credit cards, loans)
+        // Users enter the amount owed as a positive number; we store it as negative
+        var balance = currentBalance
+        if !accountType.isAsset && balance > 0 {
+            balance = -balance
+        }
+        account.currentBalance = balance
         account.lastBalanceUpdate = Date()
         account.lastFourDigits = lastFourDigits.isEmpty ? nil : lastFourDigits
         account.institutionName = institutionName.isEmpty ? nil : institutionName
         
         if accountType == .creditCard {
-            account.creditLimit = Double(creditLimit)
+            account.creditLimit = creditLimit > 0 ? creditLimit : nil
             account.apr = Double(apr)
             account.minimumPaymentPercent = Double(minimumPaymentPercent)
-            account.minimumPaymentFloor = Double(minimumPaymentFloor)
+            account.minimumPaymentFloor = minimumPaymentFloor > 0 ? minimumPaymentFloor : nil
             account.paymentDueDay = paymentDueDay
+            // Clear loan-specific fields
+            account.originalLoanAmount = nil
+            account.loanTermMonths = nil
+            account.monthlyPaymentAmount = nil
+            account.loanStartDate = nil
+            account.loanTypeRaw = nil
+        } else if accountType == .loan {
+            account.apr = Double(apr)
+            account.paymentDueDay = paymentDueDay
+            account.originalLoanAmount = originalLoanAmount > 0 ? originalLoanAmount : nil
+            account.loanTermMonths = loanTermMonths
+            account.monthlyPaymentAmount = monthlyPaymentAmount > 0 ? monthlyPaymentAmount : nil
+            account.loanStartDate = loanStartDate
+            account.loanTypeRaw = loanType.rawValue
+            // Clear credit-card-specific fields
+            account.creditLimit = nil
+            account.minimumPaymentPercent = nil
+            account.minimumPaymentFloor = nil
         } else {
+            // Clear all debt-specific fields for non-debt account types
             account.creditLimit = nil
             account.apr = nil
             account.minimumPaymentPercent = nil
             account.minimumPaymentFloor = nil
             account.paymentDueDay = nil
+            account.originalLoanAmount = nil
+            account.loanTermMonths = nil
+            account.monthlyPaymentAmount = nil
+            account.loanStartDate = nil
+            account.loanTypeRaw = nil
         }
         
         account.touch()
@@ -451,9 +605,7 @@ struct EditAccountView: View {
     }
     
     private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        return formatter.string(from: NSNumber(value: value)) ?? "$0.00"
+        NumberFormatter.appCurrency.string(from: NSNumber(value: value)) ?? "$0.00"
     }
 }
 

@@ -93,9 +93,9 @@ struct AgingReportView: View {
                     }
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(Color(.systemBackground))
+                    .background(Color.floSystemBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .shadow(color: .black.opacity(0.05), radius: 8)
+                    .floCardShadow()
                     .scaleEffect(headerVisible ? 1.0 : 0.95)
                     .opacity(headerVisible ? 1 : 0.001)
                     
@@ -163,9 +163,9 @@ struct AgingReportView: View {
                         }
                         .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(.systemBackground))
+                        .background(Color.floSystemBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(color: .black.opacity(0.05), radius: 8)
+                        .floCardShadow()
                         .opacity(chartVisible ? 1 : 0.001)
                         .offset(y: chartVisible ? 0 : 20)
                     }
@@ -187,16 +187,16 @@ struct AgingReportView: View {
                         }
                         .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(.systemBackground))
+                        .background(Color.floSystemBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(color: .black.opacity(0.05), radius: 8)
+                        .floCardShadow()
                         .opacity(insightsVisible ? 1 : 0.001)
                         .offset(y: insightsVisible ? 0 : 20)
                     }
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.floSystemGroupedBackground)
             .navigationTitle("Aging Report")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
@@ -308,7 +308,7 @@ struct AnimatedAgingBucketRow: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color.floSystemBackground)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(
             RoundedRectangle(cornerRadius: 8)

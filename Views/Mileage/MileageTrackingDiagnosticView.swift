@@ -204,6 +204,7 @@ struct MileageTrackingDiagnosticView: View {
                     .opacity(permissionsVisible ? 1 : 0.001)
                     .animation(.easeOut(duration: 0.3), value: permissionsVisible)
                     
+                    #if !os(macOS)
                     if trackingService.trackingPermissionStatus == .authorizedWhenInUse {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -215,13 +216,13 @@ struct MileageTrackingDiagnosticView: View {
                                     .minimumScaleFactor(0.7)
                             }
                             .font(.subheadline)
-                            
+
                             Text("You have 'While Using' permission. Trips will ONLY track when the app is visible on screen. For full background tracking, upgrade to 'Always Allow' in Settings.")
                                 .font(.caption)
                                 .lineLimit(4)
                                 .minimumScaleFactor(0.7)
                                 .foregroundStyle(.secondary)
-                            
+
                             Button {
                                 openSettingsAnimated()
                             } label: {
@@ -238,6 +239,7 @@ struct MileageTrackingDiagnosticView: View {
                         .opacity(permissionsVisible ? 1 : 0.001)
                         .animation(.easeOut(duration: 0.3).delay(0.1), value: permissionsVisible)
                     }
+                    #endif
                     
                     if trackingService.trackingPermissionStatus == .denied ||
                        trackingService.trackingPermissionStatus == .restricted {
@@ -422,9 +424,11 @@ struct MileageTrackingDiagnosticView: View {
             }
         }
         
+        #if canImport(UIKit)
         if let url = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(url)
         }
+        #endif
     }
     
     private func tipForIssue(_ issue: String) -> String {
@@ -456,11 +460,15 @@ struct MileageTrackingDiagnosticView: View {
         var issues: [String] = []
         
         if trackingService.trackingPermissionStatus != .authorizedAlways {
+            #if !os(macOS)
             if trackingService.trackingPermissionStatus == .authorizedWhenInUse {
                 issues.append("Permission: 'When In Use' (limited)")
             } else {
                 issues.append("Permission: Not granted")
             }
+            #else
+            issues.append("Permission: Not granted")
+            #endif
         }
         
         if trackingService.gpsStatus != .available {
@@ -499,19 +507,23 @@ struct MileageTrackingDiagnosticView: View {
     
     private var permissionText: String {
         switch trackingService.trackingPermissionStatus {
-        case .authorizedAlways: return "Always Allow ✅"
-        case .authorizedWhenInUse: return "When In Use âš ï¸"
-        case .denied: return "Denied âŒ"
-        case .restricted: return "Restricted âŒ"
+        case .authorizedAlways: return "Always Allow"
+        #if !os(macOS)
+        case .authorizedWhenInUse: return "When In Use"
+        #endif
+        case .denied: return "Denied"
+        case .restricted: return "Restricted"
         case .notDetermined: return "Not Set"
         @unknown default: return "Unknown"
         }
     }
-    
+
     private var permissionStatus: DiagnosticStatus {
         switch trackingService.trackingPermissionStatus {
         case .authorizedAlways: return .good
+        #if !os(macOS)
         case .authorizedWhenInUse: return .warning
+        #endif
         default: return .bad
         }
     }

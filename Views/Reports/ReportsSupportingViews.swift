@@ -176,7 +176,7 @@ struct EnhancedStatCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(16)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel({
@@ -240,7 +240,7 @@ struct MonthComparisonCard: View {
         }
         .padding()
         .frame(width: 140)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(data.label): income \(AccessibilityFormatters.spokenCurrency(data.income)), expenses \(AccessibilityFormatters.spokenCurrency(data.expense)), net \(data.netCashFlow >= 0 ? "positive" : "negative") \(AccessibilityFormatters.spokenCurrency(abs(data.netCashFlow)))")
@@ -331,7 +331,7 @@ struct TaxDeductibleSummary: View {
             .accessibilityLabel("Tax deductible expenses: \(AccessibilityFormatters.spokenCurrency(deductibleAmount)) across \(deductibleCount) transactions")
         }
         .padding(.vertical)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(16)
         .padding(.horizontal)
     }

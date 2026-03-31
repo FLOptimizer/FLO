@@ -1,8 +1,13 @@
 //  MoreView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 6.1 - VoiceOver Audit: Hidden decorative icons in menu rows
+//  Version 6.2 - Navigation consistency: SubscriptionView as sheet
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v6.2 - Navigation Consistency:
+//  ✅ Changed SubscriptionView from NavigationLink to sheet presentation
+//  ✅ Added showingSubscription state variable
+//  ✅ Cancel button now consistent (sheet always has Cancel/Restore)
 //
 //  CHANGES v6.1 - VoiceOver Audit:
 //  ✅ ADDED: 3 remaining decorative icons hidden in LegalView (hand.raised, doc.text, signature, triangle icons)
@@ -65,23 +70,28 @@ import SwiftData
 struct MoreView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var clients: [Client]
-    @Query private var trips: [MileageTrip]
     @Query(filter: #Predicate<Account> { $0.isActive }) private var accounts: [Account]
-    @Query private var transactions: [Transaction]
     @Query private var categories: [Category]
-    @Query private var invoices: [Invoice]
+
+    @State private var trips: [MileageTrip] = []
+    @State private var transactions: [Transaction] = []
+    @State private var invoices: [Invoice] = []
     
     @StateObject private var subscriptionManager = SubscriptionManager.shared
     @AppStorage("userName") private var userName = ""
     @AppStorage("userEmail") private var userEmail = ""
     
     @State private var viewAppeared = false
+    @State private var showingSignOutAlert = false
     @State private var showingExportOptions = false
     @State private var showingAbout = false
     @State private var showingProfitLoss = false
     @State private var showingYearEnd = false
     @State private var showingDebtCalculator = false  // v5.6: Debt calculator sheet
     @State private var showingCSVImport = false  // v5.9: CSV Import sheet
+    @State private var showingSubscription = false  // v6.2: Subscription sheet
+    @State private var showingCashFlowForecast = false  // v6.3: Cash Flow Forecast sheet
+    @State private var showingHousehold = false  // v6.3: Household settings
     
     // v5.4: Upgrade prompt states
     @State private var showingUpgradePrompt = false
@@ -127,9 +137,27 @@ struct MoreView: View {
     private var hasCSVImport: Bool {
         currentTier.hasCSVImport
     }
+
+    // v6.3: Cash Flow Forecast (Premium+)
+    private var hasCashFlowForecast: Bool {
+        currentTier.hasRecurringTransactions
+    }
+
+    // v6.3: Household Sharing (Pro only)
+    private var hasHouseholdSharing: Bool {
+        currentTier.hasHouseholdSharing
+    }
     
+    // MARK: - Data Loading
+
+    private func loadData() {
+        transactions = (try? modelContext.fetch(FetchDescriptor<Transaction>())) ?? []
+        trips = (try? modelContext.fetch(FetchDescriptor<MileageTrip>())) ?? []
+        invoices = (try? modelContext.fetch(FetchDescriptor<Invoice>())) ?? []
+    }
+
     // MARK: - Computed Properties
-    
+
     private var thisMonthMiles: Double {
         let calendar = Calendar.current
         let now = Date()
@@ -156,12 +184,8 @@ struct MoreView: View {
             return "View charts, trends & insights"
         }
        
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.maximumFractionDigits = 0
-       
-        let incomeStr = formatter.string(from: NSNumber(value: income)) ?? "$0"
-        let expenseStr = formatter.string(from: NSNumber(value: expenses)) ?? "$0"
+        let incomeStr = NumberFormatter.appCurrencyCompact.string(from: NSNumber(value: income)) ?? "$0"
+        let expenseStr = NumberFormatter.appCurrencyCompact.string(from: NSNumber(value: expenses)) ?? "$0"
        
         return "\(incomeStr) in - \(expenseStr) out this month"
     }
@@ -242,6 +266,23 @@ struct MoreView: View {
             .sheet(isPresented: $showingUpgradePrompt) {
                 SubscriptionView()
             }
+            // v6.2: Subscription sheet (from App section)
+            .sheet(isPresented: $showingSubscription) {
+                SubscriptionView()
+            }
+            // v6.3: Cash Flow Forecast sheet
+            .sheet(isPresented: $showingCashFlowForecast) {
+                NavigationStack {
+                    CashFlowForecastView()
+                }
+            }
+            // v6.3: Household settings
+            .sheet(isPresented: $showingHousehold) {
+                NavigationStack {
+                    HouseholdSettingsView()
+                }
+            }
+            .task { loadData() }
             .onAppear {
                 // Delay entrance animation until view is fully presented
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -253,6 +294,11 @@ struct MoreView: View {
                 print("📱 MoreView appeared")
                 #endif
             }
+            .onDisappear {
+                transactions = []
+                trips = []
+                invoices = []
+            }
         }
     }
     
@@ -261,7 +307,7 @@ struct MoreView: View {
     private var profileSection: some View {
         Section {
             // Profile Header Card
-            NavigationLink(destination: ProfileEditView(userName: $userName, userEmail: $userEmail)) {
+            NavigationLink(destination: AccountDetailsView(userName: $userName, userEmail: $userEmail, showingSignOutAlert: $showingSignOutAlert)) {
                 HStack(spacing: 14) {
                     ZStack {
                         Circle()
@@ -377,6 +423,36 @@ struct MoreView: View {
                     showUpgradePrompt(for: .debtCalculator)
                 }
                 .listRowAnimation(delay: 0.2, appeared: viewAppeared)
+            }
+
+            // v6.3: Cash Flow Forecast - LOCKED for Free tier (Premium+)
+            if hasCashFlowForecast {
+                Button {
+                    HapticService.play(.medium)
+                    showingCashFlowForecast = true
+                } label: {
+                    MenuRow(
+                        icon: "chart.line.uptrend.xyaxis",
+                        iconColor: .mint,
+                        title: "Cash Flow Forecast",
+                        subtitle: "Projected balance & upcoming bills",
+                        accessibilityLabel: "Cash Flow Forecast"
+                    )
+                }
+                .buttonStyle(.plain)
+                .listRowAnimation(delay: 0.22, appeared: viewAppeared)
+            } else {
+                LockedMenuRow(
+                    icon: "chart.line.uptrend.xyaxis",
+                    iconColor: .mint,
+                    title: "Cash Flow Forecast",
+                    subtitle: "Projected balance & upcoming bills",
+                    requiredTier: .premium,
+                    isLocked: true
+                ) {
+                    showUpgradePrompt(for: .recurringTransactions)
+                }
+                .listRowAnimation(delay: 0.22, appeared: viewAppeared)
             }
         } header: {
             Label("Financial Tools", systemImage: "chart.line.uptrend.xyaxis")
@@ -554,6 +630,36 @@ struct MoreView: View {
                 }
                 .listRowAnimation(delay: 0.6, appeared: viewAppeared)
             }
+
+            // v6.3: Household Sharing - LOCKED for Free/Premium (Pro only)
+            if hasHouseholdSharing {
+                Button {
+                    HapticService.play(.medium)
+                    showingHousehold = true
+                } label: {
+                    MenuRow(
+                        icon: "person.2.circle.fill",
+                        iconColor: .indigo,
+                        title: "Household",
+                        subtitle: "Share expenses with family",
+                        accessibilityLabel: "Household Sharing Settings"
+                    )
+                }
+                .buttonStyle(.plain)
+                .listRowAnimation(delay: 0.65, appeared: viewAppeared)
+            } else {
+                LockedMenuRow(
+                    icon: "person.2.circle.fill",
+                    iconColor: .indigo,
+                    title: "Household",
+                    subtitle: "Share expenses with family",
+                    requiredTier: .pro,
+                    isLocked: true
+                ) {
+                    showUpgradePrompt(for: .householdSharing)
+                }
+                .listRowAnimation(delay: 0.65, appeared: viewAppeared)
+            }
         } header: {
             Label("Business Tools", systemImage: "briefcase.fill")
                 .font(.caption)
@@ -719,7 +825,10 @@ struct MoreView: View {
     
     private var appSection: some View {
         Section {
-            NavigationLink(destination: SubscriptionView()) {
+            // v6.2: Changed to Button + sheet for navigation consistency
+            Button {
+                showingSubscription = true
+            } label: {
                 HStack {
                     MenuRow(
                         icon: "star.fill",
@@ -728,6 +837,8 @@ struct MoreView: View {
                         subtitle: subscriptionManager.currentTier.displayName,
                         accessibilityLabel: "Subscription Management"
                     )
+                    
+                    Spacer()
                     
                     if subscriptionManager.currentTier == .free {
                         Text("Upgrade")
@@ -742,8 +853,14 @@ struct MoreView: View {
                             .cornerRadius(12)
                             .accessibilityHidden(true)
                     }
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
                 }
             }
+            .buttonStyle(.plain)
             .listRowAnimation(delay: 1.0, appeared: viewAppeared)
             
             NavigationLink(destination: HelpCenterView()) {
@@ -830,10 +947,7 @@ struct MoreView: View {
     // MARK: - Helpers
     
     private func formatCurrency(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: amount)) ?? "$0"
+        NumberFormatter.appCurrencyCompact.string(from: NSNumber(value: amount)) ?? "$0"
     }
     
     // v5.4: Show upgrade prompt for locked features
@@ -949,12 +1063,13 @@ extension View {
 
 struct TaxDeductionsWrapperView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var transactions: [Transaction]
-    @Query private var mileageTrips: [MileageTrip]
-    @Query private var receipts: [ReceiptData]
     @Query private var taxSettings: [TaxSettings]
     @Query private var businessProfiles: [BusinessProfile]
-    
+
+    @State private var transactions: [Transaction] = []
+    @State private var mileageTrips: [MileageTrip] = []
+    @State private var receipts: [ReceiptData] = []
+
     @State private var opportunities: [TaxDeductionOpportunity] = []
     @State private var isLoading = true
     @State private var viewAppeared = false
@@ -975,6 +1090,7 @@ struct TaxDeductionsWrapperView: View {
                 DeductionOpportunitiesView(opportunities: opportunities)
             }
         }
+        .task { loadData() }
         .onAppear {
             withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
@@ -983,8 +1099,19 @@ struct TaxDeductionsWrapperView: View {
                 await analyzeOpportunities()
             }
         }
+        .onDisappear {
+            transactions = []
+            mileageTrips = []
+            receipts = []
+        }
     }
-    
+
+    private func loadData() {
+        transactions = (try? modelContext.fetch(FetchDescriptor<Transaction>())) ?? []
+        mileageTrips = (try? modelContext.fetch(FetchDescriptor<MileageTrip>())) ?? []
+        receipts = (try? modelContext.fetch(FetchDescriptor<ReceiptData>())) ?? []
+    }
+
     private var loadingView: some View {
         VStack(spacing: 16) {
             ProgressView()
@@ -997,7 +1124,7 @@ struct TaxDeductionsWrapperView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
         .navigationTitle("Tax Deductions")
         .navigationBarTitleDisplayMode(.inline)
     }

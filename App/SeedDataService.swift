@@ -1,10 +1,29 @@
 //  SeedDataService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.2 — Category classification: isBusiness and taxTreatment for all seeded categories
+//  Version 1.4 - Expanded categories for comprehensive financial tracking
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  DEBUG ONLY — Generates realistic test data for all models
+//
+//  CHANGES v1.4:
+//  ✅ ADDED: 31 new categories across all four sections
+//  ✅ ADDED: Business Income — Rental Income, Royalties, Commission Income, Sponsorship Income
+//  ✅ ADDED: Business Expenses — Legal Fees, Accounting & Bookkeeping, Licenses & Permits,
+//            Dues & Memberships, Domain & Hosting, Inventory / COGS, Repairs & Maintenance,
+//            Interest Expense, Client Gifts, Conferences & Events, Bad Debt / Write-offs
+//  ✅ ADDED: Personal Income — Disability Income, Retirement Income, Social Security,
+//            Alimony (Received), Child Support (Received)
+//  ✅ ADDED: Personal Expenses — Rent / Mortgage, Utilities (Home), Childcare, Pet Expenses,
+//            Subscriptions (Personal), Fitness & Wellness, Charity & Donations, Loan Payments,
+//            Taxes Paid, Alimony (Paid), Child Support (Paid)
+//  ✅ NOTE: All categories now have isDefault: false — users can delete any category
+//
+//  CHANGES v1.3:
+//  ✅ FIXED: Crash when deleting data while views are still rendering
+//  ✅ ADDED: Yielding to main actor between deletions to allow UI updates
+//  ✅ ADDED: Proper dependency order for deletions (children before parents)
+//  ✅ ADDED: MerchantCategoryMapping deletion support
 //
 //  CHANGES IN v1.2:
 //  ✅ FIXED: businessIncomeCategories loop now passes isBusiness: true and correct taxTreatment
@@ -72,33 +91,89 @@ class SeedDataService {
         }
     }
 
-    // MARK: - Reset All Data
-
+    // MARK: - Reset All Data (Safe Version v1.3)
+    
+    /// Safely resets all data with proper UI handling.
+    /// Deletes in dependency order and yields between deletions to allow UI updates.
+    ///
+    /// - Parameter context: The ModelContext to delete from
     func resetAllData(context: ModelContext) async {
-        print("🗑️ Resetting all data...")
+        print("🗑️ Resetting all data (safe mode)...")
+        
+        // Step 1: Delete child objects first (those with relationships to parents)
+        // This ordering prevents orphaned references and SwiftData relationship issues
+        
+        // Receipts (leaf node)
+        await deleteAllSafely(ReceiptData.self, context: context)
+        
+        // Invoice payments (depend on Invoice)
+        await deleteAllSafely(InvoicePayment.self, context: context)
+        
+        // Invoice items (depend on Invoice)
+        await deleteAllSafely(InvoiceItem.self, context: context)
+        
+        // Invoices (depend on Client)
+        await deleteAllSafely(Invoice.self, context: context)
+        
+        // Transactions (depend on Account, Category, RecurringTransaction)
+        await deleteAllSafely(Transaction.self, context: context)
+        
+        // Mileage trips (standalone)
+        await deleteAllSafely(MileageTrip.self, context: context)
+        
+        // Recurring transactions (may link to Category, Account)
+        await deleteAllSafely(RecurringTransaction.self, context: context)
+        
+        // Budgets (may reference Category)
+        await deleteAllSafely(Budget.self, context: context)
+        
+        // Clients (parent of Invoices — already deleted above)
+        await deleteAllSafely(Client.self, context: context)
+        
+        // Accounts (parent of Transactions — already deleted above)
+        await deleteAllSafely(Account.self, context: context)
+        
+        // Categories (parent of Transactions — already deleted above)
+        await deleteAllSafely(Category.self, context: context)
+        
+        // Merchant mappings (standalone, used by CSV import)
+        await deleteAllSafely(MerchantCategoryMapping.self, context: context)
+        
+        // Settings (standalone)
+        await deleteAllSafely(TaxSettings.self, context: context)
+        await deleteAllSafely(BusinessProfile.self, context: context)
 
-        deleteAll(ReceiptData.self, context: context)
-        deleteAll(MileageTrip.self, context: context)
-        deleteAll(InvoicePayment.self, context: context)
-        deleteAll(InvoiceItem.self, context: context)
-        deleteAll(Invoice.self, context: context)
-        deleteAll(Transaction.self, context: context)
-        deleteAll(RecurringTransaction.self, context: context)
-        deleteAll(Budget.self, context: context)
-        deleteAll(Client.self, context: context)
-        deleteAll(Account.self, context: context)
-        deleteAll(Category.self, context: context)
-        deleteAll(TaxSettings.self, context: context)
-        deleteAll(BusinessProfile.self, context: context)
-
+        // Step 2: Final save
         do {
             try context.save()
             print("✅ All data reset successfully!")
         } catch {
-            print("❌ Failed to reset data: \(error)")
+            print("❌ Failed to save after reset: \(error)")
         }
     }
-
+    
+    /// Safely deletes all instances of a model type with yielding for UI updates
+    private func deleteAllSafely<T: PersistentModel>(_ type: T.Type, context: ModelContext) async {
+        do {
+            let items = try context.fetch(FetchDescriptor<T>())
+            let count = items.count
+            
+            // Delete all items
+            for item in items {
+                context.delete(item)
+            }
+            
+            // Yield to allow SwiftUI to process the deletions
+            // This gives views a chance to update before we continue
+            await Task.yield()
+            
+            print("   Deleted \(count) \(String(describing: T.self)) items")
+        } catch {
+            print("   ⚠️ Failed to delete \(String(describing: T.self)): \(error)")
+        }
+    }
+    
+    // Legacy synchronous delete (kept for backward compatibility in seeders)
     private func deleteAll<T: PersistentModel>(_ type: T.Type, context: ModelContext) {
         do {
             let items = try context.fetch(FetchDescriptor<T>())
@@ -272,7 +347,13 @@ class SeedDataService {
         return accounts
     }
 
-    // MARK: - Categories (v1.2 — isBusiness and taxTreatment classification)
+    // MARK: - Categories (v2.0 — Comprehensive 127-category expansion)
+    //
+    // Build 8: Granular categories for year-end tracking.
+    // - Utilities, transportation, healthcare, insurance broken into sub-categories
+    // - Dual-use pairs for home office / split expenses (business + personal counterparts)
+    // - Schedule C line mappings on all business expenses
+    // - 10 new personal income + 4 new business income categories
 
     @discardableResult
     func seedCategories(context: ModelContext) -> [Category] {
@@ -280,21 +361,29 @@ class SeedDataService {
 
         var categories: [Category] = []
 
-        // ── Business Income (isBusiness: true) ──────────────────────────────
+        // ══════════════════════════════════════════════════════════════════════
+        // BUSINESS INCOME (12 categories)
+        // ══════════════════════════════════════════════════════════════════════
         //
-        // Tuple layout: (name, icon, colorHex, taxTreatment, isBusiness)
+        // Tuple: (name, icon, colorHex, taxTreatment)
         //
-        // SE income (1099/gig) — subject to SE tax and income tax.
-        // Refunds Received → taxExempt — these are returns of already-taxed money,
-        // not new income, so they are excluded from all tax calculations.
-        let businessIncomeCategories: [(String, String, String, TaxTreatment, Bool)] = [
-            ("Consulting Income",  "briefcase.fill",                    "#10B981", .selfEmployment, true),
-            ("Product Sales",      "shippingbox.fill",                  "#3B82F6", .selfEmployment, true),
-            ("Affiliate Income",   "link.circle.fill",                  "#8B5CF6", .selfEmployment, true),
-            ("Refunds Received",   "arrow.uturn.backward.circle.fill",  "#06B6D4", .taxExempt,      true),
+        let businessIncomeCategories: [(String, String, String, TaxTreatment)] = [
+            ("Consulting Income",       "briefcase.fill",                    "#10B981", .selfEmployment),
+            ("Product Sales",           "shippingbox.fill",                  "#3B82F6", .selfEmployment),
+            ("Affiliate Income",        "link.circle.fill",                  "#8B5CF6", .selfEmployment),
+            ("Refunds Received",        "arrow.uturn.backward.circle.fill",  "#06B6D4", .taxExempt),
+            ("Rental Income",           "building.fill",                     "#F97316", .passiveIncome),
+            ("Royalties",               "music.note.list",                   "#EC4899", .passiveIncome),
+            ("Commission Income",       "percent",                           "#22C55E", .selfEmployment),
+            ("Sponsorship Income",      "star.circle.fill",                  "#FBBF24", .selfEmployment),
+            // Build 8 additions
+            ("Grants & Awards",         "trophy.fill",                       "#F59E0B", .selfEmployment),
+            ("Interest Income (Business)", "percent",                        "#10B981", .selfEmployment),
+            ("Service Revenue",         "briefcase.fill",                    "#3B82F6", .selfEmployment),
+            ("Resale / Wholesale",      "shippingbox.fill",                  "#F97316", .selfEmployment),
         ]
 
-        for (name, icon, colorHex, taxTreatment, isBusiness) in businessIncomeCategories {
+        for (name, icon, colorHex, taxTreatment) in businessIncomeCategories {
             let category = Category(
                 name:            name,
                 icon:            icon,
@@ -302,7 +391,7 @@ class SeedDataService {
                 isDefault:       false,
                 isIncome:        true,
                 isTaxDeductible: false,
-                isBusiness:      isBusiness,
+                isBusiness:      true,
                 taxTreatment:    taxTreatment,
                 taxOwner:        .primary
             )
@@ -310,31 +399,85 @@ class SeedDataService {
             context.insert(category)
         }
 
-        // ── Business Expenses (isBusiness: true, tax deductible) ─────────────
+        // ══════════════════════════════════════════════════════════════════════
+        // BUSINESS EXPENSES (46 categories, all tax deductible)
+        // ══════════════════════════════════════════════════════════════════════
         //
-        // taxTreatment is not used for expenses but must be provided — .selfEmployment
-        // is the correct placeholder (matches default for all expense categories).
-        let businessExpenseCategories: [(String, String, String)] = [
-            ("Office Supplies",       "paperclip",                "#F59E0B"),
-            ("Software & Subscriptions", "app.badge.fill",        "#6366F1"),
-            ("Professional Services", "person.2.fill",            "#EC4899"),
-            ("Marketing & Advertising", "megaphone.fill",         "#F97316"),
-            ("Travel",                "airplane",                 "#0EA5E9"),
-            ("Meals & Entertainment", "fork.knife",               "#EF4444"),
-            ("Equipment",             "desktopcomputer",          "#8B5CF6"),
-            ("Education & Training",  "book.fill",                "#14B8A6"),
-            ("Insurance",             "shield.fill",              "#64748B"),
-            ("Bank & Payment Fees",   "creditcard.fill",          "#78716C"),
-            ("Utilities",             "bolt.fill",                "#FBBF24"),
-            ("Rent & Lease",          "building.2.fill",          "#A855F7"),
-            ("Vehicle Expenses",      "car.fill",                 "#22C55E"),
-            ("Phone & Internet",      "wifi",                     "#3B82F6"),
-            ("Shipping & Postage",    "shippingbox.fill",         "#F97316"),
-            ("Contractors",           "person.badge.clock.fill",  "#EC4899"),
-            ("Home Office",           "house.fill",               "#14B8A6"),
+        // Tuple: (name, icon, colorHex, scheduleCLine)
+        //
+        // Generics REMOVED in Build 8 and replaced with granular:
+        //   "Insurance" → General Liability, Health (Self-Employed), Property
+        //   "Utilities" → Electric, Gas/Natural Gas, Water & Sewer (Business)
+        //   "Vehicle Expenses" → Gas/Fuel, Vehicle Insurance, Vehicle Maintenance, Parking/Tolls
+        //
+        let businessExpenseCategories: [(String, String, String, ScheduleCLine?)] = [
+            // ── Office & Operations ──
+            ("Office Supplies",             "paperclip",                   "#F59E0B", .line18_officeExpense),
+            ("Software & Subscriptions",    "app.badge.fill",              "#6366F1", .line27a_otherExpenses),
+            ("Professional Services",       "person.2.fill",               "#EC4899", .line17_legalProfessional),
+            ("Marketing & Advertising",     "megaphone.fill",              "#F97316", .line8_advertising),
+            ("Equipment",                   "desktopcomputer",             "#8B5CF6", .line13_depreciation),
+            ("Education & Training",        "book.fill",                   "#14B8A6", .line27a_otherExpenses),
+            ("Bank & Payment Fees",         "creditcard.fill",             "#78716C", .line27a_otherExpenses),
+            ("Shipping & Postage",          "shippingbox.fill",            "#F97316", .line27a_otherExpenses),
+            ("Domain & Hosting",            "globe",                       "#3B82F6", .line27a_otherExpenses),
+            ("Inventory / COGS",            "archivebox.fill",             "#F59E0B", .line27a_otherExpenses),
+            ("Printing & Copying",          "printer.fill",                "#64748B", .line27a_otherExpenses),
+            ("Cleaning & Janitorial",       "sparkles",                    "#84CC16", .line27a_otherExpenses),
+            ("Uniforms & Work Clothing",    "tshirt.fill",                 "#7C3AED", .line27a_otherExpenses),
+            ("Research & Development",      "magnifyingglass",             "#3B82F6", .line27a_otherExpenses),
+
+            // ── People ──
+            ("Contractors",                 "person.badge.clock.fill",     "#EC4899", .line11_contractLabor),
+            ("Employee Wages",              "dollarsign.circle.fill",      "#22C55E", .line26_wages),
+            ("Employee Benefits",           "person.3.fill",               "#10B981", .line14_employeeBenefits),
+            ("Pension / Profit-Sharing",    "chart.pie.fill",              "#6366F1", .line19_pensionProfitShare),
+            ("Commissions & Fees Paid",     "percent",                     "#F59E0B", .line10_commissionsAndFees),
+
+            // ── Travel & Meals ──
+            ("Travel",                      "airplane",                    "#0EA5E9", .line24a_travel),
+            ("Meals & Entertainment",       "fork.knife",                  "#EF4444", .line24b_meals),
+            ("Conferences & Events",        "ticket.fill",                 "#A855F7", .line27a_otherExpenses),
+            ("Client Gifts",               "gift.fill",                    "#EC4899", .line27a_otherExpenses),
+
+            // ── Property & Rent ──
+            ("Rent & Lease",                "building.2.fill",             "#A855F7", .line20b_rentProperty),
+            ("Rent (Equipment/Vehicles)",   "car.2.fill",                  "#8B5CF6", .line20a_rentEquipment),
+            ("Repairs & Maintenance",       "wrench.and.screwdriver.fill", "#64748B", .line21_repairsMaintenance),
+            ("Depreciation (Section 179)",  "chart.bar.xaxis.ascending",   "#475569", .line13_depreciation),
+
+            // ── Home Office ──
+            ("Home Office",                 "house.fill",                  "#14B8A6", .line30_businessUseOfHome),
+            ("Business Use of Home",        "house.circle.fill",           "#14B8A6", .line30_businessUseOfHome),
+
+            // ── Utilities (granular, dual-use with personal) ──
+            ("Electric (Business)",         "bolt.fill",                   "#EAB308", .line25_utilities),
+            ("Gas / Natural Gas (Business)","flame.fill",                  "#F97316", .line25_utilities),
+            ("Water & Sewer (Business)",    "drop.fill",                   "#0EA5E9", .line25_utilities),
+            ("Phone & Internet",            "wifi",                        "#3B82F6", .line25_utilities),
+
+            // ── Vehicle (granular, dual-use with personal) ──
+            ("Gas / Fuel (Business)",       "fuelpump.fill",               "#F97316", .line9_carAndTruck),
+            ("Vehicle Insurance (Business)","car.circle.fill",         "#10B981", .line15_insurance),
+            ("Vehicle Maintenance (Business)", "wrench.and.screwdriver.fill", "#64748B", .line21_repairsMaintenance),
+            ("Parking & Tolls (Business)",  "parkingsign",                 "#0EA5E9", .line9_carAndTruck),
+
+            // ── Insurance (granular) ──
+            ("General Liability Insurance", "shield.fill",                 "#64748B", .line15_insurance),
+            ("Health Insurance (Self-Employed)", "heart.text.square.fill", "#EF4444", .line15_insurance),
+            ("Property Insurance (Business)", "building.fill",             "#475569", .line15_insurance),
+
+            // ── Legal, Financial & Taxes ──
+            ("Legal Fees",                  "scale.3d",                    "#6366F1", .line17_legalProfessional),
+            ("Accounting & Bookkeeping",    "doc.text.magnifyingglass",    "#10B981", .line17_legalProfessional),
+            ("Licenses & Permits",          "checkmark.seal.fill",         "#0EA5E9", .line23_taxesAndLicenses),
+            ("Interest Expense",            "percent",                     "#EF4444", .line16b_mortgageOther),
+            ("Dues & Memberships",          "person.3.fill",               "#8B5CF6", .line27a_otherExpenses),
+            ("Bad Debt / Write-offs",       "xmark.circle.fill",           "#78716C", .line27a_otherExpenses),
+            ("Miscellaneous (Business)",    "ellipsis.circle.fill",        "#78716C", .line27a_otherExpenses),
         ]
 
-        for (name, icon, colorHex) in businessExpenseCategories {
+        for (name, icon, colorHex, scheduleCLine) in businessExpenseCategories {
             let category = Category(
                 name:            name,
                 icon:            icon,
@@ -342,7 +485,162 @@ class SeedDataService {
                 isDefault:       false,
                 isIncome:        false,
                 isTaxDeductible: true,
-                isBusiness:      true,      // v1.2: was missing, defaulted to false
+                isBusiness:      true,
+                taxTreatment:    .selfEmployment,
+                taxOwner:        .primary,
+                scheduleCLine:   scheduleCLine
+            )
+            categories.append(category)
+            context.insert(category)
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // PERSONAL INCOME (16 categories)
+        // ══════════════════════════════════════════════════════════════════════
+        //
+        // Tuple: (name, icon, colorHex, taxTreatment, taxOwner)
+        //
+        let personalIncomeCategories: [(String, String, String, TaxTreatment, TaxOwner)] = [
+            ("Salary",                      "dollarsign.circle.fill",              "#10B981", .w2WithholdingPaid, .primary),
+            ("Disability Income",           "heart.text.square.fill",              "#EF4444", .taxExempt,         .primary),
+            ("Retirement Income",           "banknote.fill",                       "#F59E0B", .passiveIncome,     .primary),
+            ("Social Security",             "person.badge.shield.checkmark.fill",  "#3B82F6", .taxExempt,         .primary),
+            ("Alimony (Received)",          "arrow.down.circle.fill",              "#8B5CF6", .taxExempt,         .primary),
+            ("Child Support (Received)",    "figure.2.and.child.holdinghands",     "#06B6D4", .taxExempt,         .primary),
+            // Build 8 additions
+            ("Spouse's Salary / W-2",       "person.2.fill",                       "#22C55E", .w2WithholdingPaid, .spouse),
+            ("Side Hustle Income",          "star.fill",                           "#F59E0B", .selfEmployment,    .primary),
+            ("Interest Income (Savings)",   "percent",                             "#14B8A6", .passiveIncome,     .primary),
+            ("Dividend Income",             "chart.bar.fill",                      "#6366F1", .passiveIncome,     .primary),
+            ("Capital Gains",               "chart.line.uptrend.xyaxis",           "#22C55E", .passiveIncome,     .primary),
+            ("Rental Income (Personal)",    "building.fill",                       "#A855F7", .passiveIncome,     .primary),
+            ("Gift / Inheritance",          "gift.fill",                           "#EC4899", .taxExempt,         .primary),
+            ("Insurance Payouts",           "shield.lefthalf.filled",              "#0EA5E9", .taxExempt,         .primary),
+            ("Tax Refund",                  "arrow.uturn.backward.circle.fill",    "#10B981", .taxExempt,         .primary),
+            ("Military Retirement Pay",    "shield.checkered",                    "#475569", .taxExempt,         .primary),
+            ("VA Disability",              "cross.circle.fill",                   "#DC2626", .taxExempt,         .primary),
+            ("Pell Grant",                 "graduationcap.fill",                  "#3B82F6", .taxExempt,         .primary),
+            ("GI Bill / Education Benefits","book.circle.fill",                   "#6366F1", .taxExempt,         .primary),
+            ("Scholarships & Fellowships", "medal.fill",                          "#F59E0B", .taxExempt,         .primary),
+            ("Bonus Income",               "sparkles",                             "#F97316", .w2WithholdingPaid, .primary),
+        ]
+
+        for (name, icon, colorHex, taxTreatment, taxOwner) in personalIncomeCategories {
+            let category = Category(
+                name:            name,
+                icon:            icon,
+                colorHex:        colorHex,
+                isDefault:       false,
+                isIncome:        true,
+                isTaxDeductible: false,
+                isBusiness:      false,
+                taxTreatment:    taxTreatment,
+                taxOwner:        taxOwner
+            )
+            categories.append(category)
+            context.insert(category)
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // PERSONAL EXPENSES (53 categories)
+        // ══════════════════════════════════════════════════════════════════════
+        //
+        // Tuple: (name, icon, colorHex)
+        //
+        // Generics REMOVED in Build 8 and replaced with granular:
+        //   "Utilities (Home)" → Electric, Gas/Natural Gas, Water & Sewer, Trash, Internet, Phone
+        //   "Transportation"   → Gas/Fuel, Car Insurance, Car Payment, Car Maintenance, etc.
+        //   "Healthcare"       → Doctor, Prescriptions, Dental, Vision, Therapy
+        //
+        let personalExpenseCategories: [(String, String, String)] = [
+            // ── Food & Dining ──
+            ("Groceries",                   "cart.fill",                        "#F59E0B"),
+            ("Dining Out",                  "fork.knife",                       "#EF4444"),
+            ("Coffee & Snacks",             "cup.and.saucer.fill",              "#D97706"),
+            ("Alcohol & Bars",              "wineglass.fill",                   "#7C3AED"),
+
+            // ── Housing ──
+            ("Rent / Mortgage",             "house.fill",                       "#A855F7"),
+            ("Home Insurance",              "house.and.flag.fill",              "#10B981"),
+            ("Property Taxes",              "building.columns.fill",            "#DC2626"),
+            ("HOA / Condo Fees",            "building.fill",                    "#7C3AED"),
+            ("Home Maintenance & Repairs",  "hammer.fill",                      "#64748B"),
+            ("Lawn & Garden",               "leaf.fill",                        "#22C55E"),
+            ("Home Furnishings",            "sofa.fill",                        "#F59E0B"),
+
+            // ── Utilities (granular, dual-use with business) ──
+            ("Electric",                    "bolt.fill",                        "#EAB308"),
+            ("Gas / Natural Gas",           "flame.fill",                       "#F97316"),
+            ("Water & Sewer",               "drop.fill",                        "#0EA5E9"),
+            ("Trash & Recycling",           "trash.fill",                       "#84CC16"),
+            ("Internet (Home)",             "wifi",                             "#3B82F6"),
+            ("Phone (Personal)",            "phone.fill",                       "#8B5CF6"),
+
+            // ── Transportation (granular) ──
+            ("Gas / Fuel",                  "fuelpump.fill",                    "#F97316"),
+            ("Car Insurance",               "car.circle.fill",              "#10B981"),
+            ("Car Payment",                 "car.fill",                         "#3B82F6"),
+            ("Car Maintenance & Repairs",   "wrench.and.screwdriver.fill",      "#64748B"),
+            ("Parking & Tolls",             "parkingsign",                      "#6366F1"),
+            ("Public Transit",              "bus.fill",                         "#06B6D4"),
+            ("Rideshare (Uber/Lyft)",       "figure.wave",                      "#A855F7"),
+            ("Car Registration & DMV",      "doc.text.fill",                    "#475569"),
+
+            // ── Insurance (personal) ──
+            ("Health Insurance Premiums",   "heart.text.square.fill",           "#EF4444"),
+            ("Dental & Vision Insurance",   "eye.fill",                         "#F472B6"),
+            ("Life Insurance",              "shield.lefthalf.filled",           "#475569"),
+            ("Disability Insurance",        "figure.roll",                      "#78716C"),
+            ("Renter's / Umbrella Insurance", "umbrella.fill",                  "#0EA5E9"),
+
+            // ── Health & Medical (granular) ──
+            ("Doctor & Specialist Visits",  "stethoscope",                      "#EF4444"),
+            ("Prescriptions & Pharmacy",    "pills.fill",                       "#F43F5E"),
+            ("Dental Care",                 "mouth.fill",                       "#EC4899"),
+            ("Vision & Eye Care",           "eyeglasses",                       "#8B5CF6"),
+            ("Therapy & Counseling",        "brain.head.profile",               "#6366F1"),
+            ("HSA / FSA Contributions",     "cross.case.fill",                  "#14B8A6"),
+
+            // ── Family & Kids ──
+            ("Childcare",                   "figure.and.child.holdinghands",    "#EC4899"),
+            ("Tuition & School Fees",       "graduationcap.fill",               "#3B82F6"),
+            ("Kids' Activities & Sports",   "figure.run",                       "#22C55E"),
+            ("College Savings (529)",       "banknote.fill",                    "#6366F1"),
+            ("Elder Care / Parent Support", "figure.2.arms.open",               "#78716C"),
+            ("Pet Expenses",                "pawprint.fill",                    "#F97316"),
+
+            // ── Financial ──
+            ("Retirement Contributions (IRA/401k)", "chart.line.uptrend.xyaxis", "#14B8A6"),
+            ("Emergency Fund / Savings",    "dollarsign.arrow.circlepath",      "#22C55E"),
+            ("Loan Payments",               "banknote.fill",                    "#64748B"),
+            ("Taxes Paid",                  "building.columns.fill",            "#0EA5E9"),
+            ("Alimony (Paid)",              "arrow.up.circle.fill",             "#78716C"),
+            ("Child Support (Paid)",        "figure.2.and.child.holdinghands",  "#78716C"),
+
+            // ── Lifestyle ──
+            ("Entertainment",               "tv.fill",                          "#8B5CF6"),
+            ("Shopping",                    "bag.fill",                          "#EC4899"),
+            ("Clothing & Apparel",          "tshirt.fill",                       "#A855F7"),
+            ("Personal Care",               "figure.walk",                      "#06B6D4"),
+            ("Haircut & Grooming",          "scissors",                          "#F472B6"),
+            ("Fitness & Wellness",          "figure.run",                        "#10B981"),
+            ("Subscriptions (Personal)",    "play.rectangle.fill",               "#6366F1"),
+            ("Vacation & Travel (Personal)","airplane",                          "#06B6D4"),
+            ("Hobbies",                     "paintbrush.fill",                   "#F59E0B"),
+            ("Books & Education (Personal)","book.fill",                         "#6366F1"),
+            ("Gifts",                       "gift.fill",                          "#F97316"),
+            ("Charity & Donations",         "hands.sparkles.fill",               "#8B5CF6"),
+        ]
+
+        for (name, icon, colorHex) in personalExpenseCategories {
+            let category = Category(
+                name:            name,
+                icon:            icon,
+                colorHex:        colorHex,
+                isDefault:       false,
+                isIncome:        false,
+                isTaxDeductible: false,
+                isBusiness:      false,
                 taxTreatment:    .selfEmployment,
                 taxOwner:        .primary
             )
@@ -350,41 +648,7 @@ class SeedDataService {
             context.insert(category)
         }
 
-        // ── Personal Categories (isBusiness: false) ───────────────────────────
-        //
-        // Tuple layout: (name, icon, colorHex, isIncome, taxTreatment)
-        //
-        // "Salary" is a personal W-2 income source — employer withholds, no SE tax.
-        // All expense entries use .selfEmployment as the harmless placeholder.
-        let personalCategories: [(String, String, String, Bool, TaxTreatment)] = [
-            ("Salary",         "dollarsign.circle.fill", "#10B981", true,  .w2WithholdingPaid),
-            ("Groceries",      "cart.fill",              "#F59E0B", false, .selfEmployment),
-            ("Dining Out",     "fork.knife",             "#EF4444", false, .selfEmployment),
-            ("Entertainment",  "tv.fill",                "#8B5CF6", false, .selfEmployment),
-            ("Shopping",       "bag.fill",               "#EC4899", false, .selfEmployment),
-            ("Healthcare",     "heart.fill",             "#EF4444", false, .selfEmployment),
-            ("Personal Care",  "figure.walk",            "#06B6D4", false, .selfEmployment),
-            ("Gifts",          "gift.fill",              "#F97316", false, .selfEmployment),
-            ("Transportation", "car.fill",               "#3B82F6", false, .selfEmployment),
-        ]
-
-        for (name, icon, colorHex, isIncome, taxTreatment) in personalCategories {
-            let category = Category(
-                name:            name,
-                icon:            icon,
-                colorHex:        colorHex,
-                isDefault:       false,
-                isIncome:        isIncome,
-                isTaxDeductible: false,
-                isBusiness:      false,     // v1.2: explicit — personal categories
-                taxTreatment:    taxTreatment,
-                taxOwner:        .primary
-            )
-            categories.append(category)
-            context.insert(category)
-        }
-
-        print("      Created \(categories.count) categories")
+        print("      Created \(categories.count) categories (expected 127)")
         return categories
     }
 
@@ -600,7 +864,11 @@ class SeedDataService {
                     unitPrice:       Double(Int(item.1 * 100)) / 100.0
                 )
                 context.insert(invoiceItem)
-                invoice.items.append(invoiceItem)
+                if invoice.items != nil {
+                    invoice.items?.append(invoiceItem)
+                } else {
+                    invoice.items = [invoiceItem]
+                }
             }
 
             if config.3 {

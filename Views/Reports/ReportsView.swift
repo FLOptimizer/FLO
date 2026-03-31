@@ -1,8 +1,17 @@
 //  ReportsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.7 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
+//  Version 3.8 — Transfer Exclusion Fix
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.8 — Transfer Exclusion:
+//  ✅ FIXED: filteredTransactions now excludes isTransfer transactions
+//  ✅ FIXED: totalIncome, totalExpense, businessExpenses, personalExpenses all now correct
+//  ✅ FIXED: categoryChartData no longer inflated by uncategorized transfers
+//  ✅ FIXED: monthlyTrendData excludes transfers (was using raw transactions)
+//  ✅ FIXED: cashFlowProjection excludes transfers (was using raw transactions)
+//  ✅ ROOT CAUSE: Transfers (Owner's Draw, Venmo, bank-to-bank) had no category and
+//    were counted as expenses, inflating "Uncategorized" to 98% in Spending by Category
 //
 //  CHANGES v3.7 - Dynamic Type Verification:
 //  ✅ ADDED: @Environment(\.dynamicTypeSize) for adaptive layout detection
@@ -169,12 +178,15 @@ struct CategoryChartData: Identifiable {
 // MARK: - Main Reports View
 
 struct ReportsView: View {
-    @Query private var transactions: [Transaction]
+    // v5.1: Replaced @Query with FetchDescriptor for memory optimization.
+    // @Query loaded all ~382 transactions; now we only load the needed date range.
+    @Environment(\.modelContext) private var modelContext
+    @State private var transactions: [Transaction] = []
     @Query private var budgets: [Budget]
     @Query private var taxSettingsQuery: [TaxSettings]
-    
+
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    
+
     @State private var selectedPeriod: TimePeriod = .month
     @State private var selectedDate = Date()
     @State private var selectedChartType: ChartType = .pie
@@ -187,6 +199,17 @@ struct ReportsView: View {
     @State private var showExportSuccess = false
     @State private var isExporting = false
     @State var viewAppeared = false
+
+    // MARK: - Cached Chart Data (Phase 1 Optimization)
+    // Computed once in refreshChartData() instead of per-render.
+    @State private var cachedFiltered: [Transaction] = []
+    @State private var cachedTotalIncome: Double = 0
+    @State private var cachedTotalExpense: Double = 0
+    @State private var cachedBusinessExpenses: Double = 0
+    @State private var cachedPersonalExpenses: Double = 0
+    @State private var cachedCategoryData: [CategoryChartData] = []
+    @State private var cachedMonthlyTrend: [MonthlyData] = []
+    @State private var cachedCashFlow: [MonthlyData] = []
     
     // Dynamic Type detection
     private var isAccessibilitySize: Bool {
@@ -214,8 +237,28 @@ struct ReportsView: View {
     
     // MARK: - Filtered Transactions
     
-    var filteredTransactions: [Transaction] {
-        transactions.filter { transaction in
+    // MARK: - Cached Property Accessors
+    // These return pre-computed values from refreshChartData().
+    // Eliminates ~30 redundant filter/sort/group ops per render cycle.
+
+    var filteredTransactions: [Transaction] { cachedFiltered }
+    var totalIncome: Double { cachedTotalIncome }
+    var totalExpense: Double { cachedTotalExpense }
+    var netCashFlow: Double { cachedTotalIncome - cachedTotalExpense }
+    var businessExpenses: Double { cachedBusinessExpenses }
+    var personalExpenses: Double { cachedPersonalExpenses }
+    var categoryChartData: [CategoryChartData] { cachedCategoryData }
+    var monthlyTrendData: [MonthlyData] { cachedMonthlyTrend }
+    var cashFlowProjection: [MonthlyData] { cachedCashFlow }
+
+    // MARK: - Refresh Chart Data (Single-Pass Computation)
+
+    /// Computes all derived chart data from transactions + period in a single pass.
+    /// Called from loadTransactions() and onChange handlers.
+    private func refreshChartData() {
+        // 1. Filter transactions for selected period
+        let filtered = transactions.filter { transaction in
+            guard !transaction.isTransfer else { return false }
             let date = transaction.date
             switch selectedPeriod {
             case .week:
@@ -234,145 +277,119 @@ struct ReportsView: View {
                 return calendar.isDate(date, equalTo: selectedDate, toGranularity: .year)
             }
         }
-    }
-    
-    // MARK: - Computed Properties
-    
-    var totalIncome: Double {
-        filteredTransactions.filter(\.isIncome).reduce(0) { $0 + $1.amount }
-    }
-    
-    var totalExpense: Double {
-        filteredTransactions.filter { !$0.isIncome }.reduce(0) { $0 + $1.amount }
-    }
-    
-    var netCashFlow: Double {
-        totalIncome - totalExpense
-    }
-    
-    var businessExpenses: Double {
-        filteredTransactions
-            .filter { !$0.isIncome && $0.financeType == .business }
-            .reduce(0) { $0 + $1.amount }
-    }
-    
-    var personalExpenses: Double {
-        filteredTransactions
-            .filter { !$0.isIncome && $0.financeType == .personal }
-            .reduce(0) { $0 + $1.amount }
-    }
-    
-    /// Category chart data with assigned colors by index
-    var categoryChartData: [CategoryChartData] {
-        let nonIncomeTransactions = filteredTransactions.filter { !$0.isIncome }
-        let grouped = Dictionary(grouping: nonIncomeTransactions) { transaction in
-            transaction.category?.name ?? "Uncategorized"
+        cachedFiltered = filtered
+
+        // 2. Single-pass aggregation (income, expense, business, personal)
+        var income: Double = 0
+        var expense: Double = 0
+        var business: Double = 0
+        var personal: Double = 0
+        for t in filtered {
+            if t.isIncome {
+                income += t.amount
+            } else {
+                expense += t.amount
+                if t.financeType == .business { business += t.amount }
+                if t.financeType == .personal { personal += t.amount }
+            }
         }
-        
+        cachedTotalIncome = income
+        cachedTotalExpense = expense
+        cachedBusinessExpenses = business
+        cachedPersonalExpenses = personal
+
+        // 3. Category chart data
+        let nonIncome = filtered.filter { !$0.isIncome }
+        let grouped = Dictionary(grouping: nonIncome) { $0.category?.name ?? "Uncategorized" }
         let sorted = grouped.map { (key, value) -> (category: String, amount: Double) in
-            let totalAmount = value.reduce(0.0) { $0 + $1.amount }
-            return (category: key, amount: totalAmount)
+            (category: key, amount: value.reduce(0.0) { $0 + $1.amount })
         }.sorted { $0.amount > $1.amount }
-        
-        // Assign colors by index for visual distinction
-        return sorted.enumerated().map { index, item in
-            let percentage = totalExpense > 0 ? (item.amount / totalExpense) * 100 : 0
+
+        cachedCategoryData = sorted.enumerated().map { index, item in
+            let pct = expense > 0 ? (item.amount / expense) * 100 : 0
             return CategoryChartData(
                 category: item.category,
                 amount: item.amount,
                 color: ChartColorPalette.color(at: index),
                 colorHex: ChartColorPalette.hex(at: index),
-                percentage: percentage
+                percentage: pct
             )
         }
-    }
-    
-    // Legacy property for compatibility
-    var categoryBreakdown: [(category: String, amount: Double, color: String)] {
-        categoryChartData.map { ($0.category, $0.amount, $0.colorHex) }
-    }
-    
-    // MARK: - Monthly Data for Trend Charts
-    
-    var monthlyTrendData: [MonthlyData] {
-        let monthsToShow = 6
-        var data: [MonthlyData] = []
-        
-        for i in (0..<monthsToShow).reversed() {
+
+        // 4. Monthly trend data (6 months)
+        var trendData: [MonthlyData] = []
+        for i in (0..<6).reversed() {
             guard let monthDate = calendar.date(byAdding: .month, value: -i, to: selectedDate) else { continue }
-            
-            let monthTransactions = transactions.filter { transaction in
-                calendar.isDate(transaction.date, equalTo: monthDate, toGranularity: .month)
-            }
-            
-            let income = monthTransactions.filter(\.isIncome).reduce(0) { $0 + $1.amount }
-            let expense = monthTransactions.filter { !$0.isIncome }.reduce(0) { $0 + $1.amount }
-            
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM"
-            let label = formatter.string(from: monthDate)
-            
-            data.append(MonthlyData(month: monthDate, income: income, expense: expense, label: label))
+            let monthTxns = transactions.filter { !$0.isTransfer && calendar.isDate($0.date, equalTo: monthDate, toGranularity: .month) }
+            let mIncome = monthTxns.filter(\.isIncome).reduce(0) { $0 + $1.amount }
+            let mExpense = monthTxns.filter { !$0.isIncome }.reduce(0) { $0 + $1.amount }
+            trendData.append(MonthlyData(month: monthDate, income: mIncome, expense: mExpense, label: DateFormatter.shortMonth.string(from: monthDate)))
         }
-        
-        return data
-    }
-    
-    // MARK: - Cash Flow Projection Data
-    
-    var cashFlowProjection: [MonthlyData] {
-        let pastMonths = 3
-        let futureMonths = 3
-        var data: [MonthlyData] = []
+        cachedMonthlyTrend = trendData
+
+        // 5. Cash flow projection (3 past + 3 future)
+        var cfData: [MonthlyData] = []
         var runningBalance: Double = 0
-        
-        let recentTransactions = transactions.filter { transaction in
-            guard let threeMonthsAgo = calendar.date(byAdding: .month, value: -3, to: Date()) else { return false }
-            return transaction.date >= threeMonthsAgo
-        }
-        
-        let avgMonthlyIncome = recentTransactions.filter(\.isIncome).reduce(0) { $0 + $1.amount } / 3
-        let avgMonthlyExpense = recentTransactions.filter { !$0.isIncome }.reduce(0) { $0 + $1.amount } / 3
-        
-        for i in (0..<pastMonths).reversed() {
+        let recentTxns = transactions.filter { !$0.isTransfer && $0.date >= (calendar.date(byAdding: .month, value: -3, to: Date()) ?? Date()) }
+        let avgIncome = recentTxns.filter(\.isIncome).reduce(0) { $0 + $1.amount } / 3
+        let avgExpense = recentTxns.filter { !$0.isIncome }.reduce(0) { $0 + $1.amount } / 3
+
+        for i in (0..<3).reversed() {
             guard let monthDate = calendar.date(byAdding: .month, value: -i, to: Date()) else { continue }
-            
-            let monthTransactions = transactions.filter { transaction in
-                calendar.isDate(transaction.date, equalTo: monthDate, toGranularity: .month)
-            }
-            
-            let income = monthTransactions.filter(\.isIncome).reduce(0) { $0 + $1.amount }
-            let expense = monthTransactions.filter { !$0.isIncome }.reduce(0) { $0 + $1.amount }
-            runningBalance += (income - expense)
-            
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM"
-            let label = formatter.string(from: monthDate)
-            
-            var monthData = MonthlyData(month: monthDate, income: income, expense: expense, label: label)
-            monthData.runningBalance = runningBalance
-            data.append(monthData)
+            let mTxns = transactions.filter { !$0.isTransfer && calendar.isDate($0.date, equalTo: monthDate, toGranularity: .month) }
+            let mIn = mTxns.filter(\.isIncome).reduce(0) { $0 + $1.amount }
+            let mEx = mTxns.filter { !$0.isIncome }.reduce(0) { $0 + $1.amount }
+            runningBalance += (mIn - mEx)
+            var md = MonthlyData(month: monthDate, income: mIn, expense: mEx, label: DateFormatter.shortMonth.string(from: monthDate))
+            md.runningBalance = runningBalance
+            cfData.append(md)
         }
-        
-        for i in 1...futureMonths {
+        for i in 1...3 {
             guard let monthDate = calendar.date(byAdding: .month, value: i, to: Date()) else { continue }
-            
-            runningBalance += (avgMonthlyIncome - avgMonthlyExpense)
-            
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM"
-            let label = formatter.string(from: monthDate) + "*"
-            
-            var monthData = MonthlyData(month: monthDate, income: avgMonthlyIncome, expense: avgMonthlyExpense, label: label)
-            monthData.runningBalance = runningBalance
-            data.append(monthData)
+            runningBalance += (avgIncome - avgExpense)
+            var md = MonthlyData(month: monthDate, income: avgIncome, expense: avgExpense, label: DateFormatter.shortMonth.string(from: monthDate) + "*")
+            md.runningBalance = runningBalance
+            cfData.append(md)
         }
-        
-        return data
+        cachedCashFlow = cfData
     }
-    
+
+    // MARK: - Data Loading (v5.1)
+
+    /// Loads transactions for the widest needed date range.
+    /// monthlyTrendData and cashFlowProjection look back 6 months,
+    /// so we fetch from 7 months ago to cover all computed properties.
+    private func loadTransactions() {
+        let calendar = Calendar.current
+        let now = Date()
+
+        // Widest range: 6 months back for trend data + current period
+        guard let rangeStart = calendar.date(byAdding: .month, value: -7, to: now) else { return }
+
+        // Exclude future-dated (upcoming) items
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now
+
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= rangeStart && $0.date < tomorrow },
+            sortBy: [SortDescriptor(\Transaction.date, order: .reverse)]
+        )
+
+        do {
+            transactions = try modelContext.fetch(descriptor)
+            #if DEBUG
+            print("📊 [Reports] Loaded \(transactions.count) transactions (7-month window)")
+            #endif
+        } catch {
+            #if DEBUG
+            print("❌ [Reports] Failed to fetch: \(error.localizedDescription)")
+            #endif
+            transactions = []
+        }
+        refreshChartData()
+    }
+
     // MARK: - Body
-    
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -382,7 +399,6 @@ struct ReportsView: View {
                     content
                 }
             }
-            .background(Color(.systemGroupedBackground))
             .navigationTitle("Reports")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -451,11 +467,31 @@ struct ReportsView: View {
                 }
             }
             .onAppear {
-                                withAnimation(FLOAnimation.standard) {
-                    viewAppeared = true
+                loadTransactions()
+                DispatchQueue.main.async {
+                    withAnimation(FLOAnimation.standard) {
+                        viewAppeared = true
+                    }
                 }
                 AccessibilityAnnouncement.screenChanged("Reports, \(selectedChartType.rawValue)")
             }
+            .onDisappear {
+                // Release memory when leaving Reports tab
+                transactions = []
+                cachedFiltered = []
+                cachedCategoryData = []
+                cachedMonthlyTrend = []
+                cachedCashFlow = []
+                cachedTotalIncome = 0
+                cachedTotalExpense = 0
+                cachedBusinessExpenses = 0
+                cachedPersonalExpenses = 0
+                exportData = nil
+                exportURL = nil
+                viewAppeared = false
+            }
+            .onChange(of: selectedPeriod) { _, _ in loadTransactions() }
+            .onChange(of: selectedDate) { _, _ in loadTransactions() }
         }
     }
     
@@ -471,82 +507,87 @@ struct ReportsView: View {
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
-            
+
             // Tax Disclaimer
             taxDisclaimerSection
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
-            
+
             // Chart Type Header
             chartTypeHeader
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
-            
+
             // Period Selector
             periodSelector
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
-            
+
             // Date Navigation
             dateNavigation
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
-            
+
             // Summary Cards with Trends
             summaryCards
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
-            
-            // Chart Section
+
+            // Chart Section (only selected chart renders)
             chartSection
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 15)
                 .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
-            
-            // Business vs Personal
-            if totalExpense > 0 {
-                businessPersonalSection
+
+            // Phase 3: Lazy-load below-the-fold sections — only render when scrolled into view
+            LazyVStack(spacing: 24) {
+                // Business vs Personal
+                if totalExpense > 0 {
+                    businessPersonalSection
+                        .opacity(viewAppeared ? 1 : 0.001)
+                        .offset(y: viewAppeared ? 0 : 15)
+                        .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
+                }
+
+                // Monthly Comparison (only for trend chart types)
+                if selectedChartType == .barTrend || selectedChartType == .lineComparison {
+                    monthlyComparisonSection
+                        .opacity(viewAppeared ? 1 : 0.001)
+                        .offset(y: viewAppeared ? 0 : 15)
+                        .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
+                }
+
+                // Category Breakdown (for pie chart)
+                if selectedChartType == .pie && !categoryChartData.isEmpty {
+                    categoryBreakdownSection
+                        .opacity(viewAppeared ? 1 : 0.001)
+                        .offset(y: viewAppeared ? 0 : 15)
+                        .animation(FLOAnimation.standard.delay(0.5), value: viewAppeared)
+                }
+
+                // Tax Deductible Summary
+                TaxDeductibleSummary(transactions: filteredTransactions)
                     .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 15)
-                    .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
-            }
-            
-            // Monthly Comparison
-            monthlyComparisonSection
-                .opacity(viewAppeared ? 1 : 0.001)
-                .offset(y: viewAppeared ? 0 : 15)
-                .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
-            
-            // Category Breakdown (for pie chart)
-            if selectedChartType == .pie && !categoryChartData.isEmpty {
-                categoryBreakdownSection
+                    .animation(FLOAnimation.standard.delay(0.55), value: viewAppeared)
+
+                // Smart Insights
+                insightsCard
                     .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 15)
-                    .animation(FLOAnimation.standard.delay(0.5), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.6), value: viewAppeared)
+
+                // CPA Report CTA
+                cpaReportCTA
+                    .opacity(viewAppeared ? 1 : 0.001)
+                    .offset(y: viewAppeared ? 0 : 15)
+                    .animation(FLOAnimation.standard.delay(0.65), value: viewAppeared)
             }
-            
-            // Tax Deductible Summary
-            TaxDeductibleSummary(transactions: filteredTransactions)
-                .opacity(viewAppeared ? 1 : 0.001)
-                .offset(y: viewAppeared ? 0 : 15)
-                .animation(FLOAnimation.standard.delay(0.55), value: viewAppeared)
-            
-            // Smart Insights
-            insightsCard
-                .opacity(viewAppeared ? 1 : 0.001)
-                .offset(y: viewAppeared ? 0 : 15)
-                .animation(FLOAnimation.standard.delay(0.6), value: viewAppeared)
-            
-            // CPA Report CTA
-            cpaReportCTA
-                .opacity(viewAppeared ? 1 : 0.001)
-                .offset(y: viewAppeared ? 0 : 15)
-                .animation(FLOAnimation.standard.delay(0.65), value: viewAppeared)
         }
         .padding(.vertical)
     }
@@ -608,7 +649,7 @@ struct ReportsView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemBackground))
+            .background(Color.floSecondarySystemBackground)
             .cornerRadius(12)
             .accessibilityElement(children: .combine)
         }
@@ -736,11 +777,11 @@ struct ReportsView: View {
         case .pie:
             if !categoryChartData.isEmpty { pieChartSection }
         case .barTrend:
-            barTrendChartSection
+            if !monthlyTrendData.isEmpty { barTrendChartSection }
         case .lineComparison:
-            lineComparisonChartSection
+            if !monthlyTrendData.isEmpty { lineComparisonChartSection }
         case .cashFlow:
-            cashFlowChartSection
+            if !cashFlowProjection.isEmpty { cashFlowChartSection }
         }
     }
     
@@ -840,7 +881,7 @@ struct ReportsView: View {
                 .minimumScaleFactor(0.7)
         }
         .padding()
-        .background(Color(.tertiarySystemBackground))
+        .background(Color.floTertiarySystemBackground)
         .cornerRadius(8)
         .padding(.horizontal)
         .accessibilityElement(children: .ignore)
@@ -873,23 +914,19 @@ struct ReportsView: View {
     // MARK: - Helper Methods
     
     private var dateRangeText: String {
-        let formatter = DateFormatter()
         switch selectedPeriod {
         case .week:
-            formatter.dateFormat = "MMM d"
             let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: selectedDate))!
             let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart)!
-            return "\(formatter.string(from: weekStart)) - \(formatter.string(from: weekEnd))"
+            return "\(DateFormatter.shortMonthDay.string(from: weekStart)) - \(DateFormatter.shortMonthDay.string(from: weekEnd))"
         case .month:
-            formatter.dateFormat = "MMMM yyyy"
-            return formatter.string(from: selectedDate)
+            return DateFormatter.monthYear.string(from: selectedDate)
         case .quarter:
             let quarter = (calendar.component(.month, from: selectedDate) - 1) / 3 + 1
             let year = calendar.component(.year, from: selectedDate)
             return "Q\(quarter) \(year)"
         case .year:
-            formatter.dateFormat = "yyyy"
-            return formatter.string(from: selectedDate)
+            return DateFormatter.yearOnly.string(from: selectedDate)
         }
     }
     
@@ -938,10 +975,7 @@ struct ReportsView: View {
     }
     
     func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = currencyCode
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(value)"
+        NumberFormatter.appCurrency.string(from: NSNumber(value: value)) ?? "$\(value)"
     }
 }
 

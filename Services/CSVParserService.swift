@@ -1,7 +1,7 @@
 //  CSVParserService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.0 - Dynamic Header-Based Column Detection
+//  Version 2.1 - Added TST * (with space) prefix for Toast POS
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v2.0:
@@ -482,6 +482,7 @@ final class CSVParserService {
             "ACH WITHDRAWAL",
             "SQ *",
             "TST*",
+            "TST *",
             "PAYPAL *",
             "VENMO *",
             "ZELLE PAYMENT FROM",

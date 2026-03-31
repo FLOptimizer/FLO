@@ -16,16 +16,16 @@ final class BusinessProfile {
     // MARK: - Properties
     
     /// Unique identifier
-    var id: UUID
+    var id: UUID = UUID()
     
     /// Business or personal name (required)
-    var businessName: String
+    var businessName: String = ""
     
     /// Contact name (optional - for DBA or personal branding)
     var contactName: String?
     
     /// Business email address (required)
-    var email: String
+    var email: String = ""
     
     /// Phone number (optional)
     var phone: String?
@@ -44,10 +44,10 @@ final class BusinessProfile {
     var taxId: String?
     
     /// Date profile was created
-    var createdDate: Date
-    
+    var createdDate: Date = Date()
+
     /// Date profile was last modified
-    var modifiedDate: Date
+    var modifiedDate: Date = Date()
     
     // MARK: - Computed Properties
     

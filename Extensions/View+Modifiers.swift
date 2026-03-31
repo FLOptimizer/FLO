@@ -1,8 +1,16 @@
 //  View_Modifiers.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.2 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
+//  Version 3.0 — Build 10: premium canvas background, semantic glow cards
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.3 - Dark Mode Polish:
+//  ✅ ADDED: floCardShadow() — dark-mode-aware shadow modifier
+//  ✅ ADDED: FLOCardShadowModifier — ViewModifier with @Environment(\.colorScheme)
+//  ✅ FIXED: floCard() shadow now uses floCardShadow() (dark mode aware)
+//  ✅ FIXED: floAccentCard() shadow now uses colorScheme-conditional opacity
+//  ✅ Light mode: black shadow for depth (unchanged appearance)
+//  ✅ Dark mode: subtle border + reduced shadow for card separation
 //
 //  CHANGES v2.2 - Dynamic Type Verification:
 //  ✅ FIXED: floLoading message text missing lineLimit + minimumScaleFactor
@@ -53,14 +61,14 @@ import SwiftUI
 
 extension View {
     
-    /// Standard FLO card with shadow
+    /// Standard FLO card with dark-mode-aware shadow
     /// Use for dashboard cards, list items, content containers
     func floCard() -> some View {
         self
             .padding()
-            .background(Color(.systemBackground))
+            .background(Color.floSystemBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
+            .floCardShadow()
     }
     
     /// Colored card with custom background
@@ -77,7 +85,7 @@ extension View {
     func floOutlineCard(borderColor: Color = .secondary.opacity(0.3)) -> some View {
         self
             .padding()
-            .background(Color(.systemBackground))
+            .background(Color.floSystemBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
@@ -90,17 +98,37 @@ extension View {
     func floGroupedCard() -> some View {
         self
             .padding()
-            .background(Color(.secondarySystemGroupedBackground))
+            .background(Color.floSecondarySystemGroupedBackground)
             .clipShape(RoundedRectangle(cornerRadius: 10))
     }
     
-    /// Glass morphism card effect
-    /// Use for overlays, floating UI elements
+    /// Glass morphism card effect with premium dark mode styling.
+    /// On iOS 26+/macOS 26+, uses system Liquid Glass for dynamic translucency.
+    /// On older OS, falls back to static glass tokens.
     func floGlassCard() -> some View {
         self
             .padding()
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .modifier(FLOGlassCardModifier())
+    }
+
+    /// Premium canvas background for full-screen views
+    /// Dark mode: deep #07070D canvas. Light mode: system background.
+    func floCanvasBackground() -> some View {
+        self.background(Color.floCanvas)
+    }
+
+    /// Unified column background for Zone 2 (content) and Zone 3 (detail) columns.
+    /// Ensures both columns share the same canvas background regardless of content.
+    func floColumnBackground() -> some View {
+        self
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.floCanvas)
+    }
+
+    /// Liquid Glass effect for small interactive elements (chips, pills, badges).
+    /// On iOS 26+, applies system glass. On older OS, uses material fallback.
+    func floLiquidGlass(in shape: some Shape = Capsule()) -> some View {
+        self.modifier(FLOLiquidGlassModifier(shape: AnyShape(shape)))
     }
     
     /// Accent-bordered card (teal border)
@@ -108,20 +136,92 @@ extension View {
     func floAccentCard() -> some View {
         self
             .padding()
-            .background(Color(.systemBackground))
+            .background(Color.floSystemBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(Color.brandPrimary, lineWidth: 2)
             )
-            .shadow(color: Color.brandPrimary.opacity(0.2), radius: 8, x: 0, y: 2)
+            .floCardShadow()
+    }
+}
+
+// MARK: - Dark Mode Card Shadow
+
+/// Dark-mode-aware card shadow modifier.
+/// Light mode: standard black shadow for depth and card lift.
+/// Dark mode: semantic teal glow + glass border for premium dark canvas feel.
+struct FLOCardShadowModifier: ViewModifier {
+    var radius: CGFloat = 8
+    var y: CGFloat = 2
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        if colorScheme == .dark {
+            content
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.floCardBorder, lineWidth: 0.5)
+                )
+                .shadow(color: Color.floSemanticGlow, radius: radius, y: 0)
+        } else {
+            content
+                .shadow(color: Color.black.opacity(0.06), radius: radius, y: y)
+        }
+    }
+}
+
+extension View {
+    /// Dark-mode-aware card shadow.
+    /// In light mode, applies a standard black drop shadow.
+    /// In dark mode, applies a subtle white glow plus a thin border for card separation.
+    func floCardShadow(radius: CGFloat = 8, y: CGFloat = 2) -> some View {
+        modifier(FLOCardShadowModifier(radius: radius, y: y))
+    }
+}
+
+// MARK: - Liquid Glass Modifiers (iOS 26+ / macOS 26+)
+
+/// Glass card modifier that uses Liquid Glass on iOS 26+ and falls back to static glass tokens.
+struct FLOGlassCardModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26, macOS 26, *) {
+            content
+                .glassEffect(.regular, in: .rect(cornerRadius: 14))
+                .floCardShadow()
+        } else {
+            content
+                .background(Color.floCardGlass)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.floCardBorder, lineWidth: 1)
+                )
+                .floCardShadow()
+        }
+    }
+}
+
+/// Liquid Glass modifier for small interactive elements (chips, pills).
+struct FLOLiquidGlassModifier: ViewModifier {
+    let shape: AnyShape
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26, macOS 26, *) {
+            content.glassEffect(.regular, in: shape)
+        } else {
+            content
+                .background(.ultraThinMaterial)
+                .clipShape(shape)
+        }
     }
 }
 
 // MARK: - Button Styles
 
 extension View {
-    
+
     /// Primary action button (teal background)
     /// Use for main CTAs: Save, Continue, Add
     func floPrimaryButton() -> some View {
@@ -313,7 +413,7 @@ extension View {
             .overlay {
                 if isLoading {
                     ZStack {
-                        Color(.systemBackground).opacity(0.8)
+                        Color.floSystemBackground.opacity(0.8)
                         VStack(spacing: 12) {
                             ProgressView()
                             if let message = message {
@@ -485,7 +585,7 @@ extension View {
     func appCard() -> some View {
         self
             .padding()
-            .background(Color(.systemBackground))
+            .background(Color.floSystemBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
@@ -541,7 +641,7 @@ extension View {
         }
         .padding()
     }
-    .background(Color(.systemGroupedBackground))
+    .background(Color.floSystemGroupedBackground)
 }
 
 #Preview("Button Styles") {
@@ -594,3 +694,62 @@ extension View {
             print("Add tapped")
         }
 }
+
+// MARK: - Cross-Platform Compatibility Modifiers
+
+#if os(macOS)
+/// Stub enum matching UIKit's NavigationBarItem.TitleDisplayMode for cross-platform compilation
+enum NavigationBarTitleDisplayMode {
+    case automatic, inline, large
+}
+
+/// Stub enum matching UIKit's UIKeyboardType for cross-platform compilation
+enum UIKeyboardType: Int {
+    case `default` = 0, asciiCapable, numbersAndPunctuation, URL, numberPad, phonePad, namePhonePad, emailAddress, decimalPad, twitter, webSearch, asciiCapableNumberPad
+}
+
+/// Stub enum matching UIKit's TextInputAutocapitalization for cross-platform compilation
+enum TextInputAutocapitalization {
+    case never, words, sentences, characters
+}
+
+/// Stub enum matching UIKit's UITextAutocapitalizationType for cross-platform compilation
+enum UITextAutocapitalizationType: Int {
+    case none = 0, words, sentences, allCharacters
+}
+
+extension View {
+    /// No-op on macOS where navigationBarTitleDisplayMode is unavailable
+    func navigationBarTitleDisplayMode(_ mode: NavigationBarTitleDisplayMode) -> some View {
+        self
+    }
+
+    /// No-op on macOS where keyboardType is unavailable
+    func keyboardType(_ type: UIKeyboardType) -> some View {
+        self
+    }
+
+    /// No-op on macOS where textInputAutocapitalization is unavailable
+    func textInputAutocapitalization(_ style: TextInputAutocapitalization?) -> some View {
+        self
+    }
+
+    /// No-op on macOS where autocapitalization is unavailable (UIKit legacy)
+    func autocapitalization(_ style: UITextAutocapitalizationType) -> some View {
+        self
+    }
+}
+
+extension ToolbarItemPlacement {
+    /// macOS equivalent for topBarTrailing
+    static var topBarTrailing: ToolbarItemPlacement { .automatic }
+    /// macOS equivalent for topBarLeading
+    static var topBarLeading: ToolbarItemPlacement { .automatic }
+    /// macOS equivalent for navigationBarTrailing
+    static var navigationBarTrailing: ToolbarItemPlacement { .automatic }
+    /// macOS equivalent for navigationBarLeading
+    static var navigationBarLeading: ToolbarItemPlacement { .automatic }
+}
+
+import SwiftUI
+#endif

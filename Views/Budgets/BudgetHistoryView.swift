@@ -196,9 +196,7 @@ struct BudgetHistoryView: View {
     // MARK: - Formatting
     
     private var selectedMonthName: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: selectedMonth)
+        DateFormatter.monthYear.string(from: selectedMonth)
     }
     
     // MARK: - Body
@@ -237,43 +235,7 @@ struct BudgetHistoryView: View {
                         .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
                     
                     // Content
-                    ScrollView {
-                        LazyVStack(spacing: 16) {
-                            // Summary card
-                            summaryCard
-                                .padding(.horizontal)
-                                .opacity(cardsAppeared ? 1 : 0.001)
-                                .offset(y: cardsAppeared ? 0 : 20)
-                                .animation(FLOAnimation.standard.delay(0.15), value: cardsAppeared)
-                            
-                            // Budget cards
-                            if budgetsForSelectedMonth.isEmpty {
-                                noBudgetsForMonth
-                                    .padding(.horizontal)
-                                    .opacity(cardsAppeared ? 1 : 0.001)
-                                    .animation(FLOAnimation.standard.delay(0.2), value: cardsAppeared)
-                            } else {
-                                ForEach(Array(budgetsForSelectedMonth.enumerated()), id: \.element.id) { index, budget in
-                                    HistoryBudgetCard(
-                                        budget: budget,
-                                        spent: calculateSpent(for: budget),
-                                        animateProgress: cardsAppeared
-                                    )
-                                    .padding(.horizontal)
-                                    .opacity(cardsAppeared ? 1 : 0.001)
-                                    .offset(x: cardsAppeared ? 0 : 30)
-                                    .animation(
-                                        FLOAnimation.standard
-                                        .delay(0.2 + Double(index) * 0.05),
-                                        value: cardsAppeared
-                                    )
-                                }
-                            }
-                            
-                            Spacer(minLength: 20)
-                        }
-                        .padding(.vertical)
-                    }
+                    historyScrollContent
                 }
             }
             .navigationTitle("Budget History")
@@ -303,6 +265,48 @@ struct BudgetHistoryView: View {
     // MARK: - Haptic Preparation
     
         
+    // MARK: - History Scroll Content
+
+    private var historyScrollContent: some View {
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                // Summary card
+                summaryCard
+                    .padding(.horizontal)
+                    .opacity(cardsAppeared ? 1 : 0.001)
+                    .offset(y: cardsAppeared ? 0 : 20)
+                    .animation(FLOAnimation.standard.delay(0.15), value: cardsAppeared)
+
+                // Budget cards
+                if budgetsForSelectedMonth.isEmpty {
+                    noBudgetsForMonth
+                        .padding(.horizontal)
+                        .opacity(cardsAppeared ? 1 : 0.001)
+                        .animation(FLOAnimation.standard.delay(0.2), value: cardsAppeared)
+                } else {
+                    ForEach(Array(budgetsForSelectedMonth.enumerated()), id: \.element.id) { index, budget in
+                        HistoryBudgetCard(
+                            budget: budget,
+                            spent: calculateSpent(for: budget),
+                            animateProgress: cardsAppeared
+                        )
+                        .padding(.horizontal)
+                        .opacity(cardsAppeared ? 1 : 0.001)
+                        .offset(x: cardsAppeared ? 0 : 30)
+                        .animation(
+                            FLOAnimation.standard
+                            .delay(0.2 + Double(index) * 0.05),
+                            value: cardsAppeared
+                        )
+                    }
+                }
+
+                Spacer(minLength: 20)
+            }
+            .padding(.vertical)
+        }
+    }
+
     // MARK: - Month Navigator
     
     private var monthNavigator: some View {
@@ -410,7 +414,7 @@ struct BudgetHistoryView: View {
             .padding(.top, 8)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
         .shadow(radius: 2)
     }
@@ -444,7 +448,7 @@ struct BudgetHistoryView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(32)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
     }
 }
@@ -582,7 +586,7 @@ struct HistoryBudgetCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
         .shadow(radius: 1)
         .accessibilityElement(children: .ignore)

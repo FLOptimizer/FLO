@@ -1,7 +1,7 @@
 //  AppConstants.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.2 - Added EULA URL constant
+//  Version 2.3 - Release print silencer + safer URL constants
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Crash-safe URLs, brand colors, and configuration values
@@ -9,6 +9,17 @@
 
 import Foundation
 import SwiftUI
+
+// MARK: - Release Build Print Silencer
+
+/// In Release builds, all unqualified `print()` calls become no-ops.
+/// This prevents ~250+ debug log statements from reaching the device console
+/// in production, avoiding information leakage and reducing I/O overhead.
+/// In Debug builds, `print()` works normally via the standard library.
+#if !DEBUG
+@inline(__always)
+func print(_ items: Any..., separator: String = " ", terminator: String = "\n") { }
+#endif
 
 /// Application-wide constants including colors, URLs, and configuration values.
 /// Uses enum pattern to prevent instantiation.
@@ -37,70 +48,46 @@ enum AppConstants {
     static let secondaryText = Color.secondary
     
     /// Tertiary text color (most muted)
+    #if canImport(UIKit)
     static let tertiaryText = Color(uiColor: .tertiaryLabel)
+    #else
+    static let tertiaryText = Color(nsColor: .tertiaryLabelColor)
+    #endif
     
     // MARK: - Background Colors
     
     /// Grouped background color (adapts to light/dark mode)
+    #if canImport(UIKit)
     static let groupedBackground = Color(uiColor: .systemGroupedBackground)
+    #else
+    static let groupedBackground = Color(nsColor: .controlBackgroundColor)
+    #endif
     
-    // MARK: - URLs (Crash-Safe)
+    // MARK: - URLs
 
-    /// Company website URL - guaranteed to be valid
-    static let websiteURL: URL = {
-        guard let url = URL(string: "https://floptimizer.github.io/FLO/") else {
-            fatalError("Invalid website URL - this should never happen")
-        }
-        return url
-    }()
+    /// Fallback URL if a constant somehow fails to parse (should never happen).
+    private static let fallbackURL = URL(string: "https://floptimizer.github.io/FLO/")!
 
-    /// GitHub repository URL - guaranteed to be valid
-    static let githubURL: URL = {
-        guard let url = URL(string: "https://floptimizer.github.io/FLO/") else {
-            fatalError("Invalid GitHub URL - this should never happen")
-        }
-        return url
-    }()
+    /// Company website URL
+    static let websiteURL = URL(string: "https://floptimizer.github.io/FLO/") ?? fallbackURL
 
-    /// Support email URL - guaranteed to be valid
-    static let supportEmailURL: URL = {
-        guard let url = URL(string: "mailto:flo.financeapp@gmail.com") else {
-            fatalError("Invalid support email URL - this should never happen")
-        }
-        return url
-    }()
+    /// GitHub repository URL
+    static let githubURL = URL(string: "https://floptimizer.github.io/FLO/") ?? fallbackURL
 
-    /// Privacy policy URL - guaranteed to be valid
-    static let privacyPolicyURL: URL = {
-        guard let url = URL(string: "https://floptimizer.github.io/FLO/privacy.html") else {
-            fatalError("Invalid privacy policy URL - this should never happen")
-        }
-        return url
-    }()
+    /// Support email URL
+    static let supportEmailURL = URL(string: "mailto:flo.financeapp@gmail.com") ?? fallbackURL
 
-    /// Terms of service URL - guaranteed to be valid
-    static let termsOfServiceURL: URL = {
-        guard let url = URL(string: "https://floptimizer.github.io/FLO/terms.html") else {
-            fatalError("Invalid terms of service URL - this should never happen")
-        }
-        return url
-    }()
+    /// Privacy policy URL
+    static let privacyPolicyURL = URL(string: "https://floptimizer.github.io/FLO/privacy.html") ?? fallbackURL
 
-    /// Legal disclaimer URL - guaranteed to be valid
-    static let disclaimerURL: URL = {
-        guard let url = URL(string: "https://floptimizer.github.io/FLO/legal.html") else {
-            fatalError("Invalid disclaimer URL - this should never happen")
-        }
-        return url
-    }()
+    /// Terms of service URL
+    static let termsOfServiceURL = URL(string: "https://floptimizer.github.io/FLO/terms.html") ?? fallbackURL
 
-    /// End User License Agreement URL - guaranteed to be valid
-    static let eulaURL: URL = {
-        guard let url = URL(string: "https://floptimizer.github.io/FLO/eula.html") else {
-            fatalError("Invalid EULA URL - this should never happen")
-        }
-        return url
-    }()
+    /// Legal disclaimer URL
+    static let disclaimerURL = URL(string: "https://floptimizer.github.io/FLO/legal.html") ?? fallbackURL
+
+    /// End User License Agreement URL
+    static let eulaURL = URL(string: "https://floptimizer.github.io/FLO/eula.html") ?? fallbackURL
     
     // MARK: - App Information
     

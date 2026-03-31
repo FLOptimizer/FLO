@@ -39,7 +39,7 @@ struct DashboardEmptyStateCard: View {
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 32)
         .padding(.vertical, 24)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
         // v1.1: Card accessible
         .accessibilityElement(children: .ignore)

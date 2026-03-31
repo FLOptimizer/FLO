@@ -81,7 +81,7 @@ final class BiometricAuthService: ObservableObject {
         }
         
         // Dynamic reason string based on biometric type
-        let reason = "Unlock FLO"
+        let reason = "access your financial data"
         
         context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { [weak self] success, authError in
             DispatchQueue.main.async {

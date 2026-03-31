@@ -75,8 +75,10 @@ struct OnboardingView: View {
                     GetStartedPageView(completeAction: completeOnboarding)
                         .tag(3)
                 }
+                #if !os(macOS)
                 .tabViewStyle(.page(indexDisplayMode: .always))
                 .indexViewStyle(.page(backgroundDisplayMode: .always))
+                #endif
                 
                 // Navigation buttons
                 HStack(spacing: 20) {
@@ -97,7 +99,7 @@ struct OnboardingView: View {
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color(.systemGray5))
+                            .background(Color.gray.opacity(0.2))
                             .cornerRadius(12)
                         }
                     }
@@ -245,7 +247,9 @@ struct FLOInActionPageView: View {
                     .tag(index)
                 }
             }
+            #if !os(macOS)
             .tabViewStyle(.page(indexDisplayMode: .always))
+            #endif
             .frame(height: 340)
             .opacity(appeared ? 1 : 0.001)
             .offset(y: appeared ? 0 : 30)
@@ -315,7 +319,7 @@ struct FeaturePreviewCard: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(Color(.systemBackground))
+                .fill(Color.floSystemBackground)
                 .shadow(color: .black.opacity(0.08), radius: 15, y: 5)
         )
         .padding(.horizontal, 20)
@@ -419,9 +423,9 @@ struct ValuePropRow: View {
             Spacer()
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color.floSystemBackground)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
+        .floCardShadow(radius: 5)
         .opacity(appeared ? 1 : 0.001)
         .offset(x: appeared ? 0 : -20)
         .accessibilityElement(children: .combine)
@@ -630,7 +634,7 @@ struct LimitedModeExplanationView: View {
                 LimitedModeRow(icon: "checkmark.circle.fill", iconColor: .green, text: "Manual trip entry still works")
             }
             .padding()
-            .background(Color(.secondarySystemBackground))
+            .background(Color.floSecondarySystemBackground)
             .cornerRadius(12)
             .padding(.horizontal)
             

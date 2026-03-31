@@ -1,11 +1,24 @@
 //  ComprehensiveReportView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.4 - Dark Mode Optimization: Adaptive color fixes
+//  Version 1.6 - Live Equity Data Integration
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
+//  CHANGES v1.6 - Live Equity Data:
+//  ✅ CONNECTED: Real TransferService data to equity section
+//  ✅ ADDED: ModelContext passed to report generation
+//  ✅ ADDED: Actual YTD calculations display in reports
+//  ✅ Shows real draws, contributions, and tax payment data
+//
+//  CHANGES v1.5 - Transfer/Equity Section:
+//  ✅ ADDED: Owner's Draw and Capital Contribution tracking section
+//  ✅ ADDED: Toggle for "Equity & Transfers" in report configuration
+//  ✅ ADDED: YTD tax payment summary integration
+//  ✅ ADDED: Net equity change calculation (Contributions - Draws)
+//  ✅ Helps freelancers track money movement between business and personal accounts
+//
 //  CHANGES v1.4 - Dark Mode Optimization:
-//  ✅ FIXED: L580 Color.gray → Color(.systemGray4) for generate button background (adapts to dark mode)
+//  ✅ FIXED: L580 Color.gray → Color.gray.opacity(0.3) for generate button background (adapts to dark mode)
 //
 //  CHANGES v1.3 - Dynamic Type Verification:
 //  ✅ FIXED: Header "CPA-Ready Reports" title missing lineLimit + minimumScaleFactor
@@ -53,12 +66,13 @@ import SwiftData
 struct ComprehensiveReportView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    
-    @Query private var transactions: [Transaction]
-    @Query private var mileageTrips: [MileageTrip]
-    @Query private var invoices: [Invoice]
+
     @Query private var taxSettingsQuery: [TaxSettings]
     @Query private var businessProfiles: [BusinessProfile]
+
+    @State private var transactions: [Transaction] = []
+    @State private var mileageTrips: [MileageTrip] = []
+    @State private var invoices: [Invoice] = []
     
     // Report Configuration State
     @State private var reportType: ReportType = .annual
@@ -72,6 +86,7 @@ struct ComprehensiveReportView: View {
     @State private var includeInvoices = true
     @State private var includeDetailedTransactions = true
     @State private var includeTaxEstimates = true
+    @State private var includeEquityTransfers = true
     @State private var includePersonal = true
     
     // UI State
@@ -128,9 +143,7 @@ struct ComprehensiveReportView: View {
         case .quarterly:
             return "Q\(selectedQuarter) \(selectedYear) Financial Report"
         case .custom:
-            let formatter = DateFormatter()
-            formatter.dateStyle = .medium
-            return "Financial Report: \(formatter.string(from: customStartDate)) - \(formatter.string(from: customEndDate))"
+            return "Financial Report: \(DateFormatter.mediumDate.string(from: customStartDate)) - \(DateFormatter.mediumDate.string(from: customEndDate))"
         }
     }
     
@@ -146,7 +159,20 @@ struct ComprehensiveReportView: View {
     private var filteredInvoiceCount: Int {
         invoices.filter { dateRange.contains($0.issueDate) }.count
     }
-    
+
+    private func loadData() {
+        let yearStart = Calendar.current.date(from: Calendar.current.dateComponents([.year], from: Date()))!
+        transactions = (try? modelContext.fetch(FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= yearStart }
+        ))) ?? []
+        mileageTrips = (try? modelContext.fetch(FetchDescriptor<MileageTrip>(
+            predicate: #Predicate<MileageTrip> { $0.startDate >= yearStart }
+        ))) ?? []
+        invoices = (try? modelContext.fetch(FetchDescriptor<Invoice>(
+            predicate: #Predicate<Invoice> { $0.issueDate >= yearStart }
+        ))) ?? []
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -195,7 +221,7 @@ struct ComprehensiveReportView: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.floSystemGroupedBackground)
             .navigationTitle("Generate Report")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -216,20 +242,26 @@ struct ComprehensiveReportView: View {
             } message: {
                 Text(errorMessage)
             }
+            .task { loadData() }
             .onAppear {
                 // Set default quarter based on current date
                 let month = Calendar.current.component(.month, from: Date())
                 selectedQuarter = (month - 1) / 3 + 1
-                
+
                 // Set custom dates to current month
                 let calendar = Calendar.current
                 customStartDate = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
                 customEndDate = Date()
-                
+
                 withAnimation {
                     viewAppeared = true
                 }
                 AccessibilityAnnouncement.screenChanged("Generate CPA-ready report")
+            }
+            .onDisappear {
+                transactions = []
+                mileageTrips = []
+                invoices = []
             }
         }
     }
@@ -298,7 +330,7 @@ struct ComprehensiveReportView: View {
                         .padding(.vertical, 16)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
-                                .fill(reportType == type ? Color.businessColor : Color(.secondarySystemBackground))
+                                .fill(reportType == type ? Color.businessColor : Color.floSecondarySystemBackground)
                         )
                         .foregroundStyle(reportType == type ? .white : .primary)
                     }
@@ -310,7 +342,7 @@ struct ComprehensiveReportView: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color.floSystemBackground)
         .cornerRadius(16)
     }
     
@@ -372,7 +404,7 @@ struct ComprehensiveReportView: View {
                             .foregroundStyle(.secondary)
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color.floSystemBackground)
         .cornerRadius(16)
     }
     
@@ -424,6 +456,15 @@ struct ComprehensiveReportView: View {
                 Divider().padding(.leading, 50)
                 
                 toggleRow(
+                    icon: "arrow.left.arrow.right.circle.fill",
+                    title: "Equity & Transfers",
+                    subtitle: "Owner's draws, contributions, tax payments",
+                    isOn: $includeEquityTransfers
+                )
+                
+                Divider().padding(.leading, 50)
+                
+                toggleRow(
                     icon: "person.fill",
                     title: "Personal Expenses",
                     subtitle: "Include non-business transactions",
@@ -432,7 +473,7 @@ struct ComprehensiveReportView: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color.floSystemBackground)
         .cornerRadius(16)
     }
     
@@ -523,7 +564,7 @@ struct ComprehensiveReportView: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color.floSystemBackground)
         .cornerRadius(16)
     }
     
@@ -548,7 +589,7 @@ struct ComprehensiveReportView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(count) \(label)")
@@ -580,7 +621,7 @@ struct ComprehensiveReportView: View {
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(filteredTransactionCount > 0 ? Color.businessColor : Color(.systemGray4))
+                    .fill(filteredTransactionCount > 0 ? Color.businessColor : Color.gray.opacity(0.3))
             )
             .foregroundStyle(.white)
         }
@@ -614,7 +655,7 @@ struct ComprehensiveReportView: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color.floSystemBackground)
         .cornerRadius(16)
     }
     
@@ -646,6 +687,7 @@ struct ComprehensiveReportView: View {
         let currentIncludeInvoices = includeInvoices
         let currentIncludeDetailedTransactions = includeDetailedTransactions
         let currentIncludeTaxEstimates = includeTaxEstimates
+        let currentIncludeEquityTransfers = includeEquityTransfers
         let currentBusinessName = businessProfile?.businessName
         let currentBusinessAddress = businessProfile?.formattedAddress
         let currentTransactions = transactions
@@ -663,6 +705,7 @@ struct ComprehensiveReportView: View {
                 includeInvoices: currentIncludeInvoices,
                 includeDetailedTransactions: currentIncludeDetailedTransactions,
                 includeTaxEstimates: currentIncludeTaxEstimates,
+                includeEquityTransfers: currentIncludeEquityTransfers,
                 businessName: currentBusinessName,
                 businessAddress: currentBusinessAddress,
                 ein: nil,
@@ -675,7 +718,8 @@ struct ComprehensiveReportView: View {
                 mileageTrips: Array(currentMileageTrips),
                 invoices: Array(currentInvoices),
                 taxSettings: currentTaxSettings,
-                businessProfile: currentBusinessProfile
+                businessProfile: currentBusinessProfile,
+                context: modelContext
             )
             
             isGenerating = false

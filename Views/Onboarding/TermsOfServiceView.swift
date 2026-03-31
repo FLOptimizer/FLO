@@ -1,8 +1,11 @@
 //  TermsOfServiceView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.2 - Accessibility Audit: Full VoiceOver support
+//  Version 1.3 - Invoice Limit Correction
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.3:
+//  ✅ FIXED: Premium tier invoice limit corrected from 10 to 25 (matches SubscriptionTier.swift)
 //
 //  CHANGES v1.2:
 //  ✅ Screen change announcement on appear
@@ -113,7 +116,7 @@ struct TermsOfServiceView: View {
                     
                     Premium ($12.99/month):
                     • Tax estimates, mileage tracking
-                    • Up to 10 invoices per month
+                    • Up to 25 invoices per month
                     • Limited client management
                     
                     Pro ($19.99/month):
@@ -248,7 +251,7 @@ struct TermsOfServiceView: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color(.systemGray6))
+                .background(Color.gray.opacity(0.1))
                 .cornerRadius(8)
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 20)

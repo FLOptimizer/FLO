@@ -10,7 +10,12 @@
 		436A0AA22EC02F920011973D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 436A0AA12EC02F920011973D /* WidgetKit.framework */; };
 		436A0AA42EC02F920011973D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 436A0AA32EC02F920011973D /* SwiftUI.framework */; };
 		436A0AB32EC02F930011973D /* FLOWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 436A0A9F2EC02F920011973D /* FLOWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		43E4776D2F3F8F6900769F6C /* LinkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 43E4776C2F3F8F6900769F6C /* LinkKit */; };
+		43C4F4492F4E0FD6005B3810 /* FLOWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 43C4F4292F4E0FD5005B3810 /* FLOWatch Watch App.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		43C4F46A2F4E15B4005B3810 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 436A0AA12EC02F920011973D /* WidgetKit.framework */; };
+		43C4F46B2F4E15B4005B3810 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 436A0AA32EC02F920011973D /* SwiftUI.framework */; };
+		43C4F4762F4E15B5005B3810 /* FLOWatchComplicationsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 43C4F4692F4E15B4005B3810 /* FLOWatchComplicationsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		43C4F4882F4E1654005B3810 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 43C4F4872F4E1654005B3810 /* WatchConnectivity.framework */; platformFilter = ios; };
+		43E4776D2F3F8F6900769F6C /* LinkKit in Frameworks */ = {isa = PBXBuildFile; platformFilter = ios; productRef = 43E4776C2F3F8F6900769F6C /* LinkKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +40,48 @@
 			remoteGlobalIDString = 436A0A9E2EC02F920011973D;
 			remoteInfo = FlowLedgerWidgetExtension;
 		};
+		43C4F4362F4E0FD6005B3810 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 433FDBC52EB992B00008DA09 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 43C4F4282F4E0FD5005B3810;
+			remoteInfo = "FLOWatch Watch App";
+		};
+		43C4F4402F4E0FD6005B3810 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 433FDBC52EB992B00008DA09 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 43C4F4282F4E0FD5005B3810;
+			remoteInfo = "FLOWatch Watch App";
+		};
+		43C4F4472F4E0FD6005B3810 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 433FDBC52EB992B00008DA09 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 43C4F4282F4E0FD5005B3810;
+			remoteInfo = "FLOWatch Watch App";
+		};
+		43C4F4742F4E15B5005B3810 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 433FDBC52EB992B00008DA09 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 43C4F4682F4E15B4005B3810;
+			remoteInfo = FLOWatchComplicationsExtension;
+		};
+		43F478AF2F5CE2920098DC37 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 433FDBC52EB992B00008DA09 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 43F4789F2F5CE2910098DC37;
+			remoteInfo = FLOInvoiceClip;
+		};
+		43F478B92F5CE2920098DC37 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 433FDBC52EB992B00008DA09 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 43F4789F2F5CE2910098DC37;
+			remoteInfo = FLOInvoiceClip;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -49,6 +96,28 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		43C4F44D2F4E0FD6005B3810 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				43C4F4492F4E0FD6005B3810 /* FLOWatch Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43C4F47B2F4E15B5005B3810 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				43C4F4762F4E15B5005B3810 /* FLOWatchComplicationsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -57,6 +126,10 @@
 		4318B6CF2F32D79200B9389E /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		4320D9272F0187EC00A758F4 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		4320DA4A2F063B8C00A758F4 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		432D6AB42F4E22C300C57BCA /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		432D72192F4E305000C57BCA /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		432D749C2F4F81DB00C57BCA /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		432D77572F549A1900C57BCA /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		433FDBCD2EB992B00008DA09 /* FLO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FLO.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		433FDBDC2EB992B10008DA09 /* FLOTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FLOTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		433FDBE62EB992B10008DA09 /* FLOUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FLOUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -76,8 +149,18 @@
 		438126C82EF63F46002EA8A5 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		438416DE2EF9F5AE0065AC69 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43A5A4032F42ACB0007A781C /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43AA99742F702FB00026F795 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43AA9CAC2F75806A0026F795 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43AAA3212F79BB520026F795 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43B118CA2F5F391C00C52BB5 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43B7396B2EF6521400B32076 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43C4F1BC2F4CB7AB005B3810 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43C4F4292F4E0FD5005B3810 /* FLOWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "FLOWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		43C4F4352F4E0FD6005B3810 /* FLOWatch Watch AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "FLOWatch Watch AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		43C4F43F2F4E0FD6005B3810 /* FLOWatch Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "FLOWatch Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		43C4F4692F4E15B4005B3810 /* FLOWatchComplicationsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FLOWatchComplicationsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		43C4F4852F4E15E9005B3810 /* FLOWatchComplicationsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FLOWatchComplicationsExtension.entitlements; sourceTree = "<group>"; };
+		43C4F4872F4E1654005B3810 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
 		43C71AD52EF641D7005A8198 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43D3D1192EF9E59D00B48C19 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43E3C9582EF6297400CC479E /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
@@ -86,6 +169,11 @@
 		43EBF35A2EF642B600B5C1DE /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43EBF4392EF6435800B5C1DE /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43EBF5212EF64C2600B5C1DE /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43F4715F2F5B93780098DC37 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43F477002F5CA0070098DC37 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43F478A02F5CE2910098DC37 /* FLOInvoiceClip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FLOInvoiceClip.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		43F478AE2F5CE2920098DC37 /* FLOInvoiceClipTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FLOInvoiceClipTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		43F478B82F5CE2920098DC37 /* FLOInvoiceClipUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FLOInvoiceClipUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		43FAC77C2F1080D4006A54B9 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43FAC8A52F1298AF006A54B9 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43FAC9D32F145FCE006A54B9 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
@@ -97,9 +185,48 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		432D6BF52F4E24DE00C57BCA /* Exceptions for "FLO" folder in "FLOWatch Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				App/WatchModels.swift,
+			);
+			target = 43C4F4282F4E0FD5005B3810 /* FLOWatch Watch App */;
+		};
+		432D6BF62F4E24DE00C57BCA /* Exceptions for "FLO" folder in "FLOWatchComplicationsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				App/WatchModels.swift,
+			);
+			target = 43C4F4682F4E15B4005B3810 /* FLOWatchComplicationsExtension */;
+		};
 		435AF7922EF6393C00B42ECE /* Exceptions for "FLO" folder in "FLO" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				FLOInvoiceClip/Assets.xcassets,
+				FLOInvoiceClip/ContentView.swift,
+				FLOInvoiceClip/FLOInvoiceClipApp.swift,
+				FLOInvoiceClip/Item.swift,
+				FLOInvoiceClipTests/FLOInvoiceClipTests.swift,
+				FLOInvoiceClipUITests/FLOInvoiceClipUITests.swift,
+				FLOInvoiceClipUITests/FLOInvoiceClipUITestsLaunchTests.swift,
+				"FLOWatch Watch App/Assets.xcassets",
+				"FLOWatch Watch App/FLOWatchApp.swift",
+				"FLOWatch Watch App/MileageControlView.swift",
+				"FLOWatch Watch App/QuickExpenseView.swift",
+				"FLOWatch Watch App/RecentTransactionsView_Watch.swift",
+				"FLOWatch Watch App/TaxEstimateView_Watch.swift",
+				"FLOWatch Watch App/TodaySummaryView.swift",
+				"FLOWatch Watch App/WatchHomeView.swift",
+				"FLOWatch Watch App/WatchSessionManager.swift",
+				"FLOWatch Watch AppTests/FLOWatch_Watch_AppTests.swift",
+				"FLOWatch Watch AppUITests/FLOWatch_Watch_AppUITests.swift",
+				"FLOWatch Watch AppUITests/FLOWatch_Watch_AppUITestsLaunchTests.swift",
+				FLOWatchComplications/Assets.xcassets,
+				FLOWatchComplications/FLOWatchComplicationsBundle.swift,
+				FLOWatchComplications/Info.plist,
+				FLOWatchComplications/MileageComplication.swift,
+				FLOWatchComplications/SpendingSummaryComplication.swift,
+				FLOWatchComplications/TaxDeadlineComplication.swift,
 				FLOWidget/Assets.xcassets,
 				FLOWidget/FLOWidget.swift,
 				FLOWidget/FLOWidgetBundle.swift,
@@ -124,12 +251,15 @@
 				"Extensions/Color+Extensions.swift",
 				Extensions/ColorSchemeSystem.swift,
 				"Extensions/Date+Extensions.swift",
+				"Extensions/DateFormatter+Shared.swift",
+				"Extensions/NumberFormatter+Currency.swift",
 				FLOWidget/Assets.xcassets,
 				FLOWidget/FLOWidget.swift,
 				FLOWidget/FLOWidgetBundle.swift,
 				FLOWidget/FLOWidgetControl.swift,
 				FLOWidget/FLOWidgetLiveActivity.swift,
 				Models/Account.swift,
+				Models/BalanceAnchor.swift,
 				Models/Budget.swift,
 				Models/BusinessProfile.swift,
 				Models/Category.swift,
@@ -139,11 +269,47 @@
 				Models/InvoiceTypes.swift,
 				Models/MileageLiveActivityAttributes.swift,
 				Models/RecurringTransaction.swift,
+				Models/RecurringTransfer.swift,
 				Models/TaxOptimizationModels.swift,
 				Models/Transaction.swift,
+				Models/Transfer.swift,
 				Services/WidgetDataService.swift,
 			);
 			target = 436A0A9E2EC02F920011973D /* FLOWidgetExtension */;
+		};
+		43C4F47A2F4E15B5005B3810 /* Exceptions for "FLOWatchComplications" folder in "FLOWatchComplicationsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 43C4F4682F4E15B4005B3810 /* FLOWatchComplicationsExtension */;
+		};
+		43F478CB2F5CE4A00098DC37 /* Exceptions for "FLO" folder in "FLOInvoiceClip" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Extensions/AccessibilityHelpers.swift,
+				"Extensions/Color+Extensions.swift",
+				Extensions/ColorSchemeSystem.swift,
+				"Extensions/DateFormatter+Shared.swift",
+				"Extensions/NumberFormatter+Currency.swift",
+				Models/Account.swift,
+				Models/BalanceAnchor.swift,
+				Models/Budget.swift,
+				Models/BusinessProfile.swift,
+				Models/Category.swift,
+				Models/Client.swift,
+				Models/Invoice.swift,
+				Models/InvoicePayment.swift,
+				Models/InvoiceTypes.swift,
+				Models/RecurringTransaction.swift,
+				Models/RecurringTransfer.swift,
+				Models/Transaction.swift,
+				Models/Transfer.swift,
+				Services/AnimationService.swift,
+				Services/HapticService.swift,
+				Services/InvoiceService.swift,
+			);
+			target = 43F4789F2F5CE2910098DC37 /* FLOInvoiceClip */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -154,6 +320,9 @@
 				435AF7922EF6393C00B42ECE /* Exceptions for "FLO" folder in "FLO" target */,
 				4364CFE62F48BFB500AD1C84 /* Exceptions for "FLO" folder in "FLOUITests" target */,
 				4381274A2EF641AD002EA8A5 /* Exceptions for "FLO" folder in "FLOWidgetExtension" target */,
+				432D6BF52F4E24DE00C57BCA /* Exceptions for "FLO" folder in "FLOWatch Watch App" target */,
+				432D6BF62F4E24DE00C57BCA /* Exceptions for "FLO" folder in "FLOWatchComplicationsExtension" target */,
+				43F478CB2F5CE4A00098DC37 /* Exceptions for "FLO" folder in "FLOInvoiceClip" target */,
 			);
 			name = FLO;
 			sourceTree = "<group>";
@@ -170,6 +339,44 @@
 			path = ../FLOUITests;
 			sourceTree = "<group>";
 		};
+		43C4F42A2F4E0FD5005B3810 /* FLOWatch Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "FLOWatch Watch App";
+			sourceTree = "<group>";
+		};
+		43C4F4382F4E0FD6005B3810 /* FLOWatch Watch AppTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "FLOWatch Watch AppTests";
+			sourceTree = "<group>";
+		};
+		43C4F4422F4E0FD6005B3810 /* FLOWatch Watch AppUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "FLOWatch Watch AppUITests";
+			sourceTree = "<group>";
+		};
+		43C4F46C2F4E15B4005B3810 /* FLOWatchComplications */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				43C4F47A2F4E15B5005B3810 /* Exceptions for "FLOWatchComplications" folder in "FLOWatchComplicationsExtension" target */,
+			);
+			path = FLOWatchComplications;
+			sourceTree = "<group>";
+		};
+		43F478A12F5CE2910098DC37 /* FLOInvoiceClip */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FLOInvoiceClip;
+			sourceTree = "<group>";
+		};
+		43F478B12F5CE2920098DC37 /* FLOInvoiceClipTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FLOInvoiceClipTests;
+			sourceTree = "<group>";
+		};
+		43F478BB2F5CE2920098DC37 /* FLOInvoiceClipUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FLOInvoiceClipUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -178,6 +385,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				43E4776D2F3F8F6900769F6C /* LinkKit in Frameworks */,
+				43C4F4882F4E1654005B3810 /* WatchConnectivity.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -201,6 +409,57 @@
 			files = (
 				436A0AA42EC02F920011973D /* SwiftUI.framework in Frameworks */,
 				436A0AA22EC02F920011973D /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43C4F4262F4E0FD5005B3810 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43C4F4322F4E0FD6005B3810 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43C4F43C2F4E0FD6005B3810 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43C4F4662F4E15B4005B3810 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				43C4F46B2F4E15B4005B3810 /* SwiftUI.framework in Frameworks */,
+				43C4F46A2F4E15B4005B3810 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43F4789D2F5CE2910098DC37 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43F478AB2F5CE2920098DC37 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43F478B52F5CE2920098DC37 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -232,16 +491,44 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		432D6ABA2F4E22C300C57BCA /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		432D721F2F4E305000C57BCA /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		432D74A22F4F81DB00C57BCA /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		432D775D2F549A1900C57BCA /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
 		433FDBC42EB992B00008DA09 = {
 			isa = PBXGroup;
 			children = (
-				43FACFF62F2017F6006A54B9 /* FLOTests.xctestplan */,
+				43C4F4852F4E15E9005B3810 /* FLOWatchComplicationsExtension.entitlements */,
 				43712E8E2EFF2FD600873FEF /* FLOTests */,
 				433FDBCF2EB992B00008DA09 /* FLO */,
 				433FDBDF2EB992B10008DA09 /* FLOTests */,
 				433FDBE92EB992B10008DA09 /* FLOUITests */,
+				43C4F42A2F4E0FD5005B3810 /* FLOWatch Watch App */,
+				43C4F4382F4E0FD6005B3810 /* FLOWatch Watch AppTests */,
+				43C4F4422F4E0FD6005B3810 /* FLOWatch Watch AppUITests */,
+				43C4F46C2F4E15B4005B3810 /* FLOWatchComplications */,
+				43F478A12F5CE2910098DC37 /* FLOInvoiceClip */,
+				43F478B12F5CE2920098DC37 /* FLOInvoiceClipTests */,
+				43F478BB2F5CE2920098DC37 /* FLOInvoiceClipUITests */,
 				436A0AA02EC02F920011973D /* Frameworks */,
 				433FDBCE2EB992B00008DA09 /* Products */,
+				43FACFF62F2017F6006A54B9 /* FLOTests.xctestplan */,
 			);
 			sourceTree = "<group>";
 		};
@@ -252,6 +539,13 @@
 				433FDBDC2EB992B10008DA09 /* FLOTests.xctest */,
 				433FDBE62EB992B10008DA09 /* FLOUITests.xctest */,
 				436A0A9F2EC02F920011973D /* FLOWidgetExtension.appex */,
+				43C4F4292F4E0FD5005B3810 /* FLOWatch Watch App.app */,
+				43C4F4352F4E0FD6005B3810 /* FLOWatch Watch AppTests.xctest */,
+				43C4F43F2F4E0FD6005B3810 /* FLOWatch Watch AppUITests.xctest */,
+				43C4F4692F4E15B4005B3810 /* FLOWatchComplicationsExtension.appex */,
+				43F478A02F5CE2910098DC37 /* FLOInvoiceClip.app */,
+				43F478AE2F5CE2920098DC37 /* FLOInvoiceClipTests.xctest */,
+				43F478B82F5CE2920098DC37 /* FLOInvoiceClipUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -284,6 +578,7 @@
 		436A0AA02EC02F920011973D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				43C4F4872F4E1654005B3810 /* WatchConnectivity.framework */,
 				436A0AA12EC02F920011973D /* WidgetKit.framework */,
 				436A0AA32EC02F920011973D /* SwiftUI.framework */,
 			);
@@ -321,6 +616,26 @@
 			sourceTree = "<group>";
 		};
 		43A5A4072F42ACB0007A781C /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		43AA997A2F702FB00026F795 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		43AA9CB22F75806A0026F795 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		43AAA3282F79BB520026F795 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		43B118D02F5F391C00C52BB5 /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
@@ -375,6 +690,16 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		43F471652F5B93780098DC37 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		43F477062F5CA0070098DC37 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
 		43FAC7842F1080D4006A54B9 /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
@@ -421,11 +746,13 @@
 				433FDBCA2EB992B00008DA09 /* Frameworks */,
 				433FDBCB2EB992B00008DA09 /* Resources */,
 				436A0AB82EC02F930011973D /* Embed Foundation Extensions */,
+				43C4F44D2F4E0FD6005B3810 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				436A0AB22EC02F930011973D /* PBXTargetDependency */,
+				43C4F4482F4E0FD6005B3810 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				433FDBCF2EB992B00008DA09 /* FLO */,
@@ -503,6 +830,166 @@
 			productReference = 436A0A9F2EC02F920011973D /* FLOWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		43C4F4282F4E0FD5005B3810 /* FLOWatch Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 43C4F44A2F4E0FD6005B3810 /* Build configuration list for PBXNativeTarget "FLOWatch Watch App" */;
+			buildPhases = (
+				43C4F4252F4E0FD5005B3810 /* Sources */,
+				43C4F4262F4E0FD5005B3810 /* Frameworks */,
+				43C4F4272F4E0FD5005B3810 /* Resources */,
+				43C4F47B2F4E15B5005B3810 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				43C4F4752F4E15B5005B3810 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				43C4F42A2F4E0FD5005B3810 /* FLOWatch Watch App */,
+			);
+			name = "FLOWatch Watch App";
+			packageProductDependencies = (
+			);
+			productName = "FLOWatch Watch App";
+			productReference = 43C4F4292F4E0FD5005B3810 /* FLOWatch Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		43C4F4342F4E0FD6005B3810 /* FLOWatch Watch AppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 43C4F44E2F4E0FD6005B3810 /* Build configuration list for PBXNativeTarget "FLOWatch Watch AppTests" */;
+			buildPhases = (
+				43C4F4312F4E0FD6005B3810 /* Sources */,
+				43C4F4322F4E0FD6005B3810 /* Frameworks */,
+				43C4F4332F4E0FD6005B3810 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				43C4F4372F4E0FD6005B3810 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				43C4F4382F4E0FD6005B3810 /* FLOWatch Watch AppTests */,
+			);
+			name = "FLOWatch Watch AppTests";
+			packageProductDependencies = (
+			);
+			productName = "FLOWatch Watch AppTests";
+			productReference = 43C4F4352F4E0FD6005B3810 /* FLOWatch Watch AppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		43C4F43E2F4E0FD6005B3810 /* FLOWatch Watch AppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 43C4F4512F4E0FD6005B3810 /* Build configuration list for PBXNativeTarget "FLOWatch Watch AppUITests" */;
+			buildPhases = (
+				43C4F43B2F4E0FD6005B3810 /* Sources */,
+				43C4F43C2F4E0FD6005B3810 /* Frameworks */,
+				43C4F43D2F4E0FD6005B3810 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				43C4F4412F4E0FD6005B3810 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				43C4F4422F4E0FD6005B3810 /* FLOWatch Watch AppUITests */,
+			);
+			name = "FLOWatch Watch AppUITests";
+			packageProductDependencies = (
+			);
+			productName = "FLOWatch Watch AppUITests";
+			productReference = 43C4F43F2F4E0FD6005B3810 /* FLOWatch Watch AppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		43C4F4682F4E15B4005B3810 /* FLOWatchComplicationsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 43C4F4772F4E15B5005B3810 /* Build configuration list for PBXNativeTarget "FLOWatchComplicationsExtension" */;
+			buildPhases = (
+				43C4F4652F4E15B4005B3810 /* Sources */,
+				43C4F4662F4E15B4005B3810 /* Frameworks */,
+				43C4F4672F4E15B4005B3810 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				43C4F46C2F4E15B4005B3810 /* FLOWatchComplications */,
+			);
+			name = FLOWatchComplicationsExtension;
+			packageProductDependencies = (
+			);
+			productName = FLOWatchComplicationsExtension;
+			productReference = 43C4F4692F4E15B4005B3810 /* FLOWatchComplicationsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		43F4789F2F5CE2910098DC37 /* FLOInvoiceClip */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 43F478C02F5CE2920098DC37 /* Build configuration list for PBXNativeTarget "FLOInvoiceClip" */;
+			buildPhases = (
+				43F4789C2F5CE2910098DC37 /* Sources */,
+				43F4789D2F5CE2910098DC37 /* Frameworks */,
+				43F4789E2F5CE2910098DC37 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				43F478A12F5CE2910098DC37 /* FLOInvoiceClip */,
+			);
+			name = FLOInvoiceClip;
+			packageProductDependencies = (
+			);
+			productName = FLOInvoiceClip;
+			productReference = 43F478A02F5CE2910098DC37 /* FLOInvoiceClip.app */;
+			productType = "com.apple.product-type.application";
+		};
+		43F478AD2F5CE2920098DC37 /* FLOInvoiceClipTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 43F478C32F5CE2920098DC37 /* Build configuration list for PBXNativeTarget "FLOInvoiceClipTests" */;
+			buildPhases = (
+				43F478AA2F5CE2920098DC37 /* Sources */,
+				43F478AB2F5CE2920098DC37 /* Frameworks */,
+				43F478AC2F5CE2920098DC37 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				43F478B02F5CE2920098DC37 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				43F478B12F5CE2920098DC37 /* FLOInvoiceClipTests */,
+			);
+			name = FLOInvoiceClipTests;
+			packageProductDependencies = (
+			);
+			productName = FLOInvoiceClipTests;
+			productReference = 43F478AE2F5CE2920098DC37 /* FLOInvoiceClipTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		43F478B72F5CE2920098DC37 /* FLOInvoiceClipUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 43F478C62F5CE2920098DC37 /* Build configuration list for PBXNativeTarget "FLOInvoiceClipUITests" */;
+			buildPhases = (
+				43F478B42F5CE2920098DC37 /* Sources */,
+				43F478B52F5CE2920098DC37 /* Frameworks */,
+				43F478B62F5CE2920098DC37 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				43F478BA2F5CE2920098DC37 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				43F478BB2F5CE2920098DC37 /* FLOInvoiceClipUITests */,
+			);
+			name = FLOInvoiceClipUITests;
+			packageProductDependencies = (
+			);
+			productName = FLOInvoiceClipUITests;
+			productReference = 43F478B82F5CE2920098DC37 /* FLOInvoiceClipUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -510,7 +997,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1640;
+				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					433FDBCC2EB992B00008DA09 = {
@@ -526,6 +1013,32 @@
 					};
 					436A0A9E2EC02F920011973D = {
 						CreatedOnToolsVersion = 16.4;
+					};
+					43C4F4282F4E0FD5005B3810 = {
+						CreatedOnToolsVersion = 26.2;
+						LastSwiftMigration = 2620;
+					};
+					43C4F4342F4E0FD6005B3810 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 43C4F4282F4E0FD5005B3810;
+					};
+					43C4F43E2F4E0FD6005B3810 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 43C4F4282F4E0FD5005B3810;
+					};
+					43C4F4682F4E15B4005B3810 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					43F4789F2F5CE2910098DC37 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					43F478AD2F5CE2920098DC37 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 43F4789F2F5CE2910098DC37;
+					};
+					43F478B72F5CE2920098DC37 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 43F4789F2F5CE2910098DC37;
 					};
 				};
 			};
@@ -552,6 +1065,10 @@
 				{
 					ProductGroup = 43712E102EFE360A00873FEF /* Products */;
 					ProjectRef = 43712E082EFE360A00873FEF /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 432D721F2F4E305000C57BCA /* Products */;
+					ProjectRef = 432D72192F4E305000C57BCA /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 438124402EF63A19002EA8A5 /* Products */;
@@ -594,6 +1111,10 @@
 					ProjectRef = 43FACC262F187ADF006A54B9 /* FLO.xcodeproj */;
 				},
 				{
+					ProductGroup = 43B118D02F5F391C00C52BB5 /* Products */;
+					ProjectRef = 43B118CA2F5F391C00C52BB5 /* FLO.xcodeproj */;
+				},
+				{
 					ProductGroup = 43EBF4412EF6435800B5C1DE /* Products */;
 					ProjectRef = 43EBF4392EF6435800B5C1DE /* FLO.xcodeproj */;
 				},
@@ -614,6 +1135,10 @@
 					ProjectRef = 438125DF2EF63DB9002EA8A5 /* FLO.xcodeproj */;
 				},
 				{
+					ProductGroup = 43AAA3282F79BB520026F795 /* Products */;
+					ProjectRef = 43AAA3212F79BB520026F795 /* FLO.xcodeproj */;
+				},
+				{
 					ProductGroup = 43FAC8AD2F1298AF006A54B9 /* Products */;
 					ProjectRef = 43FAC8A52F1298AF006A54B9 /* FLO.xcodeproj */;
 				},
@@ -630,12 +1155,20 @@
 					ProjectRef = 43E4764D2F3785EC00769F6C /* FLO.xcodeproj */;
 				},
 				{
+					ProductGroup = 43F477062F5CA0070098DC37 /* Products */;
+					ProjectRef = 43F477002F5CA0070098DC37 /* FLO.xcodeproj */;
+				},
+				{
 					ProductGroup = 43EBF5292EF64C2600B5C1DE /* Products */;
 					ProjectRef = 43EBF5212EF64C2600B5C1DE /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 4318B3F42F2919A100B9389E /* Products */;
 					ProjectRef = 4318B3F02F2919A100B9389E /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 432D775D2F549A1900C57BCA /* Products */;
+					ProjectRef = 432D77572F549A1900C57BCA /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 438416E62EF9F5AE0065AC69 /* Products */;
@@ -650,12 +1183,20 @@
 					ProjectRef = 43D3D1192EF9E59D00B48C19 /* FLO.xcodeproj */;
 				},
 				{
+					ProductGroup = 43AA9CB22F75806A0026F795 /* Products */;
+					ProjectRef = 43AA9CAC2F75806A0026F795 /* FLO.xcodeproj */;
+				},
+				{
 					ProductGroup = 4364D2EE2F4C9F9400AD1C84 /* Products */;
 					ProjectRef = 4364D2E92F4C9F9400AD1C84 /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 4320D92F2F0187EC00A758F4 /* Products */;
 					ProjectRef = 4320D9272F0187EC00A758F4 /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 43F471652F5B93780098DC37 /* Products */;
+					ProjectRef = 43F4715F2F5B93780098DC37 /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 4318B6D32F32D79200B9389E /* Products */;
@@ -674,12 +1215,24 @@
 					ProjectRef = 435AF7232EF6386100B42ECE /* FLO.xcodeproj */;
 				},
 				{
+					ProductGroup = 432D74A22F4F81DB00C57BCA /* Products */;
+					ProjectRef = 432D749C2F4F81DB00C57BCA /* FLO.xcodeproj */;
+				},
+				{
 					ProductGroup = 4318B1AC2F250ED300B9389E /* Products */;
 					ProjectRef = 4318B1A82F250ED300B9389E /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 43FAD0E82F21BA50006A54B9 /* Products */;
 					ProjectRef = 43FAD0E42F21BA50006A54B9 /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 432D6ABA2F4E22C300C57BCA /* Products */;
+					ProjectRef = 432D6AB42F4E22C300C57BCA /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 43AA997A2F702FB00026F795 /* Products */;
+					ProjectRef = 43AA99742F702FB00026F795 /* FLO.xcodeproj */;
 				},
 			);
 			projectRoot = "";
@@ -688,6 +1241,13 @@
 				433FDBDB2EB992B10008DA09 /* FLOTests */,
 				433FDBE52EB992B10008DA09 /* FLOUITests */,
 				436A0A9E2EC02F920011973D /* FLOWidgetExtension */,
+				43C4F4282F4E0FD5005B3810 /* FLOWatch Watch App */,
+				43C4F4342F4E0FD6005B3810 /* FLOWatch Watch AppTests */,
+				43C4F43E2F4E0FD6005B3810 /* FLOWatch Watch AppUITests */,
+				43C4F4682F4E15B4005B3810 /* FLOWatchComplicationsExtension */,
+				43F4789F2F5CE2910098DC37 /* FLOInvoiceClip */,
+				43F478AD2F5CE2920098DC37 /* FLOInvoiceClipTests */,
+				43F478B72F5CE2920098DC37 /* FLOInvoiceClipUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -715,6 +1275,55 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		436A0A9D2EC02F920011973D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43C4F4272F4E0FD5005B3810 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43C4F4332F4E0FD6005B3810 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43C4F43D2F4E0FD6005B3810 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43C4F4672F4E15B4005B3810 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43F4789E2F5CE2910098DC37 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43F478AC2F5CE2920098DC37 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43F478B62F5CE2920098DC37 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -752,6 +1361,55 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		43C4F4252F4E0FD5005B3810 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43C4F4312F4E0FD6005B3810 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43C4F43B2F4E0FD6005B3810 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43C4F4652F4E15B4005B3810 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43F4789C2F5CE2910098DC37 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43F478AA2F5CE2920098DC37 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43F478B42F5CE2920098DC37 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -769,6 +1427,37 @@
 			isa = PBXTargetDependency;
 			target = 436A0A9E2EC02F920011973D /* FLOWidgetExtension */;
 			targetProxy = 436A0AB12EC02F930011973D /* PBXContainerItemProxy */;
+		};
+		43C4F4372F4E0FD6005B3810 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 43C4F4282F4E0FD5005B3810 /* FLOWatch Watch App */;
+			targetProxy = 43C4F4362F4E0FD6005B3810 /* PBXContainerItemProxy */;
+		};
+		43C4F4412F4E0FD6005B3810 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 43C4F4282F4E0FD5005B3810 /* FLOWatch Watch App */;
+			targetProxy = 43C4F4402F4E0FD6005B3810 /* PBXContainerItemProxy */;
+		};
+		43C4F4482F4E0FD6005B3810 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilter = ios;
+			target = 43C4F4282F4E0FD5005B3810 /* FLOWatch Watch App */;
+			targetProxy = 43C4F4472F4E0FD6005B3810 /* PBXContainerItemProxy */;
+		};
+		43C4F4752F4E15B5005B3810 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 43C4F4682F4E15B4005B3810 /* FLOWatchComplicationsExtension */;
+			targetProxy = 43C4F4742F4E15B5005B3810 /* PBXContainerItemProxy */;
+		};
+		43F478B02F5CE2920098DC37 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 43F4789F2F5CE2910098DC37 /* FLOInvoiceClip */;
+			targetProxy = 43F478AF2F5CE2920098DC37 /* PBXContainerItemProxy */;
+		};
+		43F478BA2F5CE2920098DC37 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 43F4789F2F5CE2910098DC37 /* FLOInvoiceClip */;
+			targetProxy = 43F478B92F5CE2920098DC37 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -826,12 +1515,12 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
+				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -885,11 +1574,11 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				SDKROOT = iphoneos;
+				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
@@ -903,7 +1592,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = FLO.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -922,14 +1611,17 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -943,7 +1635,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = FLO.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -962,14 +1654,17 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -984,7 +1679,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchpoppy.floTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1003,7 +1698,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchpoppy.floTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1055,7 +1750,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = FLOWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = FLOWidget/Info.plist;
@@ -1066,7 +1761,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1083,7 +1778,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = FLOWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = FLOWidget/Info.plist;
@@ -1094,13 +1789,422 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		43C4F44B2F4E0FD6005B3810 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = "FLOWatch Watch App/FLOWatch Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9HZRHZ736;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = FLOWatch;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.finchandpoppy.flo;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.FLOWatch;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		43C4F44C2F4E0FD6005B3810 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = "FLOWatch Watch App/FLOWatch Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9HZRHZ736;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = FLOWatch;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.finchandpoppy.flo;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.FLOWatch;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		43C4F44F2F4E0FD6005B3810 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9HZRHZ736;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.finchandpoppy.flo.FLOWatch-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FLOWatch Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FLOWatch Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		43C4F4502F4E0FD6005B3810 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9HZRHZ736;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.finchandpoppy.flo.FLOWatch-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FLOWatch Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FLOWatch Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		43C4F4522F4E0FD6005B3810 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9HZRHZ736;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.finchandpoppy.flo.FLOWatch-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "FLOWatch Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		43C4F4532F4E0FD6005B3810 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9HZRHZ736;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.finchandpoppy.flo.FLOWatch-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "FLOWatch Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		43C4F4782F4E15B5005B3810 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = FLOWatchComplicationsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9HZRHZ736;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FLOWatchComplications/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FLOWatchComplications;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.FLOWatch.FLOWatchComplications;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		43C4F4792F4E15B5005B3810 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = FLOWatchComplicationsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9HZRHZ736;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FLOWatchComplications/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FLOWatchComplications;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.FLOWatch.FLOWatchComplications;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		43F478C12F5CE2920098DC37 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = FLOInvoiceClip/FLOInvoiceClip.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 9;
+				DEVELOPMENT_TEAM = D9HZRHZ736;
+				ENABLE_APP_CLIP = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 2.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.Clip;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		43F478C22F5CE2920098DC37 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = FLOInvoiceClip/FLOInvoiceClip.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 9;
+				DEVELOPMENT_TEAM = D9HZRHZ736;
+				ENABLE_APP_CLIP = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 2.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.Clip;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		43F478C42F5CE2920098DC37 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9HZRHZ736;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.FLOInvoiceClipTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FLOInvoiceClip.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FLOInvoiceClip";
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		43F478C52F5CE2920098DC37 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9HZRHZ736;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.FLOInvoiceClipTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FLOInvoiceClip.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FLOInvoiceClip";
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		43F478C72F5CE2920098DC37 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9HZRHZ736;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.FLOInvoiceClipUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_TARGET_NAME = FLOInvoiceClip;
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		43F478C82F5CE2920098DC37 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9HZRHZ736;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.FLOInvoiceClipUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_TARGET_NAME = FLOInvoiceClip;
+				XROS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Release;
 		};
@@ -1148,6 +2252,69 @@
 			buildConfigurations = (
 				436A0AB52EC02F930011973D /* Debug */,
 				436A0AB62EC02F930011973D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		43C4F44A2F4E0FD6005B3810 /* Build configuration list for PBXNativeTarget "FLOWatch Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				43C4F44B2F4E0FD6005B3810 /* Debug */,
+				43C4F44C2F4E0FD6005B3810 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		43C4F44E2F4E0FD6005B3810 /* Build configuration list for PBXNativeTarget "FLOWatch Watch AppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				43C4F44F2F4E0FD6005B3810 /* Debug */,
+				43C4F4502F4E0FD6005B3810 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		43C4F4512F4E0FD6005B3810 /* Build configuration list for PBXNativeTarget "FLOWatch Watch AppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				43C4F4522F4E0FD6005B3810 /* Debug */,
+				43C4F4532F4E0FD6005B3810 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		43C4F4772F4E15B5005B3810 /* Build configuration list for PBXNativeTarget "FLOWatchComplicationsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				43C4F4782F4E15B5005B3810 /* Debug */,
+				43C4F4792F4E15B5005B3810 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		43F478C02F5CE2920098DC37 /* Build configuration list for PBXNativeTarget "FLOInvoiceClip" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				43F478C12F5CE2920098DC37 /* Debug */,
+				43F478C22F5CE2920098DC37 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		43F478C32F5CE2920098DC37 /* Build configuration list for PBXNativeTarget "FLOInvoiceClipTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				43F478C42F5CE2920098DC37 /* Debug */,
+				43F478C52F5CE2920098DC37 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		43F478C62F5CE2920098DC37 /* Build configuration list for PBXNativeTarget "FLOInvoiceClipUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				43F478C72F5CE2920098DC37 /* Debug */,
+				43F478C82F5CE2920098DC37 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

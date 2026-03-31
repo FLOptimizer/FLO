@@ -730,19 +730,12 @@ class TaxCalculationService {
 extension Double {
     var asCurrency: String {
         guard self.isFinite else { return "$0.00" }
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        return formatter.string(from: NSNumber(value: self)) ?? "$0.00"
+        return NumberFormatter.appCurrency.string(from: NSNumber(value: self)) ?? "$0.00"
     }
 
     var asPercentage: String {
         guard self.isFinite else { return "0%" }
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .percent
-        formatter.minimumFractionDigits = 1
-        formatter.maximumFractionDigits = 1
-        return formatter.string(from: NSNumber(value: self)) ?? "0%"
+        return NumberFormatter.appPercent.string(from: NSNumber(value: self)) ?? "0%"
     }
 }
 

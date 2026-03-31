@@ -134,7 +134,7 @@ struct MileageSetupPromptView: View {
                 Spacer()
             }
             .padding()
-            .background(Color(.secondarySystemBackground))
+            .background(Color.floSecondarySystemBackground)
             .cornerRadius(12)
             .padding(.horizontal)
             
@@ -180,7 +180,9 @@ struct MileageSetupPromptView: View {
                 .background(Color.green.opacity(0.1))
                 .cornerRadius(12)
                 .accessibilityElement(children: .combine)
-            } else if locationManager.authorizationStatus == .authorizedWhenInUse {
+            }
+            #if !os(macOS)
+            if locationManager.authorizationStatus == .authorizedWhenInUse {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
@@ -196,6 +198,7 @@ struct MileageSetupPromptView: View {
                 .cornerRadius(12)
                 .accessibilityElement(children: .combine)
             }
+            #endif
             
             // Main action button - NO skip option per Apple guideline 5.1.1
             Button {
@@ -287,7 +290,7 @@ struct MileageSetupPromptView: View {
                 )
             }
             .padding()
-            .background(Color(.secondarySystemBackground))
+            .background(Color.floSecondarySystemBackground)
             .cornerRadius(12)
             .padding(.horizontal)
             
@@ -350,34 +353,41 @@ struct MileageSetupPromptView: View {
         switch locationManager.authorizationStatus {
         case .authorizedAlways:
             return "checkmark.circle.fill"
+        #if !os(macOS)
         case .authorizedWhenInUse:
-            return "gearshape.fill" // Always go to settings for When In Use
+            return "gearshape.fill"
+        #endif
         case .denied, .restricted:
             return "gearshape.fill"
         default:
             return "location.fill"
         }
     }
-    
+
     private var buttonTitle: String {
         switch locationManager.authorizationStatus {
         case .authorizedAlways:
             return "All Set - Continue"
+        #if !os(macOS)
         case .authorizedWhenInUse:
             return "Open Phone Settings"
+        #endif
         case .denied, .restricted:
             return "Open Phone Settings"
         default:
-            // Changed from "Enable Tracking" to "Continue" per Apple guideline 5.1.1
             return "Continue"
         }
     }
-    
+
     private var buttonColor: Color {
         switch locationManager.authorizationStatus {
         case .authorizedAlways:
             return .green
-        case .authorizedWhenInUse, .denied, .restricted:
+        #if !os(macOS)
+        case .authorizedWhenInUse:
+            return .orange
+        #endif
+        case .denied, .restricted:
             return .orange
         default:
             return Color.brandPrimary
@@ -393,12 +403,12 @@ struct MileageSetupPromptView: View {
         case .notDetermined:
             hasRequestedPermission = true
             locationManager.requestWhenInUseAuthorization()
-            
+
+        #if !os(macOS)
         case .authorizedWhenInUse:
-            // Always direct to Settings - iOS only shows Always prompt once
-            // and by the time they reach this fallback view, they likely already declined
             openSettings()
-            
+        #endif
+
         case .authorizedAlways:
             HapticService.play(.success)
             onSetupComplete()
@@ -412,9 +422,11 @@ struct MileageSetupPromptView: View {
     }
     
     private func openSettings() {
+        #if canImport(UIKit)
         if let url = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(url)
         }
+        #endif
     }
     
     private func handleAuthorizationChange(from oldValue: CLAuthorizationStatus, to newValue: CLAuthorizationStatus) {
@@ -427,15 +439,13 @@ struct MileageSetupPromptView: View {
                 onSetupComplete()
             }
             
+        #if !os(macOS)
         case .authorizedWhenInUse:
             if oldValue == .notDetermined {
-                // Just got When In Use - try requesting Always
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     hasRequestedAlways = true
                     locationManager.requestAlwaysAuthorization()
                 }
-                
-                // Check after delay if they declined Always - show embedded limited mode content
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     if locationManager.authorizationStatus == .authorizedWhenInUse {
                         withAnimation {
@@ -444,6 +454,7 @@ struct MileageSetupPromptView: View {
                     }
                 }
             }
+        #endif
             
         case .denied, .restricted:
             withAnimation {

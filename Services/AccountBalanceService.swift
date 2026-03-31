@@ -1,8 +1,23 @@
 //  AccountBalanceService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.0 - Account Balance Calculations
+//  Version 1.2 — Anchor-Based Balance Reconciliation
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.2 — Anchor-Based Balance Reconciliation:
+//  ✅ UPDATED: calculateBalance(for:) accepts optional anchors parameter
+//  ✅ UPDATED: calculateBalance(for:asOf:) uses anchor as starting point when available
+//  ✅ UPDATED: generateSummary() passes anchors through to calculateBalance()
+//  ✅ NOTE: anchors parameter defaults to empty array — preserves backward compatibility
+//  ✅ NOTE: No anchors = legacy behavior (startingBalance + all transactions)
+//
+//  CHANGES v1.1 — Transfer Exclusion:
+//  ✅ FIXED: generateSummary() excludes transfers from totalIncome/totalExpenses
+//  ✅ FIXED: generateCashFlow() excludes transfers from inflows/outflows
+//  ✅ KEPT: calculateBalance() methods INCLUDE transfers (real money movement)
+//  ✅ NOTE: Balance calculations must include transfers because account balances
+//    genuinely change when money moves between accounts.
+//    Only P&L/income/expense summaries should exclude transfers.
 //
 //  FEATURES:
 //  ✅ Real-time balance calculation based on transactions
@@ -130,36 +145,70 @@ final class AccountBalanceService {
     
     // MARK: - Balance Calculations
     
-    /// Calculate the current balance for an account based on starting balance + transactions
-    func calculateBalance(for account: Account) -> Double {
+    /// Calculate the current balance for an account using anchor-based reconciliation.
+    /// If no anchors are provided, falls back to startingBalance + all transactions (legacy).
+    ///
+    /// - Parameters:
+    ///   - account: The account to calculate balance for
+    ///   - anchors: BalanceAnchors to use for reconciliation. Defaults to empty (legacy behavior).
+    /// - Returns: The calculated balance
+    func calculateBalance(for account: Account, anchors: [BalanceAnchor] = []) -> Double {
+        let (anchorDate, anchorBalance) = account.effectiveAnchor(from: anchors)
         let transactions = account.transactions ?? []
-        
-        let income = transactions
+
+        // Only count transactions AFTER the anchor date
+        let postAnchorTransactions = anchors.isEmpty
+            ? transactions  // No anchors = legacy behavior (all transactions from startingBalance)
+            : transactions.filter { $0.date > anchorDate }
+
+        let income = postAnchorTransactions
             .filter { $0.isIncome }
             .reduce(0.0) { $0 + $1.amount }
-        
-        let expenses = transactions
+
+        let expenses = postAnchorTransactions
             .filter { !$0.isIncome }
             .reduce(0.0) { $0 + $1.amount }
-        
-        return account.startingBalance + income - expenses
+
+        return anchorBalance + income - expenses
     }
     
-    /// Calculate balance at a specific date
-    func calculateBalance(for account: Account, asOf date: Date) -> Double {
+    /// Calculate balance at a specific date, using anchors when available.
+    ///
+    /// When `asOf` is after the anchor: anchor balance + post-anchor transactions up to `asOf`.
+    /// When `asOf` is before the anchor (or no anchors): legacy startingBalance + all transactions up to `asOf`.
+    func calculateBalance(for account: Account, asOf date: Date, anchors: [BalanceAnchor] = []) -> Double {
+        let (anchorDate, anchorBalance) = account.effectiveAnchor(from: anchors)
         let transactions = account.transactions ?? []
-        
-        let relevantTransactions = transactions.filter { $0.date <= date }
-        
-        let income = relevantTransactions
-            .filter { $0.isIncome }
-            .reduce(0.0) { $0 + $1.amount }
-        
-        let expenses = relevantTransactions
-            .filter { !$0.isIncome }
-            .reduce(0.0) { $0 + $1.amount }
-        
-        return account.startingBalance + income - expenses
+
+        if !anchors.isEmpty && date >= anchorDate {
+            // Post-anchor: count only transactions between anchor and asOf
+            let relevantTransactions = transactions.filter {
+                $0.date > anchorDate && $0.date <= date
+            }
+
+            let income = relevantTransactions
+                .filter { $0.isIncome }
+                .reduce(0.0) { $0 + $1.amount }
+
+            let expenses = relevantTransactions
+                .filter { !$0.isIncome }
+                .reduce(0.0) { $0 + $1.amount }
+
+            return anchorBalance + income - expenses
+        } else {
+            // Pre-anchor or no anchors: legacy behavior
+            let relevantTransactions = transactions.filter { $0.date <= date }
+
+            let income = relevantTransactions
+                .filter { $0.isIncome }
+                .reduce(0.0) { $0 + $1.amount }
+
+            let expenses = relevantTransactions
+                .filter { !$0.isIncome }
+                .reduce(0.0) { $0 + $1.amount }
+
+            return account.startingBalance + income - expenses
+        }
     }
     
     /// Get balance change for a period
@@ -184,19 +233,26 @@ final class AccountBalanceService {
     // MARK: - Account Summary
     
     /// Generate comprehensive balance summary for an account
-    func generateSummary(for account: Account) -> AccountBalanceSummary {
+    func generateSummary(for account: Account, anchors: [BalanceAnchor] = []) -> AccountBalanceSummary {
         let transactions = account.transactions ?? []
         
-        let totalIncome = transactions
+        // v1.1: Exclude transfers from income/expense display totals
+        // Transfers are real money movement but are NOT income or expenses
+        let nonTransferTransactions = transactions.filter { !$0.isTransfer }
+        
+        let totalIncome = nonTransferTransactions
             .filter { $0.isIncome }
             .reduce(0.0) { $0 + $1.amount }
         
-        let totalExpenses = transactions
+        let totalExpenses = nonTransferTransactions
             .filter { !$0.isIncome }
             .reduce(0.0) { $0 + $1.amount }
         
         let netChange = totalIncome - totalExpenses
-        let calculatedBalance = account.startingBalance + netChange
+        
+        // Balance uses ALL transactions (including transfers) because
+        // account balances genuinely change when money moves
+        let calculatedBalance = calculateBalance(for: account, anchors: anchors)
         
         let lastActivity = transactions.max(by: { $0.date < $1.date })?.date
         
@@ -292,8 +348,9 @@ final class AccountBalanceService {
     ) -> CashFlowSummary {
         
         // Filter transactions for the period
+        // v1.1: Exclude transfers — moving between your own accounts isn't cash flow
         let periodTransactions = transactions.filter {
-            $0.date >= startDate && $0.date <= endDate
+            $0.date >= startDate && $0.date <= endDate && !$0.isTransfer
         }
         
         // Calculate opening balance (sum of all account balances as of start date)
@@ -409,18 +466,11 @@ extension AccountBalanceService {
     
     /// Format currency value
     func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: NSNumber(value: value)) ?? "$0.00"
+        return NumberFormatter.appCurrency.string(from: NSNumber(value: value)) ?? "$0.00"
     }
-    
+
     /// Format percentage
     func formatPercentage(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .percent
-        formatter.minimumFractionDigits = 1
-        formatter.maximumFractionDigits = 1
-        return formatter.string(from: NSNumber(value: value / 100)) ?? "0%"
+        return NumberFormatter.appPercent.string(from: NSNumber(value: value / 100)) ?? "0%"
     }
 }

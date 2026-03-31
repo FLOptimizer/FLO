@@ -1,8 +1,13 @@
 //  ProfitLossReportView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.4 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
+//  Version 1.5 - Fixed toolbar button placement per Apple HIG
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.5:
+//  ✅ FIXED: Changed "Close" to "Done" for consistent terminology
+//  ✅ FIXED: Moved Done button to trailing (right) side per Apple HIG
+//  ✅ FIXED: Moved options menu to leading (left) side
 //
 //  CHANGES v1.4 - Dynamic Type Verification:
 //  ✅ FIXED: Pro locked view "Pro Feature" title missing lineLimit + minimumScaleFactor
@@ -307,16 +312,9 @@ struct ProfitLossReportView: View {
             .navigationTitle("Profit & Loss")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") {
-                        HapticService.play(.light)
-                        dismiss()
-                    }
-                }
-                
                 // Only show menu for Pro users
                 if hasProAccess {
-                    ToolbarItem(placement: .topBarTrailing) {
+                    ToolbarItem(placement: .topBarLeading) {
                         Menu {
                             Button {
                                 showComparison.toggle()
@@ -342,6 +340,13 @@ struct ProfitLossReportView: View {
                         }
                         .accessibilityLabel("Report options")
                         .accessibilityHint("Show comparison toggle and export options")
+                    }
+                }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        HapticService.play(.light)
+                        dismiss()
                     }
                 }
             }
@@ -403,7 +408,7 @@ struct ProfitLossReportView: View {
                             }
                         }
                         .padding()
-                        .background(Color(.secondarySystemBackground))
+                        .background(Color.floSecondarySystemBackground)
                         .cornerRadius(12)
                         
                         VStack(alignment: .leading, spacing: 8) {
@@ -423,7 +428,7 @@ struct ProfitLossReportView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
-                        .background(Color(.secondarySystemBackground))
+                        .background(Color.floSecondarySystemBackground)
                         .cornerRadius(12)
                     }
                     .blur(radius: 6)
@@ -503,7 +508,7 @@ struct ProfitLossReportView: View {
                     )
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground))
+                .background(Color.floSecondarySystemBackground)
                 .cornerRadius(12)
                 .padding(.horizontal)
                 .opacity(viewAppeared ? 1 : 0.001)
@@ -550,7 +555,7 @@ struct ProfitLossReportView: View {
             }
             .padding(.vertical)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
     }
     
     // MARK: - Report Content (Pro Users Only)
@@ -592,7 +597,7 @@ struct ProfitLossReportView: View {
             }
             .padding(.vertical)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
     }
     
     // MARK: - Period Selector
@@ -618,7 +623,7 @@ struct ProfitLossReportView: View {
                                 .padding(.vertical, 8)
                                 .background(
                                     Capsule()
-                                        .fill(selectedPeriod == period ? Color.brandPrimary : Color(.secondarySystemBackground))
+                                        .fill(selectedPeriod == period ? Color.brandPrimary : Color.floSecondarySystemBackground)
                                 )
                                 .foregroundStyle(selectedPeriod == period ? .white : .primary)
                         }
@@ -639,9 +644,7 @@ struct ProfitLossReportView: View {
     }
     
     private var dateRangeText: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return "\(formatter.string(from: dateRange.start)) - \(formatter.string(from: dateRange.end))"
+        "\(DateFormatter.mediumDate.string(from: dateRange.start)) - \(DateFormatter.mediumDate.string(from: dateRange.end))"
     }
     
     // MARK: - Summary Cards
@@ -760,11 +763,11 @@ struct ProfitLossReportView: View {
                     .foregroundStyle(netProfit >= 0 ? Color.incomeGreen : Color.expenseRed)
             }
             .padding()
-            .background(Color(.tertiarySystemBackground))
+            .background(Color.floTertiarySystemBackground)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Net \(netProfit >= 0 ? "profit" : "loss"): \(AccessibilityFormatters.spokenCurrency(abs(netProfit)))")
         }
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
         .padding(.horizontal)
     }
@@ -827,7 +830,7 @@ struct ProfitLossReportView: View {
                 )
             }
             .padding()
-            .background(Color(.secondarySystemBackground))
+            .background(Color.floSecondarySystemBackground)
             .cornerRadius(12)
         }
         .padding(.horizontal)
@@ -848,7 +851,7 @@ struct ProfitLossReportView: View {
                 .foregroundStyle(.secondary)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
         .padding(.horizontal)
         .accessibilityElement(children: .combine)
@@ -857,14 +860,8 @@ struct ProfitLossReportView: View {
     // MARK: - Helpers
     
     private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        if value < 0 {
-            formatter.negativePrefix = "("
-            formatter.negativeSuffix = ")"
-        }
-        return formatter.string(from: NSNumber(value: abs(value))) ?? "$0.00"
+        let formatted = NumberFormatter.appCurrency.string(from: NSNumber(value: abs(value))) ?? "$0.00"
+        return value < 0 ? "(\(formatted))" : formatted
     }
 }
 
@@ -946,7 +943,7 @@ struct SummaryStatCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel({
@@ -1021,7 +1018,7 @@ struct NetProfitCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel({
@@ -1093,7 +1090,7 @@ struct PLLineItemRow: View {
             }
             .padding(.horizontal)
             .padding(.vertical, item.isSubtotal ? 10 : 6)
-            .background(item.isSubtotal ? Color(.tertiarySystemBackground) : Color.clear)
+            .background(item.isSubtotal ? Color.floTertiarySystemBackground : Color.clear)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(item.name): \(AccessibilityFormatters.spokenCurrency(item.amount))")
             
@@ -1104,10 +1101,7 @@ struct PLLineItemRow: View {
     }
     
     private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: NSNumber(value: value)) ?? "$0.00"
+        NumberFormatter.appCurrency.string(from: NSNumber(value: value)) ?? "$0.00"
     }
 }
 
@@ -1197,7 +1191,7 @@ struct PLExportView: View {
                 
                 Button {
                     HapticService.play(.medium)
-                    // TODO: Implement PDF export using ComprehensiveReportService
+                    // FUTURE: PDF export via ComprehensiveReportService (planned for Build 9+)
                     dismiss()
                 } label: {
                     Label("Generate PDF", systemImage: "square.and.arrow.up")

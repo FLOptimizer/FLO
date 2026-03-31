@@ -26,8 +26,8 @@ import SwiftData
 
 struct ReceiptManagementCard: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var receipts: [ReceiptData]
-    @Query private var transactions: [Transaction]
+    @State private var receipts: [ReceiptData] = []
+    @State private var transactions: [Transaction] = []
     
     @StateObject private var matchingService = ReceiptMatchingService.shared
     
@@ -53,10 +53,7 @@ struct ReceiptManagementCard: View {
     
     // Helper to format currency for accessibility labels
     private func taxDeductibleAccessibilityLabel(amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = currencyCode
-        let formattedAmount = formatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
+        let formattedAmount = NumberFormatter.appCurrency.string(from: NSNumber(value: amount)) ?? "\(amount)"
         return "Tax deductible amount: \(formattedAmount)"
     }
     
@@ -155,12 +152,17 @@ struct ReceiptManagementCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
-        .onAppear {
+        .task {
+            loadData()
             animateEntrance()
             // Scan for pending matches
             matchingService.scanForMatches(receipts: receipts, transactions: transactions)
+        }
+        .onDisappear {
+            receipts = []
+            transactions = []
         }
         .onChange(of: receipts.count) { _, _ in
             // Rescan when receipts change
@@ -188,8 +190,33 @@ struct ReceiptManagementCard: View {
         }
     }
     
+    // MARK: - Data Loading
+
+    private func loadData() {
+        let calendar = Calendar.current
+        let year = calendar.component(.year, from: Date())
+        let startOfYear = calendar.date(from: DateComponents(year: year, month: 1, day: 1))!
+        let endOfYear = calendar.date(from: DateComponents(year: year + 1, month: 1, day: 1))!
+
+        let receiptDescriptor = FetchDescriptor<ReceiptData>(
+            predicate: #Predicate<ReceiptData> { $0.date >= startOfYear && $0.date < endOfYear }
+        )
+        let transactionDescriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= startOfYear && $0.date < endOfYear }
+        )
+
+        do {
+            receipts = try modelContext.fetch(receiptDescriptor)
+            transactions = try modelContext.fetch(transactionDescriptor)
+        } catch {
+            #if DEBUG
+            print("ReceiptManagementCard loadData error: \(error)")
+            #endif
+        }
+    }
+
     // MARK: - Animations
-    
+
     private func animateEntrance() {
         withAnimation(FLOAnimation.standard) {
             headerOpacity = 1.0
@@ -668,14 +695,9 @@ struct ReceiptListRow: View {
     }
     
     private var accessibilityDescription: String {
-        let amountFormatter = NumberFormatter()
-        amountFormatter.numberStyle = .currency
-        amountFormatter.currencyCode = currencyCode
-        let formattedAmount = amountFormatter.string(from: NSNumber(value: receipt.totalAmount)) ?? "\(receipt.totalAmount)"
-        
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .medium
-        let formattedDate = dateFormatter.string(from: receipt.date)
+        let formattedAmount = NumberFormatter.appCurrency.string(from: NSNumber(value: receipt.totalAmount)) ?? "\(receipt.totalAmount)"
+
+        let formattedDate = DateFormatter.mediumDate.string(from: receipt.date)
         
         var description = "\(receipt.merchantName), \(formattedAmount), \(formattedDate)"
         

@@ -1,8 +1,51 @@
 //  FLOApp.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.5 - UTF-8 mojibake fix
+//  Version 3.12 - Performance Monitoring Integration
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.12 - Performance Monitoring:
+//  ✅ Added os_signpost instrumentation for Instruments profiling (all builds)
+//  ✅ Added MetricKit registration for 24-hour aggregate metrics
+//  ✅ Added memory monitoring after launch completes
+//  ✅ Signpost intervals: ColdStart, ModelContainer, ContentViewAppear, CriticalPathComplete
+//  ✅ Existing LaunchTimer preserved for debug console output
+//
+//  CHANGES v3.11 - Liability Balance Migration:
+//  ✅ Added one-time migration to fix liability accounts with positive balances
+//  ✅ Negates currentBalance and startingBalance for affected credit cards/loans
+//  ✅ Uses UserDefaults tracking to prevent duplicate migrations
+//  ✅ See LiabilityBalanceMigrationService.swift for full migration logic
+//
+//  CHANGES v3.10 - Transfer Migration:
+//  ✅ Added one-time migration of isTransfer=true transactions to Transfer records
+//  ✅ Runs automatically on first launch after Transfer model is added
+//  ✅ Safely converts legacy transfers with intelligent type detection
+//  ✅ Uses UserDefaults tracking to prevent duplicate migrations
+//  ✅ See TransferMigrationService.swift for full migration logic
+//
+//  CHANGES v3.9 - Recurring Transfers:
+//  ✅ Added recurring transfer generation on app launch
+//  ✅ Follows same pattern as RecurringTransactionService
+//  ✅ Runs after recurring transactions in critical path setup
+//  ✅ Generates any due transfers from RecurringTransfer schedules
+//  ✅ Logs count of generated transfers for debugging
+//
+//  CHANGES v3.8 - Transfer Models:
+//  ✅ Updated ModelContainer to include Transfer and RecurringTransfer models
+//  ✅ Supports new "Move Money" feature with double-entry accounting
+//  ✅ See ModelContainer_Shared.swift v4.6 for model registration details
+//
+//  CHANGES v3.7 - Launch Optimization:
+//  ✅ Added launch timing instrumentation (debug builds)
+//  ✅ Deferred WatchConnectivity activation by 1 second
+//  ✅ Deferred Spotlight indexing by 2 seconds
+//  ✅ Deferred haptic generator preparation
+//  ✅ Consolidated widget update calls
+//  ✅ Removed duplicate notification category configuration
+//
+//  CHANGES v3.6:
+//  - Apple Watch connectivity integration
 //
 //  CHANGES v3.5:
 //  ✅ FIXED: UTF-8 mojibake — restored correct Unicode characters
@@ -31,8 +74,39 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+import os
+import MetricKit
 
-// MARK: - AppDelegate
+#if canImport(UIKit)
+import WatchConnectivity
+#endif
+
+// MARK: - Launch Timing (Debug Only)
+
+#if DEBUG
+/// Tracks cold start timing for performance optimization (console output)
+/// See also: PerformanceMonitor for os_signpost instrumentation (Instruments-visible, all builds)
+enum LaunchTimer {
+    static let launchStart = CFAbsoluteTimeGetCurrent()
+
+    static func checkpoint(_ name: String) {
+        let elapsed = (CFAbsoluteTimeGetCurrent() - launchStart) * 1000
+        print("⏱️ [\(String(format: "%6.1f", elapsed))ms] \(name)")
+    }
+
+    static func complete() {
+        let total = (CFAbsoluteTimeGetCurrent() - launchStart) * 1000
+        let status = total < 1000 ? "✅" : "⚠️"
+        print("\(status) 📱 Cold start complete: \(String(format: "%.0f", total))ms")
+        if total >= 1000 {
+            print("   ⚠️ Target is <1000ms - optimization needed")
+        }
+    }
+}
+#endif
+
+#if canImport(UIKit)
+// MARK: - AppDelegate (iOS)
 
 /// AppDelegate for handling notifications, background launches, and Universal Links
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
@@ -42,14 +116,30 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil
     ) -> Bool {
         
-        // Configure notification categories
+        #if DEBUG
+        LaunchTimer.checkpoint("AppDelegate.didFinishLaunching")
+        #endif
+
+        // Register MetricKit for 24-hour aggregate performance data
+        Task { @MainActor in
+            PerformanceMonitor.shared.registerMetricKit()
+        }
+
+        // Configure notification categories (tax + budget alerts)
+        let budgetCategories = BudgetNotificationService.shared.configureNotificationCategories()
         TaxNotificationService.shared.configureNotificationCategories()
+        // Merge budget categories with tax categories
+        UNUserNotificationCenter.current().getNotificationCategories { existingCategories in
+            let merged = existingCategories.union(Set(budgetCategories))
+            UNUserNotificationCenter.current().setNotificationCategories(merged)
+        }
         
         // Set delegate for handling notifications
         UNUserNotificationCenter.current().delegate = self
         
-        print("✅ Notification categories configured")
-        print("✅ Tax notification service configured")
+        #if DEBUG
+        LaunchTimer.checkpoint("Notifications configured")
+        #endif
         
         // CRITICAL: Handle background location launch
         // When iOS launches the app in the background for a location event,
@@ -73,7 +163,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         let mileageSetupCompleted = UserDefaults.standard.bool(forKey: "mileageSetupCompleted")
         let mileageTrackingEnabled = UserDefaults.standard.bool(forKey: "mileageTrackingEnabled")
         
-        guard (wasTrackingActive || mileageTrackingEnabled) && mileageSetupCompleted else {
+        guard mileageTrackingEnabled && mileageSetupCompleted else {
+            // Clear stale active flag if user disabled tracking
+            if wasTrackingActive && !mileageTrackingEnabled {
+                UserDefaults.standard.set(false, forKey: "mileage.isTrackingActive")
+            }
             print("   - Tracking not enabled or setup incomplete, ignoring")
             return
         }
@@ -171,8 +265,105 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         return config
     }
     
+    // MARK: - Remote Notification Registration
+
+    /// Called when iOS successfully registers for remote notifications
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        Task { @MainActor in
+            PushNotificationService.shared.handleNewToken(deviceToken)
+        }
+    }
+
+    /// Called when remote notification registration fails
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        Task { @MainActor in
+            PushNotificationService.shared.handleRegistrationError(error)
+        }
+    }
+
+    // MARK: - Background Remote Notification
+
+    /// Handle silent push notifications for background sync
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable : Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        let notificationType = userInfo["type"] as? String
+
+        #if DEBUG
+        print("📱 Remote notification received: \(notificationType ?? "unknown")")
+        #endif
+
+        switch notificationType {
+        case "new_transactions":
+            // Silent push: sync transactions in background, then check budgets
+            Task { @MainActor in
+                do {
+                    let container = try ModelContainer.shared()
+                    let result = try await PlaidService.shared.syncAllTransactions(
+                        modelContext: container.mainContext
+                    )
+
+                    // After sync, check budget thresholds
+                    await BudgetNotificationService.shared.checkAllBudgetThresholds(
+                        modelContext: container.mainContext
+                    )
+
+                    let total = result.added + result.updated + result.removed
+                    completionHandler(total > 0 ? .newData : .noData)
+
+                    #if DEBUG
+                    print("✅ Background sync complete: \(result.added) added, \(result.updated) updated")
+                    #endif
+                } catch {
+                    #if DEBUG
+                    print("❌ Background sync failed: \(error)")
+                    #endif
+                    completionHandler(.failed)
+                }
+            }
+
+        case "connection_error", "connection_expiring":
+            // Show local notification about bank connection issue
+            let title = notificationType == "connection_error"
+                ? "Bank Connection Issue"
+                : "Bank Connection Expiring"
+            let body = userInfo["message"] as? String
+                ?? "There's an issue with your bank connection. Tap to fix."
+
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.sound = .default
+            content.categoryIdentifier = "PLAID_ERROR"
+            content.userInfo = userInfo as! [String: Any]
+
+            let request = UNNotificationRequest(
+                identifier: "plaid_error_\(UUID().uuidString)",
+                content: content,
+                trigger: nil
+            )
+
+            UNUserNotificationCenter.current().add(request)
+            completionHandler(.newData)
+
+        default:
+            #if DEBUG
+            print("📱 Unhandled remote notification type: \(notificationType ?? "nil")")
+            #endif
+            completionHandler(.noData)
+        }
+    }
+
     // MARK: - Notification Handling
-    
+
     // Handle notification when app is in foreground
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
@@ -182,16 +373,36 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         completionHandler([.banner, .sound])
     }
     
-    // Handle notification tap
+    // Handle notification tap — routes to appropriate service
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        TaxNotificationService.shared.handleNotificationAction(
-            response.actionIdentifier,
-            for: response.notification
-        )
+        let categoryId = response.notification.request.content.categoryIdentifier
+        let actionId = response.actionIdentifier
+
+        switch categoryId {
+        case "BUDGET_ALERT", "BUDGET_EXCEEDED":
+            BudgetNotificationService.shared.handleNotificationAction(
+                actionId, for: response.notification
+            )
+
+        case "PLAID_SYNC", "PLAID_ERROR":
+            // Navigate to Accounts tab
+            NotificationCenter.default.post(
+                name: Notification.Name("NavigateToAccounts"),
+                object: nil,
+                userInfo: response.notification.request.content.userInfo
+            )
+
+        default:
+            // Tax reminders and other notifications
+            TaxNotificationService.shared.handleNotificationAction(
+                actionId, for: response.notification
+            )
+        }
+
         completionHandler()
     }
 }
@@ -461,16 +672,19 @@ extension Notification.Name {
     static let quickActionAddTransaction = Notification.Name("com.finchandpoppy.flo.quickAction.addTransaction")
     static let quickActionScanReceipt = Notification.Name("com.finchandpoppy.flo.quickAction.scanReceipt")
 }
+#endif // canImport(UIKit)
 
 // MARK: - FLOApp
 
 @main
 struct FLOApp: App {
     // MARK: - Properties (ALL declared BEFORE init)
-    
+
+    #if canImport(UIKit)
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    #endif
     
-    let container: ModelContainer
+    @State private var container: ModelContainer?
     @StateObject private var authService = BiometricAuthService.shared
     @StateObject private var subscriptionManager = SubscriptionManager.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
@@ -478,6 +692,13 @@ struct FLOApp: App {
     // MARK: - Initialization
     
     init() {
+            // Performance: Start launch signpost (visible in Instruments, all builds)
+            PerformanceMonitor.shared.beginLaunch()
+
+            #if DEBUG
+            LaunchTimer.checkpoint("FLOApp.init() started")
+            #endif
+
             // CRITICAL: Purge any legacy Core Data store first
             Self.purgeLegacyCoreDataStoreIfNeeded()
             
@@ -486,60 +707,356 @@ struct FLOApp: App {
                                 ProcessInfo.processInfo.arguments.contains("DEMO_MODE")
             
             if isTestingMode {
-                container = ModelContainer.preview()
+                _container = State(initialValue: ModelContainer.preview())
                 print("🎬 Using in-memory ModelContainer for testing/demo mode")
                 return
             }
-            
-            do {
-                container = try ModelContainer.shared()
-                print("✅ ModelContainer created with custom store URL")
-                print("✅ Using: FLOSwiftData.store (NOT default.store)")
-            } catch {
-                print("❌ CRITICAL: Failed to create ModelContainer: \(error)")
-                fatalError("Failed to create ModelContainer: \(error)")
-            }
+
+            // ModelContainer creation deferred to background thread for faster launch
+            // CloudKit schema init (~2.5s) now happens off main thread while splash shows
+            _container = State(initialValue: nil)
+
+            #if DEBUG
+            LaunchTimer.checkpoint("FLOApp.init() complete (container deferred to background)")
+            #endif
         }
     
     // MARK: - Body
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .modelContainer(container)
-                .environmentObject(authService)
-                .environmentObject(subscriptionManager)
-                .fullScreenCover(isPresented: Binding(
-                    get: { !hasCompletedOnboarding },
-                    set: { hasCompletedOnboarding = !$0 }
-                )) {
-                    OnboardingView()
-                }
-                .task {
-                    await subscriptionManager.initialize()
-                }
-                .onAppear {
-                    setupApp()
-                    
-                    // Inject ModelContext into MileageTrackingService
-                    let trackingService = MileageTrackingService.shared
-                    trackingService.inject(modelContext: container.mainContext)
-                    print("✅ ModelContext injected into MileageTrackingService")
-                    
-                    // Auto-start mileage tracking if conditions are met (includes subscription check)
-                    autoStartMileageTrackingIfNeeded(trackingService: trackingService)
-                    
-                    // Update home screen quick actions
-                    QuickActionService.shared.updateShortcuts()
-                    
-                    // Index entities for Spotlight search
-                    SpotlightIndexingService.shared.reindexAll(modelContext: container.mainContext)
-                }
-                .onChange(of: authService.isAuthenticated) { oldValue, newValue in
-                    if newValue {
-                        updateWidgetData()
+            if let container {
+                // Real app content — only shown after ModelContainer is ready
+                ContentView()
+                    .modelContainer(container)
+                    .environmentObject(authService)
+                    .environmentObject(subscriptionManager)
+                    #if os(iOS)
+                    .fullScreenCover(isPresented: Binding(
+                        get: { !hasCompletedOnboarding },
+                        set: { hasCompletedOnboarding = !$0 }
+                    )) {
+                        OnboardingView()
+                    }
+                    #endif
+                    .task {
+                        await subscriptionManager.initialize()
+                    }
+                    .onAppear {
+                        PerformanceMonitor.shared.launchCheckpoint("ContentViewAppear")
+                        #if DEBUG
+                        LaunchTimer.checkpoint("ContentView.onAppear")
+                        #endif
+
+                        // CRITICAL PATH: Only essential setup here
+                        setupAppCritical(container: container)
+
+                        #if os(iOS)
+                        // Inject ModelContext into MileageTrackingService
+                        let trackingService = MileageTrackingService.shared
+                        trackingService.inject(modelContext: container.mainContext)
+
+                        // Auto-start mileage tracking if conditions are met
+                        autoStartMileageTrackingIfNeeded(trackingService: trackingService)
+                        #endif
+
+                        // Performance: End launch signpost + start ongoing monitoring
+                        PerformanceMonitor.shared.launchCheckpoint("CriticalPathComplete")
+                        PerformanceMonitor.shared.endLaunch()
+                        PerformanceMonitor.shared.startMemoryMonitoring()
+
+                        #if DEBUG
+                        LaunchTimer.checkpoint("Critical path complete")
+                        LaunchTimer.complete()
+                        PerformanceMonitor.shared.logMemorySnapshot("PostLaunch")
+                        #endif
+
+                        // DEFERRED: Non-critical services after UI is visible
+                        scheduleDeferredSetup(container: container)
+                    }
+                    .onChange(of: authService.isAuthenticated) { oldValue, newValue in
+                        if newValue {
+                            updateWidgetData(container: container)
+                        }
+                    }
+            } else {
+                // Lightweight splash while ModelContainer + CloudKit init runs off main thread
+                // Seamlessly extends LaunchScreen appearance
+                Color.floSystemBackground
+                    .ignoresSafeArea()
+                    .task {
+                        await loadContainerAsync()
+                    }
+            }
+        }
+        #if os(macOS)
+        .defaultSize(width: 1200, height: 800)
+        .commands {
+            // Build 10: Replace new item with context-aware Cmd+N
+            CommandGroup(replacing: .newItem) {
+                Button("New Item") {
+                    switch NavigationService.shared.selectedTab {
+                    case .transactions: NavigationService.shared.showAddTransaction()
+                    case .invoices:     NavigationService.shared.showCreateInvoice()
+                    case .budgets:      NavigationService.shared.showCreateBudget()
+                    default:            NavigationService.shared.showAddTransaction()
                     }
                 }
+                .keyboardShortcut("n", modifiers: .command)
+            }
+
+            // Build 10: Cmd+, opens Settings (standard macOS pattern)
+            CommandGroup(after: .appSettings) {
+                Button("Settings...") {
+                    NavigationService.shared.showSettings()
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
+
+            CommandMenu("Navigate") {
+                ForEach(AppTab.allCases) { tab in
+                    if let shortcut = tab.keyboardShortcut {
+                        Button(tab.title) {
+                            NavigationService.shared.navigateTo(tab)
+                        }
+                        .keyboardShortcut(shortcut, modifiers: .command)
+                    }
+                }
+
+                Divider()
+
+                // Build 10: Cmd+0 for tab 10 (settings), Shift+Cmd+0 for tab 11
+                Button("Settings") {
+                    NavigationService.shared.navigateTo(.settings)
+                }
+                .keyboardShortcut("0", modifiers: .command)
+
+                Button("Tax") {
+                    NavigationService.shared.navigateTo(.tax)
+                }
+                .keyboardShortcut("0", modifiers: [.command, .shift])
+            }
+        }
+        #endif
+
+        #if os(macOS)
+        MenuBarExtra("FLO", systemImage: "chart.line.uptrend.xyaxis") {
+            MenuBarWidgetView()
+        }
+        .menuBarExtraStyle(.window)
+        #endif
+    }
+
+    // MARK: - Async Container Loading
+
+    /// Creates the ModelContainer on a background thread to avoid blocking the main thread.
+    /// CloudKit schema initialization (~2.5s) happens off-screen while the splash view shows.
+    private func loadContainerAsync() async {
+        do {
+            let newContainer = try await Task.detached(priority: .userInitiated) {
+                try ModelContainer.shared()
+            }.value
+
+            PerformanceMonitor.shared.launchCheckpoint("ModelContainer")
+            #if DEBUG
+            LaunchTimer.checkpoint("ModelContainer created (async, off main thread)")
+            #endif
+
+            self.container = newContainer
+        } catch {
+            print("❌ CRITICAL: Failed to create ModelContainer: \(error)")
+            fatalError("Failed to create ModelContainer: \(error)")
+        }
+    }
+
+    // MARK: - Critical Path Setup (Blocks UI)
+    
+    /// Only the absolute essentials needed before UI renders
+    private func setupAppCritical(container: ModelContainer) {
+        let context = ModelContext(container)
+        
+        // Demo mode check
+        if DemoConfiguration.isDemoMode {
+            Task { @MainActor in
+                await DemoConfiguration.configure(context: context)
+            }
+            return
+        }
+        
+        // Seed default categories (fast - checks existing first)
+        let seedResult = SeedData.seedDefaultCategories(in: context)
+        if case .success(let count) = seedResult, count > 0 {
+            print("✅ Seeded \(count) default categories")
+        }
+        
+        // Migrate existing categories (fast - only touches changed items)
+        SeedData.migrateCategories(in: context)
+        
+        // NOTE: Migrations and recurring generation moved to scheduleDeferredSetup() +0.3s
+        // to improve cold start time (was blocking UI for ~500ms)
+    }
+    
+    // MARK: - Recurring Transfer Generation
+    
+    /// Generates any due transfers from recurring schedules.
+    /// Called once on app launch to catch up on any missed transfers.
+    private func generateDueRecurringTransfers(context: ModelContext) async {
+        // Use TransferService to generate due transfers
+        let generatedTransfers = TransferService.shared.generateDueRecurringTransfers(context: context)
+
+        if !generatedTransfers.isEmpty {
+            print("✅ Generated \(generatedTransfers.count) recurring transfer(s)")
+
+            #if DEBUG
+            for transfer in generatedTransfers {
+                print("   💸 \(transfer.transferType.displayName): \(transfer.formattedAmount)")
+            }
+            #endif
+        } else {
+            #if DEBUG
+            print("ℹ️ No recurring transfers due")
+            #endif
+        }
+    }
+    
+    // MARK: - Deferred Setup (After UI Visible)
+    
+    /// Non-critical services deferred to improve cold start time
+    private func scheduleDeferredSetup(container: ModelContainer) {
+        // DEFER 0.3s: Migrations & recurring generation (moved from setupAppCritical for faster cold start)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [self] in
+            let context = ModelContext(container)
+
+            // ONE-TIME: Migrate transfer-flagged transactions to Transfer records
+            if TransferMigrationService.shouldRunMigration() {
+                Task { @MainActor in
+                    let result = await TransferMigrationService.shared.migrateTransferTransactions(context: context)
+                    if result.successCount > 0 {
+                        print("🎯 Migrated \(result.successCount) transfer transaction(s)")
+                    }
+                }
+            }
+
+            // ONE-TIME: Fix liability accounts with positive balances (polarity bug)
+            if LiabilityBalanceMigrationService.shouldRunMigration() {
+                let result = LiabilityBalanceMigrationService.shared.migrateLiabilityBalances(context: context)
+                if result.accountsFixed > 0 {
+                    print("🔧 Fixed \(result.accountsFixed) liability account balance(s)")
+                }
+            }
+
+            // Create any missed recurring transactions
+            Task { @MainActor in
+                await RecurringTransactionService.shared.createPendingInstances(in: container)
+            }
+
+            // Create any due recurring transfers
+            Task { @MainActor in
+                await self.generateDueRecurringTransfers(context: context)
+            }
+
+            #if DEBUG
+            print("⏱️ [Deferred +300ms] Migrations & recurring generation complete")
+            #endif
+        }
+
+        #if os(iOS)
+        // DEFER 0.5s: Quick actions & haptic preparation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            QuickActionService.shared.updateShortcuts()
+            HapticService.prepareAll()
+            #if DEBUG
+            print("⏱️ [Deferred +500ms] Quick actions & haptics prepared")
+            #endif
+        }
+
+        // DEFER 1.0s: Watch connectivity
+        #if os(iOS)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            WatchConnectivityService.shared.activateSession()
+            #if DEBUG
+            print("⏱️ [Deferred +1000ms] WatchConnectivity activated")
+            #endif
+        }
+        #endif
+        #endif
+        
+        // DEFER 1.5s: Widget data refresh + iCloud Sync monitoring
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            self.updateWidgetData(container: container)
+            CloudSyncService.shared.initialize()
+
+            // Verify Apple Sign In credential state
+            Task {
+                await AppleAuthService.shared.checkCredentialState()
+                #if DEBUG
+                print("🍎 [Deferred +1500ms] Apple Sign In: \(AppleAuthService.shared.isSignedIn ? "signed in" : "not signed in")")
+                #endif
+            }
+
+            #if DEBUG
+            print("⏱️ [Deferred +1500ms] Widget data refreshed + CloudSync initialized")
+            #endif
+        }
+        
+        // DEFER 2.0s: Spotlight indexing (heaviest operation)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            SpotlightIndexingService.shared.reindexAll(modelContext: container.mainContext)
+            #if DEBUG
+            print("⏱️ [Deferred +2000ms] Spotlight indexing complete")
+            #endif
+        }
+
+        // DEFER 2.5s: Push notification registration
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            Task { @MainActor in
+                let status = await NotificationPermissionHelper.checkStatus()
+                if status == .authorized || status == .provisional {
+                    PushNotificationService.shared.registerForPushNotifications()
+                }
+                #if DEBUG
+                print("⏱️ [Deferred +2500ms] Push notification registration (\(status))")
+                #endif
+            }
+        }
+
+        // DEFER 3.0s: Auto-Recurring Detection (Build 8, Premium+)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            Task { @MainActor in
+                let tier = SubscriptionManager.shared.currentTier
+                if tier.hasRecurringTransactions {
+                    await RecurringDetectionService.shared.analyzeTransactions(in: container)
+                }
+                #if DEBUG
+                print("⏱️ [Deferred +3000ms] Recurring detection (\(tier.displayName))")
+                #endif
+            }
+        }
+
+        // DEFER 3.5s: Cash Flow Forecast (Build 8, Premium+)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+            Task { @MainActor in
+                let tier = SubscriptionManager.shared.currentTier
+                if tier.hasRecurringTransactions {
+                    _ = await CashFlowForecastService.shared.generateForecast(in: container)
+                }
+                #if DEBUG
+                print("⏱️ [Deferred +3500ms] Cash flow forecast (\(tier.displayName))")
+                #endif
+            }
+        }
+
+        // DEFER 4.0s: Household loading (Build 8, Pro only)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+            Task { @MainActor in
+                let tier = SubscriptionManager.shared.currentTier
+                if tier.hasHouseholdSharing {
+                    await HouseholdService.shared.loadCurrentHousehold(in: container)
+                }
+                #if DEBUG
+                print("⏱️ [Deferred +4000ms] Household loading (\(tier.displayName))")
+                #endif
+            }
         }
     }
 
@@ -591,43 +1108,9 @@ struct FLOApp: App {
         print("✅ Legacy store cleanup complete")
     }
     
-    // MARK: - App Setup
+    // MARK: - Widget Data Update
     
-    private func setupApp() {
-        let context = ModelContext(container)
-        
-        // NEW: Demo mode configuration (video recording)
-        if DemoConfiguration.isDemoMode {
-            Task { @MainActor in
-                await DemoConfiguration.configure(context: context)
-            }
-            return  // Skip normal setup when in demo mode
-        }
-        
-        // Seed default categories
-        let seedResult = SeedData.seedDefaultCategories(in: context)
-        switch seedResult {
-        case .success(let count):
-            if count > 0 {
-                print("✅ Seeded \(count) default categories")
-            }
-        case .failure(let error):
-            print("❌ Seed failed: \(error.localizedDescription)")
-        }
-        
-        // Migrate existing categories (fixes invalid icons, etc.)
-        SeedData.migrateCategories(in: context)
-        
-        // Create any missed recurring transactions - safe & fast on every launch
-        Task { @MainActor in
-            await RecurringTransactionService.shared.createPendingInstances(in: container)
-        }
-        
-        // Refresh widgets with latest data
-        updateWidgetData()
-    }
-    
-    private func updateWidgetData() {
+    private func updateWidgetData(container: ModelContainer) {
         Task { @MainActor in
             let context = ModelContext(container)
             
@@ -651,8 +1134,9 @@ struct FLOApp: App {
         }
     }
     
+    #if os(iOS)
     // MARK: - Mileage Tracking Auto-Start
-    
+
     /// Automatically starts mileage tracking if all conditions are met.
     /// This is critical for background location tracking to work properly.
     /// Without this, tracking only starts when user visits the Mileage Tracking view.
@@ -680,8 +1164,15 @@ struct FLOApp: App {
         // Check if tracking was active before app was killed (restoration)
         let wasTrackingActive = UserDefaults.standard.bool(forKey: "mileage.isTrackingActive")
         
-        // Either currently enabled OR was active before = should start
-        guard mileageTrackingEnabled || wasTrackingActive else {
+        // User's explicit preference is the primary gate.
+        // wasTrackingActive is only used to restore after an app kill
+        // when the user hasn't explicitly disabled tracking.
+        guard mileageTrackingEnabled else {
+            // If user disabled tracking, clear the stale wasActive flag
+            if wasTrackingActive {
+                UserDefaults.standard.set(false, forKey: "mileage.isTrackingActive")
+                print("⏭️ Mileage tracking: Disabled by user - cleared stale active flag")
+            }
             print("⏭️ Mileage tracking: Disabled by user - skipping auto-start")
             return
         }
@@ -713,4 +1204,5 @@ struct FLOApp: App {
             print("ℹ️ Mileage tracking: Already running")
         }
     }
+    #endif // os(iOS)
 }

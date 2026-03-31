@@ -104,22 +104,37 @@ struct AccountRowEnhanced: View {
                     }
                 }
                 
-                // Credit card utilization indicator
+                // Credit card utilization gauge
                 if account.accountType == .creditCard, let utilization = account.creditUtilization {
-                    HStack(spacing: 4) {
-                        ProgressView(value: min(utilization / 100, 1.0))
-                            .tint(Color(hex: account.utilizationStatus.color))
-                            .frame(width: 60)
-                        
-                        Text("\(Int(utilization))% used")
-                            .font(.caption2)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(Color(hex: account.utilizationStatus.color))
+                    VStack(alignment: .leading, spacing: 3) {
+                        // Progress bar
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(height: 6)
+
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(utilizationBarColor(utilization))
+                                    .frame(width: max(4, geo.size.width * min(utilization / 100, 1.0)), height: 6)
+                            }
+                        }
+                        .frame(height: 6)
+
+                        HStack(spacing: 0) {
+                            Text("\(Int(utilization))% used")
+                                .font(.caption2)
+                                .foregroundStyle(utilizationBarColor(utilization))
+                            Spacer()
+                            if let available = account.availableCredit {
+                                Text("\(formatCompactBalance(available)) available")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
-                    // v1.0: Utilization accessible
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Credit utilization: \(Int(utilization)) percent")
+                    .accessibilityLabel("Credit utilization: \(Int(utilization)) percent\(account.availableCredit.map { ", \(formatCompactBalance($0)) available" } ?? "")")
                 }
             }
             
@@ -213,9 +228,20 @@ struct AccountRowEnhanced: View {
     }
     
     private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: NSNumber(value: value)) ?? "$0.00"
+        NumberFormatter.appCurrency.string(from: NSNumber(value: value)) ?? "$0.00"
+    }
+
+    /// Brand-colored utilization bar: teal (low), amber (medium), red (high)
+    private func utilizationBarColor(_ utilization: Double) -> Color {
+        if utilization <= 30 { return Color.brandPrimary }   // #14B8A6
+        if utilization <= 60 { return Color.brandWarning }   // #FBBF24
+        return Color.expenseRed                              // #F87171
+    }
+
+    private func formatCompactBalance(_ value: Double) -> String {
+        if value >= 1000 {
+            return "$\(String(format: "%.1f", value / 1000))k"
+        }
+        return "$\(Int(value))"
     }
 }

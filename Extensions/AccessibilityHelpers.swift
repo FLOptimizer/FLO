@@ -380,24 +380,40 @@ enum FLOAccessibilityLabels {
 /// Helper for making VoiceOver announcements
 @MainActor
 enum AccessibilityAnnouncement {
-    
+
     /// Announces a message to VoiceOver users
     static func announce(_ message: String, delay: TimeInterval = 0.1) {
+        #if canImport(UIKit)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
             UIAccessibility.post(notification: .announcement, argument: message)
         }
+        #else
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested, userInfo: [.announcement: message])
+        }
+        #endif
     }
-    
+
     /// Announces screen change
     static func screenChanged(_ newScreen: String) {
+        #if canImport(UIKit)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             UIAccessibility.post(notification: .screenChanged, argument: newScreen)
         }
+        #else
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested, userInfo: [.announcement: newScreen])
+        }
+        #endif
     }
-    
+
     /// Announces layout change
     static func layoutChanged(_ element: Any? = nil) {
+        #if canImport(UIKit)
         UIAccessibility.post(notification: .layoutChanged, argument: element)
+        #else
+        NSAccessibility.post(element: NSApp as Any, notification: .layoutChanged)
+        #endif
     }
 }
 
@@ -413,7 +429,7 @@ enum AccessibilityAnnouncement {
                 .font(.title)
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color.floSystemBackground)
         .cornerRadius(12)
         .accessibleCard(
             label: FLOAccessibilityLabels.balanceSummary(

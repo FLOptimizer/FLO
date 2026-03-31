@@ -72,7 +72,7 @@ struct ReceiptMatchingQueueView: View {
         NavigationStack {
             ZStack {
                 // Background
-                Color(.systemGroupedBackground)
+                Color.floSystemGroupedBackground
                     .ignoresSafeArea()
                 
                 if matchingService.pendingMatches.isEmpty {
@@ -388,9 +388,9 @@ struct ReceiptMatchCard: View {
             actionButtons
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(16)
-        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+        .floCardShadow(radius: 10, y: 5)
         .offset(offset)
         .rotationEffect(.degrees(rotation))
     }

@@ -20,7 +20,9 @@
 //
 
 import Foundation
+#if canImport(UIKit)
 import UIKit
+#endif
 import SwiftData
 
 // MARK: - Export Options
@@ -39,9 +41,7 @@ struct ReceiptExportOptions {
     }
     
     var exportName: String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let today = dateFormatter.string(from: Date())
+        let today = DateFormatter.isoDate.string(from: Date())
         
         var name = "FLO_Receipts"
         
@@ -54,10 +54,8 @@ struct ReceiptExportOptions {
         
         // Add date suffix
         if let year = year, let month = month {
-            let monthFormatter = DateFormatter()
-            monthFormatter.dateFormat = "MMM"
             if let monthDate = Calendar.current.date(from: DateComponents(year: year, month: month)) {
-                name += "_\(monthFormatter.string(from: monthDate))_\(year)"
+                name += "_\(DateFormatter.shortMonth.string(from: monthDate))_\(year)"
             }
         } else if let year = year {
             name += "_\(year)"
@@ -388,12 +386,9 @@ class ReceiptExportService: ObservableObject {
         // CSV Header
         var csv = "Date,Merchant,Amount,Category,Type,Tax Deductible,Notes\n"
         
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        
         // Add rows
         for receipt in receipts {
-            let date = dateFormatter.string(from: receipt.date)
+            let date = DateFormatter.isoDate.string(from: receipt.date)
             let merchant = escapeCSV(receipt.merchantName)
             let amount = String(format: "%.2f", receipt.totalAmount)
             let category = escapeCSV(receipt.suggestedCategoryName ?? "Uncategorized")
@@ -420,9 +415,7 @@ class ReceiptExportService: ObservableObject {
     // MARK: - Helpers
     
     private func generateImageFilename(for receipt: ReceiptData, index: Int) -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let dateStr = dateFormatter.string(from: receipt.date)
+        let dateStr = DateFormatter.isoDate.string(from: receipt.date)
         
         // Clean merchant name
         let merchant = receipt.merchantName

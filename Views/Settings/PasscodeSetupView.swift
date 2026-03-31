@@ -79,7 +79,7 @@ struct PasscodeSetupView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(.systemGroupedBackground)
+                Color.floSystemGroupedBackground
                     .ignoresSafeArea()
                 
                 VStack(spacing: 30) {
@@ -181,6 +181,7 @@ struct PasscodeSetupView: View {
                                     .foregroundStyle(.secondary)
                                     .frame(width: 70, height: 70)
                             }
+                            .buttonStyle(.plain)
                             .accessibilityLabel("Delete")
                             .accessibilityHint("Removes last digit")
                             .disabled(currentPasscodeInput.isEmpty)
@@ -561,13 +562,16 @@ private struct SetupNumberButton: View {
                 .fontWeight(.medium)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .foregroundStyle(.primary)
                 .frame(width: 70, height: 70)
                 .background(
                     Circle()
                         .fill(isPressed ? Color.secondary.opacity(0.4) : Color.secondary.opacity(0.2))
                 )
+                .clipShape(Circle())
                 .scaleEffect(isPressed ? 0.9 : 1.0)
         }
+        .buttonStyle(.plain)
         .accessibilityLabel("\(number)")
         .animation(.spring(response: 0.15, dampingFraction: 0.6), value: isPressed)
     }

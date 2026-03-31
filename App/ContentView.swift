@@ -1,26 +1,18 @@
 //  ContentView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 4.0 - Spotlight deep link handling for CoreSpotlight search results
+//  Version 5.0 - Build 10 Adaptive Navigation
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  TAB ORDER:
-//  1. Dashboard (overview)
-//  2. Transactions (most frequent action)
-//  3. Budgets (includes Recurring as sub-tab)
-//  4. Invoices (weekly check)
-//  5. More (Clients, Mileage, Settings)
+//  CHANGES v5.0 (Build 10):
+//  ✅ REWRITE: Adaptive layout — portrait TabView / landscape+macOS NavigationSplitView
+//  ✅ ADDED: Three-zone navigation (Sidebar → Content → Detail)
+//  ✅ ADDED: 11 first-class tabs replacing 5+More structure
+//  ✅ ADDED: iPhone landscape sidebar with emoji icons
+//  ✅ ADDED: macOS NavigationSplitView with full text sidebar
+//  ✅ PRESERVED: Lock screen, deep links, Spotlight, scene phase, sheets, accessibility
 //
-//  CHANGES v3.9:
-//  ✅ ADDED: VoiceOver accessibility labels on all tab items
-//  ✅ ADDED: Accessibility hints for tab navigation
-//  ✅ ADDED: Screen change announcements on tab switch
-//  ✅ ADDED: Lock screen accessibility announcement
-//  ✅ ADDED: VoiceOver notification when sheets present/dismiss
-//
-//  PREVIOUS (v3.8):
-//  - Removed duplicate onboarding presentation
-//
+//  Previous: v4.0 — Spotlight deep link handling
 
 import SwiftUI
 import SwiftData
@@ -31,69 +23,91 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var authService: BiometricAuthService
     @ObservedObject private var navigation = NavigationService.shared
-    
+
+    // Layout detection
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    // Build 10 Step 11: iPad sidebar persistence — keep sidebar visible on wide screens
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+
+    // Navigation path for content column — reset on tab change to clear Zone 3
+    @State private var contentPath = NavigationPath()
+
     // Theme picker support
     @AppStorage("preferredColorScheme") private var preferredColorScheme = "system"
-    
+
     private var colorScheme: ColorScheme? {
         switch preferredColorScheme {
         case "light": return .light
         case "dark": return .dark
-        default: return nil  // system
+        default: return nil
         }
     }
-    
+
+    /// Use landscape/split layout on macOS or when horizontalSizeClass is regular (iPad/landscape iPhone)
+    private var useSplitLayout: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return horizontalSizeClass == .regular
+        #endif
+    }
+
+    #if !os(macOS)
     init() {
-        // Configure tab bar appearance to be opaque (not see-through)
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = UIColor.systemBackground
-        
+
         UITabBar.appearance().standardAppearance = appearance
-        if #available(iOS 15.0, *) {
-            UITabBar.appearance().scrollEdgeAppearance = appearance
-        }
+        UITabBar.appearance().scrollEdgeAppearance = appearance
     }
-    
+    #endif
+
     // MARK: - Body
-    
+
     var body: some View {
         ZStack {
-            // FIXED v3.6: Use authService.isSecurityEnabled for consistency
-            // This matches the check used in handleScenePhaseChange for locking
             if !authService.isAuthenticated && authService.isSecurityEnabled {
                 LockView()
                     .transition(.opacity.combined(with: .scale(scale: 1.02)))
-                    // v3.9: Announce lock screen to VoiceOver
                     .accessibilityElement(children: .contain)
                     .accessibilityLabel("App locked")
                     .accessibilityAddTraits(.isModal)
             } else {
-                mainTabView
-                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                if useSplitLayout {
+                    landscapeLayout
+                        .transition(.opacity)
+                } else {
+                    portraitTabView
+                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                }
             }
         }
         .animation(FLOAnimation.standard, value: authService.isAuthenticated)
-        .onChange(of: scenePhase) { oldValue, newValue in
+        .onChange(of: scenePhase) { _, newValue in
             handleScenePhaseChange(newValue)
         }
         .onChange(of: navigation.selectedTab) { oldValue, newValue in
-            // Haptic feedback handled by NavigationService
-            #if DEBUG
-            if oldValue != newValue {
+            guard oldValue != newValue else { return }
+            // Defer to next run loop to avoid "Publishing changes from within view updates"
+            // when NavigationSplitView triggers content column re-layout during selection change
+            DispatchQueue.main.async {
+                #if DEBUG
                 print("[Tab] Changed: \(oldValue.title) -> \(newValue.title)")
+                #endif
+
+                // Clear Zone 3 detail so it returns to the contextual summary panel
+                navigation.selectedDetail = nil
+                contentPath = NavigationPath()
+
+                AccessibilityAnnouncement.screenChanged(newValue.title)
             }
-            #endif
-            
-            // v3.9: Announce tab change to VoiceOver users
-            AccessibilityAnnouncement.screenChanged(newValue.title)
         }
         .preferredColorScheme(colorScheme)
-        // Deep link handling
         .onOpenURL { url in
             handleDeepLink(url)
         }
-        // Spotlight search result handling
         .onContinueUserActivity(CSSearchableItemActionType) { activity in
             handleSpotlightActivity(activity)
         }
@@ -110,91 +124,97 @@ struct ContentView: View {
         .sheet(isPresented: $navigation.showingCreateBudget) {
             CreateBudgetView(month: Date())
         }
-        // NOTE: Onboarding is handled in FLOApp.swift, NOT here
-        // This prevents the "only presenting a single sheet" error
     }
-    
-    // MARK: - Main Tab View
-    
-    private var mainTabView: some View {
+
+    // MARK: - Portrait Tab View (iPhone Portrait)
+
+    private var portraitTabView: some View {
         TabView(selection: $navigation.selectedTab) {
-            // Tab 1: Dashboard - Daily overview
-            DashboardView()
-                .tabItem {
-                    Label(AppTab.dashboard.title, systemImage: AppTab.dashboard.icon)
-                }
-                .tag(AppTab.dashboard)
-                // v3.9: VoiceOver label for dashboard tab
-                .accessibilityLabel("Dashboard")
-                .accessibilityHint("View your financial overview, balances, and quick actions")
-            
-            // Tab 2: Transactions - Most frequent action (center position)
-            TransactionListView()
-                .tabItem {
-                    Label(AppTab.transactions.title, systemImage: AppTab.transactions.icon)
-                }
-                .tag(AppTab.transactions)
-                // v3.9: VoiceOver label for transactions tab
-                .accessibilityLabel("Transactions")
-                .accessibilityHint("View and manage your income and expenses")
-            
-            // Tab 3: Budgets - Includes Recurring as sub-tab
-            BudgetListView()
-                .tabItem {
-                    Label(AppTab.budgets.title, systemImage: AppTab.budgets.icon)
-                }
-                .tag(AppTab.budgets)
-                // v3.9: VoiceOver label for budgets tab
-                .accessibilityLabel("Budgets")
-                .accessibilityHint("Manage your budgets and recurring transactions")
-            
-            // Tab 4: Invoices - Weekly check
-            InvoiceListView()
-                .tabItem {
-                    Label(AppTab.invoices.title, systemImage: AppTab.invoices.icon)
-                }
-                .tag(AppTab.invoices)
-                // v3.9: VoiceOver label for invoices tab
-                .accessibilityLabel("Invoices")
-                .accessibilityHint("Create and track invoices for your clients")
-            
-            // Tab 5: More - Everything else (Clients, Mileage, Settings)
-            MoreView()
-                .tabItem {
-                    Label(AppTab.more.title, systemImage: AppTab.more.icon)
-                }
-                .tag(AppTab.more)
-                // v3.9: VoiceOver label for more tab
-                .accessibilityLabel("More")
-                .accessibilityHint("Access clients, mileage tracking, reports, and settings")
+            ForEach(AppTab.portraitTabs) { tab in
+                ContentListView(tab: tab)
+                    .tabItem {
+                        Label(tab.title, systemImage: tab.icon)
+                    }
+                    .tag(tab)
+                    .accessibilityLabel(tab.title)
+            }
         }
         .tint(Color.brandPrimary)
     }
-    
+
+    // MARK: - Landscape / macOS Layout (Three-Zone NavigationSplitView)
+
+    private var landscapeLayout: some View {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            SidebarView(selection: $navigation.selectedTab)
+                .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
+        } content: {
+            NavigationStack(path: $contentPath) {
+                ContentListView(tab: navigation.selectedTab)
+            }
+            .id(navigation.selectedTab)
+            .navigationSplitViewColumnWidth(ideal: 480)
+            .floColumnBackground()
+        } detail: {
+            DetailView(destination: navigation.selectedDetail, selectedTab: navigation.selectedTab)
+                .navigationSplitViewColumnWidth(ideal: 360)
+                .floColumnBackground()
+                .overlay(alignment: .leading) {
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.12))
+                        .frame(width: 1)
+                        .ignoresSafeArea()
+                }
+        }
+        .tint(Color.brandPrimary)
+        #if os(macOS)
+        .toolbar {
+            ToolbarItemGroup(placement: .automatic) {
+                Button {
+                    navigation.showAddTransaction()
+                } label: {
+                    Label("Add Transaction", systemImage: "plus.circle")
+                }
+                .help("Add a new transaction (Cmd+N)")
+
+                Button {
+                    navigation.showReceiptScanner()
+                } label: {
+                    Label("Scan Receipt", systemImage: "doc.text.viewfinder")
+                }
+                .help("Scan a receipt")
+
+                Button {
+                    navigation.showCreateInvoice()
+                } label: {
+                    Label("New Invoice", systemImage: "doc.text.fill")
+                }
+                .help("Create a new invoice")
+            }
+        }
+        .navigationSplitViewStyle(.balanced)
+        #endif
+    }
+
     // MARK: - Deep Link Handler
-    
+
     private func handleDeepLink(_ url: URL) {
         #if DEBUG
         print("[DeepLink] Received: \(url)")
         #endif
-        
-        // Only handle if authenticated or no security enabled
+
         guard authService.isAuthenticated || !authService.isSecurityEnabled else {
             #if DEBUG
             print("[DeepLink] Deferred - app locked")
             #endif
-            // Could store pending deep link to handle after auth
             return
         }
-        
+
         navigation.handleDeepLink(url)
     }
-    
+
     // MARK: - Spotlight Handler
-    
-    /// Handle tap on a Spotlight search result.
-    /// Resolves the CSSearchableItem identifier to a deep link URL
-    /// and navigates to the corresponding detail view.
+
     private func handleSpotlightActivity(_ activity: NSUserActivity) {
         guard let identifier = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String else {
             #if DEBUG
@@ -202,27 +222,26 @@ struct ContentView: View {
             #endif
             return
         }
-        
+
         #if DEBUG
         print("[Spotlight] Tapped result: \(identifier)")
         #endif
-        
+
         guard let url = SpotlightIndexingService.shared.deepLinkURL(for: identifier) else {
             #if DEBUG
             print("[Spotlight] Could not resolve deep link for: \(identifier)")
             #endif
             return
         }
-        
+
         handleDeepLink(url)
     }
-    
+
     // MARK: - Scene Phase Handler
-    
+
     private func handleScenePhaseChange(_ newPhase: ScenePhase) {
         switch newPhase {
         case .background:
-            // Lock the app when going to background (if security is enabled)
             if authService.isSecurityEnabled {
                 authService.logout()
                 #if DEBUG
@@ -230,7 +249,6 @@ struct ContentView: View {
                 #endif
             }
         case .active:
-            // Refresh biometric status when becoming active
             authService.refreshBiometricStatus()
         case .inactive:
             break

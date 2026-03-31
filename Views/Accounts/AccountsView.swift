@@ -1,11 +1,23 @@
 //  AccountsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 4.2 - Dark Mode Optimization: Adaptive color fixes
+//  Version 4.4 - CRITICAL: Safe account deletion (crash fix)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
+//  CHANGES v4.4 - Crash Fix:
+//  ✅ CRITICAL: Fixed fatal crash when deleting an account
+//  ✅ Pre-nullify Transaction.account (prevents @Query race during post-save vacuum)
+//  ✅ Pre-nullify Budget.account (same race condition)
+//  ✅ Pre-nullify Transfer.fromAccount / .toAccount (no inverse on Account — SwiftData never cascaded)
+//  ✅ Pre-nullify RecurringTransfer.fromAccount / .toAccount (same gap)
+//  ✅ Pre-nullify RecurringTransaction.account (implicit relationship, no declared inverse)
+//  ✅ All relationships resolved BEFORE modelContext.delete() to prevent backing data faults
+//
+//  CHANGES v4.3 - UTF-8 Fix:
+//  ✅ FIXED: L898 Plaid teaser text mojibake → "— Pro feature"
+//
 //  CHANGES v4.2 - Dark Mode Optimization:
-//  ✅ FIXED: L776 Color.gray.opacity(0.2) → Color(.systemGray4).opacity(0.2) for progress bar background (adapts to dark mode)
+//  ✅ FIXED: L776 Color.gray.opacity(0.2) → Color.gray.opacity(0.3).opacity(0.2) for progress bar background (adapts to dark mode)
 //
 //  CHANGES v4.1 - Dynamic Type Verification:
 //  ✅ ADDED: @Environment(\.dynamicTypeSize) for adaptive layout detection
@@ -40,7 +52,7 @@
 //  ✅ FIXED: "Upgrade" button in Plaid section missing lineLimit + minimumScaleFactor
 //  ✅ ADDED: Adaptive layout for net worth card at accessibility sizes
 //  ✅ ADDED: Adaptive layout for assets/liabilities cards at accessibility sizes
-//  ✅ NOTE: UTF-8 mojibake in Plaid text ("—�") left as-is per project policy
+//  ✅ FIXED: UTF-8 mojibake in Plaid text — corrected in v4.3
 //
 //  CHANGES v4.0:
 //  ✅ Custom SwiftUI empty state illustration
@@ -92,15 +104,27 @@ struct AccountsView: View {
     
     // MARK: - Filtered Accounts
     
+    /// Sort order for account type groups: assets first, then liabilities
+    private static let typeGroupOrder: [AccountType: Int] = [
+        .checking: 0, .savings: 1, .cash: 2,
+        .paypal: 3, .venmo: 4, .zelle: 5, .investment: 6,
+        .creditCard: 7, .loan: 8, .other: 9
+    ]
+
     private var filteredAccounts: [Account] {
         let active = accounts.filter { $0.isActive }
+        let filtered: [Account]
         switch selectedSegment {
-        case .all:
-            return active
-        case .business:
-            return active.filter { $0.financeType == .business }
-        case .personal:
-            return active.filter { $0.financeType == .personal }
+        case .all:      filtered = active
+        case .business: filtered = active.filter { $0.financeType == .business }
+        case .personal: filtered = active.filter { $0.financeType == .personal }
+        }
+        // Group by type, then sort by absolute balance descending within each group
+        return filtered.sorted { a, b in
+            let aOrder = Self.typeGroupOrder[a.accountType] ?? 9
+            let bOrder = Self.typeGroupOrder[b.accountType] ?? 9
+            if aOrder != bOrder { return aOrder < bOrder }
+            return abs(a.currentBalance) > abs(b.currentBalance)
         }
     }
     
@@ -155,16 +179,13 @@ struct AccountsView: View {
             }
             
             if !accounts.isEmpty {
-                privacySettingsSection
-            }
-            
-            if !accounts.isEmpty {
                 accountLimitSection
             }
             
             // Plaid section always visible (independent of account count)
             plaidConnectionSection
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Accounts")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -200,6 +221,19 @@ struct AccountsView: View {
         .sheet(isPresented: $showingUpgradePrompt) {
             SubscriptionView()
         }
+        #if os(macOS)
+        .sheet(isPresented: $showingLimitReached) {
+            LimitReachedOverlay(
+                limitType: .accounts,
+                currentCount: accounts.count,
+                limit: subscriptionManager.currentTier.accountLimit ?? 0,
+                showingSubscription: $showingUpgradePrompt,
+                onDismiss: {
+                    showingLimitReached = false
+                }
+            )
+        }
+        #else
         .fullScreenCover(isPresented: $showingLimitReached) {
             LimitReachedOverlay(
                 limitType: .accounts,
@@ -211,6 +245,8 @@ struct AccountsView: View {
                 }
             )
         }
+        #endif
+        #if canImport(LinkKit)
         .sheet(isPresented: $showingPlaidLink) {
             if let linkToken = plaidLinkToken {
                 PlaidLinkView(
@@ -224,6 +260,7 @@ struct AccountsView: View {
                 )
             }
         }
+        #endif
         .alert("Connection Error", isPresented: .init(
             get: { plaidError != nil },
             set: { if !$0 { plaidError = nil } }
@@ -233,8 +270,11 @@ struct AccountsView: View {
             Text(plaidError ?? "An error occurred connecting to your bank.")
         }
         .onAppear {
-            withAnimation(.easeOut(duration: 0.5).delay(0.2)) {
-                animateBalances = true
+            // Defer to avoid "Publishing changes from within view updates" on macOS NavigationSplitView
+            DispatchQueue.main.async {
+                withAnimation(.easeOut(duration: 0.5).delay(0.2)) {
+                    animateBalances = true
+                }
             }
             // v3.5: Announce screen
             AccessibilityAnnouncement.screenChanged("Accounts. \(accounts.count) total.")
@@ -294,7 +334,7 @@ struct AccountsView: View {
                     }
                 }
                 .padding()
-                .background(Color(UIColor.secondarySystemGroupedBackground))
+                .background(Color.floSecondarySystemGroupedBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 // v3.5: Net worth accessible
                 .accessibilityElement(children: .ignore)
@@ -521,7 +561,7 @@ struct AccountsView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
-                    .background(Color(UIColor.tertiarySystemFill))
+                    .background(Color.secondary.opacity(0.12))
                     .clipShape(Capsule())
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -778,7 +818,7 @@ struct AccountsView: View {
                     GeometryReader { geometry in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(Color(.systemGray4).opacity(0.2))
+                                .fill(Color.gray.opacity(0.3).opacity(0.2))
                                 .frame(height: 8)
                             
                             RoundedRectangle(cornerRadius: 4)
@@ -895,7 +935,7 @@ struct AccountsView: View {
                                 .fontWeight(.medium)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
-                            Text("Connect your bank with Plaid —�” Pro feature")
+                            Text("Connect your bank with Plaid — Pro feature")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(2)
@@ -937,8 +977,78 @@ struct AccountsView: View {
     
     private func deleteAccount(_ account: Account) {
         let name = account.name
+        let accountId = account.id
         HapticService.play(.heavy)
+        
+        // MARK: Pre-nullify all relationships before delete
+        // SwiftData's .nullify cascade only covers relationships with declared inverses
+        // (Account.transactions → Transaction.account, Account.budgets → Budget.account).
+        // Transfer, RecurringTransfer, and RecurringTransaction reference Account WITHOUT
+        // an inverse, so SwiftData leaves dangling PersistentIdentifiers that crash on fault.
+        // Pre-nullifying also prevents @Query observer race conditions during post-save vacuum.
+        
+        // 1. Transactions (has inverse, but pre-nullify to prevent @Query race)
+        if let transactions = account.transactions {
+            for transaction in transactions {
+                transaction.account = nil
+            }
+        }
+        
+        // 2. Budgets (has inverse, but pre-nullify for same reason)
+        if let budgets = account.budgets {
+            for budget in budgets {
+                budget.account = nil
+            }
+        }
+        
+        // 3. Transfers — NO inverse on Account, SwiftData won't cascade
+        do {
+            let transferDescriptor = FetchDescriptor<Transfer>()
+            let allTransfers = try modelContext.fetch(transferDescriptor)
+            for transfer in allTransfers {
+                if transfer.fromAccount?.id == accountId {
+                    transfer.fromAccount = nil
+                }
+                if transfer.toAccount?.id == accountId {
+                    transfer.toAccount = nil
+                }
+            }
+        } catch {
+            print("⚠️ Failed to clean Transfer references: \(error)")
+        }
+        
+        // 4. RecurringTransfers — NO inverse on Account, SwiftData won't cascade
+        do {
+            let recurringTransferDescriptor = FetchDescriptor<RecurringTransfer>()
+            let allRecurringTransfers = try modelContext.fetch(recurringTransferDescriptor)
+            for rt in allRecurringTransfers {
+                if rt.fromAccount?.id == accountId {
+                    rt.fromAccount = nil
+                }
+                if rt.toAccount?.id == accountId {
+                    rt.toAccount = nil
+                }
+            }
+        } catch {
+            print("⚠️ Failed to clean RecurringTransfer references: \(error)")
+        }
+        
+        // 5. RecurringTransactions — @Relationship but no declared inverse on Account
+        do {
+            let recurringDescriptor = FetchDescriptor<RecurringTransaction>()
+            let allRecurring = try modelContext.fetch(recurringDescriptor)
+            for recurring in allRecurring {
+                if recurring.account?.id == accountId {
+                    recurring.account = nil
+                }
+            }
+        } catch {
+            print("⚠️ Failed to clean RecurringTransaction references: \(error)")
+        }
+        
+        // 6. Now safe to delete — all references point to nil
         modelContext.delete(account)
+        
         do {
             try modelContext.save()
             HapticService.play(.success)
@@ -1020,9 +1130,7 @@ struct AccountsView: View {
     }
     
     private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        return formatter.string(from: NSNumber(value: value)) ?? "$0.00"
+        NumberFormatter.appCurrency.string(from: NSNumber(value: value)) ?? "$0.00"
     }
     
     // MARK: - Plaid Link Methods (v3.3)
@@ -1081,7 +1189,7 @@ struct AccountsView: View {
                     do {
                         try modelContext.save()
                         HapticService.play(.success)
-                        print("✅ Bank connected: \(metadata.institutionName ?? "Unknown") —�” \(metadata.accounts.count) account(s) created")
+                        print("✅ Bank connected: \(metadata.institutionName ?? "Unknown") — \(metadata.accounts.count) account(s) created")
                     } catch {
                         print("❌ Failed to save accounts: \(error)")
                         HapticService.play(.error)
@@ -1101,7 +1209,7 @@ struct AccountsView: View {
                     _ = try await plaidService.syncAllTransactions(modelContext: modelContext)
                     print("✅ Initial transaction sync complete")
                 } catch {
-                    // Sync can fail if edge function format differs —�” not critical
+                    // Sync can fail if edge function format differs — not critical
                     print("⚠️ Transaction sync failed (non-blocking): \(error)")
                 }
                 

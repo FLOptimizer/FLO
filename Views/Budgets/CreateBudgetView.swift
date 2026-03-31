@@ -1,8 +1,21 @@
 //  CreateBudgetView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.3 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
+//  Version 1.5 - Predictive Budgeting
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.5 - Predictive Budgeting:
+//  ✅ ADDED: ML-powered budget prediction when category is selected
+//  ✅ ADDED: "Suggested" badge with Apply button for predicted amount
+//  ✅ ADDED: Prediction explanation (months of data + inflation rate)
+//  ✅ ADDED: Confidence range displayed in footer
+//  ✅ ADDED: Tracks isUserOverridden when user changes from prediction
+//  ✅ ADDED: Stores suggestedAmount on Budget model for analytics
+//
+//  CHANGES v1.4 - Penny-Up Currency Input:
+//  ✅ REPLACED: Old TextField + String amount with CurrencyInputField component
+//  ✅ CHANGED: Amount state from String to Double
+//  ✅ UPDATED: isValid, save(), and footer to use Double amount directly
 //
 //  CHANGES v1.3 - Dynamic Type Verification:
 //  ✅ FIXED: Month date text missing lineLimit + minimumScaleFactor
@@ -36,13 +49,18 @@ struct CreateBudgetView: View {
     
     @Query(sort: \Category.name) private var categories: [Category]
     @Query(sort: \Account.name) private var accounts: [Account]
-    
+    @Query(sort: \Transaction.date, order: .reverse) private var allTransactions: [Transaction]
+
     let month: Date
-    
+
     @State private var selectedCategory: Category?
     @State private var selectedAccount: Account?
-    @State private var amount = ""
+    @State private var amount: Double = 0
     @State private var financeType: Transaction.FinanceType = .personal
+
+    // v1.5: Predictive budgeting
+    @State private var prediction: PredictedBudget?
+    @State private var didApplyPrediction = false
     
     var body: some View {
         NavigationStack {
@@ -56,6 +74,17 @@ struct CreateBudgetView: View {
             .navigationTitle("New Budget")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        #if canImport(UIKit)
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil
+                        )
+                        #endif
+                    }
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         HapticService.play(.light)
@@ -79,6 +108,10 @@ struct CreateBudgetView: View {
             }
             .onChange(of: financeType) { _, newType in
                 updateAccountForFinanceType(newType)
+            }
+            // v1.5: Fetch prediction when category changes
+            .onChange(of: selectedCategory) { _, newCategory in
+                updatePrediction(for: newCategory)
             }
         }
     }
@@ -199,26 +232,79 @@ struct CreateBudgetView: View {
     
     private var amountSection: some View {
         Section {
-            HStack {
-                Text("$")
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-                
-                TextField("0.00", text: $amount)
-                    .keyboardType(.decimalPad)
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .accessibilityLabel("Budget amount in dollars")
+            CurrencyInputField(
+                amount: $amount,
+                accessibilityLabelText: "Budget amount"
+            )
+            .onChange(of: amount) { _, newAmount in
+                // v1.5: Track if user changed from predicted amount
+                if let pred = prediction, didApplyPrediction, newAmount != pred.suggestedAmount {
+                    didApplyPrediction = false
+                }
+            }
+
+            // v1.5: Prediction suggestion
+            if let prediction = prediction, amount == 0 || didApplyPrediction == false {
+                Button {
+                    withAnimation(FLOAnimation.standard) {
+                        amount = prediction.suggestedAmount
+                        didApplyPrediction = true
+                    }
+                    HapticService.play(.medium)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "wand.and.stars")
+                            .foregroundStyle(Color.brandPrimary)
+                            .accessibilityHidden(true)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 4) {
+                                Text("Suggested:")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Text(prediction.formattedAmount)
+                                    .font(.subheadline)
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(Color.brandPrimary)
+                            }
+                            Text(prediction.explanation)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.7)
+                        }
+
+                        Spacer()
+
+                        Text("Apply")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color.brandPrimary)
+                            .clipShape(Capsule())
+                    }
+                    .padding(.vertical, 4)
+                }
+                .accessibilityLabel("Apply suggested budget of \(prediction.formattedAmount)")
+                .accessibilityHint(prediction.explanation)
             }
         } header: {
             Text("Budget Amount")
         } footer: {
-            if let amt = Double(amount), amt > 0 {
-                Text("Monthly limit: \(amt.formatted(.currency(code: "USD")))")
-                     .foregroundStyle(Color.brandPrimaryText)
-                     .lineLimit(1)
-                     .minimumScaleFactor(0.7)
+            if amount > 0 {
+                if didApplyPrediction, let pred = prediction {
+                    Text("ML-predicted: \(pred.formattedAmount) (range: \(AppConstants.currencyFormatter.string(from: NSNumber(value: pred.lowerBound)) ?? "") – \(AppConstants.currencyFormatter.string(from: NSNumber(value: pred.upperBound)) ?? ""))")
+                        .foregroundStyle(Color.brandPrimaryText)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.7)
+                } else {
+                    Text("Monthly limit: \(amount.formatted(.currency(code: "USD")))")
+                        .foregroundStyle(Color.brandPrimaryText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
             }
         }
     }
@@ -248,7 +334,7 @@ struct CreateBudgetView: View {
     }
     
     private var isValid: Bool {
-        selectedCategory != nil && !amount.isEmpty && Double(amount) != nil
+        selectedCategory != nil && amount > 0
     }
     
     // MARK: - Account Helpers
@@ -269,13 +355,30 @@ struct CreateBudgetView: View {
         }
     }
     
+    // MARK: - Prediction
+
+    /// v1.5: Fetch budget prediction when category changes
+    private func updatePrediction(for category: Category?) {
+        guard let category = category, !category.isIncome else {
+            prediction = nil
+            return
+        }
+
+        prediction = BudgetPredictionService.shared.predictBudgetAmount(
+            for: category,
+            targetMonth: month,
+            transactions: allTransactions
+        )
+    }
+
     // MARK: - Actions
-    
+
     private func save() {
-        guard let amt = Double(amount), let category = selectedCategory else { return }
-        
+        let amt = amount
+        guard amt > 0, let category = selectedCategory else { return }
+
         HapticService.play(.medium)
-        
+
         let budget = Budget(
             month: month,
             planned: amt,
@@ -283,9 +386,15 @@ struct CreateBudgetView: View {
             account: selectedAccount,
             financeType: financeType
         )
-        
+
+        // v1.5: Store prediction metadata
+        if let pred = prediction {
+            budget.suggestedAmount = pred.suggestedAmount
+            budget.isUserOverridden = !didApplyPrediction || amt != pred.suggestedAmount
+        }
+
         context.insert(budget)
-        
+
         do {
             try context.save()
             HapticService.play(.success)
@@ -342,7 +451,7 @@ struct AllAccountsChip: View {
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? Color.brandPrimary.opacity(0.1) : Color(UIColor.secondarySystemGroupedBackground))
+                    .fill(isSelected ? Color.brandPrimary.opacity(0.1) : Color.floSecondarySystemGroupedBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 20)
@@ -409,7 +518,7 @@ struct BudgetAccountChip: View {
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? Color.brandPrimary.opacity(0.1) : Color(UIColor.secondarySystemGroupedBackground))
+                    .fill(isSelected ? Color.brandPrimary.opacity(0.1) : Color.floSecondarySystemGroupedBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 20)

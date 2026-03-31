@@ -363,7 +363,8 @@ struct LockView: View {
                     .scaleEffect(isAuthenticating ? 0.97 : 1.0)
                 }
                 .disabled(isAuthenticating)
-                .padding(.horizontal, 50)
+                .frame(maxWidth: 320)
+                .padding(.horizontal, 24)
                 // v2.2: Clear VoiceOver label for biometric button
                 .accessibilityLabel(biometricText)
                 .accessibilityHint("Double tap to authenticate with \(biometricAccessibilityName)")
@@ -406,7 +407,8 @@ struct LockView: View {
                                 .fill(Color.brandPrimary)
                         )
                 }
-                .padding(.horizontal, 50)
+                .frame(maxWidth: 320)
+                .padding(.horizontal, 24)
                 // v2.2: VoiceOver label
                 .accessibilityLabel("Continue to FLO")
                 .accessibilityHint("Double tap to open the app")

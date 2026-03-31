@@ -40,6 +40,10 @@
 
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
+#if os(macOS)
+import AppKit
+#endif
 
 struct TaxSettingsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -66,6 +70,11 @@ struct TaxSettingsView: View {
     @State private var showHelp: Bool = false
     @State private var viewAppeared = false
     @State private var settingsLoaded = false
+
+    // Tax PDF export
+    @State private var isGeneratingPDF = false
+    @State private var taxPDFError: String?
+    @State private var showPDFError = false
 
     // MARK: - Computed Helpers
 
@@ -103,277 +112,36 @@ struct TaxSettingsView: View {
     // MARK: - Body
 
     var body: some View {
-        Form {
+        ScrollView {
+            VStack(spacing: 16) {
+                ProfileHeaderCard(
+                    icon: "building.columns.fill",
+                    title: "Tax Settings",
+                    subtitle: "Configure your tax settings and rates",
+                    color: .brandPrimary
+                )
 
-            // ── Basic Information ─────────────────────────────────────
-            Section {
-                // State — v2.5 NavigationLink style
-                NavigationLink {
-                    StatePickerView(selectedState: $selectedState, stateNames: stateNames)
-                } label: {
-                    HStack {
-                        Text("State")
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                        Spacer()
-                        Text(selectedStateName)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                taxBasicInfoSection
+                taxMileageSection
+                taxSafeHarborSection
+                taxComponentsSection
+                taxRemindersSection
+                taxCustomRatesSection
+                taxHelpSection
 
-                // Filing Status — v2.5 NavigationLink style
-                NavigationLink {
-                    FilingStatusPickerView(filingStatus: $filingStatus)
-                } label: {
-                    HStack {
-                        Text("Filing Status")
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                        Spacer()
-                        Text(filingStatus.displayName)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            } header: {
-                Text("Basic Information")
-            } footer: {
-                Text("This information determines your tax brackets and rates")
+                // Tax Summary Export
+                taxExportSection
+                    .opacity(viewAppeared ? 1 : 0.001)
+                    .offset(y: viewAppeared ? 0 : 10)
+                    .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
+
+                // Income Sources — LAST (long list)
+                incomeSummarySection
+                    .opacity(viewAppeared ? 1 : 0.001)
+                    .offset(y: viewAppeared ? 0 : 10)
+                    .animation(FLOAnimation.standard.delay(0.50), value: viewAppeared)
             }
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
-
-            // ── IRS Mileage Rates ────────────────────────────────────
-            Section {
-                HStack {
-                    Text("2025 Rate")
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    Spacer()
-                    Text("$0.70/mile")
-                        .fontWeight(.semibold)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(.secondary)
-                }
-                .accessibilityElement(children: .combine)
-
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("2026 Rate")
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                        Text("Current")
-                            .font(.caption2)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                            .foregroundStyle(Color.brandPrimary)
-                    }
-                    Spacer()
-                    Text("$0.725/mile")
-                        .fontWeight(.semibold)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(Color.brandPrimary)
-                }
-                .accessibilityElement(children: .combine)
-            } header: {
-                Text("IRS Mileage Rates")
-            } footer: {
-                Text("Standard mileage rate for business use. The 2026 rate is applied to all new trips.")
-            }
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
-
-            // ── Safe Harbor ──────────────────────────────────────────
-            Section {
-                HStack {
-                    Text("2024 Tax Liability")
-                    Spacer()
-                    TextField("Optional", text: $priorYearTax)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 120)
-                }
-
-                if let priorYearValue = Double(priorYearTax), priorYearValue > 0 {
-                    Toggle("High Earner (AGI >$150K)", isOn: $isHighEarner)
-                        .onChange(of: isHighEarner) { _, _ in
-                            HapticService.play(.light)
-                        }
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .top).combined(with: .opacity),
-                            removal: .opacity
-                        ))
-                }
-            } header: {
-                Text("Safe Harbor")
-            } footer: {
-                if let priorYearValue = Double(priorYearTax), priorYearValue > 0 {
-                    let percentage = isHighEarner ? 110 : 100
-                    let amount = priorYearValue * (isHighEarner ? 1.1 : 1.0)
-                    Text("Pay \(percentage)% of last year (\(amount, format: .currency(code: "USD"))) to avoid penalties")
-                } else {
-                    Text("Enter your 2024 total tax to use safe harbor calculations")
-                }
-            }
-            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: priorYearTax)
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
-
-            // ── Tax Components ───────────────────────────────────────
-            Section {
-                Toggle("Include Self-Employment Tax", isOn: $includeSelfEmployment)
-                    .onChange(of: includeSelfEmployment) { _, _ in
-                        HapticService.play(.light)
-                    }
-
-                if includeSelfEmployment {
-                    HStack {
-                        Text("SE Tax Rate")
-                        Spacer()
-                        Text("15.3%")
-                            .foregroundStyle(.secondary)
-                    }
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .top).combined(with: .opacity),
-                        removal: .opacity
-                    ))
-                }
-            } header: {
-                Text("Tax Components")
-            } footer: {
-                if includeSelfEmployment {
-                    Text("Self-employment tax covers Social Security (12.4%) and Medicare (2.9%)")
-                }
-            }
-            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: includeSelfEmployment)
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
-
-            // ── Income Sources Summary (v2.9 NEW) ────────────────────
-            incomeSummarySection
-                .opacity(viewAppeared ? 1 : 0.001)
-                .offset(y: viewAppeared ? 0 : 10)
-                .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
-
-            // ── Reminders ────────────────────────────────────────────
-            // delay shifted 0.25→0.30
-            Section {
-                Toggle("Quarterly Reminders", isOn: $enableReminders)
-                    .onChange(of: enableReminders) { _, _ in
-                        HapticService.play(.light)
-                    }
-
-                if enableReminders {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Text("Remind me")
-                            Spacer()
-                            Text("\(Int(reminderDays)) days before")
-                                .foregroundStyle(.secondary)
-                                .contentTransition(.numericText())
-                        }
-
-                        Slider(value: $reminderDays, in: 3...30, step: 1)
-                            .onChange(of: reminderDays) { _, _ in
-                                HapticService.play(.selection)
-                            }
-                            .accessibilityValue("\(Int(reminderDays)) days before deadline")
-                    }
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .top).combined(with: .opacity),
-                        removal: .opacity
-                    ))
-                }
-            } header: {
-                Text("Reminders")
-            } footer: {
-                if enableReminders {
-                    Text("Get notified before each quarterly deadline")
-                }
-            }
-            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: enableReminders)
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.30), value: viewAppeared)
-
-            // ── Advanced (Custom Rates) ──────────────────────────────
-            // delay shifted 0.30→0.35
-            Section {
-                DisclosureGroup("Advanced Options", isExpanded: $showAdvanced) {
-                    VStack(spacing: 16) {
-                        HStack {
-                            Text("Custom Federal Rate")
-                            Spacer()
-                            HStack(spacing: 4) {
-                                TextField("Auto", text: $customFederalRate)
-                                    .keyboardType(.decimalPad)
-                                    .multilineTextAlignment(.trailing)
-                                    .frame(width: 60)
-                                Text("%")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        HStack {
-                            Text("Custom State Rate")
-                            Spacer()
-                            HStack(spacing: 4) {
-                                TextField("Auto", text: $customStateRate)
-                                    .keyboardType(.decimalPad)
-                                    .multilineTextAlignment(.trailing)
-                                    .frame(width: 60)
-                                Text("%")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 8)
-                }
-                .onChange(of: showAdvanced) { _, _ in
-                    HapticService.play(.light)
-                }
-            } header: {
-                Text("Custom Rates")
-            } footer: {
-                Text("Override automatic rate calculations if you know your exact rates")
-            }
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
-
-            // ── Help ─────────────────────────────────────────────────
-            // delay shifted 0.35→0.40
-            Section {
-                Button {
-                    HapticService.play(.light)
-                    showHelp = true
-                } label: {
-                    HStack {
-                        Image(systemName: "questionmark.circle")
-                            .foregroundStyle(Color.brandPrimary)
-                            .accessibilityHidden(true) // v2.8 — text describes action
-                        Text("How Tax Estimates Work")
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .accessibilityHidden(true)
-                    }
-                }
-            }
-            .opacity(viewAppeared ? 1 : 0.001)
-            .offset(y: viewAppeared ? 0 : 10)
-            .animation(FLOAnimation.standard.delay(0.40), value: viewAppeared)
+            .padding(16)
         }
         .navigationTitle("Tax Settings")
         .navigationBarTitleDisplayMode(.inline)
@@ -402,10 +170,275 @@ struct TaxSettingsView: View {
                 settingsLoaded       = true
             }
 
-            withAnimation(FLOAnimation.standard) {
-                viewAppeared = true
+            DispatchQueue.main.async {
+                withAnimation(FLOAnimation.standard) {
+                    viewAppeared = true
+                }
             }
             AccessibilityAnnouncement.screenChanged("Tax settings")
+        }
+    }
+
+    // MARK: - Extracted Sections (type-checker fix)
+
+    @ViewBuilder
+    private var taxBasicInfoSection: some View {
+        ProfileSectionCard(title: "Basic Information") {
+            ProfileNavigationRow(icon: "map", label: "State", value: selectedStateName) {
+                StatePickerView(selectedState: $selectedState, stateNames: stateNames)
+            }
+            Divider().padding(.horizontal, 16)
+            ProfileNavigationRow(icon: "person.text.rectangle", label: "Filing Status", value: filingStatus.displayName) {
+                FilingStatusPickerView(filingStatus: $filingStatus)
+            }
+            ProfileFooterNote(icon: "info.circle", text: "This information determines your tax brackets and rates")
+                .padding(.horizontal, 16).padding(.bottom, 8)
+        }
+        .opacity(viewAppeared ? 1 : 0.001)
+        .offset(y: viewAppeared ? 0 : 10)
+        .animation(FLOAnimation.standard.delay(0.05), value: viewAppeared)
+    }
+
+    @ViewBuilder
+    private var taxMileageSection: some View {
+        ProfileSectionCard(title: "IRS Mileage Rates") {
+            ProfileInfoRow(icon: "car", label: "2025 Rate", value: "$0.70/mile")
+            Divider().padding(.horizontal, 16)
+            HStack(spacing: 12) {
+                Image(systemName: "car.fill").font(.body).foregroundStyle(Color.brandPrimary).frame(width: 24, alignment: .center)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("2026 Rate").font(.body).lineLimit(1).minimumScaleFactor(0.7)
+                    Text("Current").font(.caption2).foregroundStyle(Color.brandPrimary)
+                }
+                Spacer()
+                Text("$0.725/mile").font(.subheadline).fontWeight(.semibold).foregroundStyle(Color.brandPrimary)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 10)
+            ProfileFooterNote(icon: "info.circle", text: "Standard mileage rate for business use. The 2026 rate is applied to all new trips.")
+                .padding(.horizontal, 16).padding(.bottom, 8)
+        }
+        .opacity(viewAppeared ? 1 : 0.001)
+        .offset(y: viewAppeared ? 0 : 10)
+        .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
+    }
+
+    @ViewBuilder
+    private var taxSafeHarborSection: some View {
+        ProfileSectionCard(title: "Safe Harbor") {
+            ProfileFieldRow(label: "2024 Tax Liability", placeholder: "$0", text: $priorYearTax, keyboardType: .number)
+            if let priorYearValue = Double(priorYearTax), priorYearValue > 0 {
+                Divider().padding(.horizontal, 16)
+                ProfileToggleRow(icon: "chart.line.uptrend.xyaxis", label: "High Earner (AGI >$150K)", isOn: $isHighEarner)
+                    .onChange(of: isHighEarner) { _, _ in HapticService.play(.light) }
+                    .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
+            }
+            safeHarborFooter
+                .padding(.horizontal, 16).padding(.bottom, 8)
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: priorYearTax)
+        .opacity(viewAppeared ? 1 : 0.001)
+        .offset(y: viewAppeared ? 0 : 10)
+        .animation(FLOAnimation.standard.delay(0.15), value: viewAppeared)
+    }
+
+    @ViewBuilder
+    private var safeHarborFooter: some View {
+        if let priorYearValue = Double(priorYearTax), priorYearValue > 0 {
+            let percentage = isHighEarner ? 110 : 100
+            let amount = priorYearValue * (isHighEarner ? 1.1 : 1.0)
+            let formatted = amount.formatted(.currency(code: "USD").precision(.fractionLength(0)))
+            ProfileFooterNote(icon: "shield.checkered", text: "Pay \(percentage)% of last year (\(formatted)) to avoid penalties")
+        } else {
+            ProfileFooterNote(icon: "info.circle", text: "Enter your 2024 total tax to use safe harbor calculations")
+        }
+    }
+
+    @ViewBuilder
+    private var taxComponentsSection: some View {
+        ProfileSectionCard(title: "Tax Components") {
+            ProfileToggleRow(icon: "briefcase", label: "Include Self-Employment Tax", isOn: $includeSelfEmployment)
+                .onChange(of: includeSelfEmployment) { _, _ in HapticService.play(.light) }
+            if includeSelfEmployment {
+                Divider().padding(.horizontal, 16)
+                ProfileInfoRow(icon: "percent", label: "SE Tax Rate", value: "15.3%")
+                    .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
+                ProfileFooterNote(icon: "info.circle", text: "Self-employment tax covers Social Security (12.4%) and Medicare (2.9%)")
+                    .padding(.horizontal, 16).padding(.bottom, 8)
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: includeSelfEmployment)
+        .opacity(viewAppeared ? 1 : 0.001)
+        .offset(y: viewAppeared ? 0 : 10)
+        .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
+    }
+
+    @ViewBuilder
+    private var taxRemindersSection: some View {
+        ProfileSectionCard(title: "Reminders") {
+            ProfileToggleRow(icon: "bell", label: "Quarterly Reminders", isOn: $enableReminders)
+                .onChange(of: enableReminders) { _, _ in HapticService.play(.light) }
+            if enableReminders {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Remind me")
+                        Spacer()
+                        Text("\(Int(reminderDays)) days before").foregroundStyle(.secondary).contentTransition(.numericText())
+                    }
+                    Slider(value: $reminderDays, in: 3...30, step: 1)
+                        .onChange(of: reminderDays) { _, _ in HapticService.play(.selection) }
+                        .accessibilityValue("\(Int(reminderDays)) days before deadline")
+                }
+                .padding(.horizontal, 16).padding(.vertical, 8)
+                .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
+                ProfileFooterNote(icon: "info.circle", text: "Get notified before each quarterly deadline")
+                    .padding(.horizontal, 16).padding(.bottom, 8)
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: enableReminders)
+        .opacity(viewAppeared ? 1 : 0.001)
+        .offset(y: viewAppeared ? 0 : 10)
+        .animation(FLOAnimation.standard.delay(0.30), value: viewAppeared)
+    }
+
+    @ViewBuilder
+    private var taxCustomRatesSection: some View {
+        ProfileSectionCard(title: "Custom Rates") {
+            DisclosureGroup("Advanced Options", isExpanded: $showAdvanced) {
+                VStack(spacing: 16) {
+                    HStack {
+                        Text("Custom Federal Rate")
+                        Spacer()
+                        HStack(spacing: 4) {
+                            TextField("Auto", text: $customFederalRate)
+                                #if !os(macOS)
+                                .keyboardType(.decimalPad)
+                                #endif
+                                .multilineTextAlignment(.trailing)
+                                .frame(minWidth: 60, maxWidth: 80)
+                                .textFieldStyle(.roundedBorder)
+                            Text("%").foregroundStyle(.secondary)
+                        }
+                    }
+                    HStack {
+                        Text("Custom State Rate")
+                        Spacer()
+                        HStack(spacing: 4) {
+                            TextField("Auto", text: $customStateRate)
+                                #if !os(macOS)
+                                .keyboardType(.decimalPad)
+                                #endif
+                                .multilineTextAlignment(.trailing)
+                                .frame(minWidth: 60, maxWidth: 80)
+                                .textFieldStyle(.roundedBorder)
+                            Text("%").foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 8)
+            .onChange(of: showAdvanced) { _, _ in HapticService.play(.light) }
+            ProfileFooterNote(icon: "info.circle", text: "Override automatic rate calculations if you know your exact rates")
+                .padding(.horizontal, 16).padding(.bottom, 8)
+        }
+        .opacity(viewAppeared ? 1 : 0.001)
+        .offset(y: viewAppeared ? 0 : 10)
+        .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
+    }
+
+    @ViewBuilder
+    private var taxHelpSection: some View {
+        ProfileSectionCard(title: "Help") {
+            ProfileActionRow(icon: "questionmark.circle", label: "How Tax Estimates Work", style: .branded) {
+                HapticService.play(.light)
+                showHelp = true
+            }
+        }
+        .opacity(viewAppeared ? 1 : 0.001)
+        .offset(y: viewAppeared ? 0 : 10)
+        .animation(FLOAnimation.standard.delay(0.40), value: viewAppeared)
+    }
+
+    // MARK: - Tax Summary Export Section
+
+    private var taxExportSection: some View {
+        ProfileSectionCard(title: "Export") {
+            VStack(alignment: .leading, spacing: 12) {
+                ProfileFooterNote(
+                    icon: "doc.text.fill",
+                    text: "Generate a PDF summary of your 2025 tax position including income, expenses, Schedule C breakdown, quarterly estimates, and deductions."
+                )
+
+                Button {
+                    HapticService.play(.medium)
+                    exportTaxSummaryPDF()
+                } label: {
+                    HStack {
+                        if isGeneratingPDF {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "doc.text.fill")
+                        }
+                        Text(isGeneratingPDF ? "Generating..." : "Export 2025 Tax Summary")
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(Color.brandPrimary)
+                    .cornerRadius(10)
+                }
+                .disabled(isGeneratingPDF)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+            }
+        }
+        .alert("Export Error", isPresented: $showPDFError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(taxPDFError ?? "Failed to generate PDF.")
+        }
+    }
+
+    private func exportTaxSummaryPDF() {
+        isGeneratingPDF = true
+
+        Task {
+            defer { isGeneratingPDF = false }
+
+            guard let fileURL = TaxSummaryPDFService.shared.saveTaxSummaryToFile(
+                year: 2025,
+                modelContext: modelContext
+            ) else {
+                taxPDFError = "Failed to generate Tax Summary PDF. Please try again."
+                showPDFError = true
+                return
+            }
+
+            #if os(macOS)
+            // macOS: Open save dialog
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [.pdf]
+            panel.nameFieldStringValue = "FLO_Tax_Summary_2025.pdf"
+            panel.title = "Save Tax Summary"
+
+            if panel.runModal() == .OK, let saveURL = panel.url {
+                do {
+                    if FileManager.default.fileExists(atPath: saveURL.path) {
+                        try FileManager.default.removeItem(at: saveURL)
+                    }
+                    try FileManager.default.copyItem(at: fileURL, to: saveURL)
+                    NSWorkspace.shared.open(saveURL)
+                } catch {
+                    taxPDFError = "Failed to save: \(error.localizedDescription)"
+                    showPDFError = true
+                }
+            }
+            #else
+            // iOS: Share sheet would go here
+            // For now, open the file
+            #endif
         }
     }
 
@@ -415,7 +448,7 @@ struct TaxSettingsView: View {
     /// Helps users verify their income classification without leaving Tax Settings.
     @ViewBuilder
     private var incomeSummarySection: some View {
-        Section {
+        ProfileSectionCard(title: "Income Sources") {
             if incomeCategories.isEmpty {
                 // Empty state — guide user to set up income categories
                 HStack(spacing: 12) {
@@ -434,22 +467,28 @@ struct TaxSettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                .padding(.horizontal, 16)
                 .padding(.vertical, 4)
                 .accessibilityElement(children: .combine)
             } else {
                 ForEach(incomeCategories) { category in
                     IncomeSummaryRow(category: category)
+                        .padding(.horizontal, 16)
+
+                    if category.id != incomeCategories.last?.id {
+                        Divider().padding(.horizontal, 16)
+                    }
                 }
             }
-        } header: {
-            Text("Income Sources")
-        } footer: {
-            Text(incomeCategories.isEmpty
-                 ? "Income source classification determines whether SE tax, W-2 withholding credits, or passive income rules apply."
-                 : "Tax exempt income is excluded from all estimates. Configure income sources in Settings → Categories.")
-                .font(.caption)
-                .lineLimit(4)
-                .minimumScaleFactor(0.7)
+
+            ProfileFooterNote(
+                icon: "info.circle",
+                text: incomeCategories.isEmpty
+                    ? "Income source classification determines whether SE tax, W-2 withholding credits, or passive income rules apply."
+                    : "Tax exempt income is excluded from all estimates. Configure income sources in Settings → Categories."
+            )
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
         }
     }
 
@@ -792,7 +831,7 @@ struct TaxHelpView: View {
                 .foregroundStyle(.secondary)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(8)
         .opacity(viewAppeared ? 1 : 0.001)
         .offset(y: viewAppeared ? 0 : 10)

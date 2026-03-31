@@ -1,8 +1,18 @@
 //  CSVImportCommitService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.0 - CSV Import commit to SwiftData
+//  Version 1.2 — Reconciliation-Aware Balance Adjustment
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.2 — Reconciliation-Aware Balance Adjustment:
+//  ✅ ADDED: reconciliationChoice parameter to commitImport()
+//  ✅ REPLACED: Blind `currentBalance += balanceChange` with ReconciliationService.applyReconciliation()
+//  ✅ NOTE: Backward-compatible — callers can use default .adjustBalance for legacy behavior
+//
+//  CHANGES v1.1 — Transfer Exclusion Fix:
+//  ✅ FIXED: Now passes parsed.isTransfer to Transaction init
+//  ✅ ROOT CAUSE: CSV-imported transfers were created with isTransfer=false (default)
+//  ✅ This caused $87K+ in bank transfers to appear as "Uncategorized" expenses
 //
 //  Commits approved CSV-parsed transactions into SwiftData as
 //  real Transaction objects. Updates account balances and learns
@@ -31,6 +41,7 @@ final class CSVImportCommitService {
     ///   - transactions: All parsed transactions (selected + unselected)
     ///   - targetAccount: Optional account to assign all transactions to
     ///   - defaultFinanceType: Fallback finance type if transaction has none
+    ///   - reconciliationChoice: How imported transactions should affect account balance
     ///   - context: The SwiftData ModelContext to insert into
     /// - Returns: .success(count) or .failure(error)
     ///
@@ -38,6 +49,7 @@ final class CSVImportCommitService {
         transactions: [CSVParsedTransaction],
         targetAccount: Account?,
         defaultFinanceType: Transaction.FinanceType,
+        reconciliationChoice: ReconciliationService.ReconciliationChoice = .adjustBalance,
         context: ModelContext
     ) -> Result<Int, Error> {
         // Step 1: Filter to selected transactions only
@@ -65,7 +77,8 @@ final class CSVImportCommitService {
                 category: parsed.suggestedCategory,
                 financeType: parsed.suggestedFinanceType,
                 account: targetAccount,
-                importSource: .csvImport
+                importSource: .csvImport,
+                isTransfer: parsed.isTransfer
             )
             
             context.insert(transaction)
@@ -81,13 +94,15 @@ final class CSVImportCommitService {
         
         Self.logger.info("Created \(createdCount) Transaction objects in context")
         
-        // Step 4: Update account balance (after loop)
+        // Step 4: Apply reconciliation choice (replaces blind balance adjustment)
         if let account = targetAccount {
-            account.currentBalance += balanceChange
-            account.lastBalanceUpdate = Date()
-            account.touch()
-            
-            Self.logger.info("Updated account '\(account.name)' balance by \(String(format: "%.2f", balanceChange))")
+            ReconciliationService.shared.applyReconciliation(
+                choice: reconciliationChoice,
+                account: account,
+                balanceChange: balanceChange,
+                importedTransactions: selected,
+                context: context
+            )
         }
         
         // Step 5: Learn merchant mappings

@@ -110,8 +110,6 @@ struct AccountRowPreview: View {
     }
     
     private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        return formatter.string(from: NSNumber(value: value)) ?? "$0.00"
+        NumberFormatter.appCurrency.string(from: NSNumber(value: value)) ?? "$0.00"
     }
 }

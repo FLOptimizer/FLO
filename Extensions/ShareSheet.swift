@@ -25,6 +25,7 @@
 //  }
 //
 
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -71,7 +72,7 @@ struct ShareSheet: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIActivityViewController {
         // Validate items before creating controller
         guard !items.isEmpty else {
-            print("âš ï¸ ShareSheet: No items to share")
+            print("⚠️ ShareSheet: No items to share")
             onCompletion?(nil, false, NSError(
                 domain: "ShareSheet",
                 code: -1,
@@ -106,7 +107,7 @@ struct ShareSheet: UIViewControllerRepresentable {
         // Enhanced completion handler for tracking share success with details
         controller.completionWithItemsHandler = { activityType, completed, returnedItems, error in
             if let error = error {
-                print("âŒ ShareSheet v\(Self.version): Share error - \(error.localizedDescription)")
+                print("❌ ShareSheet v\(Self.version): Share error - \(error.localizedDescription)")
             }
             
             if let type = activityType {
@@ -254,7 +255,7 @@ extension View {
                 if completed, let type = activityType {
                     print("✅ Shared via: \(type.rawValue)")
                 } else if let error = error {
-                    print("âŒ Share failed: \(error.localizedDescription)")
+                    print("❌ Share failed: \(error.localizedDescription)")
                 }
             }
         }
@@ -419,7 +420,7 @@ extension View {
                             print("   Method: \(type.rawValue)")
                         }
                     } else if let error = error {
-                        print("âŒ Share failed: \(error.localizedDescription)")
+                        print("❌ Share failed: \(error.localizedDescription)")
                     }
                 }
             }
@@ -429,3 +430,41 @@ extension View {
     return ShareReportExample()
 }
 #endif
+#else
+// MARK: - macOS Share Sheet (NSSharingServicePicker)
+
+import SwiftUI
+import AppKit
+
+/// macOS share sheet using NSSharingServicePicker
+@MainActor
+struct ShareSheet: NSViewRepresentable {
+    let items: [Any]
+
+    init(items: [Any]) {
+        self.items = items
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            let picker = NSSharingServicePicker(items: items)
+            picker.show(relativeTo: .zero, of: view, preferredEdge: .minY)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+extension View {
+    func shareSheet(
+        isPresented: Binding<Bool>,
+        items: Any...
+    ) -> some View {
+        self.sheet(isPresented: isPresented) {
+            ShareSheet(items: items)
+        }
+    }
+}
+#endif // canImport(UIKit)

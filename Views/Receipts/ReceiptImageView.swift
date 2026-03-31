@@ -17,6 +17,9 @@
 //
 
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 // MARK: - Gesture State Manager
 
@@ -100,7 +103,9 @@ struct ReceiptImageView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .navigationTitle("Receipt")
+            #if !os(macOS)
             .toolbarBackground(.hidden, for: .navigationBar)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
@@ -262,7 +267,7 @@ private struct ZoomableImageView: View {
         GeometryReader { proxy in
             let size = proxy.size
             
-            Image(uiImage: image)
+            Image(platformImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .scaleEffect(zoomState.scale * magnificationAmount, anchor: .center)

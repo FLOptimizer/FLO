@@ -174,7 +174,7 @@ struct TaxDisclaimerView: View {
                         ResponsibilityItem(text: "Understand that tax laws change frequently")
                     }
                     .padding()
-                    .background(Color(.systemGray6))
+                    .background(Color.gray.opacity(0.1))
                     .cornerRadius(8)
                 }
                 

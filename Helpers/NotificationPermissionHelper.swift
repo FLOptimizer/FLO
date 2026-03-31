@@ -107,38 +107,55 @@ struct NotificationPermissionHelper {
     
     /// Open device Settings app to FLO's notification settings
     static func openSettings() {
+        #if canImport(UIKit)
         if let url = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(url)
         }
+        #else
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
+            NSWorkspace.shared.open(url)
+        }
+        #endif
     }
-    
+
     /// Show alert directing user to Settings when notification access is denied
     /// Call this when requestWithContext returns false AND status is .denied
     static func showSettingsAlert(context: NotificationContext) {
+        #if canImport(UIKit)
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let rootViewController = windowScene.windows.first?.rootViewController else {
             return
         }
-        
+
         // Find the topmost presented controller
         var topVC = rootViewController
         while let presented = topVC.presentedViewController {
             topVC = presented
         }
-        
+
         let alert = UIAlertController(
             title: "Notifications Disabled",
             message: "Enable notifications in Settings to receive \(context.shortDescription).",
             preferredStyle: .alert
         )
-        
+
         alert.addAction(UIAlertAction(title: "Open Settings", style: .default) { _ in
             openSettings()
         })
-        
+
         alert.addAction(UIAlertAction(title: "Not Now", style: .cancel))
-        
+
         topVC.present(alert, animated: true)
+        #else
+        let alert = NSAlert()
+        alert.messageText = "Notifications Disabled"
+        alert.informativeText = "Enable notifications in System Settings to receive \(context.shortDescription)."
+        alert.addButton(withTitle: "Open Settings")
+        alert.addButton(withTitle: "Not Now")
+        if alert.runModal() == .alertFirstButtonReturn {
+            openSettings()
+        }
+        #endif
     }
     
     // MARK: - Convenience Method
@@ -206,8 +223,10 @@ enum NotificationContext {
     case invoiceAlerts
     case mileageTracking
     case budgetAlerts
+    case plaidSync
+    case plaidError
     case general
-    
+
     var title: String {
         switch self {
         case .taxReminders:
@@ -218,11 +237,15 @@ enum NotificationContext {
             return "Mileage Tracking Updates"
         case .budgetAlerts:
             return "Budget Notifications"
+        case .plaidSync:
+            return "Transaction Sync Updates"
+        case .plaidError:
+            return "Bank Connection Alerts"
         case .general:
             return "FLO Notifications"
         }
     }
-    
+
     var shortDescription: String {
         switch self {
         case .taxReminders:
@@ -233,6 +256,10 @@ enum NotificationContext {
             return "mileage tracking updates"
         case .budgetAlerts:
             return "budget alerts"
+        case .plaidSync:
+            return "transaction sync updates"
+        case .plaidError:
+            return "bank connection alerts"
         case .general:
             return "important updates"
         }

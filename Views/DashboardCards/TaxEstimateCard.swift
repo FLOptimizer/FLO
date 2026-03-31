@@ -45,9 +45,10 @@ import SwiftUI
 import SwiftData
 
 struct TaxEstimateCard: View {
-    @Query private var transactions: [Transaction]
+    @State private var transactions: [Transaction] = []
     @Query private var taxSettings: [TaxSettings]
     @StateObject private var subscriptionManager = SubscriptionManager.shared
+    @Environment(\.modelContext) private var modelContext
 
     @State private var showTaxDetails   = false
     @State private var showingPaywall   = false
@@ -80,8 +81,12 @@ struct TaxEstimateCard: View {
                 premiumOverlay
             }
         }
+        .task { loadData() }
         .onAppear {
             animateEntrance()
+        }
+        .onDisappear {
+            transactions = []
         }
         .sheet(isPresented: $showingPaywall) {
             SubscriptionView()
@@ -119,10 +124,7 @@ struct TaxEstimateCard: View {
 
             // ── Header ────────────────────────────────────────────────
             HStack {
-                Image(systemName: "doc.text.fill")
-                    .foregroundStyle(.teal)
-                    .font(.title3)
-                    .accessibilityHidden(true)
+                FLOBrandedIcon(icon: .tax, size: .medium, color: .teal)
 
                 Text("Quarterly Tax Estimate")
                     .font(.headline)
@@ -280,7 +282,7 @@ struct TaxEstimateCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(16)
         .opacity(cardOpacity)
         .scaleEffect(cardScale)
@@ -389,8 +391,9 @@ struct TaxEstimateCard: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-            NavigationLink {
-                TaxSettingsView()
+            Button {
+                HapticService.play(.light)
+                NavigationService.shared.selectedTab = .tax
             } label: {
                 Text("Set Up Now")
                     .font(.subheadline)
@@ -401,8 +404,9 @@ struct TaxEstimateCard: View {
                     .background(Color.brandPrimary)
                     .cornerRadius(8)
             }
+            .buttonStyle(.plain)
             .accessibilityLabel("Set up tax settings")
-            .accessibilityHint("Opens tax configuration screen")
+            .accessibilityHint("Switches to Tax tab")
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
@@ -471,6 +475,26 @@ struct TaxEstimateCard: View {
         .cornerRadius(16)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Tax estimates locked. Premium feature.")
+    }
+
+    // MARK: - Data Loading
+
+    private func loadData() {
+        let now = Date()
+        let calendar = Calendar.current
+        let startOfYear = calendar.date(from: calendar.dateComponents([.year], from: now))!
+
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= startOfYear },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+
+        do {
+            transactions = try modelContext.fetch(descriptor)
+        } catch {
+            print("TaxEstimateCard: Failed to fetch transactions — \(error)")
+            transactions = []
+        }
     }
 
     // MARK: - Calculate Tax
@@ -760,7 +784,7 @@ struct TaxDetailsView: View {
                                     .foregroundStyle(.secondary)
                             }
                             .padding()
-                            .background(Color(.secondarySystemBackground))
+                            .background(Color.floSecondarySystemBackground)
                             .cornerRadius(8)
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel(estimate.isMeetingSafeHarbor
@@ -775,7 +799,7 @@ struct TaxDetailsView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding()
-                            .background(Color(.secondarySystemBackground))
+                            .background(Color.floSecondarySystemBackground)
                             .cornerRadius(8)
                             .accessibilityLabel("Disclaimer: These are estimates only. Consult a tax professional for personalized advice.")
 
@@ -798,13 +822,17 @@ struct TaxDetailsView: View {
                 }
 
                 ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink {
-                        TaxSettingsView()
+                    Button {
+                        HapticService.play(.light)
+                        dismiss()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            NavigationService.shared.selectedTab = .tax
+                        }
                     } label: {
                         Image(systemName: "gear")
                     }
                     .accessibilityLabel("Tax settings")
-                    .accessibilityHint("Configure filing status and state")
+                    .accessibilityHint("Switches to Tax tab")
                 }
             }
         }
@@ -854,7 +882,7 @@ struct TaxDetailsView: View {
                 .minimumScaleFactor(0.7)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(8)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label): \(amount.accessibilityCurrency). \(note).")
@@ -897,7 +925,7 @@ struct TaxDetailsView: View {
                 .minimumScaleFactor(0.6)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(8)
     }
 
@@ -932,7 +960,7 @@ struct TaxDetailsView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.floSecondarySystemBackground)
         .cornerRadius(8)
     }
 

@@ -31,7 +31,9 @@
 //  someView.withHaptic(.success) { /* action */ } // SwiftUI
 //
 
+#if canImport(UIKit)
 import UIKit
+#endif
 import SwiftUI
 import OSLog
 
@@ -75,7 +77,11 @@ final class HapticService {
     
     /// Respects iOS Reduce Motion accessibility setting
     private var reduceMotionEnabled: Bool {
+        #if canImport(UIKit)
         UIAccessibility.isReduceMotionEnabled
+        #else
+        false
+        #endif
     }
     
     /// Combined check: user enabled AND accessibility allows
@@ -83,66 +89,70 @@ final class HapticService {
         hapticsEnabled && !reduceMotionEnabled
     }
     
+    #if canImport(UIKit)
     // MARK: - Lazy Generators
     // Created on first use, then reused throughout app lifecycle
-    
+
     private lazy var selectionGenerator: UISelectionFeedbackGenerator = {
         let generator = UISelectionFeedbackGenerator()
         generator.prepare()
         log("Initialized selection generator")
         return generator
     }()
-    
+
     private lazy var lightImpactGenerator: UIImpactFeedbackGenerator = {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.prepare()
         log("Initialized light impact generator")
         return generator
     }()
-    
+
     private lazy var mediumImpactGenerator: UIImpactFeedbackGenerator = {
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.prepare()
         log("Initialized medium impact generator")
         return generator
     }()
-    
+
     private lazy var heavyImpactGenerator: UIImpactFeedbackGenerator = {
         let generator = UIImpactFeedbackGenerator(style: .heavy)
         generator.prepare()
         log("Initialized heavy impact generator")
         return generator
     }()
-    
+
     private lazy var rigidImpactGenerator: UIImpactFeedbackGenerator = {
         let generator = UIImpactFeedbackGenerator(style: .rigid)
         generator.prepare()
         log("Initialized rigid impact generator")
         return generator
     }()
-    
+
     private lazy var softImpactGenerator: UIImpactFeedbackGenerator = {
         let generator = UIImpactFeedbackGenerator(style: .soft)
         generator.prepare()
         log("Initialized soft impact generator")
         return generator
     }()
-    
+
     private lazy var notificationGenerator: UINotificationFeedbackGenerator = {
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         log("Initialized notification generator")
         return generator
     }()
+    #endif
     
     // MARK: - Selection Feedback
     
     /// Light tap for selections, toggles, picker changes.
     /// - Usage: Toggle switches, segmented controls, picker wheels
     func selection() {
+        #if canImport(UIKit)
         guard shouldPlayHaptics else { return }
         selectionGenerator.selectionChanged()
         log("Played selection")
+        #endif
     }
     
     // MARK: - Impact Feedback
@@ -156,50 +166,48 @@ final class HapticService {
     /// - Parameter intensity: Feedback intensity from 0.0 to 1.0 (default: 1.0)
     /// - Usage: Tab switches, minor UI changes, hover states
     func lightImpact(intensity: CGFloat = 1.0) {
+        #if canImport(UIKit)
         guard shouldPlayHaptics else { return }
         let clamped = clampedIntensity(intensity)
         lightImpactGenerator.impactOccurred(intensity: clamped)
         log("Played light impact (intensity: \(clamped))")
+        #endif
     }
-    
-    /// Medium impact for standard button taps.
-    /// - Parameter intensity: Feedback intensity from 0.0 to 1.0 (default: 1.0)
-    /// - Usage: Primary buttons, card selections, navigation
+
     func mediumImpact(intensity: CGFloat = 1.0) {
+        #if canImport(UIKit)
         guard shouldPlayHaptics else { return }
         let clamped = clampedIntensity(intensity)
         mediumImpactGenerator.impactOccurred(intensity: clamped)
         log("Played medium impact (intensity: \(clamped))")
+        #endif
     }
-    
-    /// Heavy impact for significant actions.
-    /// - Parameter intensity: Feedback intensity from 0.0 to 1.0 (default: 1.0)
-    /// - Usage: Delete, confirm, major state changes
+
     func heavyImpact(intensity: CGFloat = 1.0) {
+        #if canImport(UIKit)
         guard shouldPlayHaptics else { return }
         let clamped = clampedIntensity(intensity)
         heavyImpactGenerator.impactOccurred(intensity: clamped)
         log("Played heavy impact (intensity: \(clamped))")
+        #endif
     }
-    
-    /// Rigid impact for firm, mechanical feedback.
-    /// - Parameter intensity: Feedback intensity from 0.0 to 1.0 (default: 1.0)
-    /// - Usage: Snapping to position, hard limits
+
     func rigidImpact(intensity: CGFloat = 1.0) {
+        #if canImport(UIKit)
         guard shouldPlayHaptics else { return }
         let clamped = clampedIntensity(intensity)
         rigidImpactGenerator.impactOccurred(intensity: clamped)
         log("Played rigid impact (intensity: \(clamped))")
+        #endif
     }
-    
-    /// Soft impact for gentle, cushioned feedback.
-    /// - Parameter intensity: Feedback intensity from 0.0 to 1.0 (default: 1.0)
-    /// - Usage: Soft landings, gentle confirmations
+
     func softImpact(intensity: CGFloat = 1.0) {
+        #if canImport(UIKit)
         guard shouldPlayHaptics else { return }
         let clamped = clampedIntensity(intensity)
         softImpactGenerator.impactOccurred(intensity: clamped)
         log("Played soft impact (intensity: \(clamped))")
+        #endif
     }
     
     // MARK: - Notification Feedback
@@ -207,25 +215,27 @@ final class HapticService {
     /// Success notification (checkmark, completion).
     /// - Usage: Task complete, save successful, sync done
     func success() {
+        #if canImport(UIKit)
         guard shouldPlayHaptics else { return }
         notificationGenerator.notificationOccurred(.success)
         log("Played success notification")
+        #endif
     }
-    
-    /// Warning notification (caution, attention needed).
-    /// - Usage: Approaching limit, needs review, paused
+
     func warning() {
+        #if canImport(UIKit)
         guard shouldPlayHaptics else { return }
         notificationGenerator.notificationOccurred(.warning)
         log("Played warning notification")
+        #endif
     }
-    
-    /// Error notification (failure, invalid input).
-    /// - Usage: Validation error, operation failed, denied
+
     func error() {
+        #if canImport(UIKit)
         guard shouldPlayHaptics else { return }
         notificationGenerator.notificationOccurred(.error)
         log("Played error notification")
+        #endif
     }
     
     // MARK: - Compound Patterns
@@ -307,6 +317,7 @@ final class HapticService {
     /// Prepare all generators for immediate response.
     /// - Usage: Call on app launch or view appear for critical paths
     func prepareAll() {
+        #if canImport(UIKit)
         guard shouldPlayHaptics else { return }
         _ = selectionGenerator
         _ = lightImpactGenerator
@@ -316,11 +327,11 @@ final class HapticService {
         _ = softImpactGenerator
         _ = notificationGenerator
         log("Prepared all generators")
+        #endif
     }
-    
-    /// Prepare specific generator before expected use.
-    /// - Parameter type: The haptic type to prepare
+
     func prepare(_ type: HapticType) {
+        #if canImport(UIKit)
         guard shouldPlayHaptics else { return }
         switch type {
         case .selection:
@@ -339,6 +350,7 @@ final class HapticService {
             notificationGenerator.prepare()
         }
         log("Prepared \(type)")
+        #endif
     }
     
     // MARK: - Private Helpers

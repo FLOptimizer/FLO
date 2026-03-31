@@ -76,224 +76,144 @@ struct BusinessProfileSettingsView: View {
     @State private var emailValidationColor: Color = .secondary
     
     var body: some View {
-        Form {
-            // Header Section
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        ZStack {
-                            Circle()
-                                .fill(Color.businessColor.opacity(0.2))
-                                .frame(width: 50, height: 50)
-                            
-                            Image(systemName: "building.2.fill")
-                                .font(.title2)
-                                .foregroundStyle(Color.businessColor)
-                                .symbolEffect(.bounce, options: .speed(0.5), value: headerOpacity > 0)
-                        }
-                        .accessibilityHidden(true)
-                        
-                        VStack(alignment: .leading) {
-                            Text("Business Profile")
-                                .font(.title2.bold())
-                            Text("This information appears on your invoices")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 8)
-                }
+        ScrollView {
+            VStack(spacing: 16) {
+                // Header
+                ProfileHeaderCard(
+                    icon: "building.2.fill",
+                    title: "Business Profile",
+                    subtitle: "This information appears on your invoices",
+                    color: .businessColor
+                )
                 .scaleEffect(headerScale)
                 .opacity(headerOpacity)
-            }
-            .listRowBackground(Color.clear)
-            
-            // Required Information Section
-            Section("Required Information") {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Business Name")
-                            .font(.caption)
-                            .foregroundStyle(nameValidationColor)
-                        
-                        if !businessName.isEmpty {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.green)
-                                .transition(.scale.combined(with: .opacity))
-                                .accessibilityHidden(true)
+
+                // Required Information
+                ProfileSectionCard(title: "Required Information") {
+                    ProfileFieldRow(
+                        label: "Business Name",
+                        placeholder: "Your Business Name",
+                        text: $businessName,
+                        isValid: businessName.isEmpty ? nil : true,
+                        isRequired: true
+                    )
+                    .onChange(of: businessName) { _, newValue in
+                        hasChanges = true
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            nameValidationColor = newValue.isEmpty ? .orange : .secondary
                         }
                     }
-                    
-                    TextField("Your Business Name", text: $businessName)
-                        .textInputAutocapitalization(.words)
-                        .offset(x: nameFieldShake ? -5 : 0)
-                        .onChange(of: businessName) { _, newValue in
-                            hasChanges = true
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                nameValidationColor = newValue.isEmpty ? .orange : .secondary
-                            }
-                        }
-                }
-                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: !businessName.isEmpty)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Email")
-                            .font(.caption)
-                            .foregroundStyle(emailValidationColor)
-                        
-                        if !email.isEmpty && email.contains("@") {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.green)
-                                .transition(.scale.combined(with: .opacity))
-                                .accessibilityHidden(true)
+
+                    ProfileFieldRow(
+                        label: "Email",
+                        placeholder: "business@example.com",
+                        text: $email,
+                        isValid: email.isEmpty ? nil : email.contains("@"),
+                        isRequired: true,
+                        capitalize: false
+                    )
+                    .onChange(of: email) { _, newValue in
+                        hasChanges = true
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            if newValue.isEmpty { emailValidationColor = .orange }
+                            else if !newValue.contains("@") { emailValidationColor = .red }
+                            else { emailValidationColor = .secondary }
                         }
                     }
-                    
-                    TextField("business@example.com", text: $email)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                        .offset(x: emailFieldShake ? -5 : 0)
-                        .onChange(of: email) { _, newValue in
-                            hasChanges = true
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                if newValue.isEmpty {
-                                    emailValidationColor = .orange
-                                } else if !newValue.contains("@") {
-                                    emailValidationColor = .red
-                                } else {
-                                    emailValidationColor = .secondary
-                                }
-                            }
-                        }
                 }
-                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: !email.isEmpty && email.contains("@"))
-            }
-            .opacity(requiredSectionOpacity)
-            
-            // Optional Information Section
-            Section("Optional Information") {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Contact Name")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("Your Name", text: $contactName)
-                        .textInputAutocapitalization(.words)
-                        .onChange(of: contactName) { _, _ in hasChanges = true }
+                .opacity(requiredSectionOpacity)
+
+                // Optional Information
+                ProfileSectionCard(title: "Optional Information") {
+                    ProfileFieldRow(
+                        label: "Contact Name",
+                        placeholder: "Your Name",
+                        text: $contactName
+                    )
+                    .onChange(of: contactName) { _, _ in hasChanges = true }
+
+                    ProfileFieldRow(
+                        label: "Phone",
+                        placeholder: "(555) 123-4567",
+                        text: $phone
+                    )
+                    .onChange(of: phone) { _, _ in hasChanges = true }
+
+                    ProfileFieldRow(
+                        label: "Website",
+                        placeholder: "www.yourbusiness.com",
+                        text: $website,
+                        capitalize: false
+                    )
+                    .onChange(of: website) { _, _ in hasChanges = true }
+
+                    ProfileFieldRow(
+                        label: "Tax ID / EIN",
+                        placeholder: "12-3456789",
+                        text: $taxId,
+                        capitalize: false
+                    )
+                    .onChange(of: taxId) { _, _ in hasChanges = true }
                 }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Phone")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("(555) 123-4567", text: $phone)
-                        .keyboardType(.phonePad)
-                        .onChange(of: phone) { _, _ in hasChanges = true }
+                .opacity(optionalSectionOpacity)
+
+                // Business Address
+                ProfileSectionCard(title: "Business Address") {
+                    ProfileFieldRow(
+                        label: "Street Address",
+                        placeholder: "123 Main Street",
+                        text: $address
+                    )
+                    .onChange(of: address) { _, _ in hasChanges = true }
+
+                    ProfileFieldRow(
+                        label: "City",
+                        placeholder: "City",
+                        text: $city
+                    )
+                    .onChange(of: city) { _, _ in hasChanges = true }
+
+                    ProfileFieldRowPair(
+                        label1: "State", placeholder1: "State", text1: $state,
+                        label2: "ZIP", placeholder2: "12345", text2: $zipCode
+                    )
+                    .onChange(of: state) { _, _ in hasChanges = true }
+                    .onChange(of: zipCode) { _, _ in hasChanges = true }
+
+                    ProfileFieldRow(
+                        label: "Country",
+                        placeholder: "United States",
+                        text: $country
+                    )
+                    .onChange(of: country) { _, _ in hasChanges = true }
                 }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Website")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("www.yourbusiness.com", text: $website)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.URL)
-                        .onChange(of: website) { _, _ in hasChanges = true }
-                }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Tax ID / EIN")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("12-3456789", text: $taxId)
-                        .onChange(of: taxId) { _, _ in hasChanges = true }
-                }
-            }
-            .opacity(optionalSectionOpacity)
-            
-            // Business Address Section
-            Section("Business Address") {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Street Address")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("123 Main Street", text: $address)
-                        .textInputAutocapitalization(.words)
-                        .onChange(of: address) { _, _ in hasChanges = true }
-                }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("City")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("City", text: $city)
-                        .textInputAutocapitalization(.words)
-                        .onChange(of: city) { _, _ in hasChanges = true }
-                }
-                
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("State")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        TextField("State", text: $state)
-                            .textInputAutocapitalization(.characters)
-                            .onChange(of: state) { _, _ in hasChanges = true }
+                .opacity(addressSectionOpacity)
+
+                // Footer
+                if showSavedCheck {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        Text("Saved!")
+                            .fontWeight(.medium)
+                            .foregroundStyle(.green)
                     }
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("ZIP")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        TextField("12345", text: $zipCode)
-                            .keyboardType(.numberPad)
-                            .onChange(of: zipCode) { _, _ in hasChanges = true }
-                    }
-                }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Country")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("United States", text: $country)
-                        .textInputAutocapitalization(.words)
-                        .onChange(of: country) { _, _ in hasChanges = true }
+                    .transition(.scale.combined(with: .opacity))
+                } else {
+                    ProfileFooterNote(
+                        icon: "doc.text.fill",
+                        text: "This information will appear on all invoices you create."
+                    )
                 }
             }
-            .opacity(addressSectionOpacity)
-            
-            // Footer
-            Section {
-                HStack {
-                    Spacer()
-                    
-                    if showSavedCheck {
-                        HStack(spacing: 6) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
-                            Text("Saved!")
-                                .fontWeight(.medium)
-                                .foregroundStyle(.green)
-                        }
-                        .transition(.scale.combined(with: .opacity))
-                    } else {
-                        Text("This information will appear on all invoices you create")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    
-                    Spacer()
-                }
-            }
-            .opacity(footerOpacity)
+            .padding(16)
         }
         .navigationTitle("Business Profile")
+        #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .confirmationAction) {
                 Button {
                     saveProfile()
                 } label: {
@@ -499,11 +419,14 @@ struct BusinessProfileSettingsView: View {
     private func performSave() {
         do {
             try modelContext.save()
-            
+
+            // Mark Getting Started task as complete
+            UserDefaults.standard.set(true, forKey: "hasBusinessProfileSetup")
+
             #if DEBUG
             print("✅ SAVE SUCCESS - Profile updated")
             #endif
-            
+
             // Success haptic
             HapticService.shared.success()
             

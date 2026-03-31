@@ -1,8 +1,17 @@
 //  AccountsSummaryCard.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.0 - Custom SwiftUI empty state illustration
+//  Version 3.1 - Defensive AccountRowCompact to prevent deletion crashes
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.1:
+//  ✅ FIXED: Crash when accessing account properties after deletion
+//  ✅ ADDED: @State caching of account properties in AccountRowCompact
+//  ✅ ADDED: modelContext check to detect deleted accounts
+//  ✅ ADDED: Graceful fallback when account is invalid
+//
+//  CHANGES v3.0:
+//  - Custom SwiftUI empty state illustration
 //
 //  CHANGES v2.4:
 //  - Fixed "Net Worth" label contrast (was .secondary, now .primary.opacity(0.65))
@@ -176,9 +185,9 @@ struct AccountsSummaryCard: View {
                     emptyStateContent
                 }
             }
-            .background(Color(.secondarySystemBackground))
+            .background(Color.floSecondarySystemBackground)
             .cornerRadius(12)
-            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+            .floCardShadow()
             .contentShape(Rectangle()) // Make entire card tappable
             .onTapGesture {
                 revealBalances()
@@ -225,11 +234,7 @@ struct AccountsSummaryCard: View {
     
     private var headerView: some View {
         HStack {
-            Image(systemName: "building.columns.fill")
-                .font(.title2)
-                .foregroundStyle(Color.brandPrimary)
-                .symbolEffect(.bounce, value: cardVisible)
-                .accessibilityHidden(true)
+            FLOBrandedIcon(icon: .accounts, size: .medium, color: .brandPrimary)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text("Accounts")
@@ -246,14 +251,15 @@ struct AccountsSummaryCard: View {
             
             Spacer()
             
-            NavigationLink {
-                AccountsView()
+            Button {
+                HapticService.play(.light)
+                NavigationService.shared.selectedTab = .accounts
             } label: {
                 HStack(spacing: 4) {
                     Text("See All")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    
+
                     Image(systemName: "chevron.right")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -262,11 +268,9 @@ struct AccountsSummaryCard: View {
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
-            .simultaneousGesture(TapGesture().onEnded {
-                HapticService.play(.light)
-            })
+            .buttonStyle(.plain)
             .accessibilityLabel("See all accounts")
-            .accessibilityHint("Opens full accounts list")
+            .accessibilityHint("Switches to Accounts tab")
         }
         .padding()
         .opacity(cardVisible ? 1 : 0.001)
@@ -342,8 +346,8 @@ struct AccountsSummaryCard: View {
                     .padding(.horizontal, 16)
                     .background(
                         Capsule()
-                            .fill(Color(.systemBackground).opacity(0.9))
-                            .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+                            .fill(Color.floSystemBackground.opacity(0.9))
+                            .floCardShadow(radius: 4)
                     )
                     .padding(.bottom, 8)
                     .accessibilityHidden(true) // Announced in card label
@@ -361,7 +365,7 @@ struct AccountsSummaryCard: View {
                 Text(netWorthLabel)
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .foregroundStyle(Color(.label))
+                    .foregroundStyle(Color.primary)
                     .lineLimit(1)
                 
                 Text(netWorth, format: .currency(code: "USD"))
@@ -388,7 +392,7 @@ struct AccountsSummaryCard: View {
                         .accessibilityHidden(true)
                     Text(totalAssets, format: .currency(code: "USD"))
                         .font(.caption)
-                        .foregroundStyle(Color(.label))  // Maximum contrast
+                        .foregroundStyle(Color.primary)  // Maximum contrast
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .blur(radius: blurRadius)
@@ -403,7 +407,7 @@ struct AccountsSummaryCard: View {
                         .accessibilityHidden(true)
                     Text(totalLiabilities, format: .currency(code: "USD"))
                         .font(.caption)
-                        .foregroundStyle(Color(.label))  // Maximum contrast
+                        .foregroundStyle(Color.primary)  // Maximum contrast
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .blur(radius: blurRadius)
@@ -414,7 +418,7 @@ struct AccountsSummaryCard: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
-        .background(Color(.systemBackground))  // White background for contrast
+        .background(Color.floSystemBackground)  // White background for contrast
         .opacity(balancesAnimated ? 1 : 0.001)
         .offset(y: balancesAnimated ? 0 : 10)
         .animation(FLOAnimation.standard, value: balancesAnimated)
@@ -492,19 +496,18 @@ struct AccountsSummaryCard: View {
                     .foregroundStyle(.tertiary)
             }
             
-            NavigationLink {
-                AccountsView()
+            Button {
+                HapticService.play(.medium)
+                NavigationService.shared.selectedTab = .accounts
             } label: {
                 Text("Add Account")
                     .font(.subheadline)
                     .fontWeight(.medium)
-                     .foregroundStyle(Color.brandPrimaryText)
+                    .foregroundStyle(Color.brandPrimaryText)
             }
-            .simultaneousGesture(TapGesture().onEnded {
-                HapticService.play(.medium)
-            })
+            .buttonStyle(.plain)
             .accessibilityLabel("Add new account")
-            .accessibilityHint("Opens account creation screen")
+            .accessibilityHint("Switches to Accounts tab")
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
@@ -536,8 +539,10 @@ struct AccountsSummaryCard: View {
     }
 }
 
-// MARK: - Account Row Compact
+// MARK: - Account Row Compact (Defensive Version)
 
+/// A compact row displaying account info with defensive coding to prevent crashes during deletion.
+/// Caches account properties in @State to survive SwiftData deletions mid-render.
 struct AccountRowCompact: View {
     let account: Account
     var animationDelay: Double = 0
@@ -545,21 +550,39 @@ struct AccountRowCompact: View {
     var isBlurred: Bool = false
     var blurRadius: CGFloat = 0
     
+    // MARK: - Cached State (Defensive against deletion)
+    // These @State properties cache account values to prevent crashes
+    // when the account is deleted while the view is still rendering
+    
+    @State private var cachedName: String = ""
+    @State private var cachedColor: String = "#14B8A6"
+    @State private var cachedIcon: String = "building.columns"
+    @State private var cachedBalance: Double = 0
+    @State private var cachedIsPrimary: Bool = false
+    @State private var cachedIsLiability: Bool = false
+    @State private var cachedFinanceType: Transaction.FinanceType = .personal
+    @State private var cachedLastFourDigits: String? = nil
+    @State private var cachedInstitutionName: String? = nil
+    @State private var cachedAccountType: String = "checking"
+    @State private var isAccountValid: Bool = true
+    
     private var accessibilityLabel: String {
-        var label = account.name
+        guard isAccountValid else { return "Account unavailable" }
         
-        if account.isPrimary {
+        var label = cachedName
+        
+        if cachedIsPrimary {
             label += ", primary account"
         }
         
-        label += ", \(account.financeType == .business ? "business" : "personal")"
-        label += ", \(account.accountType.rawValue)"
+        label += ", \(cachedFinanceType == .business ? "business" : "personal")"
+        label += ", \(cachedAccountType)"
         
         if isBlurred {
             label += ", balance hidden"
         } else {
-            label += ", balance: \(account.currentBalance.accessibilityCurrency)"
-            if account.isLiability && account.currentBalance < 0 {
+            label += ", balance: \(cachedBalance.accessibilityCurrency)"
+            if cachedIsLiability && cachedBalance < 0 {
                 label += " owed"
             }
         }
@@ -568,29 +591,48 @@ struct AccountRowCompact: View {
     }
     
     var body: some View {
+        Group {
+            if isAccountValid {
+                accountContent
+            } else {
+                // Graceful fallback for deleted accounts
+                EmptyView()
+            }
+        }
+        .onAppear {
+            cacheAccountValues()
+        }
+        .onChange(of: account.id) { _, _ in
+            cacheAccountValues()
+        }
+    }
+    
+    // MARK: - Main Content
+    
+    private var accountContent: some View {
         HStack(spacing: 12) {
             // Account Icon
             ZStack {
                 Circle()
-                    .fill(Color(hex: account.color).opacity(0.15))
+                    .fill(Color(hex: cachedColor).opacity(0.15))
                     .frame(width: 40, height: 40)
                 
-                Image(systemName: account.icon)
+                Image(systemName: cachedIcon)
                     .font(.subheadline)
-                    .foregroundStyle(Color(hex: account.color))
+                    .foregroundStyle(Color(hex: cachedColor))
             }
             .accessibilityHidden(true)
             
             // Account Info
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
-                    Text(account.name)
+                    Text(cachedName)
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)  // Allow slight shrink for Dynamic Type
+                        .minimumScaleFactor(0.8)
                     
-                    if account.isPrimary {
+                    if cachedIsPrimary {
                         Image(systemName: "star.fill")
                             .font(.caption2)
                             .foregroundStyle(.yellow)
@@ -600,23 +642,23 @@ struct AccountRowCompact: View {
                 
                 HStack(spacing: 4) {
                     // Finance type indicator
-                    Image(systemName: account.financeType == .business ? "briefcase.fill" : "person.fill")
+                    Image(systemName: cachedFinanceType == .business ? "briefcase.fill" : "person.fill")
                         .font(.caption2)
-                        .foregroundStyle(account.financeType == .business ? Color.businessColor : Color.personalColor)
+                        .foregroundStyle(cachedFinanceType == .business ? Color.businessColor : Color.personalColor)
                         .accessibilityHidden(true)
                     
-                    if let digits = account.lastFourDigits, !digits.isEmpty {
+                    if let digits = cachedLastFourDigits, !digits.isEmpty {
                         Text("•••• \(digits)")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)  // Allow slight shrink for Dynamic Type
-                    } else if let institution = account.institutionName {
+                            .minimumScaleFactor(0.8)
+                    } else if let institution = cachedInstitutionName {
                         Text(institution)
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)  // Allow slight shrink for Dynamic Type
+                            .minimumScaleFactor(0.8)
                     }
                 }
             }
@@ -624,15 +666,15 @@ struct AccountRowCompact: View {
             Spacer()
             
             // Balance with blur support
-            Text(account.currentBalance, format: .currency(code: "USD"))
+            Text(cachedBalance, format: .currency(code: "USD"))
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .foregroundStyle(balanceColor)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)  // Allow shrink for Dynamic Type
+                .minimumScaleFactor(0.7)
                 .blur(radius: blurRadius)
                 .animation(.easeOut(duration: 0.3), value: blurRadius)
-                .accessibleCurrency(account.currentBalance, label: "\(account.name) balance")
+                .accessibleCurrency(cachedBalance, label: "\(cachedName) balance")
         }
         .padding(.horizontal)
         .padding(.vertical, 4)
@@ -643,14 +685,37 @@ struct AccountRowCompact: View {
         .accessibilityLabel(accessibilityLabel)
     }
     
+    // MARK: - Helpers
+    
     private var balanceColor: Color {
-        if account.isLiability {
-            // Credit cards show negative, but that's expected
-            return account.currentBalance < 0 ? Color.expenseRed : Color.incomeGreen
+        if cachedIsLiability {
+            return cachedBalance < 0 ? Color.expenseRed : Color.incomeGreen
         } else {
-            // Assets should be positive
-            return account.currentBalance >= 0 ? Color.primary : Color.expenseRed
+            return cachedBalance >= 0 ? Color.primary : Color.expenseRed
         }
+    }
+    
+    /// Safely cache account values to prevent crashes during deletion
+    private func cacheAccountValues() {
+        // Check if account's modelContext is nil (indicates deletion)
+        guard account.modelContext != nil else {
+            isAccountValid = false
+            return
+        }
+        
+        // Safely cache all values we need for rendering
+        // This prevents crashes if the account is deleted mid-render
+        cachedName = account.name
+        cachedColor = account.colorHex ?? account.accountType.color
+        cachedIcon = account.accountType.icon
+        cachedBalance = account.currentBalance
+        cachedIsPrimary = account.isPrimary
+        cachedIsLiability = !account.accountType.isAsset
+        cachedFinanceType = account.financeType
+        cachedLastFourDigits = account.lastFourDigits
+        cachedInstitutionName = account.institutionName
+        cachedAccountType = account.accountType.rawValue
+        isAccountValid = true
     }
 }
 
@@ -676,7 +741,7 @@ struct AccountRowCompact: View {
             AccountsSummaryCard(financeMode: .business)
                 .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
     }
     .modelContainer(container)
     .environmentObject(SubscriptionManager.shared)
@@ -701,7 +766,7 @@ struct AccountRowCompact: View {
             AccountsSummaryCard(financeMode: .personal)
                 .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
     }
     .modelContainer(container)
     .environmentObject(SubscriptionManager.shared)
@@ -728,19 +793,19 @@ struct AccountRowCompact: View {
             AccountsSummaryCard(financeMode: .all)
                 .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
     }
     .modelContainer(container)
     .environmentObject(SubscriptionManager.shared)
 }
 
 #Preview("Empty State") {
-    NavigationStack {
+    return NavigationStack {
         ScrollView {
             AccountsSummaryCard(financeMode: .all)
                 .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
     }
     .modelContainer(for: Account.self, inMemory: true)
     .environmentObject(SubscriptionManager.shared)

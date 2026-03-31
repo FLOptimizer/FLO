@@ -197,9 +197,9 @@ struct CreditCardSummaryCard: View {
                     paidOffContent
                 }
             }
-            .background(Color(.secondarySystemBackground))
+            .background(Color.floSecondarySystemBackground)
             .cornerRadius(12)
-            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+            .floCardShadow()
             .onAppear {
                 animateEntrance()
             }
@@ -220,11 +220,7 @@ struct CreditCardSummaryCard: View {
     
     private var headerView: some View {
         HStack {
-            Image(systemName: "creditcard.fill")
-                .font(.title2)
-                .foregroundStyle(Color(hex: AccountType.creditCard.color))
-                .symbolEffect(.bounce, value: cardVisible)
-                .accessibilityHidden(true)
+            FLOBrandedIcon(icon: .accounts, size: .medium, color: Color(hex: AccountType.creditCard.color))
             
             VStack(alignment: .leading, spacing: 2) {
                 Text("Credit Cards")
@@ -250,17 +246,16 @@ struct CreditCardSummaryCard: View {
                 alertBadge(count: cardsPaymentDueSoon.count, isOverdue: false)
             }
             
-            NavigationLink {
-                AccountsView()
+            Button {
+                HapticService.play(.light)
+                NavigationService.shared.selectedTab = .accounts
             } label: {
                 Image(systemName: "chevron.right")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
             }
-            .simultaneousGesture(TapGesture().onEnded {
-                HapticService.play(.light)
-            })
+            .buttonStyle(.plain)
             .accessibilityLabel("View all accounts")
         }
         .padding()
@@ -427,7 +422,7 @@ struct CreditCardSummaryCard: View {
             ZStack {
                 // Background circle
                 Circle()
-                    .stroke(Color(.systemGray4), lineWidth: 6)
+                    .stroke(Color.gray.opacity(0.3), lineWidth: 6)
                     .frame(width: 50, height: 50)
                 
                 // Progress circle
@@ -772,7 +767,7 @@ struct CreditCardMiniRow: View {
             CreditCardSummaryCard(financeMode: .all)
                 .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
     }
     .modelContainer(container)
     .environmentObject(SubscriptionManager.shared)
@@ -799,7 +794,7 @@ struct CreditCardMiniRow: View {
             CreditCardSummaryCard(financeMode: .all)
                 .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
     }
     .modelContainer(container)
     .environmentObject(SubscriptionManager.shared)
@@ -827,7 +822,7 @@ struct CreditCardMiniRow: View {
             CreditCardSummaryCard(financeMode: .business)
                 .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
     }
     .modelContainer(container)
     .environmentObject(SubscriptionManager.shared)
@@ -861,7 +856,7 @@ struct CreditCardMiniRow: View {
             CreditCardSummaryCard(financeMode: .all)
                 .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.floSystemGroupedBackground)
     }
     .modelContainer(container)
     .environmentObject(SubscriptionManager.shared)
