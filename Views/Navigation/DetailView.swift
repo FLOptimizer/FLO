@@ -9,6 +9,7 @@
 
 import SwiftUI
 import SwiftData
+import FLODesignSystem
 
 struct DetailView: View {
     let destination: NavigationDestination?
@@ -61,6 +62,22 @@ struct DetailView: View {
             TransactionListView()
         case .transactionDetail(let id):
             TransactionLookupView(id: id)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button {
+                            withAnimation(FLOAnimation.quick) {
+                                NavigationService.shared.selectedDetail = nil
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                    .font(.caption.weight(.semibold))
+                                Text("Back")
+                            }
+                            .foregroundStyle(Color.brandPrimary)
+                        }
+                    }
+                }
         case .addTransaction:
             AddTransactionView()
 
