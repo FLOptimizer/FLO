@@ -214,8 +214,36 @@ struct BatchCategorizationView: View {
                     .padding(.vertical, 4)
                 }
 
-                Section("Select Category") {
-                    ForEach(expenseCategories) { category in
+                Section("BUSINESS") {
+                    ForEach(expenseCategories.filter { $0.isBusiness }.sorted { $0.name < $1.name }) { category in
+                        Button {
+                            applyCategory(category, to: merchant)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: category.icon)
+                                    .foregroundStyle(Color(flowHex: category.colorHex))
+                                    .frame(width: 24)
+                                    .accessibilityHidden(true)
+
+                                Text(category.name)
+                                    .foregroundStyle(.primary)
+
+                                Spacer()
+
+                                if merchant.currentCategory?.id == category.id {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(Color.brandPrimary)
+                                        .accessibilityHidden(true)
+                                }
+                            }
+                        }
+                        .accessibilityLabel(category.name)
+                        .accessibilityHint("Double tap to categorize all \(merchant.merchantName) transactions as \(category.name)")
+                    }
+                }
+
+                Section("PERSONAL") {
+                    ForEach(expenseCategories.filter { !$0.isBusiness }.sorted { $0.name < $1.name }) { category in
                         Button {
                             applyCategory(category, to: merchant)
                         } label: {

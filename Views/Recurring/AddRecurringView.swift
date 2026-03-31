@@ -40,6 +40,7 @@ struct AddRecurringView: View {
     
     @Query(sort: \Category.name) private var categories: [Category]
     @Query(sort: \Account.name) private var accounts: [Account]
+    @Query(sort: \Budget.month, order: .reverse) private var allBudgets: [Budget]
     
     let preselectedFinanceType: Transaction.FinanceType?
     
@@ -54,6 +55,8 @@ struct AddRecurringView: View {
     @State private var startDate = Date()
     @State private var hasEndDate = false
     @State private var endDate = Date()
+    @State private var showBudgetOffer = false
+    @State private var savedRecurringAmount: Double = 0
     
     init(preselectedFinanceType: Transaction.FinanceType? = nil) {
         self.preselectedFinanceType = preselectedFinanceType
@@ -110,6 +113,17 @@ struct AddRecurringView: View {
             }
             .onChange(of: financeType) { _, newType in
                 updateAccountForFinanceType(newType)
+            }
+            .alert("Create a Budget?", isPresented: $showBudgetOffer) {
+                Button("Create Budget") {
+                    createBudgetForRecurring()
+                    dismiss()
+                }
+                Button("Skip", role: .cancel) {
+                    dismiss()
+                }
+            } message: {
+                Text("No budget exists for \(selectedCategory?.name ?? "this category"). Would you like to create a \(savedRecurringAmount.formatted(.currency(code: "USD")))/mo budget?")
             }
         }
     }
@@ -339,20 +353,14 @@ struct AddRecurringView: View {
     
     private var organizedBusinessCategories: [Category] {
         categories
-            .filter { $0.isIncome == false && isBusinessCategory($0) }
+            .filter { !$0.isIncome && $0.isBusiness }
             .sorted { $0.name < $1.name }
     }
-    
+
     private var organizedPersonalCategories: [Category] {
         categories
-            .filter { $0.isIncome == false && !isBusinessCategory($0) }
+            .filter { !$0.isIncome && !$0.isBusiness }
             .sorted { $0.name < $1.name }
-    }
-    
-    private func isBusinessCategory(_ category: Category) -> Bool {
-        let businessKeywords = ["(Business)", "Business Travel", "Office", "Professional",
-                               "Contract Labor", "Marketing", "Advertising", "Software & Subscriptions"]
-        return businessKeywords.contains { category.name.contains($0) }
     }
     
     private var isValid: Bool {
@@ -434,16 +442,51 @@ struct AddRecurringView: View {
         
         do {
             try context.save()
-            
+
             HapticService.play(.success)
             print("✅ Recurring saved: \(trimmedMerchant) - Account: \(selectedAccount?.name ?? "None")")
-            
+
+            // Check if expense has a matching budget — offer to create one if not
+            if !isIncome, let category = selectedCategory {
+                let calendar = Calendar.current
+                let currentMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
+                let hasMatchingBudget = allBudgets.contains { budget in
+                    budget.category?.id == category.id &&
+                    budget.financeType == financeType &&
+                    calendar.isDate(budget.month, equalTo: currentMonth, toGranularity: .month)
+                }
+
+                if !hasMatchingBudget {
+                    savedRecurringAmount = BudgetRecurringService.monthlyEquivalent(amount: amt, frequency: frequency)
+                    showBudgetOffer = true
+                    return  // Don't dismiss yet — wait for budget offer response
+                }
+            }
+
             dismiss()
         } catch {
             print("✓ Failed to save recurring transaction: \(error)")
-            
+
             HapticService.play(.error)
         }
+    }
+
+    private func createBudgetForRecurring() {
+        guard let category = selectedCategory else { return }
+
+        let calendar = Calendar.current
+        let currentMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
+
+        let budget = Budget(
+            month: currentMonth,
+            planned: savedRecurringAmount,
+            category: category,
+            account: selectedAccount,
+            financeType: financeType
+        )
+        context.insert(budget)
+        try? context.save()
+        HapticService.play(.success)
     }
 }
 

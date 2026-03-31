@@ -50,6 +50,7 @@ struct CreateBudgetView: View {
     @Query(sort: \Category.name) private var categories: [Category]
     @Query(sort: \Account.name) private var accounts: [Account]
     @Query(sort: \Transaction.date, order: .reverse) private var allTransactions: [Transaction]
+    @Query private var allRecurring: [RecurringTransaction]
 
     let month: Date
 
@@ -152,14 +153,65 @@ struct CreateBudgetView: View {
         Section("Category") {
             Picker("Category", selection: $selectedCategory) {
                 Text("Select category").tag(Category?.none)
-                ForEach(filteredCategories) { cat in
-                    CategoryLabel(category: cat)
-                        .tag(Optional(cat))
+                Section(header: Text("BUSINESS")) {
+                    ForEach(organizedBusinessCategories) { cat in
+                        Label(cat.name, systemImage: cat.icon)
+                            .tag(Optional(cat))
+                    }
                 }
+                Section(header: Text("PERSONAL")) {
+                    ForEach(organizedPersonalCategories) { cat in
+                        Label(cat.name, systemImage: cat.icon)
+                            .tag(Optional(cat))
+                    }
+                }
+            }
+
+            // Show recurring info when category has active recurring expenses
+            if let category = selectedCategory,
+               let suggestion = BudgetRecurringService.shared.suggestedBudgetAmount(
+                   for: category, financeType: financeType, from: allRecurring
+               ) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.clockwise.circle.fill")
+                            .foregroundStyle(Color.brandPrimary)
+                            .font(.caption)
+                        Text("This category has recurring expenses")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Color.brandPrimary)
+                    }
+
+                    ForEach(suggestion.items) { item in
+                        HStack {
+                            Text(item.name)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(item.monthlyAmount.formatted(.currency(code: "USD")))/mo")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    if amount == 0 || amount < suggestion.recurring {
+                        Button {
+                            amount = suggestion.recurring
+                            HapticService.play(.light)
+                        } label: {
+                            Text("Set to \(suggestion.recurring.formatted(.currency(code: "USD"))) (recurring total)")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundStyle(Color.brandPrimary)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
             }
         }
     }
-    
+
     // MARK: - Account Section
     
     @ViewBuilder
@@ -313,6 +365,14 @@ struct CreateBudgetView: View {
     
     private var filteredCategories: [Category] {
         categories.filter { !$0.isIncome }
+    }
+
+    private var organizedBusinessCategories: [Category] {
+        categories.filter { !$0.isIncome && $0.isBusiness }.sorted { $0.name < $1.name }
+    }
+
+    private var organizedPersonalCategories: [Category] {
+        categories.filter { !$0.isIncome && !$0.isBusiness }.sorted { $0.name < $1.name }
     }
     
     /// Accounts sorted: matching financeType first, then primary, then others

@@ -67,6 +67,9 @@ struct EditAccountView: View {
     @State private var minimumPaymentFloor: Double
     @State private var paymentDueDay: Int
 
+    // Reconciliation
+    @State private var showingReconciliation = false
+
     // Loan fields
     @State private var originalLoanAmount: Double
     @State private var loanTermMonths: Int
@@ -144,6 +147,32 @@ struct EditAccountView: View {
                     }
                 }
                 
+                // Reconciliation (Premium feature)
+                if subscriptionManager.currentTier.hasBalanceTracking {
+                    Section("Reconciliation") {
+                        Button {
+                            showingReconciliation = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
+                                    .foregroundStyle(Color.brandPrimary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Reconcile Account")
+                                        .foregroundColor(.primary)
+                                    Text("Set actual balance, manage checkpoints")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
                 // Credit Card Details (conditional)
                 if accountType == .creditCard {
                     Section("Credit Card Details") {
@@ -439,6 +468,9 @@ struct EditAccountView: View {
             .onAppear {
                 // v1.0: Announce screen
                 AccessibilityAnnouncement.screenChanged("Edit Account: \(account.name)")
+            }
+            .sheet(isPresented: $showingReconciliation) {
+                ReconcileAccountView(account: account)
             }
         }
     }

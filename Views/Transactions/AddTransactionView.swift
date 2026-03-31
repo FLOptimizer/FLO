@@ -343,23 +343,44 @@ struct AddTransactionView: View {
         }
     }
     
+    // MARK: - Organized Category Lists
+
+    private var organizedIncomeCategories: [Category] {
+        categories.filter { $0.isIncome }.sorted { $0.name < $1.name }
+    }
+
+    private var organizedBusinessCategories: [Category] {
+        categories.filter { !$0.isIncome && $0.isBusiness }.sorted { $0.name < $1.name }
+    }
+
+    private var organizedPersonalCategories: [Category] {
+        categories.filter { !$0.isIncome && !$0.isBusiness }.sorted { $0.name < $1.name }
+    }
+
     private var categorySection: some View {
         Section("Category") {
             Picker("Category", selection: $selectedCategory) {
                 Text("None")
                     .tag(nil as Category?)
-                
-                let filtered = isIncome ?
-                    categories.filter { $0.isIncome } :
-                    categories.filter { !$0.isIncome }
-                
-                ForEach(filtered, id: \.id) { category in
-                    HStack {
-                        Image(systemName: category.icon)
-                            .accessibilityHidden(true)
-                        Text(category.name)
+
+                if isIncome {
+                    ForEach(organizedIncomeCategories) { cat in
+                        Label(cat.name, systemImage: cat.icon)
+                            .tag(Optional(cat))
                     }
-                    .tag(category as Category?)
+                } else {
+                    Section(header: Text("BUSINESS")) {
+                        ForEach(organizedBusinessCategories) { cat in
+                            Label(cat.name, systemImage: cat.icon)
+                                .tag(Optional(cat))
+                        }
+                    }
+                    Section(header: Text("PERSONAL")) {
+                        ForEach(organizedPersonalCategories) { cat in
+                            Label(cat.name, systemImage: cat.icon)
+                                .tag(Optional(cat))
+                        }
+                    }
                 }
             }
             .disabled(isProcessingReceipt)

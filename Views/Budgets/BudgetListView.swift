@@ -231,6 +231,21 @@ struct BudgetListView: View {
         }
     }
 
+    /// Total committed (recurring) across all current month budgets
+    private var monthlyCommittedTotal: Double {
+        currentMonthBudgets.reduce(0) { total, budget in
+            guard let category = budget.category else { return total }
+            return total + BudgetRecurringService.shared.committedAmount(
+                for: category, financeType: budget.financeType, from: allRecurring
+            )
+        }
+    }
+
+    /// Total discretionary spent (actual - committed)
+    private var monthlyDiscretionaryTotal: Double {
+        max(0, monthlySpentTotal - monthlyCommittedTotal)
+    }
+
     /// Total remaining across all current month budgets
     private var monthlyRemainingTotal: Double {
         monthlyBudgetTotal - monthlySpentTotal
@@ -727,6 +742,75 @@ struct BudgetListView: View {
                     summaryAmountsContent
                 }
             }
+
+            // Committed vs Discretionary toggle
+            if monthlyCommittedTotal > 0 {
+                Divider()
+
+                Button {
+                    withAnimation(.spring(response: 0.3)) {
+                        showCommittedBreakdown.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: showCommittedBreakdown ? "chevron.down" : "chevron.right")
+                            .font(.caption2)
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                        Text("Committed: \(monthlyCommittedTotal.formatted(.currency(code: "USD")))")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                        Text("•")
+                            .foregroundStyle(.tertiary)
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.caption2)
+                        Text("Discretionary: \(monthlyDiscretionaryTotal.formatted(.currency(code: "USD")))")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                        Spacer()
+                    }
+                    .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+
+                if showCommittedBreakdown {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(currentMonthBudgets, id: \.id) { budget in
+                            if let category = budget.category {
+                                let items = BudgetRecurringService.shared.recurringForCategory(
+                                    category, financeType: budget.financeType, from: allRecurring
+                                )
+                                if !items.isEmpty {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(budget.displayName)
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                        ForEach(items) { item in
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "arrow.clockwise.circle")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(Color.brandPrimary)
+                                                Text(item.name)
+                                                    .font(.caption2)
+                                                Spacer()
+                                                Text(item.monthlyAmount.formatted(.currency(code: "USD")))
+                                                    .font(.caption2.monospacedDigit())
+                                                Text("/mo")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.tertiary)
+                                            }
+                                            .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    .padding(.vertical, 2)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.top, 4)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
         }
         .padding()
         .background(Color.floSecondarySystemBackground)
@@ -746,6 +830,8 @@ struct BudgetListView: View {
             }
         }
     }
+
+    @State private var showCommittedBreakdown = false
 
     @ViewBuilder
     private var summaryAmountsContent: some View {

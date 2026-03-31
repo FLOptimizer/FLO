@@ -79,6 +79,14 @@ struct EditBudgetView: View {
         categories.filter { !$0.isIncome }
     }
 
+    private var organizedBusinessCategories: [Category] {
+        categories.filter { !$0.isIncome && $0.isBusiness }.sorted { $0.name < $1.name }
+    }
+
+    private var organizedPersonalCategories: [Category] {
+        categories.filter { !$0.isIncome && !$0.isBusiness }.sorted { $0.name < $1.name }
+    }
+
     /// Month options: ±12 months from today
     private var monthOptions: [Date] {
         let calendar = Calendar.current
@@ -180,9 +188,17 @@ struct EditBudgetView: View {
         Section("Category") {
             Picker("Category", selection: $selectedCategory) {
                 Text("Select category").tag(Category?.none)
-                ForEach(filteredCategories) { cat in
-                    Label(cat.name, systemImage: cat.icon)
-                        .tag(Optional(cat))
+                Section(header: Text("BUSINESS")) {
+                    ForEach(organizedBusinessCategories) { cat in
+                        Label(cat.name, systemImage: cat.icon)
+                            .tag(Optional(cat))
+                    }
+                }
+                Section(header: Text("PERSONAL")) {
+                    ForEach(organizedPersonalCategories) { cat in
+                        Label(cat.name, systemImage: cat.icon)
+                            .tag(Optional(cat))
+                    }
                 }
             }
             .accessibilityLabel("Budget category")

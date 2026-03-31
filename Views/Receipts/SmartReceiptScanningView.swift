@@ -547,6 +547,14 @@ struct EditableReceiptReviewViewWithAccount: View {
     private var expenseCategories: [Category] {
         categories.filter { !$0.isIncome }
     }
+
+    private var organizedBusinessCategories: [Category] {
+        categories.filter { !$0.isIncome && $0.isBusiness }.sorted { $0.name < $1.name }
+    }
+
+    private var organizedPersonalCategories: [Category] {
+        categories.filter { !$0.isIncome && !$0.isBusiness }.sorted { $0.name < $1.name }
+    }
     
     /// Returns the edited category name only if it exists in expense categories
     /// This prevents "invalid selection" picker warnings
@@ -645,9 +653,17 @@ struct EditableReceiptReviewViewWithAccount: View {
                             .foregroundStyle(.secondary)
                         Picker("Category", selection: validatedCategoryName) {
                             Text("None").tag("")
-                            ForEach(expenseCategories, id: \.id) { category in
-                                Label(category.name, systemImage: category.icon)
-                                    .tag(category.name)
+                            Section(header: Text("BUSINESS")) {
+                                ForEach(organizedBusinessCategories) { cat in
+                                    Label(cat.name, systemImage: cat.icon)
+                                        .tag(cat.name)
+                                }
+                            }
+                            Section(header: Text("PERSONAL")) {
+                                ForEach(organizedPersonalCategories) { cat in
+                                    Label(cat.name, systemImage: cat.icon)
+                                        .tag(cat.name)
+                                }
                             }
                         }
                         .pickerStyle(.menu)

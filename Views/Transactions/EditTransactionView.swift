@@ -565,20 +565,14 @@ struct EditTransactionView: View {
     
     private var organizedBusinessCategories: [Category] {
         categories
-            .filter { $0.isIncome == false && isBusinessCategory($0) }
+            .filter { !$0.isIncome && $0.isBusiness }
             .sorted { $0.name < $1.name }
     }
-    
+
     private var organizedPersonalCategories: [Category] {
         categories
-            .filter { $0.isIncome == false && !isBusinessCategory($0) }
+            .filter { !$0.isIncome && !$0.isBusiness }
             .sorted { $0.name < $1.name }
-    }
-    
-    private func isBusinessCategory(_ category: Category) -> Bool {
-        let businessKeywords = ["(Business)", "Business Travel", "Office", "Professional",
-                               "Contract Labor", "Marketing", "Advertising", "Software & Subscriptions"]
-        return businessKeywords.contains { category.name.contains($0) }
     }
     
     // MARK: - Toolbar
