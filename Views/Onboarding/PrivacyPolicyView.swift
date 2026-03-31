@@ -14,6 +14,7 @@
 //  - Basic in-app privacy policy
 
 import SwiftUI
+import FLODesignSystem
 
 struct PrivacyPolicyView: View {
     @Environment(\.dismiss) private var dismiss

@@ -102,15 +102,6 @@ extension View {
             .clipShape(RoundedRectangle(cornerRadius: 10))
     }
     
-    /// Glass morphism card effect with premium dark mode styling.
-    /// On iOS 26+/macOS 26+, uses system Liquid Glass for dynamic translucency.
-    /// On older OS, falls back to static glass tokens.
-    func floGlassCard() -> some View {
-        self
-            .padding()
-            .modifier(FLOGlassCardModifier())
-    }
-
     /// Premium canvas background for full-screen views
     /// Dark mode: deep #07070D canvas. Light mode: system background.
     func floCanvasBackground() -> some View {
@@ -182,26 +173,6 @@ extension View {
 }
 
 // MARK: - Liquid Glass Modifiers (iOS 26+ / macOS 26+)
-
-/// Glass card modifier that uses Liquid Glass on iOS 26+ and falls back to static glass tokens.
-struct FLOGlassCardModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26, macOS 26, *) {
-            content
-                .glassEffect(.regular, in: .rect(cornerRadius: 14))
-                .floCardShadow()
-        } else {
-            content
-                .background(Color.floCardGlass)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.floCardBorder, lineWidth: 1)
-                )
-                .floCardShadow()
-        }
-    }
-}
 
 /// Liquid Glass modifier for small interactive elements (chips, pills).
 struct FLOLiquidGlassModifier: ViewModifier {
@@ -311,17 +282,6 @@ extension View {
             .fontWeight(.bold)
     }
     
-    /// Section header style (uppercase, secondary color)
-    /// Use for list section headers, form sections
-    func floSectionHeader() -> some View {
-        self
-            .font(.subheadline)
-            .fontWeight(.semibold)
-            .foregroundStyle(.secondary)
-            .textCase(.uppercase)
-            .tracking(0.5)
-    }
-    
     /// Caption/helper text
     /// Use for descriptions, timestamps, hints
     func floCaption() -> some View {
@@ -330,42 +290,11 @@ extension View {
             .foregroundStyle(.secondary)
     }
     
-    /// Currency display (large, colored based on value)
-    /// Use for balance displays, transaction amounts
-    func floCurrency(isPositive: Bool) -> some View {
-        self
-            .font(.title2.weight(.bold).monospacedDigit())
-            .foregroundStyle(isPositive ? .green : .red)
-    }
-    
-    /// Neutral currency display (no color)
-    /// Use for totals, summaries where direction doesn't matter
-    func floCurrencyNeutral() -> some View {
-        self
-            .font(.title2.weight(.bold).monospacedDigit())
-            .foregroundStyle(.primary)
-    }
-    
-    /// Small monospaced text for IDs, codes
-    /// Use for transaction IDs, invoice numbers
-    func floMonoCode() -> some View {
-        self
-            .font(.caption.monospaced())
-            .foregroundStyle(.secondary)
-    }
 }
 
 // MARK: - Layout Helpers
 
 extension View {
-    
-    /// Full width with horizontal padding
-    /// Use for buttons, cards that need to span the width
-    func floFullWidth(padding: CGFloat = 16) -> some View {
-        self
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, padding)
-    }
     
     /// Centered content
     /// Use for empty states, loading views

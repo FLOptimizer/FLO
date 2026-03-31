@@ -26,6 +26,7 @@
 //
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct DeductionOpportunityCard: View {

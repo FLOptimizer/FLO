@@ -8,6 +8,7 @@
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 
 import SwiftUI
+import FLODesignSystem
 
 struct QuickActionsView: View {
     @Binding var showingAddExpense: Bool

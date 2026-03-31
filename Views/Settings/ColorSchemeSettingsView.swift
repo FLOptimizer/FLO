@@ -34,6 +34,7 @@
 //  - Dark background for better readability
 
 import SwiftUI
+import FLODesignSystem
 
 struct ColorSchemeSettingsView: View {
     @Environment(\.dismiss) private var dismiss

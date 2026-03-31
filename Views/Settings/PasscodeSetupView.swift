@@ -33,6 +33,7 @@
 //
 
 import SwiftUI
+import FLODesignSystem
 
 struct PasscodeSetupView: View {
     @Environment(\.dismiss) private var dismiss

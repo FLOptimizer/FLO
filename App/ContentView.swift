@@ -15,6 +15,7 @@
 //  Previous: v4.0 — Spotlight deep link handling
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 import CoreSpotlight
 

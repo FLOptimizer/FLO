@@ -18,6 +18,7 @@
 //  ✅ Dynamic Type support
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct QuickInvoiceView: View {

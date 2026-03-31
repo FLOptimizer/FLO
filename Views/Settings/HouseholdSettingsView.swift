@@ -29,6 +29,7 @@
 //  ✅ VoiceOver and Dynamic Type support for join flow
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct HouseholdSettingsView: View {

@@ -31,6 +31,7 @@
 //  - Working theme picker, adaptive colors
 
 import SwiftUI
+import FLODesignSystem
 
 struct AppearanceSettingsView: View {
     @AppStorage("preferredColorScheme") private var preferredColorScheme = "system"

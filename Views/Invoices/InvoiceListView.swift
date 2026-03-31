@@ -57,6 +57,7 @@
 //  PREVIOUS: Added subscription gating wrapper - all original features preserved
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct InvoiceListView: View {

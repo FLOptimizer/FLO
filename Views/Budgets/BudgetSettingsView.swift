@@ -30,6 +30,7 @@
 //  - Notification permission request on toggle
 
 import SwiftUI
+import FLODesignSystem
 import UserNotifications
 
 struct BudgetSettingsView: View {

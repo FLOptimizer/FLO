@@ -24,6 +24,7 @@
 //
 
 import SwiftUI
+import FLODesignSystem
 import Charts
 
 // MARK: - Chart Sections Extension

@@ -41,6 +41,7 @@
 //  - Basic budget history with month-by-month breakdown
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct BudgetHistoryView: View {

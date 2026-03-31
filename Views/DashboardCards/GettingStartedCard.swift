@@ -26,6 +26,7 @@
 //
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 /// Getting Started checklist card shown on Dashboard after onboarding

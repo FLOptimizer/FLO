@@ -64,6 +64,7 @@
 //  ✅ Added header traits to section headers
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct BudgetListView: View {

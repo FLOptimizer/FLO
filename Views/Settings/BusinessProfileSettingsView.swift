@@ -32,6 +32,7 @@
 //
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct BusinessProfileSettingsView: View {

@@ -23,6 +23,7 @@
 //  ✅ FLOAnimation stagger entrance
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 // MARK: - Detected Patterns Section (Embeddable)

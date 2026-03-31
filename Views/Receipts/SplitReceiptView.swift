@@ -43,6 +43,7 @@
 //
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct SplitReceiptView: View {

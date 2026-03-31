@@ -34,6 +34,7 @@
 //
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 // MARK: - Currency Formatter Helper

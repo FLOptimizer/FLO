@@ -22,6 +22,7 @@
 //
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct ReceiptManagementCard: View {

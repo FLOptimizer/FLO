@@ -25,6 +25,7 @@
 //
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct EditTransferView: View {

@@ -44,6 +44,7 @@
 //  - Basic security settings for passcode and biometrics
 
 import SwiftUI
+import FLODesignSystem
 
 struct SecuritySettingsView: View {
     @Environment(\.dismiss) private var dismiss

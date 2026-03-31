@@ -25,6 +25,7 @@
 //  ✅ FIXED: Loading ProgressView missing .updatesFrequently trait
 
 import SwiftUI
+import FLODesignSystem
 import Charts
 import SwiftData
 

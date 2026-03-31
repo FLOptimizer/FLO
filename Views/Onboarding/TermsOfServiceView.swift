@@ -21,6 +21,7 @@
 //  - Link haptic feedback, smooth scroll appearance
 
 import SwiftUI
+import FLODesignSystem
 
 struct TermsOfServiceView: View {
     @Environment(\.dismiss) private var dismiss

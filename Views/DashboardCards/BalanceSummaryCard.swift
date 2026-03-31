@@ -32,6 +32,7 @@
 //
 
 import SwiftUI
+import FLODesignSystem
 
 struct BalanceSummaryCard: View {
     let income: Double

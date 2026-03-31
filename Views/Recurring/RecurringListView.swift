@@ -38,6 +38,7 @@
 //  - Fixed Color(hex:) → Color(flowHex:)
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct RecurringListView: View {

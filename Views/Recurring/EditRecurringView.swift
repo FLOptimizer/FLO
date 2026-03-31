@@ -25,6 +25,7 @@
 //  - Fixed RecurrenceFrequency enum
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct EditRecurringView: View {

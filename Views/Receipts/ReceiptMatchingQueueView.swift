@@ -51,6 +51,7 @@
 //
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct ReceiptMatchingQueueView: View {

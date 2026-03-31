@@ -34,6 +34,7 @@
 //
 
 import SwiftUI
+import FLODesignSystem
 import Combine
 
 struct LockView: View {

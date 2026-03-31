@@ -67,6 +67,7 @@
 //  - Fixed compiler timeout by extracting sections
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct EditTransactionView: View {

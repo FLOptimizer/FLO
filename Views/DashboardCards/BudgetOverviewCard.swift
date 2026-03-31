@@ -33,6 +33,7 @@
 //
 
 import SwiftUI
+import FLODesignSystem
 import SwiftData
 
 struct BudgetOverviewCard: View {
