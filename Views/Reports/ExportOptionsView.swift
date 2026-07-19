@@ -472,7 +472,7 @@ struct ExportOptionsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Image(systemName: "doc.text")
-                                 .foregroundStyle(Color.brandPrimaryText)
+                                 .foregroundStyle(Color.brandPrimary)
                                 .frame(width: 24)
                             
                             Text("Export Transactions")
@@ -548,7 +548,7 @@ struct ExportOptionsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Image(systemName: "car")
-                                 .foregroundStyle(Color.brandPrimaryText)
+                                 .foregroundStyle(Color.brandPrimary)
                                 .frame(width: 24)
                             
                             Text("Export Mileage Log")

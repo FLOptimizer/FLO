@@ -289,9 +289,7 @@ struct DeductionOpportunitiesView: View {
                                 .foregroundStyle(.primary)
                                 .multilineTextAlignment(.leading)
                             
-                            Text(opportunity.category.displayName)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            CategoryTag(category: opportunity.category.displayName, size: .compact)
                         }
                         
                         Spacer()

@@ -1,8 +1,19 @@
 //  MileageTripListView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.1 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
+//  Version 3.2 - Bulk classify unreviewed trips (Build 10 launch)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.2 - Bulk classify:
+//  ✅ ADDED: Toolbar Menu (top-right) with "Mark All as Personal" and "Mark All
+//           as Business" actions. Only shown when there's at least one
+//           `.needsReview` trip — toolbar stays clean otherwise.
+//  ✅ ADDED: confirmationDialog for each bulk action with the explicit count and
+//           a clear note about tax implications. Personal is marked .destructive
+//           so iOS renders it in red (since it forfeits potential deductions).
+//  ✅ ADDED: bulkClassifyUnreviewed(asBusiness:) iterates all unreviewed trips
+//           and calls the model's classifyAsBusiness / classifyAsPersonal
+//           helpers. Trips already classified are left untouched.
 //
 //  CHANGES v3.1 - Dynamic Type Verification:
 //  ✅ FIXED: Empty state "No Trips" title missing lineLimit + minimumScaleFactor
@@ -47,6 +58,16 @@ struct MileageTripListView: View {
     @State private var showingDeleteConfirmation = false
     @State private var tripToDelete: MileageTrip?
     @State private var viewAppeared = false
+
+    // v3.2 — bulk classify confirmations for unreviewed trips
+    @State private var showingMarkAllPersonalConfirm = false
+    @State private var showingMarkAllBusinessConfirm = false
+
+    /// All trips currently flagged as needing review (across ALL time, not just
+    /// the current filter — matches the count shown on the main view banner).
+    private var unreviewedTrips: [MileageTrip] {
+        allTrips.filter { $0.purpose == .needsReview }
+    }
     
     // Filtered trips based on selected period
     private var filteredTrips: [MileageTrip] {
@@ -175,6 +196,58 @@ struct MileageTripListView: View {
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: filteredTrips.isEmpty)
         .navigationTitle("Mileage Log")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // Bulk classify menu — only surfaces when there's actually a backlog.
+            // Hidden when zero unreviewed trips so the toolbar stays uncluttered.
+            if !unreviewedTrips.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Section("\(unreviewedTrips.count) trips need review") {
+                            Button {
+                                HapticService.play(.medium)
+                                showingMarkAllPersonalConfirm = true
+                            } label: {
+                                Label("Mark All as Personal", systemImage: "person.fill")
+                            }
+
+                            Button {
+                                HapticService.play(.medium)
+                                showingMarkAllBusinessConfirm = true
+                            } label: {
+                                Label("Mark All as Business", systemImage: "briefcase.fill")
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "checklist")
+                            .accessibilityLabel("Bulk classify unreviewed trips")
+                    }
+                }
+            }
+        }
+        .confirmationDialog(
+            "Mark \(unreviewedTrips.count) unreviewed trip\(unreviewedTrips.count == 1 ? "" : "s") as personal?",
+            isPresented: $showingMarkAllPersonalConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Mark All as Personal", role: .destructive) {
+                bulkClassifyUnreviewed(asBusiness: false)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Personal trips are NOT tax deductible. You can change individual trips later.")
+        }
+        .confirmationDialog(
+            "Mark \(unreviewedTrips.count) unreviewed trip\(unreviewedTrips.count == 1 ? "" : "s") as business?",
+            isPresented: $showingMarkAllBusinessConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Mark All as Business") {
+                bulkClassifyUnreviewed(asBusiness: true)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Each trip will be set to purpose 'Other' and counted toward your mileage deduction. You can refine the purpose on individual trips later.")
+        }
         .alert("Delete Trip?", isPresented: $showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) {
                 tripToDelete = nil
@@ -221,11 +294,11 @@ struct MileageTripListView: View {
     
     private func deleteTrip(_ trip: MileageTrip) {
         let miles = String(format: "%.1f", trip.distanceMiles)
-        
+
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             modelContext.delete(trip)
         }
-        
+
         do {
             try modelContext.save()
             HapticService.shared.success()
@@ -234,8 +307,40 @@ struct MileageTripListView: View {
         } catch {
             HapticService.shared.error()
         }
-        
+
         tripToDelete = nil
+    }
+
+    /// Bulk-classify every `.needsReview` trip in the entire log. Called from the
+    /// toolbar Menu's confirmation dialogs.
+    ///
+    /// - Parameter asBusiness: When `true`, each trip is set to `.other` business
+    ///   purpose. When `false`, each is set to `.personal`. We deliberately avoid
+    ///   touching trips that already have a purpose — the user explicitly chose
+    ///   those, so they're left alone.
+    private func bulkClassifyUnreviewed(asBusiness: Bool) {
+        let targets = unreviewedTrips
+        guard !targets.isEmpty else { return }
+        let count = targets.count
+
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            for trip in targets {
+                if asBusiness {
+                    trip.classifyAsBusiness(purpose: .other)
+                } else {
+                    trip.classifyAsPersonal()
+                }
+            }
+        }
+
+        do {
+            try modelContext.save()
+            HapticService.shared.success()
+            let label = asBusiness ? "business" : "personal"
+            AccessibilityAnnouncement.announce("\(count) trip\(count == 1 ? "" : "s") classified as \(label)")
+        } catch {
+            HapticService.shared.error()
+        }
     }
 }
 

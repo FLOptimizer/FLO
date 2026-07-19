@@ -1,7 +1,7 @@
 //  BatchCategorizationView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.0 - Batch Merchant Categorization UI
+//  Version 1.1 - Catalyst list style · Batch Merchant Categorization UI
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  PURPOSE:
@@ -27,8 +27,9 @@ struct BatchCategorizationView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
-    @Query(sort: \Transaction.date, order: .reverse) private var allTransactions: [Transaction]
     @Query(sort: \Category.name) private var categories: [Category]
+
+    @State private var allTransactions: [Transaction] = []
 
     @StateObject private var service = BatchCategorizationService.shared
 
@@ -74,18 +75,38 @@ struct BatchCategorizationView: View {
             .onChange(of: showUncategorizedOnly) { _, _ in
                 refreshGroups()
             }
-            .onChange(of: allTransactions.count) { _, _ in
-                refreshGroups()
-            }
             .sheet(isPresented: $showingCategoryPicker) {
                 if let merchant = selectedMerchant {
                     categoryPickerSheet(for: merchant)
                 }
             }
-            .onAppear {
+            .task {
+                loadTransactions()
                 refreshGroups()
-                AccessibilityAnnouncement.screenChanged("Batch Categorize. \(merchantGroups.count) merchant groups.")
             }
+            .onDisappear {
+                allTransactions = []
+            }
+            .onAppear {
+                AccessibilityAnnouncement.screenChanged("Batch Categorize")
+            }
+        }
+    }
+
+    // MARK: - Data Loading
+
+    private func loadTransactions() {
+        let oneYearAgo = Calendar.current.date(byAdding: .year, value: -1, to: Date())!
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= oneYearAgo },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        do {
+            allTransactions = try context.fetch(descriptor)
+        } catch {
+            #if DEBUG
+            print("BatchCategorizationView loadTransactions error: \(error)")
+            #endif
         }
     }
 
@@ -124,7 +145,7 @@ struct BatchCategorizationView: View {
                 merchantRow(for: group)
             }
         }
-        #if os(macOS)
+        #if os(macOS) || targetEnvironment(macCatalyst)
         .listStyle(.inset)
         #else
         .listStyle(.insetGrouped)

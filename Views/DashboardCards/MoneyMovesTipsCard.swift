@@ -568,18 +568,19 @@ struct MoneyMoveTipRow: View {
 /// Horizontal scrolling layout for dashboard
 struct CompactMoneyMovesRow: View {
     @Query private var accounts: [Account]
-    @Query private var transactions: [Transaction]
-    
+    @Environment(\.modelContext) private var modelContext
+
     @ObservedObject private var subscriptionManager = SubscriptionManager.shared
     @ObservedObject private var insightsService = InsightsService.shared
-    
+
+    @State private var transactions: [Transaction] = []
     @State private var tips: [MoneyMove] = []
     @State private var showDebtCalculator = false
-    
+
     private var isPremium: Bool {
         subscriptionManager.currentTier >= .premium
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -594,7 +595,7 @@ struct CompactMoneyMovesRow: View {
                     .minimumScaleFactor(0.7)
             }
             .padding(.horizontal)
-            
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(tips.prefix(5)) { tip in
@@ -608,16 +609,43 @@ struct CompactMoneyMovesRow: View {
                 .padding(.horizontal)
             }
         }
-        .onAppear {
-            tips = insightsService.generateMoneyMovesTips(
-                accounts: accounts,
-                transactions: transactions,
-                isPremium: isPremium
-            )
+        .task {
+            loadData()
+            loadTips()
+        }
+        .onDisappear {
+            transactions = []
+        }
+        .onChange(of: accounts.count) { _, _ in
+            loadTips()
         }
         .sheet(isPresented: $showDebtCalculator) {
             DebtPayoffCalculatorView()
         }
+    }
+
+    // MARK: - Data Loading
+
+    private func loadData() {
+        let threeMonthsAgo = Calendar.current.date(byAdding: .month, value: -3, to: Date())!
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= threeMonthsAgo }
+        )
+        do {
+            transactions = try modelContext.fetch(descriptor)
+        } catch {
+            #if DEBUG
+            print("CompactMoneyMovesRow loadData error: \(error)")
+            #endif
+        }
+    }
+
+    private func loadTips() {
+        tips = insightsService.generateMoneyMovesTips(
+            accounts: accounts,
+            transactions: transactions,
+            isPremium: isPremium
+        )
     }
 }
 

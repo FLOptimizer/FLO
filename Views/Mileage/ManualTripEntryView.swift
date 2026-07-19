@@ -45,7 +45,13 @@ import CoreLocation
 struct ManualTripEntryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    
+
+    @Query(
+        filter: #Predicate<BusinessProfile> { $0.isActive },
+        sort: \BusinessProfile.sortOrder
+    )
+    private var businessProfiles: [BusinessProfile]
+
     // Form fields
     @State private var tripDate = Date()
     @State private var startAddress = ""
@@ -56,7 +62,8 @@ struct ManualTripEntryView: View {
     @State private var notes = ""
     @State private var vehicleName = ""
     @State private var clientName = ""
-    
+    @State private var selectedBusinessProfile: BusinessProfile?
+
     // Location data
     @State private var startCoordinate: CLLocationCoordinate2D?
     @State private var endCoordinate: CLLocationCoordinate2D?
@@ -319,11 +326,16 @@ struct ManualTripEntryView: View {
                     .onChange(of: isBusinessTrip) { _, newValue in
 
                         HapticService.play(.medium)
-                        
+
                         if !newValue {
                             purpose = .personal
+                            selectedBusinessProfile = nil
                         } else if purpose == .personal || purpose == .commute {
                             purpose = .other
+                        }
+                        // Auto-select single business profile
+                        if newValue && businessProfiles.count == 1 {
+                            selectedBusinessProfile = businessProfiles.first
                         }
                         AccessibilityAnnouncement.announce(newValue ? "Marked as business trip, tax deductible" : "Marked as personal trip, not deductible")
                     }
@@ -389,7 +401,23 @@ struct ManualTripEntryView: View {
             .opacity(formVisible ? 1 : 0.001)
             .offset(y: formVisible ? 0 : 10)
             .animation(.easeOut(duration: 0.3).delay(0.3), value: formVisible)
-            
+
+            // MARK: - Business Profile Section (v4.1)
+            if isBusinessTrip && businessProfiles.count > 1 {
+                Section("Business Profile") {
+                    Picker("Business", selection: $selectedBusinessProfile) {
+                        Text("Select...").tag(nil as BusinessProfile?)
+                        ForEach(businessProfiles) { profile in
+                            Text(profile.businessName).tag(profile as BusinessProfile?)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+                .opacity(formVisible ? 1 : 0.001)
+                .offset(y: formVisible ? 0 : 10)
+                .animation(.easeOut(duration: 0.3).delay(0.32), value: formVisible)
+            }
+
             // MARK: - Vehicle Section (v4.0)
             Section {
                 HStack {
@@ -796,7 +824,8 @@ struct ManualTripEntryView: View {
                     purpose: purpose,
                     notes: trimmedNotes.isEmpty ? nil : trimmedNotes,
                     vehicleName: trimmedVehicle.isEmpty ? nil : trimmedVehicle,
-                    clientName: trimmedClient.isEmpty ? nil : trimmedClient
+                    clientName: trimmedClient.isEmpty ? nil : trimmedClient,
+                    businessProfile: selectedBusinessProfile
                 )
                 
                 await MainActor.run {

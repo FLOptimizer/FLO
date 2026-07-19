@@ -278,24 +278,45 @@ final class TransferService {
     
     // MARK: - Transfer Type Detection
     
-    /// Auto-detects the appropriate transfer type based on account types and finance types.
+    /// Auto-detects the appropriate transfer type based on account types, finance types,
+    /// and business profiles (v1.2: multi-business aware).
     func detectTransferType(from: Account, to: Account) -> TransferType {
-        
+
         // Credit card or loan payment
         if to.accountType == .creditCard || to.accountType == .loan {
             return .debtPayment
         }
-        
-        // Cross finance type detection
+
+        // v1.2: Business-profile-aware detection
+        let fromBusiness = from.businessProfile
+        let toBusiness = to.businessProfile
+
+        // Personal -> Business = Capital Contribution
+        if fromBusiness == nil && toBusiness != nil {
+            return .capitalContribution
+        }
+
+        // Business -> Personal = Owner's Draw
+        if fromBusiness != nil && toBusiness == nil {
+            return .ownersDraw
+        }
+
+        // Different businesses = treat as draw from one + contribution to other
+        // (rare but flagged as internal for now — user can override)
+        if let fb = fromBusiness, let tb = toBusiness, fb.id != tb.id {
+            return .internal
+        }
+
+        // Fallback: legacy financeType-based detection
         if from.financeType == .business && to.financeType == .personal {
             return .ownersDraw
         }
-        
+
         if from.financeType == .personal && to.financeType == .business {
             return .capitalContribution
         }
-        
-        // Same finance type = internal
+
+        // Same business or same finance type = internal
         return .internal
     }
     
@@ -594,5 +615,214 @@ extension TransferService {
             ytdTaxPayments: calculateYTDTaxPayments(context: context),
             pendingCount: pendingCount
         )
+    }
+}
+
+// MARK: - Debt Payment Split (v1.3)
+
+/// Errors thrown by TransferService.commitDebtPaymentSplit.
+enum TransferServiceError: LocalizedError {
+    case missingInterestPortion
+    case interestPortionNotPositive
+    case missingFromAccount
+    case saveFailed(Error)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingInterestPortion:
+            return "Cannot commit debt payment split: transfer has no interest portion."
+        case .interestPortionNotPositive:
+            return "Cannot commit debt payment split: interest portion must be greater than zero."
+        case .missingFromAccount:
+            return "Cannot commit debt payment split: transfer has no source account."
+        case .saveFailed(let underlying):
+            return "Failed to save interest expense transaction: \(underlying.localizedDescription)"
+        }
+    }
+}
+
+extension TransferService {
+
+    /// Commits the interest portion of a debt payment as a deductible expense Transaction.
+    ///
+    /// Called immediately after a Transfer with `interestPortion`/`principalPortion`/`paymentGroupId`
+    /// is saved. Creates a regular expense Transaction (not a transfer) on the transfer's
+    /// `fromAccount` so the interest lands on the P&L and Schedule C/F reports.
+    ///
+    /// The principal portion remains tracked on the Transfer record itself and reduces the
+    /// destination loan/credit-card balance via the existing transfer balance update logic.
+    /// This function intentionally does NOT modify the Transfer or any account balances —
+    /// the Transfer.amount already represents the full payment, and the source account was
+    /// already debited for the full payment when the Transfer was created. The interest
+    /// expense Transaction created here is a P&L tagging artifact, not a balance movement.
+    ///
+    /// - Parameters:
+    ///   - transfer: The previously-saved debt payment Transfer with `interestPortion` set.
+    ///   - interestCategory: Optional override. If nil, the function resolves a sensible
+    ///     default by looking up an existing business "Interest Expense" category, falling
+    ///     back to creating one tagged with Schedule C line 16b.
+    ///   - context: The SwiftData model context. Defaults to the transfer's container context.
+    ///
+    /// - Returns: The newly inserted interest expense Transaction.
+    /// - Throws: `TransferServiceError` on validation failure or save failure.
+    @discardableResult
+    func commitDebtPaymentSplit(
+        transfer: Transfer,
+        interestCategory: Category? = nil,
+        context: ModelContext
+    ) throws -> Transaction {
+
+        // Precondition: interest portion must exist and be positive
+        guard let interest = transfer.interestPortion else {
+            throw TransferServiceError.missingInterestPortion
+        }
+        guard interest > 0 else {
+            throw TransferServiceError.interestPortionNotPositive
+        }
+        guard let fromAccount = transfer.fromAccount else {
+            throw TransferServiceError.missingFromAccount
+        }
+
+        // Resolve the interest category
+        let resolvedCategory = interestCategory
+            ?? resolveInterestCategory(context: context, loanAccount: transfer.toAccount)
+
+        // Compose merchant name from transfer
+        let merchant = transfer.toAccount?.institutionName
+            ?? transfer.toAccount?.name
+            ?? "Loan Interest"
+
+        // Inherit finance type from the source account (the side that paid)
+        let financeType: Transaction.FinanceType = fromAccount.financeType
+
+        let interestTxn = Transaction(
+            amount: interest,
+            date: transfer.date,
+            note: "Interest portion of debt payment (auto-generated from transfer split)",
+            isIncome: false,
+            merchantName: merchant,
+            category: resolvedCategory,
+            financeType: financeType,
+            account: fromAccount,
+            importSource: .derivedFromTransfer,
+            isTransfer: false,
+            paymentGroupId: transfer.paymentGroupId,
+            isReviewed: false
+        )
+
+        context.insert(interestTxn)
+
+        do {
+            try context.save()
+            print("✅ TransferService: Created interest expense \(interest) for transfer \(transfer.id)")
+            return interestTxn
+        } catch {
+            // Roll back the insert on failure
+            context.delete(interestTxn)
+            throw TransferServiceError.saveFailed(error)
+        }
+    }
+
+    /// Resolves a Category for the auto-generated interest expense.
+    ///
+    /// Strategy:
+    /// 1. Prefer an existing business, tax-deductible expense Category whose
+    ///    `scheduleCLineRaw == "line16b"` (Schedule C "Interest – Other").
+    /// 2. Otherwise prefer any business expense Category whose name contains "interest".
+    /// 3. Otherwise create a new "Interest Expense" Category tagged with line 16b.
+    ///
+    /// Note: this resolver is not currently scoped per-business because Categories aren't
+    /// scoped per-business in the model. Multi-business users share a single
+    /// "Interest Expense" category. Revisit when ScheduleFLine / per-business categories land.
+    private func resolveInterestCategory(
+        context: ModelContext,
+        loanAccount: Account?
+    ) -> Category {
+        let descriptor = FetchDescriptor<Category>(
+            predicate: #Predicate<Category> { cat in
+                cat.isBusiness == true && cat.isIncome == false && cat.isTaxDeductible == true
+            }
+        )
+        let candidates = (try? context.fetch(descriptor)) ?? []
+
+        // Prefer Schedule C line 16b match
+        if let match = candidates.first(where: { $0.scheduleCLineRaw == ScheduleCLine.line16b_mortgageOther.rawValue }) {
+            return match
+        }
+
+        // Fallback: name contains "interest"
+        if let match = candidates.first(where: { $0.name.lowercased().contains("interest") }) {
+            return match
+        }
+
+        // Create a new default
+        let newCategory = Category(
+            name: "Interest Expense",
+            icon: "percent",
+            colorHex: "#F59E0B",
+            isDefault: false,
+            isIncome: false,
+            isTaxDeductible: true,
+            isBusiness: true,
+            scheduleCLine: .line16b_mortgageOther
+        )
+        context.insert(newCategory)
+        return newCategory
+    }
+}
+
+// MARK: - Per-Business Transfer Calculations (v1.2)
+
+extension TransferService {
+
+    /// YTD capital contributions TO a specific business
+    func calculateYTDContributions(
+        for business: BusinessProfile,
+        context: ModelContext,
+        year: Int? = nil
+    ) -> Double {
+        let targetYear = year ?? Calendar.current.component(.year, from: Date())
+        let calendar = Calendar.current
+        let startOfYear = calendar.date(from: DateComponents(year: targetYear, month: 1, day: 1))!
+        let endOfYear = calendar.date(from: DateComponents(year: targetYear, month: 12, day: 31, hour: 23, minute: 59, second: 59))!
+
+        let descriptor = FetchDescriptor<Transfer>(
+            predicate: #Predicate<Transfer> {
+                $0.transferTypeRaw == "capitalContribution" &&
+                $0.date >= startOfYear &&
+                $0.date <= endOfYear
+            }
+        )
+        guard let transfers = try? context.fetch(descriptor) else { return 0 }
+
+        // Filter to transfers whose toAccount belongs to this business
+        return transfers.filter {
+            $0.toAccount?.businessProfile?.id == business.id
+        }.reduce(0) { $0 + $1.amount }
+    }
+
+    /// YTD owner's draws FROM a specific business
+    func calculateYTDDraws(
+        for business: BusinessProfile,
+        context: ModelContext,
+        year: Int? = nil
+    ) -> Double {
+        let targetYear = year ?? Calendar.current.component(.year, from: Date())
+        let calendar = Calendar.current
+        let startOfYear = calendar.date(from: DateComponents(year: targetYear, month: 1, day: 1))!
+        let endOfYear = calendar.date(from: DateComponents(year: targetYear, month: 12, day: 31, hour: 23, minute: 59, second: 59))!
+
+        let descriptor = FetchDescriptor<Transfer>(
+            predicate: #Predicate<Transfer> {
+                $0.transferTypeRaw == "ownersDraw" &&
+                $0.date >= startOfYear &&
+                $0.date <= endOfYear
+            }
+        )
+        guard let transfers = try? context.fetch(descriptor) else { return 0 }
+
+        return transfers.filter {
+            $0.fromAccount?.businessProfile?.id == business.id
+        }.reduce(0) { $0 + $1.amount }
     }
 }

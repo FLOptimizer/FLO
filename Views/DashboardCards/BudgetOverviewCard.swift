@@ -105,197 +105,24 @@ struct BudgetOverviewCard: View {
                 }
                 .padding()
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(activeBudgets.enumerated()), id: \.element.budget.id) { index, item in
-                        BudgetRow(budget: item.budget, animationDelay: Double(index) * 0.05)
-                        
-                        if item.budget.id != activeBudgets.last?.budget.id {
-                            Divider()
-                                .padding(.leading)
-                        }
+                let columns = [GridItem(.adaptive(minimum: 80, maximum: 110), spacing: 12)]
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(activeBudgets, id: \.budget.id) { item in
+                        BudgetCircle(
+                            sfSymbol: item.budget.category?.icon,
+                            name: item.budget.displayName,
+                            spent: abs(item.spent),
+                            budget: item.budget.totalAvailable,
+                            size: .standard
+                        )
                     }
                 }
+                .padding()
             }
         }
         .background(Color.floSecondarySystemBackground)
         .cornerRadius(12)
         .floCardShadow()
-    }
-}
-
-// MARK: - Budget Row
-
-struct BudgetRow: View {
-    let budget: Budget
-    var animationDelay: Double = 0
-    
-    // v1.2: Dynamic Type awareness
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    
-    @Query private var allTransactions: [Transaction]
-    @State private var animatedProgress: Double = 0
-    
-    /// v1.2: Whether current Dynamic Type size is an accessibility size
-    private var isAccessibilitySize: Bool {
-        dynamicTypeSize.isAccessibilitySize
-    }
-    
-    init(budget: Budget, animationDelay: Double = 0) {
-        self.budget = budget
-        self.animationDelay = animationDelay
-        
-        let calendar = Calendar.current
-        let startOfMonth = calendar.date(
-            from: calendar.dateComponents([.year, .month], from: budget.month)
-        ) ?? budget.month
-        let endOfMonth = calendar.date(
-            byAdding: DateComponents(month: 1, day: -1),
-            to: startOfMonth
-        ) ?? budget.month
-        
-        // v1.3: Both predicates exclude transfers at the query level
-        if let categoryName = budget.category?.name {
-            let predicate = #Predicate<Transaction> { transaction in
-                !transaction.isIncome &&
-                transaction.isTransfer == false &&
-                transaction.date >= startOfMonth &&
-                transaction.date <= endOfMonth &&
-                transaction.category?.name == categoryName
-            }
-            _allTransactions = Query(filter: predicate, sort: \.date)
-        } else {
-            let predicate = #Predicate<Transaction> { transaction in
-                !transaction.isIncome &&
-                transaction.isTransfer == false &&
-                transaction.date >= startOfMonth &&
-                transaction.date <= endOfMonth
-            }
-            _allTransactions = Query(filter: predicate, sort: \.date)
-        }
-    }
-    
-    private var transactions: [Transaction] {
-        allTransactions.filter { $0.financeType == budget.financeType }
-    }
-    
-    private var spent: Double {
-        abs(transactions.reduce(0) { $0 + $1.amount })
-    }
-    
-    private var remaining: Double {
-        budget.totalAvailable - spent
-    }
-    
-    private var progress: Double {
-        guard budget.totalAvailable > 0 else { return 0 }
-        return min(spent / budget.totalAvailable, 1.0)
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            budgetHeader
-            progressBar
-            amountsRow
-        }
-        .padding(.vertical, 4)
-        .padding(.horizontal)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityLabel)
-        .onAppear {
-            withAnimation(FLOAnimation.gentle.delay(animationDelay)) {
-                animatedProgress = progress
-            }
-        }
-        .onChange(of: progress) { oldValue, newValue in
-            withAnimation(FLOAnimation.standard) {
-                animatedProgress = newValue
-            }
-        }
-    }
-    
-    private var budgetHeader: some View {
-        HStack {
-            Text(budget.displayName)
-                .font(.headline)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            
-            Spacer()
-            
-            Text(budget.financeType == .business ? "💼" : "👤")
-                .font(.caption)
-                .accessibilityHidden(true)
-        }
-    }
-    
-    private var progressBar: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                Rectangle()
-                    .fill(Color.primary.opacity(0.1))
-                    .frame(height: 8)
-                
-                Rectangle()
-                    .fill(progressColor)
-                    .frame(width: geometry.size.width * animatedProgress, height: 8)
-            }
-            .cornerRadius(4)
-        }
-        .frame(height: 8)
-        .accessibilityHidden(true)
-    }
-    
-    // v1.2: Adaptive amounts row — switches to vertical at accessibility sizes
-    private var amountsRow: some View {
-        Group {
-            if isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 6) {
-                    amountColumn(title: "Spent", amount: spent)
-                    amountColumn(title: "Budget", amount: budget.totalAvailable)
-                    amountColumn(title: "Remaining", amount: remaining, color: remaining < 0 ? .expenseRed : .incomeGreen)
-                }
-            } else {
-                HStack {
-                    amountColumn(title: "Spent", amount: spent)
-                    Spacer()
-                    amountColumn(title: "Budget", amount: budget.totalAvailable)
-                    Spacer()
-                    amountColumn(title: "Remaining", amount: remaining, color: remaining < 0 ? .expenseRed : .incomeGreen)
-                }
-            }
-        }
-    }
-    
-    // v1.2: Added lineLimit + minimumScaleFactor to currency text
-    private func amountColumn(title: String, amount: Double, color: Color? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            Text(amount.formatted(.currency(code: "USD")))
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(color ?? Color.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-        }
-    }
-    
-    private var progressColor: Color {
-        if animatedProgress >= 1.0 {
-            return .expenseRed
-        } else if animatedProgress >= 0.8 {
-            return .orange
-        } else {
-            return .incomeGreen
-        }
-    }
-    
-    private var accessibilityLabel: String {
-        let percent = Int(progress * 100)
-        let typeLabel = budget.financeType == .business ? "Business" : "Personal"
-        return "\(budget.displayName), \(typeLabel): Spent \(spent.formatted(.currency(code: "USD"))) of \(budget.totalAvailable.formatted(.currency(code: "USD"))), \(percent) percent used. \(remaining >= 0 ? remaining.formatted(.currency(code: "USD")) + " remaining" : "Over budget by " + abs(remaining).formatted(.currency(code: "USD")))"
     }
 }
 

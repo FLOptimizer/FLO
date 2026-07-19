@@ -57,10 +57,10 @@ import SwiftData
 struct ReceiptMatchingQueueView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    
-    @Query private var receipts: [ReceiptData]
-    @Query private var transactions: [Transaction]
-    
+
+    @State private var receipts: [ReceiptData] = []
+    @State private var transactions: [Transaction] = []
+
     @StateObject private var matchingService = ReceiptMatchingService.shared
     
     // Animation states
@@ -102,13 +102,44 @@ struct ReceiptMatchingQueueView: View {
                     }
                 }
             }
-            .onAppear {
+            .task {
+                loadData()
                 matchingService.scanForMatches(receipts: receipts, transactions: transactions)
+            }
+            .onDisappear {
+                receipts = []
+                transactions = []
+            }
+            .onAppear {
                 withAnimation(FLOAnimation.standard) {
                     viewAppeared = true
                 }
                 AccessibilityAnnouncement.screenChanged("Match receipts")
             }
+        }
+    }
+
+    // MARK: - Data Loading
+
+    private func loadData() {
+        let calendar = Calendar.current
+        let year = calendar.component(.year, from: Date())
+        let startOfYear = calendar.date(from: DateComponents(year: year, month: 1, day: 1))!
+        let endOfYear = calendar.date(from: DateComponents(year: year + 1, month: 1, day: 1))!
+
+        let receiptDescriptor = FetchDescriptor<ReceiptData>(
+            predicate: #Predicate<ReceiptData> { $0.date >= startOfYear && $0.date < endOfYear }
+        )
+        let transactionDescriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= startOfYear && $0.date < endOfYear }
+        )
+        do {
+            receipts = try modelContext.fetch(receiptDescriptor)
+            transactions = try modelContext.fetch(transactionDescriptor)
+        } catch {
+            #if DEBUG
+            print("ReceiptMatchingQueueView loadData error: \(error)")
+            #endif
         }
     }
     
@@ -147,7 +178,7 @@ struct ReceiptMatchingQueueView: View {
                     .padding()
                     .background(Color.brandPrimary)
                     .foregroundStyle(.white)
-                    .cornerRadius(12)
+                    .cornerRadius(10)
             }
             .padding(.horizontal, 40)
             .padding(.top, 20)
@@ -635,14 +666,7 @@ struct TransactionMatchPreview: View {
                         .foregroundStyle(.secondary)
                     
                     if let category = match.transaction.category {
-                        Text("•")
-                            .foregroundStyle(.secondary)
-                            .accessibilityHidden(true)
-                        Text(category.name)
-                            .font(.caption)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(.secondary)
+                        CategoryTag(category: category.name, size: .compact)
                     }
                 }
             }

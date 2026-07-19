@@ -1,11 +1,24 @@
 //  ModelContainer_Shared.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 5.0 - Enabled iCloud Sync with CloudKit (Build 8)
+//  Version 5.8 - LinkedCard Schema (card-to-account linking)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 // Centralized ModelContainer factory with shared schema definition
 // Eliminates duplication and ensures consistency across app, previews, and tests
+//
+// CHANGES FROM v5.3:
+// ✅ Added Bill.self, BillPayment.self, Vendor.self for the Bills feature
+// ✅ Now 25 total models (up from 22)
+// ✅ FIXED: Recovery branch was missing RecurringPaymentLog.self (omitted in v5.3) —
+//    if migration ever fell into the recovery path it would have crashed on next launch
+//
+// CHANGES FROM v5.1:
+// ✅ Schema change: BusinessProfile now has relationships to Account, TaxSettings, Invoice
+// ✅ Account gains businessProfile optional relationship
+// ✅ TaxSettings gains businessProfile optional relationship
+// ✅ Invoice gains businessProfile optional relationship
+// ✅ NOTE: Fresh install migration — auto-creates BusinessProfile from existing data
 //
 // CHANGES FROM v4.8:
 // ✅ Enabled CloudKit sync: cloudKitDatabase: .automatic in shared() container
@@ -76,8 +89,7 @@ extension ModelContainer {
         let config = ModelConfiguration(url: storeURL, cloudKitDatabase: .automatic)
         
         do {
-            // Create ModelContainer with ALL 20 models
-            // Create ModelContainer with ALL 21 models
+            // Create ModelContainer with ALL 25 models
             return try ModelContainer(
                 for: Transaction.self,
                 Category.self,
@@ -100,6 +112,17 @@ extension ModelContainer {
                 Household.self,            // ✅ Added in v4.8 for household sharing
                 HouseholdMember.self,      // ✅ Added in v4.8 for household sharing
                 AssistantMessage.self,     // ✅ Added in v5.1 for My Assistant
+                RecurringPaymentLog.self,  // ✅ Added in v5.3 for payment tracking
+                Vendor.self,               // ✅ Added in v5.4 for Bills feature
+                Bill.self,                 // ✅ Added in v5.4 for Bills feature
+                BillPayment.self,          // ✅ Added in v5.4 for Bills feature
+                PartnerAllocation.self,    // ✅ Added in v5.5 for tax prep
+                DepreciableAsset.self,     // ✅ Added in v5.5 for depreciation tracking
+                TaxCarryforward.self,      // ✅ Added in v5.5 for carryforward register
+                EntityJurisdiction.self,   // ✅ Added in v5.6 for jurisdiction tracking
+                DebtAcceleratorPlan.self,  // ✅ Added in v5.7 for Debt Accelerator
+                ScheduledPayment.self,     // ✅ Added in v5.7 for Debt Accelerator
+                LinkedCard.self,           // ✅ Added in v5.8 for card-to-account linking
                 configurations: config
             )
         } catch {
@@ -128,7 +151,8 @@ extension ModelContainer {
             
             print("✅ Old store files deleted, creating fresh container...")
             
-            // Try again with fresh store
+            // Try again with fresh store — MUST stay in sync with the primary
+            // ModelContainer call above. Missing models here will crash on next launch.
             return try ModelContainer(
                 for: Transaction.self,
                 Category.self,
@@ -151,6 +175,17 @@ extension ModelContainer {
                 Household.self,            // ✅ Added in v4.8
                 HouseholdMember.self,      // ✅ Added in v4.8
                 AssistantMessage.self,     // ✅ Added in v5.1
+                RecurringPaymentLog.self,  // ✅ Added in v5.3 (was missing from recovery in v5.3 — fixed in v5.4)
+                Vendor.self,               // ✅ Added in v5.4 for Bills feature
+                Bill.self,                 // ✅ Added in v5.4 for Bills feature
+                BillPayment.self,          // ✅ Added in v5.4 for Bills feature
+                PartnerAllocation.self,    // ✅ Added in v5.5 for tax prep
+                DepreciableAsset.self,     // ✅ Added in v5.5 for depreciation tracking
+                TaxCarryforward.self,      // ✅ Added in v5.5 for carryforward register
+                EntityJurisdiction.self,   // ✅ Added in v5.6 for jurisdiction tracking
+                DebtAcceleratorPlan.self,  // ✅ Added in v5.7 for Debt Accelerator
+                ScheduledPayment.self,     // ✅ Added in v5.7 for Debt Accelerator
+                LinkedCard.self,           // ✅ Added in v5.8 for card-to-account linking
                 configurations: config
             )
         }
@@ -187,6 +222,17 @@ extension ModelContainer {
                 Household.self,            // ✅ Added in v4.8 for household sharing
                 HouseholdMember.self,      // ✅ Added in v4.8 for household sharing
                 AssistantMessage.self,     // ✅ Added in v5.1 for My Assistant
+                RecurringPaymentLog.self,  // ✅ Added in v5.3 for payment tracking
+                Vendor.self,               // ✅ Added in v5.4 for Bills feature
+                Bill.self,                 // ✅ Added in v5.4 for Bills feature
+                BillPayment.self,          // ✅ Added in v5.4 for Bills feature
+                PartnerAllocation.self,    // ✅ Added in v5.5 for tax prep
+                DepreciableAsset.self,     // ✅ Added in v5.5 for depreciation tracking
+                TaxCarryforward.self,      // ✅ Added in v5.5 for carryforward register
+                EntityJurisdiction.self,   // ✅ Added in v5.6 for jurisdiction tracking
+                DebtAcceleratorPlan.self,  // ✅ Added in v5.7 for Debt Accelerator
+                ScheduledPayment.self,     // ✅ Added in v5.7 for Debt Accelerator
+                LinkedCard.self,           // ✅ Added in v5.8 for card-to-account linking
                 configurations: config
             )
         } catch {

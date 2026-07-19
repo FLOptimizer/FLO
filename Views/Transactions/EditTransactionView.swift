@@ -1,8 +1,18 @@
 //  EditTransactionView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.1 - Penny-Up Currency Input
+//  Version 3.3 - Split Pay sibling display
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.3:
+//  ✅ Shows Split Pay info section when transaction has a splitGroupId
+//  ✅ Displays the linked sibling (amount, classification) loaded from SwiftData
+//  ✅ Delete confirmation now offers to delete the entire split pair when applicable
+//
+//  CHANGES v3.2:
+//  ✅ Added editable tip field for expense transactions, pre-populated from transaction.tipAmount
+//  ✅ Tip section auto-expands when transaction was created with a tip
+//  ✅ hasChanges check now includes tip + showTipField changes
 //
 //  CHANGES v3.1 - Penny-Up Currency Input:
 //  ✅ REPLACED: Old TextField + String amount with CurrencyInputField component
@@ -82,6 +92,8 @@ struct EditTransactionView: View {
     
     // Editable Properties
     @State private var amount: Double
+    @State private var tipAmount: Double
+    @State private var showTipField: Bool
     @State private var note: String
     @State private var isIncome: Bool
     @State private var selectedCategory: Category?
@@ -96,8 +108,12 @@ struct EditTransactionView: View {
     @State private var validationMessage = ""
     @State private var showingLargeAmountConfirmation = false
     @State private var showingDeleteConfirmation = false
+    @State private var showingAnchorWarning = false               // v4.8: Balance anchor warning
     @State private var isSaving = false
     @State private var formAppeared = false
+    // v3.3: Split Pay sibling state
+    @State private var splitSibling: Transaction?
+    @State private var deleteEntireSplitPair: Bool = false
     
     @FocusState private var focusedField: Field?
     
@@ -111,6 +127,8 @@ struct EditTransactionView: View {
         self.transaction = transaction
 
         _amount = State(initialValue: transaction.amount)
+        _tipAmount = State(initialValue: transaction.tipAmount ?? 0)
+        _showTipField = State(initialValue: (transaction.tipAmount ?? 0) > 0)
         _note = State(initialValue: transaction.note)
         _isIncome = State(initialValue: transaction.isIncome)
         _selectedCategory = State(initialValue: transaction.category)
@@ -130,7 +148,13 @@ struct EditTransactionView: View {
                 amountSection
                     .opacity(formAppeared ? 1 : 0.001)
                     .offset(y: formAppeared ? 0 : 10)
-                
+
+                if !isIncome {
+                    tipSection
+                        .opacity(formAppeared ? 1 : 0.001)
+                        .offset(y: formAppeared ? 0 : 10)
+                }
+
                 typeSection
                     .opacity(formAppeared ? 1 : 0.001)
                     .offset(y: formAppeared ? 0 : 10)
@@ -155,6 +179,12 @@ struct EditTransactionView: View {
                     .opacity(formAppeared ? 1 : 0.001)
                     .offset(y: formAppeared ? 0 : 10)
                 
+                if transaction.splitGroupId != nil {
+                    splitInfoSection
+                        .opacity(formAppeared ? 1 : 0.001)
+                        .offset(y: formAppeared ? 0 : 10)
+                }
+
                 metadataSection
                     .opacity(formAppeared ? 1 : 0.001)
                     .offset(y: formAppeared ? 0 : 10)
@@ -173,6 +203,10 @@ struct EditTransactionView: View {
             }
             .onChange(of: isIncome) { oldValue, newValue in
                 HapticService.play(.selection)
+                if newValue {
+                    showTipField = false
+                    tipAmount = 0
+                }
             }
             .onChange(of: financeType) { oldValue, newValue in
                 HapticService.play(.selection)
@@ -207,14 +241,42 @@ struct EditTransactionView: View {
                     .minimumScaleFactor(0.8)
             }
             .alert("Delete Transaction", isPresented: $showingDeleteConfirmation) {
-                Button("Cancel", role: .cancel) {}
-                Button("Delete", role: .destructive) {
-                    deleteTransaction()
+                Button("Cancel", role: .cancel) {
+                    deleteEntireSplitPair = false
+                }
+                if splitSibling != nil {
+                    Button("Delete This Half Only", role: .destructive) {
+                        deleteEntireSplitPair = false
+                        checkAnchorConflictAndDelete()
+                    }
+                    Button("Delete Both Halves", role: .destructive) {
+                        deleteEntireSplitPair = true
+                        checkAnchorConflictAndDelete()
+                    }
+                } else {
+                    Button("Delete", role: .destructive) {
+                        checkAnchorConflictAndDelete()
+                    }
                 }
             } message: {
-                Text("Are you sure you want to delete this transaction? This cannot be undone.")
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
+                if splitSibling != nil {
+                    Text("This transaction is part of a Split Pay pair. You can delete just this half or both halves. This cannot be undone.")
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.8)
+                } else {
+                    Text("Are you sure you want to delete this transaction? This cannot be undone.")
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+            // v4.8: Balance anchor conflict warning for single delete
+            .alert("Balance Checkpoint Warning", isPresented: $showingAnchorWarning) {
+                Button("Delete Anyway", role: .destructive) {
+                    deleteTransaction()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This transaction is dated before your last reconciliation checkpoint. Deleting it may cause balance drift.")
             }
             .onAppear {
                 withAnimation(FLOAnimation.standard) {
@@ -222,6 +284,8 @@ struct EditTransactionView: View {
                 }
                 // v2.8: Screen announcement
                 AccessibilityAnnouncement.screenChanged("Edit Transaction: \(transaction.displayName)")
+                // v3.3: Load split sibling if applicable
+                loadSplitSibling()
             }
         }
     }
@@ -284,7 +348,7 @@ struct EditTransactionView: View {
                     Image(systemName: "doc.text.fill")
                     Text("Receipt")
                 }
-                .foregroundStyle(Color.brandPrimaryText)
+                .foregroundStyle(Color.brandPrimary)
             }
         }
     }
@@ -296,6 +360,33 @@ struct EditTransactionView: View {
                 accessibilityLabelText: "Transaction amount",
                 showDoneButton: false
             )
+        }
+    }
+
+    private var tipSection: some View {
+        Section {
+            Toggle("Includes tip", isOn: $showTipField.animation(.easeInOut(duration: 0.2)))
+                .accessibilityHint("Enable to record a tip or gratuity included in this amount")
+                .onChange(of: showTipField) { _, isOn in
+                    if !isOn { tipAmount = 0 }
+                    HapticService.play(.light)
+                }
+
+            if showTipField {
+                CurrencyInputField(
+                    amount: $tipAmount,
+                    accessibilityLabelText: "Tip amount",
+                    showDoneButton: false
+                )
+            }
+        } header: {
+            Text("Tip")
+        } footer: {
+            if showTipField {
+                Text("Tip is already included in the amount above. Recording it separately helps with reporting and CSV export.")
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.8)
+            }
         }
     }
     
@@ -382,7 +473,7 @@ struct EditTransactionView: View {
                             HapticService.play(.light)
                         }
                         .font(.caption)
-                        .foregroundStyle(Color.brandPrimaryText)
+                        .foregroundStyle(Color.brandPrimary)
                         // v2.8: VoiceOver label
                         .accessibilityLabel("Clear account selection")
                         .accessibilityHint("Double tap to remove account assignment")
@@ -439,7 +530,7 @@ struct EditTransactionView: View {
     
     /// Accounts sorted: matching financeType first, then primary, then others
     private var sortedAccounts: [Account] {
-        let active = accounts.filter { $0.isActive }
+        let active = accounts.filter { $0.isActive && $0.includeInTransactions }
         
         return active.sorted { (a: Account, b: Account) -> Bool in
             // First: match financeType
@@ -502,6 +593,59 @@ struct EditTransactionView: View {
         }
     }
     
+    // v3.3: Split Pay sibling info
+    @ViewBuilder
+    private var splitInfoSection: some View {
+        Section {
+            HStack(spacing: 12) {
+                Image(systemName: "rectangle.split.2x1.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color.brandPrimary)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Part of a Split Pay pair")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    if let sibling = splitSibling {
+                        Text("Linked: \(sibling.financeType == .business ? "Business" : "Personal") • \(sibling.amount.formatted(.currency(code: "USD")))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Linked transaction not found")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+            }
+            .accessibilityElement(children: .combine)
+        } header: {
+            Text("Split Pay")
+        } footer: {
+            Text("Both halves share the same Split Group ID and can be exported as a pair.")
+                .lineLimit(3)
+                .minimumScaleFactor(0.8)
+        }
+    }
+
+    private func loadSplitSibling() {
+        guard let groupId = transaction.splitGroupId else {
+            splitSibling = nil
+            return
+        }
+        let txId = transaction.id
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate { $0.splitGroupId == groupId && $0.id != txId }
+        )
+        do {
+            let results = try context.fetch(descriptor)
+            splitSibling = results.first
+        } catch {
+            print("Failed to fetch split sibling: \(error)")
+            splitSibling = nil
+        }
+    }
+
     private var metadataSection: some View {
         Section("Information") {
             LabeledContent("Created", value: transaction.createdAt, format: .dateTime)
@@ -645,6 +789,7 @@ struct EditTransactionView: View {
     
     private var hasChanges: Bool {
         return amount != transaction.amount ||
+               resolvedTipAmount != transaction.tipAmount ||
                note != transaction.note ||
                isIncome != transaction.isIncome ||
                selectedCategory?.id != transaction.category?.id ||
@@ -652,6 +797,12 @@ struct EditTransactionView: View {
                date != transaction.date ||
                merchantName != transaction.merchantName ||
                financeType != transaction.financeType
+    }
+
+    /// Tip value to persist: nil unless the toggle is on, the section is visible (expense), and value > 0.
+    private var resolvedTipAmount: Double? {
+        guard !isIncome, showTipField, tipAmount > 0 else { return nil }
+        return tipAmount
     }
     
     private func validateAndSave() {
@@ -704,6 +855,7 @@ struct EditTransactionView: View {
         
         // STEP 2: Apply changes to transaction
         transaction.amount = amt
+        transaction.tipAmount = resolvedTipAmount
         transaction.note = note
         transaction.isIncome = isIncome
         transaction.category = selectedCategory
@@ -746,9 +898,26 @@ struct EditTransactionView: View {
         }
     }
     
+    // v4.8: Check for balance anchor conflict before deleting
+    private func checkAnchorConflictAndDelete() {
+        guard let account = transaction.account else {
+            deleteTransaction()
+            return
+        }
+        if let anchors = try? context.fetch(FetchDescriptor<BalanceAnchor>()) {
+            let accountAnchors = anchors.filter { $0.account?.id == account.id }
+            if let latestAnchor = accountAnchors.max(by: { $0.anchorDate < $1.anchorDate }),
+               transaction.date < latestAnchor.anchorDate {
+                showingAnchorWarning = true
+                return
+            }
+        }
+        deleteTransaction()
+    }
+
     private func deleteTransaction() {
         let transactionName = transaction.displayName
-        
+
         // Revert account balance before deleting
         if let account = transaction.account {
             if transaction.isIncome {
@@ -760,8 +929,23 @@ struct EditTransactionView: View {
             account.touch()  // v2.7: Restored touch() call
             print("📊 Reverted balance on \(account.name) before delete: \(account.formattedBalance)")
         }
-        
+
         context.delete(transaction)
+
+        // v3.3: Optionally delete the split sibling too
+        if deleteEntireSplitPair, let sibling = splitSibling {
+            if let account = sibling.account {
+                if sibling.isIncome {
+                    account.currentBalance -= sibling.amount
+                } else {
+                    account.currentBalance += sibling.amount
+                }
+                account.lastBalanceUpdate = Date()
+                account.touch()
+            }
+            context.delete(sibling)
+            print("📊 Also deleted split sibling")
+        }
         
         do {
             try context.save()

@@ -1232,7 +1232,8 @@ class MileageTrackingService: NSObject, ObservableObject {
         purpose: TripPurpose,
         notes: String?,
         vehicleName: String? = nil,
-        clientName: String? = nil
+        clientName: String? = nil,
+        businessProfile: BusinessProfile? = nil
     ) async throws {
         guard let context = modelContext else {
             logger.error("Cannot save manual trip: no ModelContext")
@@ -1260,9 +1261,10 @@ class MileageTrackingService: NSObject, ObservableObject {
             routePoints: nil
         )
         
+        trip.businessProfile = businessProfile
         context.insert(trip)
         try context.save()
-        
+
         logger.info("Manual trip saved: \(String(format: "%.2f", distanceMiles)) miles, purpose: \(purpose.displayName)")
     }
     

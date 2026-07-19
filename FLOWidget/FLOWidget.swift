@@ -508,12 +508,16 @@ struct FLOWidgetEntryView: View {
         switch family {
         case .systemSmall:
             SmallWidgetView(entry: entry)
+                .widgetURL(URL(string: "flo://dashboard"))
         case .systemMedium:
             MediumWidgetView(entry: entry)
+                .widgetURL(URL(string: "flo://transactions"))
         case .systemLarge:
             LargeWidgetView(entry: entry)
+                .widgetURL(URL(string: "flo://dashboard"))
         default:
             SmallWidgetView(entry: entry)
+                .widgetURL(URL(string: "flo://dashboard"))
         }
     }
 }

@@ -35,6 +35,7 @@ final class BudgetNotificationService {
 
     private let warningCategoryIdentifier = "BUDGET_ALERT"
     private let exceededCategoryIdentifier = "BUDGET_EXCEEDED"
+    private let recoveredCategoryIdentifier = "BUDGET_RECOVERED"
 
     // MARK: - Category Registration
 
@@ -67,7 +68,14 @@ final class BudgetNotificationService {
             options: []
         )
 
-        return [warningCategory, exceededCategory]
+        let recoveredCategory = UNNotificationCategory(
+            identifier: recoveredCategoryIdentifier,
+            actions: [viewAction, dismissAction],
+            intentIdentifiers: [],
+            options: []
+        )
+
+        return [warningCategory, exceededCategory, recoveredCategory]
     }
 
     // MARK: - Threshold Checking
@@ -158,6 +166,25 @@ final class BudgetNotificationService {
 
                 if alreadyNotified { continue }
 
+                // Check for recovery: was exceeded, now back under budget
+                let exceededKey = "budget.exceeded.\(budget.id.uuidString).\(monthKey)"
+                let recoveredKey = "budget.recovered.\(budget.id.uuidString).\(monthKey)"
+                let wasExceeded = UserDefaults.standard.bool(forKey: exceededKey)
+                let alreadyRecovered = UserDefaults.standard.bool(forKey: recoveredKey)
+
+                if wasExceeded && !isOverBudget && !alreadyRecovered {
+                    // Budget recovered — back under budget
+                    await sendBudgetRecoveredNotification(
+                        budgetId: budget.id,
+                        categoryName: categoryName,
+                        spent: spent,
+                        budgeted: budget.totalAvailable
+                    )
+                    UserDefaults.standard.set(true, forKey: recoveredKey)
+                    UserDefaults.standard.set(false, forKey: exceededKey)
+                    notificationCount += 1
+                }
+
                 if isOverBudget {
                     // Budget exceeded notification
                     await sendBudgetExceededNotification(
@@ -167,6 +194,7 @@ final class BudgetNotificationService {
                         budgeted: budget.totalAvailable
                     )
                     UserDefaults.standard.set(true, forKey: notifiedKey)
+                    UserDefaults.standard.set(true, forKey: exceededKey)
                     notificationCount += 1
                 } else if percentUsed >= effectiveThreshold {
                     // Budget warning notification
@@ -283,6 +311,44 @@ final class BudgetNotificationService {
         }
     }
 
+    /// Send a budget recovered notification (was over budget, now back under)
+    private func sendBudgetRecoveredNotification(
+        budgetId: UUID,
+        categoryName: String,
+        spent: Double,
+        budgeted: Double
+    ) async {
+        let content = UNMutableNotificationContent()
+        content.title = "Budget Back on Track"
+        content.body = "Your \(categoryName) budget is back under budget (\(spent.asCurrency) of \(budgeted.asCurrency))"
+        content.sound = .default
+        content.categoryIdentifier = recoveredCategoryIdentifier
+        content.userInfo = [
+            "type": "budget_recovered",
+            "budgetId": budgetId.uuidString,
+            "categoryName": categoryName
+        ]
+
+        let identifier = "budget_recovered_\(budgetId.uuidString)_\(Self.monthKey(for: Date()))"
+
+        let request = UNNotificationRequest(
+            identifier: identifier,
+            content: content,
+            trigger: nil
+        )
+
+        do {
+            try await UNUserNotificationCenter.current().add(request)
+            #if DEBUG
+            print("📊 Budget RECOVERED: \(categoryName) back on track")
+            #endif
+        } catch {
+            #if DEBUG
+            print("❌ Budget recovered notification error: \(error)")
+            #endif
+        }
+    }
+
     // MARK: - Notification Action Handling
 
     /// Handle notification tap actions
@@ -338,8 +404,10 @@ final class BudgetNotificationService {
     func resetMonthlyTracking(for budgetIds: [UUID]) {
         let currentMonthKey = Self.monthKey(for: Date())
         for budgetId in budgetIds {
-            let key = "budget.notified.\(budgetId.uuidString).\(currentMonthKey)"
-            UserDefaults.standard.removeObject(forKey: key)
+            let idStr = budgetId.uuidString
+            UserDefaults.standard.removeObject(forKey: "budget.notified.\(idStr).\(currentMonthKey)")
+            UserDefaults.standard.removeObject(forKey: "budget.exceeded.\(idStr).\(currentMonthKey)")
+            UserDefaults.standard.removeObject(forKey: "budget.recovered.\(idStr).\(currentMonthKey)")
         }
 
         #if DEBUG

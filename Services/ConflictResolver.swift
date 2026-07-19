@@ -668,7 +668,7 @@ struct ConflictResolutionView: View {
                     } label: {
                         Text("Keep iCloud Version")
                             .font(.headline)
-                            .foregroundStyle(Color.brandPrimaryText)
+                            .foregroundStyle(Color.brandPrimary)
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.brandPrimary.opacity(0.1))
@@ -745,7 +745,7 @@ private struct ComparisonCard: View {
             
             if isSelected {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(Color.brandPrimaryText)
+                    .foregroundStyle(Color.brandPrimary)
                     .accessibilityHidden(true)
             }
         }
@@ -856,7 +856,7 @@ struct ConflictSettingsView: View {
                             
                             if preferredStrategy == strategy {
                                 Image(systemName: "checkmark")
-                                    .foregroundStyle(Color.brandPrimaryText)
+                                    .foregroundStyle(Color.brandPrimary)
                                     .accessibilityHidden(true)
                             }
                         }

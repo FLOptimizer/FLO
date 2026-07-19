@@ -12,10 +12,16 @@
 //  ✅ Transactions - merchant, amount, date, category
 //  ✅ Invoices - client name, invoice number, amount, status
 //  ✅ Clients - name, email, phone, company info
+//  ✅ Accounts - name, institution, type, balance
+//  ✅ Budgets - category, amount, month
+//  ✅ Mileage Trips - start/end address, distance, date
 //
 //  Deep link format: flo://transactions/detail?id=xxx
 //                    flo://invoices/detail?id=xxx
-//                    flo://more/clients/detail?id=xxx
+//                    flo://clients/detail?id=xxx
+//                    flo://accounts/detail?id=xxx
+//                    flo://budgets/detail?id=xxx
+//                    flo://mileage/detail?id=xxx
 
 import CoreSpotlight
 #if canImport(MobileCoreServices)
@@ -41,15 +47,21 @@ final class SpotlightIndexingService {
         static let transactions = "com.finchandpoppy.flo.transactions"
         static let invoices = "com.finchandpoppy.flo.invoices"
         static let clients = "com.finchandpoppy.flo.clients"
+        static let accounts = "com.finchandpoppy.flo.accounts"
+        static let budgets = "com.finchandpoppy.flo.budgets"
+        static let mileage = "com.finchandpoppy.flo.mileage"
     }
-    
+
     // MARK: - Unique ID Prefixes
-    
+
     /// Prefix for searchable item unique identifiers
     private enum Prefix {
         static let transaction = "flo.transaction."
         static let invoice = "flo.invoice."
         static let client = "flo.client."
+        static let account = "flo.account."
+        static let budget = "flo.budget."
+        static let mileage = "flo.mileage."
     }
     
     private let searchableIndex = CSSearchableIndex.default()
@@ -82,34 +94,55 @@ final class SpotlightIndexingService {
                 let transactions = try modelContext.fetch(FetchDescriptor<Transaction>())
                 let invoices = try modelContext.fetch(FetchDescriptor<Invoice>())
                 let clients = try modelContext.fetch(FetchDescriptor<Client>())
-                
+                let accounts = try modelContext.fetch(FetchDescriptor<Account>())
+                let budgets = try modelContext.fetch(FetchDescriptor<Budget>())
+                let trips = try modelContext.fetch(FetchDescriptor<MileageTrip>())
+
                 // Build searchable items
                 var items: [CSSearchableItem] = []
-                items.reserveCapacity(transactions.count + invoices.count + clients.count)
-                
+                items.reserveCapacity(transactions.count + invoices.count + clients.count + accounts.count + budgets.count + trips.count)
+
                 for transaction in transactions {
                     if let item = makeSearchableItem(for: transaction) {
                         items.append(item)
                     }
                 }
-                
+
                 for invoice in invoices {
                     if let item = makeSearchableItem(for: invoice) {
                         items.append(item)
                     }
                 }
-                
+
                 for client in clients {
                     if let item = makeSearchableItem(for: client) {
                         items.append(item)
                     }
                 }
-                
+
+                for account in accounts {
+                    if let item = makeSearchableItem(for: account) {
+                        items.append(item)
+                    }
+                }
+
+                for budget in budgets {
+                    if let item = makeSearchableItem(for: budget) {
+                        items.append(item)
+                    }
+                }
+
+                for trip in trips {
+                    if let item = makeSearchableItem(for: trip) {
+                        items.append(item)
+                    }
+                }
+
                 // Delete old index and reindex
                 try await searchableIndex.deleteAllSearchableItems()
                 try await searchableIndex.indexSearchableItems(items)
-                
-                print("✅ Spotlight: indexed \(transactions.count) transactions, \(invoices.count) invoices, \(clients.count) clients")
+
+                print("✅ Spotlight: indexed \(transactions.count) transactions, \(invoices.count) invoices, \(clients.count) clients, \(accounts.count) accounts, \(budgets.count) budgets, \(trips.count) trips")
                 
             } catch {
                 print("⚠️ Spotlight reindex failed: \(error.localizedDescription)")
@@ -222,10 +255,24 @@ final class SpotlightIndexingService {
         
         if uniqueIdentifier.hasPrefix(Prefix.client) {
             let idString = String(uniqueIdentifier.dropFirst(Prefix.client.count))
-            // Navigate to More tab > Clients > Client Detail
-            return URL(string: "flo://more/clients/detail?id=\(idString)")
+            return URL(string: "flo://clients/detail?id=\(idString)")
         }
-        
+
+        if uniqueIdentifier.hasPrefix(Prefix.account) {
+            let idString = String(uniqueIdentifier.dropFirst(Prefix.account.count))
+            return URL(string: "flo://accounts/detail?id=\(idString)")
+        }
+
+        if uniqueIdentifier.hasPrefix(Prefix.budget) {
+            let idString = String(uniqueIdentifier.dropFirst(Prefix.budget.count))
+            return URL(string: "flo://budgets/detail?id=\(idString)")
+        }
+
+        if uniqueIdentifier.hasPrefix(Prefix.mileage) {
+            let idString = String(uniqueIdentifier.dropFirst(Prefix.mileage.count))
+            return URL(string: "flo://mileage/detail?id=\(idString)")
+        }
+
         return nil
     }
     
@@ -390,7 +437,137 @@ final class SpotlightIndexingService {
         
         // Clients don't expire from Spotlight
         item.expirationDate = nil
-        
+
         return item
+    }
+
+    /// Build a CSSearchableItem for an Account.
+    private func makeSearchableItem(for account: Account) -> CSSearchableItem? {
+        let attributes = CSSearchableItemAttributeSet(contentType: .content)
+
+        attributes.title = account.name
+        let balanceString = currencyFormatter.string(from: NSNumber(value: account.currentBalance)) ?? String(format: "$%.2f", account.currentBalance)
+
+        var descParts = [account.accountType.displayName, balanceString]
+        if let institution = account.institutionName, !institution.isEmpty {
+            descParts.insert(institution, at: 0)
+        }
+        attributes.contentDescription = descParts.joined(separator: " · ")
+
+        var keywords = [account.name, account.accountType.displayName]
+        if let institution = account.institutionName, !institution.isEmpty {
+            keywords.append(institution)
+        }
+        attributes.keywords = keywords
+
+        let identifier = Prefix.account + account.id.uuidString
+        let item = CSSearchableItem(
+            uniqueIdentifier: identifier,
+            domainIdentifier: Domain.accounts,
+            attributeSet: attributes
+        )
+        item.expirationDate = nil
+        return item
+    }
+
+    /// Build a CSSearchableItem for a Budget.
+    private func makeSearchableItem(for budget: Budget) -> CSSearchableItem? {
+        let attributes = CSSearchableItemAttributeSet(contentType: .content)
+
+        let categoryName = budget.category?.name ?? "General"
+        let monthString = DateFormatter.monthYear.string(from: budget.month)
+        attributes.title = "\(categoryName) Budget — \(monthString)"
+
+        let amountString = currencyFormatter.string(from: NSNumber(value: budget.totalAvailable)) ?? String(format: "$%.2f", budget.totalAvailable)
+        attributes.contentDescription = "\(amountString) budgeted"
+
+        attributes.keywords = [categoryName, "budget", monthString]
+
+        let identifier = Prefix.budget + budget.id.uuidString
+        let item = CSSearchableItem(
+            uniqueIdentifier: identifier,
+            domainIdentifier: Domain.budgets,
+            attributeSet: attributes
+        )
+        // Budgets expire 1 year after their month
+        item.expirationDate = Calendar.current.date(byAdding: .year, value: 1, to: budget.month)
+        return item
+    }
+
+    /// Build a CSSearchableItem for a MileageTrip.
+    private func makeSearchableItem(for trip: MileageTrip) -> CSSearchableItem? {
+        let attributes = CSSearchableItemAttributeSet(contentType: .content)
+
+        let start = trip.startAddress ?? "Start"
+        let end = trip.endAddress ?? "End"
+        attributes.title = "\(start) → \(end)"
+
+        let dateString = dateFormatter.string(from: trip.startDate)
+        let distanceString = String(format: "%.1f mi", trip.distanceMiles)
+        attributes.contentDescription = "\(distanceString) · \(dateString)"
+
+        var keywords = ["mileage", "trip", distanceString]
+        if let startAddr = trip.startAddress { keywords.append(startAddr) }
+        if let endAddr = trip.endAddress { keywords.append(endAddr) }
+        attributes.keywords = keywords
+
+        let identifier = Prefix.mileage + trip.id.uuidString
+        let item = CSSearchableItem(
+            uniqueIdentifier: identifier,
+            domainIdentifier: Domain.mileage,
+            attributeSet: attributes
+        )
+        item.expirationDate = Calendar.current.date(byAdding: .year, value: 2, to: trip.startDate)
+        return item
+    }
+
+    // MARK: - Individual Indexing (New Entity Types)
+
+    func indexAccount(_ account: Account) {
+        guard let item = makeSearchableItem(for: account) else { return }
+        Task {
+            do { try await searchableIndex.indexSearchableItems([item]) }
+            catch { print("⚠️ Spotlight: failed to index account \(account.id): \(error.localizedDescription)") }
+        }
+    }
+
+    func indexBudget(_ budget: Budget) {
+        guard let item = makeSearchableItem(for: budget) else { return }
+        Task {
+            do { try await searchableIndex.indexSearchableItems([item]) }
+            catch { print("⚠️ Spotlight: failed to index budget \(budget.id): \(error.localizedDescription)") }
+        }
+    }
+
+    func indexMileageTrip(_ trip: MileageTrip) {
+        guard let item = makeSearchableItem(for: trip) else { return }
+        Task {
+            do { try await searchableIndex.indexSearchableItems([item]) }
+            catch { print("⚠️ Spotlight: failed to index mileage trip \(trip.id): \(error.localizedDescription)") }
+        }
+    }
+
+    func removeAccount(id: UUID) {
+        let identifier = Prefix.account + id.uuidString
+        Task {
+            do { try await searchableIndex.deleteSearchableItems(withIdentifiers: [identifier]) }
+            catch { print("⚠️ Spotlight: failed to remove account \(id): \(error.localizedDescription)") }
+        }
+    }
+
+    func removeBudget(id: UUID) {
+        let identifier = Prefix.budget + id.uuidString
+        Task {
+            do { try await searchableIndex.deleteSearchableItems(withIdentifiers: [identifier]) }
+            catch { print("⚠️ Spotlight: failed to remove budget \(id): \(error.localizedDescription)") }
+        }
+    }
+
+    func removeMileageTrip(id: UUID) {
+        let identifier = Prefix.mileage + id.uuidString
+        Task {
+            do { try await searchableIndex.deleteSearchableItems(withIdentifiers: [identifier]) }
+            catch { print("⚠️ Spotlight: failed to remove mileage trip \(id): \(error.localizedDescription)") }
+        }
     }
 }

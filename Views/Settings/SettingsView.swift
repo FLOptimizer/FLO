@@ -1,8 +1,31 @@
 //  SettingsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 5.0 - Build 10: Alphabetized sections
+//  Version 5.2 - Build 10 launch: ALL detail rows portrait-safe (sheet routing)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v5.2 - Portrait detail routing (completes the v5.1 fix):
+//  ✅ FIXED: settingsDetailRow now branches on horizontalSizeClass. Compact width
+//           (portrait iPhone) presents the destination as a sheet via the shared
+//           DetailView router — the landscape NavigationSplitView detail column
+//           that consumes `selectedDetail` doesn't exist in portrait, so the old
+//           routing silently failed for EVERY detail row (Tools, Data, Support,
+//           Categories, About, EULA, Privacy, Tax Disclaimer, etc.). Regular width
+//           (landscape/iPad/macOS) keeps the split-view detail routing unchanged.
+//  ✅ RESULT: Tax & Legal Disclaimer (+ its triple-tap DebugMenu easter egg) and
+//           all other Settings sub-screens are now reachable in portrait.
+//
+//  CHANGES v5.1 - Subscription portrait fix:
+//  ✅ CHANGED: Subscription row now presents SubscriptionView as a sheet via
+//           @State showingSubscription, instead of using settingsDetailRow's
+//           NavigationService.shared.selectedDetail routing. The detail-routing
+//           path is only consumed by ContentView's landscape NavigationSplitView
+//           (DetailView), so taps silently failed in portrait iPhone. Sheets
+//           are layout-agnostic and work in both modes.
+//  ✅ NOTE: Other detail rows in this view (Privacy Policy, EULA, About,
+//           Categories, Backup, etc.) still use the broken routing pattern.
+//           They appear to work in landscape but silently fail in portrait.
+//           A broader portrait nav refactor is deferred to a future build.
 //
 //  CHANGES v5.0 - Build 10:
 //  ✅ REORDERED: All sections alphabetized (About, Categories, Data, Features, Preferences, Premium, Profile, Security, Support)
@@ -92,6 +115,20 @@ struct SettingsView: View {
     @State private var showingSignOutAlert = false
     @State private var showingDeleteAccountAlert = false
     @State private var viewAppeared = false
+
+    // v5.2 — Portrait detail routing. On compact width (portrait iPhone) the
+    // landscape NavigationSplitView detail column doesn't exist, so the
+    // `selectedDetail` routing silently no-ops. There we present the destination
+    // as a sheet instead (layout-agnostic, like the Subscription row below).
+    // Regular width (landscape/iPad/macOS) keeps the split-view detail routing.
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var detailSheet: NavigationDestination?
+
+    // v3.x — Subscription presented as a sheet so it works in BOTH portrait
+    // and landscape. Portrait iPhone has no destination router for
+    // NavigationService.shared.selectedDetail, so the original detail-row
+    // routing silently failed there. Sheets are layout-agnostic.
+    @State private var showingSubscription = false
 
     @ObservedObject private var appleAuth = AppleAuthService.shared
     @StateObject private var signInCoordinator = AppleSignInCoordinator()
@@ -302,14 +339,33 @@ struct SettingsView: View {
                 .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
 
                 // 3. Premium Features — subscription status
+                // Sheet-based presentation (instead of settingsDetailRow's detail
+                // routing) so the paywall opens correctly in portrait iPhone too.
                 Section {
-                    settingsDetailRow(
-                        icon: "star.fill",
-                        title: "Subscription",
-                        trailing: SubscriptionManager.shared.currentTier.displayName,
-                        destination: .settingsSubscription
-                    )
+                    Button {
+                        HapticService.play(.light)
+                        showingSubscription = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "star.fill")
+                                .foregroundStyle(Color.brandPrimary)
+                                .accessibilityHidden(true)
+                            Text("Subscription")
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                            Spacer()
+                            Text(SubscriptionManager.shared.currentTier.displayName)
+                                .foregroundColor(.secondary)
+                                .accessibilityHidden(true)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(.secondary.opacity(0.5))
+                        }
+                    }
+                    .buttonStyle(.plain)
                     .accessibilityLabel("Subscription, current plan: \(SubscriptionManager.shared.currentTier.displayName)")
+                    .accessibilityHint("Opens subscription plans")
                 } header: {
                     Text("Premium Features")
                 }
@@ -356,6 +412,32 @@ struct SettingsView: View {
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.25), value: viewAppeared)
+
+                // 5b. Tools — config & one-time operations only. The user-facing
+                // features that used to live here (Debt Payoff Calculator, Cash Flow
+                // Forecast, Recurring Transactions, Household Sharing) moved to the
+                // More tab / Debt Accelerator in the v5.2 IA cleanup — Settings is for
+                // configuration, not feature access.
+                Section {
+                    settingsDetailRow(
+                        icon: "doc.text.fill",
+                        title: "Invoice Settings",
+                        subtitle: "Branding, numbering & defaults",
+                        destination: .invoiceSettings
+                    )
+
+                    settingsDetailRow(
+                        icon: "doc.badge.arrow.up",
+                        title: "Import Bank Statement",
+                        subtitle: "CSV bank statement import",
+                        destination: .csvImport
+                    )
+                } header: {
+                    Text("Tools")
+                }
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(y: viewAppeared ? 0 : 10)
+                .animation(FLOAnimation.standard.delay(0.30), value: viewAppeared)
 
                 // 6. Data — infrequent but important
                 Section {
@@ -416,6 +498,24 @@ struct SettingsView: View {
                         title: "End User License Agreement",
                         destination: .settingsEULA
                     )
+
+                    Button {
+                        HapticService.play(.medium)
+                        UserDefaults.standard.set(false, forKey: "hasCompletedWalkthrough")
+                    } label: {
+                        Label {
+                            Text("Replay Walkthrough")
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .foregroundStyle(.primary)
+                        } icon: {
+                            Image(systemName: "play.circle.fill")
+                                .foregroundStyle(Color.brandPrimary)
+                                .frame(width: 28, height: 28)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .buttonStyle(.plain)
 
                     settingsDetailRow(
                         icon: "questionmark.circle.fill",
@@ -520,6 +620,16 @@ struct SettingsView: View {
             .sheet(isPresented: $showingExportOptions) {
                 ExportOptionsView()
             }
+            .sheet(isPresented: $showingSubscription) {
+                SubscriptionView()
+            }
+            // v5.2 — Portrait detail destinations (Tools, Data, Support, About,
+            // Categories, etc.) presented here as sheets. DetailView is the same
+            // router the landscape detail column uses, so each destination view
+            // supplies its own navigation chrome.
+            .sheet(item: $detailSheet) { destination in
+                DetailView(destination: destination, selectedTab: .settings)
+            }
             .alert("Sign Out?", isPresented: $showingSignOutAlert) {
                 Button("Cancel", role: .cancel) {
                     HapticService.play(.light)
@@ -575,7 +685,13 @@ struct SettingsView: View {
         destination: NavigationDestination
     ) -> some View {
         Button {
-            NavigationService.shared.selectedDetail = destination
+            if horizontalSizeClass == .compact {
+                // Portrait iPhone: no detail column to consume selectedDetail —
+                // present the destination as a sheet instead.
+                detailSheet = destination
+            } else {
+                NavigationService.shared.selectedDetail = destination
+            }
         } label: {
             HStack {
                 Image(systemName: icon)

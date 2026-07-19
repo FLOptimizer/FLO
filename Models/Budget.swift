@@ -1,10 +1,17 @@
 //  Budget.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.4 - Predictive Budgeting Support
+//  Version 2.5 - Wrap-Up Controls: Mark as Paid + Carryover Override
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Budget model with envelope, simple, zero-based, and percentage-based budgeting
+//
+//  CHANGES FROM v2.4:
+//  ✅ Added isPaidOverride / paidOverrideDate for manual paid status control
+//  ✅ Added allowCarryOverOverride for persistent per-budget carryover preference
+//  ✅ Added monthlyCarryOverSkip for one-time wrap-up carryover override
+//  ✅ Added effectiveShouldCarryOver computed property (respects overrides)
+//  ✅ Added isPaid(spent:) method (auto-detect + manual override)
 //
 //  CHANGES FROM v2.3:
 //  ✅ Added suggestedAmount property for ML-predicted budget amounts
@@ -61,6 +68,10 @@ final class Budget {
     @Relationship(deleteRule: .nullify)
     var account: Account?
 
+    /// Optional business profile for per-business budget tracking (NEW in v4.1)
+    @Relationship(deleteRule: .nullify)
+    var businessProfile: BusinessProfile?
+
     /// Transactions assigned to this budget (inverse of Transaction.budget)
     @Relationship(deleteRule: .nullify, inverse: \Transaction.budget)
     var transactions: [Transaction]?
@@ -72,6 +83,22 @@ final class Budget {
 
     /// Whether the user manually overrode the ML-suggested amount
     var isUserOverridden: Bool = false
+
+    // MARK: - Paid Status (NEW in v2.5)
+
+    /// Manual override for paid status (nil = auto-detect from transactions, true/false = manual)
+    var isPaidOverride: Bool?
+
+    /// When the user manually marked this budget as paid
+    var paidOverrideDate: Date?
+
+    // MARK: - Carryover Control (NEW in v2.5)
+
+    /// Persistent per-budget carryover preference (nil = use budgetType default)
+    var allowCarryOverOverride: Bool?
+
+    /// One-time wrap-up override for this specific month (nil = use persistent setting)
+    var monthlyCarryOverSkip: Bool?
 
     // MARK: - Metadata
 
@@ -89,6 +116,7 @@ final class Budget {
         carryOver: Double = 0.0,
         category: Category? = nil,
         account: Account? = nil,
+        businessProfile: BusinessProfile? = nil,
         budgetType: BudgetType = .envelope,
         financeType: Transaction.FinanceType = .personal
     ) {
@@ -102,6 +130,7 @@ final class Budget {
         self.carryOver = carryOver
         self.category = category
         self.account = account
+        self.businessProfile = businessProfile
         self.budgetType = budgetType
         self.financeType = financeType
         self.createdAt = Date()
@@ -120,9 +149,18 @@ final class Budget {
         }
     }
     
-    /// Whether remaining funds should roll over to the next month.
+    /// Whether remaining funds should roll over to the next month (respects persistent override).
     var shouldCarryOver: Bool {
-        budgetType == .envelope
+        allowCarryOverOverride ?? (budgetType == .envelope)
+    }
+
+    /// Final carryover decision factoring in one-time wrap-up skip.
+    /// Use this when deciding whether to actually carry over at month boundary.
+    var effectiveShouldCarryOver: Bool {
+        if let skip = monthlyCarryOverSkip {
+            return !skip
+        }
+        return shouldCarryOver
     }
     
     /// Primary display name shown throughout the app.
@@ -245,6 +283,22 @@ final class Budget {
         touch()
     }
     
+    /// Whether this budget is considered "paid" for the month.
+    /// Checks manual override first, then auto-detects from spent amount.
+    func isPaid(spent: Double) -> Bool {
+        if let override = isPaidOverride {
+            return override
+        }
+        return spent >= planned && planned > 0
+    }
+
+    /// Manually mark this budget as paid or unpaid. Pass nil to reset to auto-detect.
+    func setPaidOverride(_ paid: Bool?) {
+        isPaidOverride = paid
+        paidOverrideDate = paid != nil ? Date() : nil
+        touch()
+    }
+
     /// Calculate remaining amount based on spent
     func remaining(spent: Double) -> Double {
         totalAvailable - spent

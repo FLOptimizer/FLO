@@ -20,6 +20,7 @@
 
 import SwiftUI
 import Charts
+import FLODesignSystem
 
 struct CashFlowForecastCard: View {
     @ObservedObject private var forecastService = CashFlowForecastService.shared

@@ -1,8 +1,14 @@
 //  RecurringListView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.6 - Accessibility Audit Fixes
+//  Version 2.7 - Mark as Sent + Suggested Date
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.7 - Mark as Sent + Suggested Date:
+//  ✅ ADDED: "Mark as Sent" swipe action on active recurring rows
+//  ✅ ADDED: MarkRecurringSentView sheet presentation
+//  ✅ ADDED: Suggested date display in RecurringRow when payment history exists
+//  ✅ ADDED: "Sent" badge when already marked for current month
 //
 //  CHANGES v2.6 - Accessibility Audit:
 //  ✅ FIXED: Active rows missing .isButton trait for onTapGesture
@@ -44,19 +50,29 @@ import SwiftData
 struct RecurringListView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \RecurringTransaction.startDate, order: .reverse) private var recurring: [RecurringTransaction]
-    
+    @Query(
+        filter: #Predicate<BusinessProfile> { $0.isActive },
+        sort: \BusinessProfile.sortOrder
+    )
+    private var businessProfiles: [BusinessProfile]
+
+    @State private var selectedBusinessProfile: BusinessProfile?
     @State private var showingAddRecurring = false
     @State private var recurringToEdit: RecurringTransaction?
+    @State private var recurringToMarkSent: RecurringTransaction?  // v2.7
     @State private var viewAppeared = false
     
     // Haptic Generators
                     
     var body: some View {
         NavigationStack {
-            List {
-                DetectedPatternsSection()  // v2.5: Auto-detected recurring patterns
-                activeSection
-                pausedSection
+            VStack(spacing: 0) {
+                recurringBusinessFilter
+                List {
+                    DetectedPatternsSection()  // v2.5: Auto-detected recurring patterns
+                    activeSection
+                    pausedSection
+                }
             }
             .navigationTitle("Recurring")
             .toolbar {
@@ -66,7 +82,7 @@ struct RecurringListView: View {
                         showingAddRecurring = true
                     } label: {
                         Image(systemName: "plus")
-                             .foregroundStyle(Color.brandPrimaryText)
+                             .foregroundStyle(Color.brandPrimary)
                     }
                     .accessibilityLabel("Add recurring transaction")
                     .accessibilityHint("Opens form to create a new recurring bill or income")
@@ -89,6 +105,10 @@ struct RecurringListView: View {
             }
             .sheet(item: $recurringToEdit) { recur in
                 EditRecurringView(recurringTransaction: recur)
+            }
+            // v2.7: Mark as Sent sheet
+            .sheet(item: $recurringToMarkSent) { recur in
+                MarkRecurringSentView(recurring: recur)
             }
             .onAppear {
                 withAnimation(FLOAnimation.standard) {
@@ -116,6 +136,28 @@ struct RecurringListView: View {
                             recurringToEdit = recur
                         }
                         .accessibilityAddTraits(.isButton)
+                        // v2.7+: Mark as Sent / Not Paid Yet (leading swipe)
+                        .swipeActions(edge: .leading) {
+                            if !recur.isIncome {
+                                if isSentForCurrentMonth(recur) {
+                                    Button {
+                                        HapticService.play(.medium)
+                                        markAsNotSent(recur)
+                                    } label: {
+                                        Label("Not Paid", systemImage: "arrow.uturn.backward")
+                                    }
+                                    .tint(.orange)
+                                } else {
+                                    Button {
+                                        HapticService.play(.medium)
+                                        recurringToMarkSent = recur
+                                    } label: {
+                                        Label("Mark Sent", systemImage: "paperplane.fill")
+                                    }
+                                    .tint(Color.incomeGreen)
+                                }
+                            }
+                        }
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
                                 HapticService.play(.heavy)
@@ -123,7 +165,7 @@ struct RecurringListView: View {
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
-                            
+
                             Button {
                                 HapticService.play(.medium)
                                 toggleActive(recur)
@@ -131,6 +173,49 @@ struct RecurringListView: View {
                                 Label("Pause", systemImage: "pause.fill")
                             }
                             .tint(.orange)
+                        }
+                        // v2.7: Context menu for macOS (right-click) + long-press on iOS
+                        .contextMenu {
+                            Button {
+                                HapticService.play(.light)
+                                recurringToEdit = recur
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+
+                            if !recur.isIncome {
+                                if isSentForCurrentMonth(recur) {
+                                    Button(role: .destructive) {
+                                        HapticService.play(.medium)
+                                        markAsNotSent(recur)
+                                    } label: {
+                                        Label("Not Paid Yet", systemImage: "arrow.uturn.backward")
+                                    }
+                                } else {
+                                    Button {
+                                        HapticService.play(.medium)
+                                        recurringToMarkSent = recur
+                                    } label: {
+                                        Label("Mark as Sent", systemImage: "paperplane.fill")
+                                    }
+                                }
+                            }
+
+                            Divider()
+
+                            Button {
+                                HapticService.play(.medium)
+                                toggleActive(recur)
+                            } label: {
+                                Label("Pause", systemImage: "pause.fill")
+                            }
+
+                            Button(role: .destructive) {
+                                HapticService.play(.heavy)
+                                deleteRecurring(recur)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
                         .opacity(viewAppeared ? 1 : 0.001)
                         .offset(x: viewAppeared ? 0 : 20)
@@ -143,7 +228,7 @@ struct RecurringListView: View {
             }
         }
     }
-    
+
     @ViewBuilder
     private var pausedSection: some View {
         if !pausedRecurring.isEmpty {
@@ -181,18 +266,98 @@ struct RecurringListView: View {
         }
     }
     
+    // MARK: - Business Profile Filter
+
+    @ViewBuilder
+    private var recurringBusinessFilter: some View {
+        if businessProfiles.count > 1 {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    Button {
+                        withAnimation(FLOAnimation.quick) { selectedBusinessProfile = nil }
+                        HapticService.play(.light)
+                    } label: {
+                        Text("All")
+                            .font(.caption.weight(.medium))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(selectedBusinessProfile == nil ? Color.brandPrimary : Color.floSecondarySystemBackground)
+                            .foregroundStyle(selectedBusinessProfile == nil ? .white : .primary)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+
+                    ForEach(businessProfiles) { profile in
+                        Button {
+                            withAnimation(FLOAnimation.quick) { selectedBusinessProfile = profile }
+                            HapticService.play(.light)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: profile.displayIcon)
+                                    .font(.caption2)
+                                Text(profile.businessName)
+                                    .font(.caption.weight(.medium))
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(selectedBusinessProfile?.id == profile.id ? Color.brandPrimary : Color.floSecondarySystemBackground)
+                            .foregroundStyle(selectedBusinessProfile?.id == profile.id ? .white : .primary)
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+            }
+        }
+    }
+
     // MARK: - Computed Properties
-    
+
     private var activeRecurring: [RecurringTransaction] {
-        recurring.filter { $0.isActive }
+        recurring.filter { $0.isActive }.filter(matchesBusinessFilter)
     }
-    
+
     private var pausedRecurring: [RecurringTransaction] {
-        recurring.filter { !$0.isActive }
+        recurring.filter { !$0.isActive }.filter(matchesBusinessFilter)
+    }
+
+    private func matchesBusinessFilter(_ r: RecurringTransaction) -> Bool {
+        guard let profile = selectedBusinessProfile else { return true }
+        return r.businessProfile?.id == profile.id
     }
     
+    // MARK: - Helpers
+
+    /// Check if a recurring is already sent/recorded for the current month (payment log OR auto-engine transaction)
+    private func isSentForCurrentMonth(_ recur: RecurringTransaction) -> Bool {
+        let components = Calendar.current.dateComponents([.year, .month], from: Date())
+        guard let currentMonth = Calendar.current.date(from: components) else { return false }
+        return recur.isSentForMonth(currentMonth)
+    }
+
+    /// Mark a recurring as "not paid yet" — removes auto-created transaction and sets override
+    private func markAsNotSent(_ recur: RecurringTransaction) {
+        let components = Calendar.current.dateComponents([.year, .month], from: Date())
+        guard let currentMonth = Calendar.current.date(from: components) else { return }
+
+        recur.markAsNotSent(for: currentMonth, in: context)
+
+        do {
+            try context.save()
+            HapticService.play(.success)
+        } catch {
+            HapticService.play(.error)
+            #if DEBUG
+            print("[RecurringList] Failed to save markAsNotSent: \(error)")
+            #endif
+        }
+    }
+
     // MARK: - Actions
-    
+
     private func toggleActive(_ recurring: RecurringTransaction) {
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
             recurring.isActive.toggle()
@@ -280,19 +445,34 @@ struct RecurringRow: View {
     
     private var detailsView: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(recurring.displayName)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            
+            HStack(spacing: 6) {
+                Text(recurring.displayName)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                // v2.7: Show "Sent" badge if marked for current month
+                if isSentThisMonth {
+                    Text("Sent")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.incomeGreen)
+                        .clipShape(Capsule())
+                        .accessibilityLabel("Sent this month")
+                }
+            }
+
             HStack(spacing: 4) {
                 Text(recurring.frequency.displayName)
                     .font(.caption)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     .foregroundStyle(.secondary)
-                
+
                 if let next = recurring.nextOccurrence {
                     Text("• Next: \(next.formatted(date: .abbreviated, time: .omitted))")
                         .font(.caption)
@@ -301,13 +481,38 @@ struct RecurringRow: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            
-            Text(recurring.financeType == .business ? "🏢 Business" : "👤 Personal")
-                .font(.caption2)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .foregroundStyle(.secondary)
+
+            HStack(spacing: 4) {
+                Text(recurring.financeType == .business ? "🏢 Business" : "👤 Personal")
+                    .font(.caption2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .foregroundStyle(.secondary)
+
+                // v2.7: Show suggested day when learned from payment history
+                if let suggestedDay = recurring.suggestedDayOfMonth {
+                    Text("• Suggested: \(ordinalDay(suggestedDay))")
+                        .font(.caption2)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .foregroundStyle(Color.brandPrimary)
+                }
+            }
         }
+    }
+
+    // v2.7: Check if marked sent for current month
+    private var isSentThisMonth: Bool {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month], from: Date())
+        guard let currentMonth = calendar.date(from: components) else { return false }
+        return recurring.isSentForMonth(currentMonth)
+    }
+
+    private func ordinalDay(_ day: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .ordinal
+        return formatter.string(from: NSNumber(value: day)) ?? "\(day)"
     }
     
     private var amountView: some View {

@@ -1099,6 +1099,7 @@ struct AmortizationScheduleSheet: View {
                     Text("Payment Schedule")
                 }
             }
+            .scrollContentBackground(.hidden)
             .navigationTitle("Amortization Schedule")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

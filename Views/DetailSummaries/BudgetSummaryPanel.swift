@@ -45,6 +45,7 @@ struct BudgetSummaryPanel: View {
 
                 return CategoryBudgetData(
                     name: catName,
+                    icon: category.icon,
                     budgeted: planned,
                     spent: spent,
                     transactions: catTransactions,
@@ -120,7 +121,7 @@ struct BudgetSummaryPanel: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
-        .background(Color.primary.opacity(0.04))
+        .background(Color.floSystemGroupedSectionBackground)
         .cornerRadius(10)
     }
 
@@ -139,19 +140,14 @@ struct BudgetSummaryPanel: View {
                 }
             } label: {
                 HStack(spacing: 10) {
-                    // Progress indicator
+                    // Solid status dot with category icon
                     ZStack {
                         Circle()
-                            .stroke(Color.primary.opacity(0.1), lineWidth: 3)
+                            .fill(data.status.color)
                             .frame(width: 32, height: 32)
-                        Circle()
-                            .trim(from: 0, to: min(data.percentUsed / 100, 1.0))
-                            .stroke(
-                                data.isOverBudget ? Color.expenseRed : data.percentUsed >= 80 ? Color.orange : Color.brandPrimary,
-                                style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                            )
-                            .frame(width: 32, height: 32)
-                            .rotationEffect(.degrees(-90))
+                        Image(systemName: data.icon)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
@@ -163,7 +159,7 @@ struct BudgetSummaryPanel: View {
                             if data.isOverBudget {
                                 Image(systemName: "exclamationmark.circle.fill")
                                     .font(.caption2)
-                                    .foregroundStyle(.red)
+                                    .foregroundStyle(Color.expenseRed)
                             }
                         }
                         Text("\(fmt.string(from: NSNumber(value: data.spent)) ?? "$0") of \(fmt.string(from: NSNumber(value: data.budgeted)) ?? "$0") · \(Int(data.percentUsed))%")
@@ -183,7 +179,7 @@ struct BudgetSummaryPanel: View {
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.primary.opacity(0.06))
+                        .background(Color.floCardGlass)
                         .cornerRadius(4)
                 }
                 .padding(.horizontal, 14)
@@ -245,12 +241,12 @@ struct BudgetSummaryPanel: View {
                 }
             }
         }
-        .background(Color.primary.opacity(0.03))
+        .background(Color.floSystemGroupedSectionBackground)
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(
-                    data.isOverBudget ? Color.expenseRed.opacity(0.3) : Color.primary.opacity(0.06),
+                    data.isOverBudget ? data.status.color.opacity(0.3) : Color.floCardBorder,
                     lineWidth: 1
                 )
         )
@@ -291,9 +287,16 @@ struct BudgetSummaryPanel: View {
 private struct CategoryBudgetData: Identifiable {
     let id = UUID()
     let name: String
+    let icon: String
     let budgeted: Double
     let spent: Double
     let transactions: [Transaction]
     let isOverBudget: Bool
     let percentUsed: Double
+
+    var status: BudgetStatus {
+        // Prefer the cent-precise factory — `budgeted` + `spent` are the
+        // source of truth and let us catch the exactly-100 % onTarget tier.
+        BudgetStatus.from(spent: spent, budget: budgeted)
+    }
 }

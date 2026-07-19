@@ -327,6 +327,24 @@ final class AssistantDataProvider {
             )}
     }
 
+    func getTransfers(limit: Int = 15) -> [TransactionInfo] {
+        let descriptor = FetchDescriptor<Transaction>(
+            sortBy: [SortDescriptor(\Transaction.date, order: .reverse)]
+        )
+        let transactions = (try? modelContext.fetch(descriptor)) ?? []
+
+        return transactions
+            .filter { $0.isTransfer }
+            .prefix(limit)
+            .map { TransactionInfo(
+                merchant: $0.merchantName,
+                amount: $0.amount,
+                date: DateFormatter.mediumDate.string(from: $0.date),
+                category: "Transfer",
+                isIncome: $0.isIncome
+            )}
+    }
+
     func getMerchantSpending(year: Int) -> [(merchant: String, total: Double, count: Int)] {
         let calendar = Calendar.current
         guard let yearStart = calendar.date(from: DateComponents(year: year, month: 1, day: 1)),

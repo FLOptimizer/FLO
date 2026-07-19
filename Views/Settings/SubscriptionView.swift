@@ -1,8 +1,30 @@
 //  SubscriptionView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.6 - Trial tier switch: Premium is now recommended + trial tier
+//  Version 3.8 - Fix paywall bouncing back for already-subscribed users
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.8 - Auto-dismiss only on genuine upgrade:
+//  ✅ FIXED: When a Pro/Premium user (or DEMO_PRO_TIER user) opened
+//           SubscriptionView, loadProducts() emitted a @Published change on
+//           appear, the .onChange(of: manager.currentTier) handler saw
+//           newValue != .free, and called dismiss() — bouncing the user out
+//           before the view rendered. This made the paywall unreachable for
+//           subscribers (and broke screenshot capture in demo mode).
+//  ✅ ADDED: tierOnAppear @State snapshot taken in .onAppear.
+//  ✅ CHANGED: .onChange guard now requires (tierOnAppear == .free && newValue != .free)
+//           so the auto-dismiss only fires on a true free → paid transition
+//           triggered by a successful purchase in this session. Subscribers
+//           navigating here see the "Current" badge on their plan and can
+//           inspect upgrade/downgrade options without being bounced.
+//
+//  CHANGES v3.7 - Premium Annual Intro Launch Pricing:
+//  ✅ CHANGED: Billing toggle label "Yearly (Save ~17%)" → "Yearly (Best Value)"
+//             (stale: with Premium yearly at $59.99 the savings is now ~62%, not 17%)
+//  ✅ ADDED: "LIMITED-TIME LAUNCH PRICING" pill next to Premium yearly savings badge
+//             (only renders for tier == .premium in yearly mode)
+//  ✅ NOTE: Actual price change lives in SubscriptionTier.swift v1.7 and must be
+//           mirrored in App Store Connect for product com.finchandpoppy.flo.premium.yearly
 //
 //  CHANGES v3.6 - Trial Tier Switch (Premium):
 //  ✅ CHANGED: Moved isRecommended ("MOST POPULAR") from Pro to Premium
@@ -133,6 +155,14 @@ struct SubscriptionView: View {
     // v2.8: Purchase confirmation sheet state
     @State private var showingPurchaseSheet = false
     @State private var selectedTierForPurchase: (product: Product, tier: SubscriptionTier)?
+
+    // v3.8: Snapshot the tier when the view appears so we can distinguish a
+    // genuine purchase transition (free → non-free) from a user who simply
+    // navigated here while already subscribed. Without this, loadProducts()
+    // emits a @Published change on appear, the onChange handler reads currentTier
+    // as non-free (via DEMO_*_TIER override or real entitlement), and the view
+    // auto-dismisses before it can render.
+    @State private var tierOnAppear: SubscriptionTier?
     
     // MARK: - Usage Tracking (v2.7)
     @State private var usageLimitService: UsageLimitService?
@@ -262,20 +292,28 @@ struct SubscriptionView: View {
             }
         }
         .onChange(of: manager.currentTier) { oldValue, newValue in
-            if newValue != .free {
-                HapticService.play(.success)
-                showingPurchaseSheet = false
-                dismiss()
-            }
+            // v3.8: Only auto-dismiss on a genuine UPGRADE transition (free → paid).
+            // Without the tierOnAppear guard, this would fire on first render when
+            // @Published _currentTier emits via loadProducts() and bounce the user
+            // out before they ever see the paywall.
+            guard tierOnAppear == .free, newValue != .free else { return }
+            HapticService.play(.success)
+            showingPurchaseSheet = false
+            dismiss()
         }
         .onAppear {
+            // v3.8: Snapshot the tier we entered with. Used to gate the auto-
+            // dismiss above so navigating here while already subscribed shows
+            // the "manage your plan" view instead of bouncing.
+            tierOnAppear = manager.currentTier
+
             // Setup usage limit service (v2.7)
             if usageLimitService == nil {
                 usageLimitService = UsageLimitService(modelContext: modelContext)
             } else {
                 usageLimitService?.refreshCounts()
             }
-            
+
             // Delay entrance animation until sheet is fully presented
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
@@ -378,7 +416,7 @@ struct SubscriptionView: View {
                     }
                 }
             )) {
-                Text(selectedPeriod == .monthly ? "Monthly" : "Yearly (Save ~17%)")
+                Text(selectedPeriod == .monthly ? "Monthly" : "Yearly (Best Value)")
                     .font(.subheadline.bold())
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -1306,15 +1344,30 @@ struct SubscriptionOptionCard: View {
                         
                         // Yearly Savings Badge
                         if isYearly, let savings = tier.yearlySavings {
-                            Text(savings)
-                                .font(.caption.bold())
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.orange)
-                                .cornerRadius(4)
+                            HStack(spacing: 6) {
+                                Text(savings)
+                                    .font(.caption.bold())
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.orange)
+                                    .cornerRadius(4)
+
+                                // Premium intro launch badge (v3.7)
+                                if tier == .premium {
+                                    Text("LIMITED-TIME LAUNCH PRICING")
+                                        .font(.caption2.bold())
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                        .foregroundColor(Color.brandPrimary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.brandPrimary.opacity(0.12))
+                                        .cornerRadius(4)
+                                }
+                            }
                         }
                         
                         // Trial info

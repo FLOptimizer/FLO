@@ -1,7 +1,7 @@
 //  CreateInvoiceView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.4 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
+//  Version 2.5 - Catalyst limit-reached sheet (was: Dynamic Type verification)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v2.4 - Dynamic Type Verification:
@@ -349,7 +349,8 @@ struct CreateInvoiceView: View {
             .sheet(isPresented: $showingSubscription) {
                 SubscriptionView()
             }
-            #if os(macOS)
+            // Catalyst: sheet (Mac-native), not fullScreenCover (iPhone path).
+            #if os(macOS) || targetEnvironment(macCatalyst)
             .sheet(isPresented: $showingLimitReached) {
                 LimitReachedOverlay(
                     limitType: .invoices,

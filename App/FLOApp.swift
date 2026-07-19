@@ -1,8 +1,15 @@
 //  FLOApp.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.12 - Performance Monitoring Integration
+//  Version 3.13 - Mac Catalyst menu bar
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.13 - Mac Catalyst menu bar:
+//  ✅ FIXED: The curated menu commands (Cmd+N, Cmd+, Settings, Navigate menu
+//           with Cmd+1–9) were behind `#if os(macOS)`, which is false on Mac
+//           Catalyst — the shipping Mac app showed only auto-generated menus.
+//           The `.commands` block now also builds for targetEnvironment(macCatalyst).
+//           `.defaultSize` and `MenuBarExtra` remain macOS-only (not on Catalyst).
 //
 //  CHANGES v3.12 - Performance Monitoring:
 //  ✅ Added os_signpost instrumentation for Instruments profiling (all builds)
@@ -125,12 +132,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             PerformanceMonitor.shared.registerMetricKit()
         }
 
-        // Configure notification categories (tax + budget alerts)
+        // Configure notification categories (tax + budget + debt alerts)
         let budgetCategories = BudgetNotificationService.shared.configureNotificationCategories()
         TaxNotificationService.shared.configureNotificationCategories()
-        // Merge budget categories with tax categories
+        let debtCategory = DebtPaymentReminderService.shared.configureNotificationCategory()
+        // Merge all categories
         UNUserNotificationCenter.current().getNotificationCategories { existingCategories in
-            let merged = existingCategories.union(Set(budgetCategories))
+            var merged = existingCategories.union(Set(budgetCategories))
+            merged.insert(debtCategory)
             UNUserNotificationCenter.current().setNotificationCategories(merged)
         }
         
@@ -311,6 +320,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                         modelContext: container.mainContext
                     )
 
+                    // Refresh balances alongside transactions (non-blocking —
+                    // stale balances shouldn't fail the whole background sync)
+                    try? await PlaidService.shared.updateAccountBalances(
+                        modelContext: container.mainContext
+                    )
+
                     // After sync, check budget thresholds
                     await BudgetNotificationService.shared.checkAllBudgetThresholds(
                         modelContext: container.mainContext
@@ -395,6 +410,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                 object: nil,
                 userInfo: response.notification.request.content.userInfo
             )
+
+        case "DEBT_PAYMENT_REMINDER":
+            NavigationService.shared.navigateTo(.debtAccelerator)
 
         default:
             // Tax reminders and other notifications
@@ -791,6 +809,15 @@ struct FLOApp: App {
         }
         #if os(macOS)
         .defaultSize(width: 1200, height: 800)
+        #endif
+        // Build 10 (Mac Catalyst menu-bar fix): this curated command set was
+        // gated `#if os(macOS)`, which is FALSE under Mac Catalyst — so the
+        // shipping Mac app fell back to auto-generated menus with no Cmd+N,
+        // Cmd+, or Navigate shortcuts. Catalyst fully supports SwiftUI
+        // `.commands`, so include it for Catalyst too. (MenuBarExtra below
+        // stays macOS-only — it's an AppKit menu-bar Scene unavailable on
+        // Catalyst.)
+        #if os(macOS) || targetEnvironment(macCatalyst)
         .commands {
             // Build 10: Replace new item with context-aware Cmd+N
             CommandGroup(replacing: .newItem) {
@@ -852,6 +879,13 @@ struct FLOApp: App {
     /// Creates the ModelContainer on a background thread to avoid blocking the main thread.
     /// CloudKit schema initialization (~2.5s) happens off-screen while the splash view shows.
     private func loadContainerAsync() async {
+        // When running under XCTest, the App Group container may not be available
+        // and CloudKit schema validation can fail in the test runner environment.
+        // Use an in-memory container so the host app can launch and tests can run.
+        if NSClassFromString("XCTestCase") != nil {
+            self.container = ModelContainer.preview()
+            return
+        }
         do {
             let newContainer = try await Task.detached(priority: .userInitiated) {
                 try ModelContainer.shared()
@@ -891,6 +925,9 @@ struct FLOApp: App {
         
         // Migrate existing categories (fast - only touches changed items)
         SeedData.migrateCategories(in: context)
+
+        // Multi-business migration (v2.0 - links existing accounts/invoices to primary business)
+        BusinessMigrationService.shared.migrateIfNeeded(context: context)
         
         // NOTE: Migrations and recurring generation moved to scheduleDeferredSetup() +0.3s
         // to improve cold start time (was blocking UI for ~500ms)
@@ -945,19 +982,59 @@ struct FLOApp: App {
                 }
             }
 
-            // Create any missed recurring transactions
+            #if DEBUG
+            print("⏱️ [Deferred +300ms] Migrations complete")
+            #endif
+        }
+
+        // DEFER 2.0s: Recurring transaction + transfer generation.
+        //
+        // Previously ran at +0.3s alongside migrations. That was earlier than
+        // SwiftData+CloudKit's initial remote import could finish, creating a
+        // race where Device B would materialize today's recurring instance
+        // before receiving Device A's already-created copy. Duplicates stuck
+        // around because the scrubber only ran once per install.
+        //
+        // Pushing to +2s gives CloudKit a window to import "already done"
+        // records so the lastCreated flag + relationship dedup in
+        // RecurringTransaction.createNextInstance see the remote copy and
+        // correctly skip generation. The always-on scrubber at +5s handles
+        // any that still slip through.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [self] in
+            let context = ModelContext(container)
             Task { @MainActor in
                 await RecurringTransactionService.shared.createPendingInstances(in: container)
             }
-
-            // Create any due recurring transfers
             Task { @MainActor in
                 await self.generateDueRecurringTransfers(context: context)
             }
 
             #if DEBUG
-            print("⏱️ [Deferred +300ms] Migrations & recurring generation complete")
+            print("⏱️ [Deferred +2s] Recurring generation complete")
             #endif
+        }
+
+        // DEFER 5.0s: Always-on duplicate scrubber.
+        //
+        // Pre-v3.13 this was gated by `duplicatesScrubbed_v1` in UserDefaults
+        // and ran exactly once per install. That left the CloudKit sync-race
+        // hole open: new duplicates created AFTER the first scrub were
+        // permanent. Now runs every launch, after recurring generation at +2s
+        // so same-launch dupes also get caught, and after CloudKit has had
+        // time to import remote records so cross-device dupes are visible.
+        //
+        // The scrubber keeps the earliest-created row in each duplicate group
+        // and only acts when ALL rows share the same amount + category — user
+        // edits to one copy are left alone for manual resolution.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            Task { @MainActor in
+                let result = await RecurringTransactionService.shared.scrubDuplicateRecurringTransactions(in: container)
+                #if DEBUG
+                if result.transactionsDeleted > 0 {
+                    print("🧹 Duplicate scrubber: removed \(result.transactionsDeleted) tx across \(result.duplicateGroups) group(s); rebalanced \(result.accountsRebalanced) account(s)")
+                }
+                #endif
+            }
         }
 
         #if os(iOS)
@@ -1033,8 +1110,31 @@ struct FLOApp: App {
             }
         }
 
-        // DEFER 3.5s: Cash Flow Forecast (Build 8, Premium+)
+        // DEFER 3.5s: Debt Accelerator payment reminders (Premium+)
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+            Task { @MainActor in
+                let tier = SubscriptionManager.shared.currentTier
+                if tier.canAccess(.debtCalculator) {
+                    let context = container.mainContext
+                    let planDescriptor = FetchDescriptor<DebtAcceleratorPlan>()
+                    if let plans = try? context.fetch(planDescriptor),
+                       let activePlan = plans.first(where: { $0.isActive }) {
+                        let accountDescriptor = FetchDescriptor<Account>()
+                        let accounts = (try? context.fetch(accountDescriptor)) ?? []
+                        await DebtPaymentReminderService.shared.scheduleReminders(
+                            for: activePlan,
+                            accounts: accounts
+                        )
+                    }
+                }
+                #if DEBUG
+                print("⏱️ [Deferred +3500ms] Debt payment reminders scheduled (\(tier.displayName))")
+                #endif
+            }
+        }
+
+        // DEFER 4.0s: Cash Flow Forecast (Build 8, Premium+)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
             Task { @MainActor in
                 let tier = SubscriptionManager.shared.currentTier
                 if tier.hasRecurringTransactions {
@@ -1109,8 +1209,21 @@ struct FLOApp: App {
     }
     
     // MARK: - Widget Data Update
-    
+
+    // Static debounce: prevents double-updates when both onChange(isAuthenticated) and the
+    // 1.5s deferred setup fire within a short window on launch.
+    private static var lastWidgetUpdateTime: Date = .distantPast
+
     private func updateWidgetData(container: ModelContainer) {
+        let now = Date()
+        let elapsed = now.timeIntervalSince(Self.lastWidgetUpdateTime)
+        guard elapsed > 2.0 else {
+            #if DEBUG
+            print("⏭️ [Widget] Skipped duplicate update (within 2s debounce, elapsed=\(String(format: "%.1f", elapsed))s)")
+            #endif
+            return
+        }
+        Self.lastWidgetUpdateTime = now
         Task { @MainActor in
             let context = ModelContext(container)
             

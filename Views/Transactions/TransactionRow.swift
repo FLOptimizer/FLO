@@ -1,8 +1,11 @@
 //  TransactionRow.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.5 - Build 10: Monospaced tabular figures for amounts
+//  Version 2.6 - Split Pay badge
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.6:
+//  ✅ ADDED: Split Pay badge appears next to finance type when transaction.isSplitTransaction
 //
 //  CHANGES v2.5 - Build 10:
 //  ✅ UPDATED: Amount display uses monospaced design + monospacedDigit for alignment
@@ -105,7 +108,14 @@ struct TransactionRow: View {
                     financeTypeIcon
                         .opacity(appeared ? 1 : 0.001)
                         .offset(x: appeared ? 0 : -5)
-                    
+
+                    // v2.6: Split Pay indicator
+                    if isTransactionValid && transaction.isSplitTransaction {
+                        splitIndicator
+                            .opacity(appeared ? 1 : 0.001)
+                            .offset(x: appeared ? 0 : -5)
+                    }
+
                     if isTransactionValid && transaction.hasReceipt {
                         receiptIndicator
                             .opacity(appeared ? 1 : 0.001)
@@ -119,9 +129,7 @@ struct TransactionRow: View {
             
             VStack(alignment: .trailing, spacing: 2) {
                 Text(isTransactionValid ? transaction.formattedAmount : "")
-                    .font(.system(.body, design: .monospaced))
-                    .fontWeight(.semibold)
-                    .monospacedDigit()
+                    .floFinancialNumber()
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .foregroundStyle(amountColor)
@@ -190,16 +198,7 @@ struct TransactionRow: View {
     
     @ViewBuilder
     private func categoryBadge(_ category: Category) -> some View {
-        Text(category.name)
-            .font(.caption2)
-            .fontWeight(.medium)
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
-            .foregroundStyle(Color(flowHex: category.colorHex))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(Color(flowHex: category.colorHex).opacity(0.12))
-            .clipShape(Capsule())
+        CategoryTag(category: category.name, size: .compact)
     }
     
     /// Icon-only finance type indicator (no text)
@@ -216,11 +215,23 @@ struct TransactionRow: View {
             .accessibilityLabel(financeType.displayName)
     }
     
+    // v2.6: Split Pay indicator badge
+    @ViewBuilder
+    private var splitIndicator: some View {
+        Image(systemName: "rectangle.split.2x1.fill")
+            .font(.caption2)
+            .foregroundStyle(Color.brandPrimary)
+            .frame(width: 20, height: 20)
+            .background(Color.brandPrimary.opacity(0.12))
+            .clipShape(Circle())
+            .accessibilityLabel("Part of split pay")
+    }
+
     @ViewBuilder
     private var receiptIndicator: some View {
         Image(systemName: "doc.text.fill")
             .font(.caption2)
-            .foregroundStyle(Color.brandPrimaryText)
+            .foregroundStyle(Color.brandPrimary)
             .frame(width: 20, height: 20)
             .background(Color.brandPrimary.opacity(0.12))
             .clipShape(Circle())
@@ -272,6 +283,10 @@ struct TransactionRow: View {
         
         if transaction.hasReceipt {
             label += ", receipt attached"
+        }
+
+        if transaction.isSplitTransaction {
+            label += ", part of split pay"
         }
         
         label += ", \(AccessibilityFormatters.spokenDate(transaction.date))"

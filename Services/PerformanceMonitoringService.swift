@@ -1,7 +1,7 @@
 //  PerformanceMonitoringService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.0 - Performance Profiling & Instrumentation
+//  Version 1.1 - Catalyst memory thresholds · Performance Profiling & Instrumentation
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  PURPOSE:
@@ -53,7 +53,7 @@ enum FLOPerformanceBudget {
 
     /// Memory footprint warning threshold
     /// macOS apps with charts/graphics commonly use 200-300MB; iOS is more constrained.
-    #if os(macOS)
+    #if os(macOS) || targetEnvironment(macCatalyst)
     static let memoryWarningMB: Double = 200
     static let memoryCriticalMB: Double = 400
     #else

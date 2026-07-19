@@ -1,218 +1,381 @@
 //  TransactionSummaryPanel.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Build 10 — Zone 3 contextual summary for the Transactions tab.
-//  Shows total spend hero metric, category pie chart,
-//  daily average, and month-over-month delta.
+//  Build 10 v2 — Zone 3 transaction analysis panel.
+//  Shows monthly income/expenses/net, spending by category with expandable
+//  transaction lists, top merchants, and tappable drill-down navigation.
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 
 import SwiftUI
 import SwiftData
-import Charts
+import FLODesignSystem
 
 struct TransactionSummaryPanel: View {
     @Environment(\.modelContext) private var modelContext
 
-    @State private var thisMonthTransactions: [Transaction] = []
+    @State private var transactions: [Transaction] = []
     @State private var lastMonthExpenses: Double = 0
+    @State private var expandedCategories: Set<String> = []
+    @State private var expandedMerchants: Bool = false
 
-    private var totalSpend: Double {
-        thisMonthTransactions
-            .filter { !$0.isIncome && !$0.isTransfer }
-            .reduce(0) { $0 + abs($1.amount) }
+    private let fmt = NumberFormatter.appCurrency
+
+    // MARK: - Computed Data
+
+    private var monthStart: Date {
+        Calendar.current.dateComponents([.calendar, .year, .month], from: Date()).date ?? Date()
+    }
+
+    private var expenses: [Transaction] {
+        transactions.filter { !$0.isIncome && !$0.isTransfer }
+    }
+
+    private var income: [Transaction] {
+        transactions.filter { $0.isIncome && !$0.isTransfer }
+    }
+
+    private var totalExpenses: Double {
+        expenses.reduce(0) { $0 + abs($1.amount) }
     }
 
     private var totalIncome: Double {
-        thisMonthTransactions
-            .filter { $0.isIncome && !$0.isTransfer }
-            .reduce(0) { $0 + $1.amount }
+        income.reduce(0) { $0 + $1.amount }
     }
 
-    private var transactionCount: Int {
-        thisMonthTransactions.filter { !$0.isTransfer }.count
-    }
-
-    private var dailyAverage: Double {
-        let calendar = Calendar.current
-        let day = calendar.component(.day, from: Date())
-        guard day > 0 else { return 0 }
-        return totalSpend / Double(day)
+    private var netAmount: Double {
+        totalIncome - totalExpenses
     }
 
     private var monthOverMonthDelta: Double {
         guard lastMonthExpenses > 0 else { return 0 }
-        return ((totalSpend - lastMonthExpenses) / lastMonthExpenses) * 100
+        return ((totalExpenses - lastMonthExpenses) / lastMonthExpenses) * 100
     }
 
-    private var categoryBreakdown: [CategorySlice] {
-        var map: [String: Double] = [:]
-        for t in thisMonthTransactions where !t.isIncome && !t.isTransfer {
+    private var categoryData: [TransactionCategoryData] {
+        var map: [String: [Transaction]] = [:]
+        for t in expenses {
             let cat = t.category?.name ?? "Uncategorized"
-            map[cat, default: 0] += abs(t.amount)
+            map[cat, default: []].append(t)
         }
-        let total = map.values.reduce(0, +)
-        guard total > 0 else { return [] }
-
-        let colors: [Color] = [.brandPrimary, .expenseRed, .incomeGreen, .brandWarning, .purple, .orange, .cyan, .pink]
-        return map.sorted { $0.value > $1.value }
-            .prefix(8)
-            .enumerated()
-            .map { index, item in
-                CategorySlice(
-                    category: item.key,
-                    amount: item.value,
-                    percentage: (item.value / total) * 100,
-                    color: colors[index % colors.count]
+        return map
+            .map { name, txns in
+                TransactionCategoryData(
+                    name: name,
+                    transactions: txns.sorted { $0.date > $1.date },
+                    total: txns.reduce(0) { $0 + abs($1.amount) }
                 )
             }
+            .sorted { $0.total > $1.total }
     }
+
+    private var topMerchants: [(name: String, total: Double, count: Int)] {
+        var map: [String: (total: Double, count: Int)] = [:]
+        for t in expenses {
+            let merchant = t.merchantName.isEmpty ? "Unknown" : t.merchantName
+            var entry = map[merchant] ?? (0, 0)
+            entry.total += abs(t.amount)
+            entry.count += 1
+            map[merchant] = entry
+        }
+        return map
+            .map { (name: $0.key, total: $0.value.total, count: $0.value.count) }
+            .sorted { $0.total > $1.total }
+            .prefix(5)
+            .map { $0 }
+    }
+
+    // MARK: - Body
 
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Hero: Total Spend
-                SummaryHeroMetric(amount: totalSpend, subtitle: "Spending This Month", style: .neutral)
-                    .floGlassCard()
+                // Monthly totals
+                monthlyTotalsSection
 
-                // Category Donut Chart
-                if !categoryBreakdown.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("By Category")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-
-                        Chart(categoryBreakdown) { item in
-                            SectorMark(
-                                angle: .value("Amount", max(item.amount, 0)),
-                                innerRadius: .ratio(0.6),
-                                angularInset: 1.5
-                            )
-                            .foregroundStyle(item.color)
-                            .annotation(position: .overlay) {
-                                if item.percentage > 10 {
-                                    Text("\(Int(item.percentage))%")
-                                        .font(.caption2.weight(.bold))
-                                        .foregroundStyle(.white)
-                                }
-                            }
-                        }
-                        .frame(height: 200)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Spending by category chart")
-
-                        // Legend
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                            ForEach(categoryBreakdown) { item in
-                                HStack(spacing: 6) {
-                                    Circle()
-                                        .fill(item.color)
-                                        .frame(width: 8, height: 8)
-                                    Text(item.category)
-                                        .font(.caption)
-                                        .lineLimit(1)
-                                    Spacer()
-                                }
-                            }
-                        }
-                    }
-                    .floGlassCard()
-                }
-
-                // Stats Row
-                HStack(spacing: 12) {
-                    statCard(title: "Daily Avg", value: dailyAverage, style: .neutral)
-                    statCard(title: "Transactions", count: transactionCount)
-                }
-
-                // Month-over-Month
+                // Month-over-month delta
                 if lastMonthExpenses > 0 {
-                    HStack {
+                    HStack(spacing: 8) {
                         Image(systemName: monthOverMonthDelta >= 0 ? "arrow.up.right" : "arrow.down.right")
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(monthOverMonthDelta >= 0 ? Color.expenseRed : Color.incomeGreen)
                         Text("\(abs(monthOverMonthDelta), specifier: "%.1f")% vs last month")
-                            .font(.subheadline)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                         Spacer()
                     }
-                    .floGlassCard()
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Color.floSystemGroupedSectionBackground)
+                    .cornerRadius(10)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.floCardBorder, lineWidth: 1))
                 }
 
-                // Income summary
-                SummaryHeroMetric(amount: totalIncome, subtitle: "Income This Month", style: .branded)
-                    .floGlassCard()
+                // Category breakdown
+                if categoryData.isEmpty {
+                    emptyState
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("By Category")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 2)
+
+                        ForEach(categoryData) { category in
+                            categorySection(category)
+                        }
+                    }
+                }
+
+                // Top merchants
+                if !topMerchants.isEmpty {
+                    merchantsSection
+                }
             }
             .padding()
         }
-        .navigationTitle("Transaction Summary")
+        .navigationTitle("Transaction Analysis")
         .task { loadData() }
+        .onDisappear { transactions = [] }
     }
 
-    private func statCard(title: String, value: Double, style: SummaryHeroMetric.MetricStyle = .auto) -> some View {
+    // MARK: - Monthly Totals
+
+    private var monthlyTotalsSection: some View {
+        HStack(spacing: 10) {
+            metricBox(label: "Income", amount: totalIncome, color: .incomeGreen)
+            metricBox(label: "Expenses", amount: totalExpenses, color: .expenseRed)
+            metricBox(label: "Net", amount: netAmount, color: netAmount >= 0 ? .incomeGreen : .expenseRed)
+        }
+    }
+
+    private func metricBox(label: String, amount: Double, color: Color) -> some View {
         VStack(spacing: 4) {
-            Text(value, format: .currency(code: "USD").precision(.fractionLength(0)))
-                .font(.title3.monospacedDigit().weight(.semibold))
-                .foregroundStyle(Color.brandPrimaryText)
-            Text(title)
-                .font(.caption)
+            Text(fmt.string(from: NSNumber(value: abs(amount))) ?? "$0")
+                .font(.subheadline.monospacedDigit().weight(.semibold))
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(label)
+                .font(.caption2)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .floGlassCard()
+        .padding(.vertical, 12)
+        .background(Color.floSystemGroupedSectionBackground)
+        .cornerRadius(10)
     }
 
-    private func statCard(title: String, count: Int) -> some View {
-        VStack(spacing: 4) {
-            Text("\(count)")
-                .font(.title3.monospacedDigit().weight(.semibold))
-                .foregroundStyle(Color.brandPrimaryText)
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    // MARK: - Category Section
+
+    private func categorySection(_ data: TransactionCategoryData) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(FLOAnimation.quick) {
+                    if expandedCategories.contains(data.name) {
+                        expandedCategories.remove(data.name)
+                    } else {
+                        expandedCategories.insert(data.name)
+                    }
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    // Percentage bar indicator
+                    let pct = totalExpenses > 0 ? data.total / totalExpenses : 0
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.floCardBorder)
+                            .frame(width: 32, height: 6)
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.brandPrimary)
+                            .frame(width: max(CGFloat(pct) * 32, 2), height: 6)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(data.name)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                        Text("\(fmt.string(from: NSNumber(value: data.total)) ?? "$0") · \(Int((pct) * 100))% of spending")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: expandedCategories.contains(data.name) ? "chevron.down" : "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+
+                    Text("\(data.transactions.count)")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.floCardGlass)
+                        .cornerRadius(4)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+            }
+            .buttonStyle(.plain)
+
+            // Transaction list (expanded)
+            if expandedCategories.contains(data.name) {
+                Divider().padding(.leading, 56)
+
+                ForEach(data.transactions) { transaction in
+                    Button {
+                        NavigationService.shared.selectedDetail = .transactionDetail(id: transaction.id)
+                    } label: {
+                        HStack(spacing: 10) {
+                            Text(DateFormatter.shortMonthDay.string(from: transaction.date))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.tertiary)
+                                .frame(width: 42, alignment: .leading)
+
+                            Text(transaction.merchantName.isEmpty ? transaction.note : transaction.merchantName)
+                                .font(.caption)
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+
+                            Spacer()
+
+                            Text(fmt.string(from: NSNumber(value: abs(transaction.amount))) ?? "$0")
+                                .font(.caption.monospacedDigit().weight(.medium))
+                                .foregroundColor(.primary)
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.quaternary)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.leading, 42)
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    if transaction.id != data.transactions.last?.id {
+                        Divider().padding(.leading, 56)
+                    }
+                }
+            }
+        }
+        .background(Color.floSystemGroupedSectionBackground)
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.floCardBorder, lineWidth: 1)
+        )
+    }
+
+    // MARK: - Top Merchants
+
+    private var merchantsSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(FLOAnimation.quick) {
+                    expandedMerchants.toggle()
+                }
+            } label: {
+                HStack {
+                    Text("Top Merchants")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Image(systemName: expandedMerchants ? "chevron.down" : "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+            }
+            .buttonStyle(.plain)
+
+            if expandedMerchants {
+                Divider()
+                ForEach(Array(topMerchants.enumerated()), id: \.offset) { index, merchant in
+                    HStack(spacing: 10) {
+                        Text("\(index + 1)")
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.quaternary)
+                            .frame(width: 16)
+
+                        Text(merchant.name)
+                            .font(.caption)
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+
+                        Spacer()
+
+                        Text("\(merchant.count) txn\(merchant.count == 1 ? "" : "s")")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+
+                        Text(fmt.string(from: NSNumber(value: merchant.total)) ?? "$0")
+                            .font(.caption.monospacedDigit().weight(.medium))
+                            .foregroundColor(.primary)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+
+                    if index < topMerchants.count - 1 {
+                        Divider().padding(.leading, 40)
+                    }
+                }
+            }
+        }
+        .background(Color.floSystemGroupedSectionBackground)
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.floCardBorder, lineWidth: 1))
+    }
+
+    // MARK: - Empty State
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "arrow.left.arrow.right")
+                .font(.system(size: 36, weight: .ultraLight))
+                .foregroundStyle(.quaternary)
+            Text("No transactions this month")
+                .font(.subheadline)
+                .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity)
-        .floGlassCard()
+        .padding(.vertical, 32)
     }
+
+    // MARK: - Data Loading
 
     private func loadData() {
         let calendar = Calendar.current
         let now = Date()
-        guard let monthStart = calendar.dateComponents([.calendar, .year, .month], from: now).date else { return }
-
+        guard let start = calendar.dateComponents([.calendar, .year, .month], from: now).date else { return }
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now
+
         let descriptor = FetchDescriptor<Transaction>(
-            predicate: #Predicate<Transaction> { $0.date >= monthStart && $0.date < tomorrow },
+            predicate: #Predicate<Transaction> { $0.date >= start && $0.date < tomorrow },
             sortBy: [SortDescriptor(\Transaction.date, order: .reverse)]
         )
+        transactions = (try? modelContext.fetch(descriptor)) ?? []
 
-        do {
-            thisMonthTransactions = try modelContext.fetch(descriptor)
-        } catch {
-            thisMonthTransactions = []
-        }
-
-        // Last month expenses for comparison
-        guard let lastMonthStart = calendar.date(byAdding: .month, value: -1, to: monthStart) else { return }
-        let lastMonthEnd = monthStart
-
+        // Load last month for delta
+        guard let lastStart = calendar.date(byAdding: .month, value: -1, to: start) else { return }
         let lastDescriptor = FetchDescriptor<Transaction>(
-            predicate: #Predicate<Transaction> { $0.date >= lastMonthStart && $0.date < lastMonthEnd }
+            predicate: #Predicate<Transaction> { $0.date >= lastStart && $0.date < start }
         )
-
-        do {
-            let lastMonth = try modelContext.fetch(lastDescriptor)
-            lastMonthExpenses = lastMonth
-                .filter { !$0.isIncome && !$0.isTransfer }
-                .reduce(0) { $0 + abs($1.amount) }
-        } catch {
-            lastMonthExpenses = 0
-        }
+        let lastMonth = (try? modelContext.fetch(lastDescriptor)) ?? []
+        lastMonthExpenses = lastMonth
+            .filter { !$0.isIncome && !$0.isTransfer }
+            .reduce(0) { $0 + abs($1.amount) }
     }
 }
 
-private struct CategorySlice: Identifiable {
+// MARK: - Supporting Data
+
+private struct TransactionCategoryData: Identifiable {
     let id = UUID()
-    let category: String
-    let amount: Double
-    let percentage: Double
-    let color: Color
+    let name: String
+    let transactions: [Transaction]
+    let total: Double
 }

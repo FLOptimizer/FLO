@@ -1,8 +1,12 @@
 //  CreateBudgetView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.5 - Predictive Budgeting
+//  Version 1.7 - Catalyst picker style · macOS Prediction Fix
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.6 - macOS Prediction Fix:
+//  ✅ FIXED: Category Picker on macOS now uses .menu pickerStyle for reliable onChange
+//  ✅ ADDED: .task(id:) fallback trigger for prediction on all platforms
 //
 //  CHANGES v1.5 - Predictive Budgeting:
 //  ✅ ADDED: ML-powered budget prediction when category is selected
@@ -52,11 +56,17 @@ struct CreateBudgetView: View {
     @Query(sort: \Account.name) private var accounts: [Account]
     @Query(sort: \Transaction.date, order: .reverse) private var allTransactions: [Transaction]
     @Query private var allRecurring: [RecurringTransaction]
+    @Query(
+        filter: #Predicate<BusinessProfile> { $0.isActive },
+        sort: \BusinessProfile.sortOrder
+    )
+    private var businessProfiles: [BusinessProfile]
 
     let month: Date
 
     @State private var selectedCategory: Category?
     @State private var selectedAccount: Account?
+    @State private var selectedBusinessProfile: BusinessProfile?
     @State private var amount: Double = 0
     @State private var financeType: Transaction.FinanceType = .personal
 
@@ -69,10 +79,12 @@ struct CreateBudgetView: View {
             Form {
                 monthSection
                 financeTypeSection
+                businessProfileSection
                 categorySection
                 accountSection
                 amountSection
             }
+            .scrollContentBackground(.hidden)
             .navigationTitle("New Budget")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -124,7 +136,7 @@ struct CreateBudgetView: View {
         Section("Month") {
             HStack {
                 Image(systemName: "calendar")
-                     .foregroundStyle(Color.brandPrimaryText)
+                     .foregroundStyle(Color.brandPrimary)
                      .accessibilityHidden(true)
                 
                 Text(month, format: .dateTime.month(.wide).year())
@@ -144,8 +156,28 @@ struct CreateBudgetView: View {
                     .tag(Transaction.FinanceType.personal)
             }
             .pickerStyle(.segmented)
-            .onChange(of: financeType) { _, _ in
+            .onChange(of: financeType) { _, newType in
                 HapticService.play(.light)
+                if newType == .business && businessProfiles.count == 1 {
+                    selectedBusinessProfile = businessProfiles.first
+                } else if newType == .personal {
+                    selectedBusinessProfile = nil
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var businessProfileSection: some View {
+        if financeType == .business && businessProfiles.count > 1 {
+            Section("Business Profile") {
+                Picker("Business", selection: $selectedBusinessProfile) {
+                    Text("Select...").tag(nil as BusinessProfile?)
+                    ForEach(businessProfiles) { profile in
+                        Text(profile.businessName).tag(profile as BusinessProfile?)
+                    }
+                }
+                .pickerStyle(.menu)
             }
         }
     }
@@ -166,6 +198,13 @@ struct CreateBudgetView: View {
                             .tag(Optional(cat))
                     }
                 }
+            }
+            #if os(macOS) || targetEnvironment(macCatalyst)
+            .pickerStyle(.menu)
+            #endif
+            // v1.6: Reliable fallback trigger for prediction (macOS onChange can be unreliable)
+            .task(id: selectedCategory?.id) {
+                updatePrediction(for: selectedCategory)
             }
 
             // Show recurring info when category has active recurring expenses
@@ -232,7 +271,7 @@ struct CreateBudgetView: View {
                             HapticService.play(.light)
                         }
                         .font(.caption)
-                         .foregroundStyle(Color.brandPrimaryText)
+                         .foregroundStyle(Color.brandPrimary)
                         .accessibilityHint("Clears account filter, applies budget to all accounts")
                     }
                 }
@@ -349,12 +388,12 @@ struct CreateBudgetView: View {
             if amount > 0 {
                 if didApplyPrediction, let pred = prediction {
                     Text("ML-predicted: \(pred.formattedAmount) (range: \(AppConstants.currencyFormatter.string(from: NSNumber(value: pred.lowerBound)) ?? "") – \(AppConstants.currencyFormatter.string(from: NSNumber(value: pred.upperBound)) ?? ""))")
-                        .foregroundStyle(Color.brandPrimaryText)
+                        .foregroundStyle(Color.brandPrimary)
                         .lineLimit(2)
                         .minimumScaleFactor(0.7)
                 } else {
                     Text("Monthly limit: \(amount.formatted(.currency(code: "USD")))")
-                        .foregroundStyle(Color.brandPrimaryText)
+                        .foregroundStyle(Color.brandPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
@@ -445,6 +484,7 @@ struct CreateBudgetView: View {
             planned: amt,
             category: category,
             account: selectedAccount,
+            businessProfile: financeType == .business ? selectedBusinessProfile : nil,
             financeType: financeType
         )
 
@@ -484,7 +524,7 @@ struct AllAccountsChip: View {
                     
                     Image(systemName: "building.columns")
                         .font(.subheadline)
-                         .foregroundStyle(Color.brandPrimaryText)
+                         .foregroundStyle(Color.brandPrimary)
                 }
                 
                 VStack(alignment: .leading, spacing: 2) {
@@ -505,7 +545,7 @@ struct AllAccountsChip: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.subheadline)
-                         .foregroundStyle(Color.brandPrimaryText)
+                         .foregroundStyle(Color.brandPrimary)
                 }
             }
             .padding(.horizontal, 12)
@@ -572,7 +612,7 @@ struct BudgetAccountChip: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.subheadline)
-                         .foregroundStyle(Color.brandPrimaryText)
+                         .foregroundStyle(Color.brandPrimary)
                 }
             }
             .padding(.horizontal, 12)

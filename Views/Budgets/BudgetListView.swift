@@ -1,8 +1,13 @@
 //  BudgetListView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 4.0 — Build 10: Budget Circles Grid
+//  Version 4.1 — Wrap-Up View + Carryover Override
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v4.1 — Wrap-Up View + Carryover Override:
+//  ✅ ADDED: BudgetWrapUpView sheet presentation from wrap-up banner
+//  ✅ UPDATED: totalCarryover uses effectiveShouldCarryOver
+//  ✅ UPDATED: copyPreviousMonthBudgets propagates allowCarryOverOverride + respects effectiveShouldCarryOver
 //
 //  CHANGES v4.0 — Build 10 Budget Circles:
 //  ✅ REPLACED: Individual BudgetCardWithComparison list → DashboardBudgetCircles grid
@@ -69,16 +74,24 @@ import SwiftData
 
 struct BudgetListView: View {
     @Query(sort: \Budget.month, order: .reverse) private var allBudgets: [Budget]
-    @Query(sort: \Transaction.date, order: .reverse) private var allTransactions: [Transaction]
     @Query(sort: \RecurringTransaction.startDate, order: .reverse) private var allRecurring: [RecurringTransaction]
+    @Query(
+        filter: #Predicate<BusinessProfile> { $0.isActive },
+        sort: \BusinessProfile.sortOrder
+    )
+    private var businessProfiles: [BusinessProfile]
     @Environment(\.modelContext) private var modelContext
+
+    @State private var allTransactions: [Transaction] = []
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    
+
+    @State private var selectedBusinessProfile: BusinessProfile?
     @State private var financeMode: FinanceMode = .all
     @State private var selectedTab: ContentTab = .budgets
     @State private var showingCreateBudget = false
     @State private var showingAddRecurring = false
     @State private var showingBudgetHistory = false
+    @State private var showingWrapUp = false  // v4.1: Wrap-up sheet
     @State private var wrapUpBannerDismissed = false
     @State private var viewAppeared = false
     @State private var selectedBudgetForDetail: Budget?  // Build 10: Circle tap navigation
@@ -158,14 +171,20 @@ struct BudgetListView: View {
     }
     
     private func filterBudgets(_ budgets: [Budget], by mode: FinanceMode) -> [Budget] {
+        var result: [Budget]
         switch mode {
         case .business:
-            return budgets.filter { $0.financeType == .business }
+            result = budgets.filter { $0.financeType == .business }
         case .personal:
-            return budgets.filter { $0.financeType == .personal }
+            result = budgets.filter { $0.financeType == .personal }
         case .all:
-            return budgets
+            result = budgets
         }
+        // v4.1: Per-business filtering
+        if let profile = selectedBusinessProfile {
+            result = result.filter { $0.businessProfile?.id == profile.id }
+        }
+        return result
     }
     
     private func filterRecurring(_ recurring: [RecurringTransaction], by mode: FinanceMode) -> [RecurringTransaction] {
@@ -183,7 +202,7 @@ struct BudgetListView: View {
     
     private var totalCarryover: Double {
         currentMonthBudgets
-            .filter { $0.budgetType == .envelope }
+            .filter { $0.effectiveShouldCarryOver }
             .reduce(0) { $0 + $1.carryOver }
     }
     
@@ -200,21 +219,22 @@ struct BudgetListView: View {
         
         return (underBudget, total)
     }
-    
+
     private func calculateSpent(for budget: Budget, in monthStart: Date) -> Double {
         let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart) ?? monthStart
-        
+
         let relevantTransactions = allTransactions.filter { transaction in
+            guard !transaction.isDeleted else { return false }
             guard !transaction.isIncome else { return false }
             guard transaction.financeType == budget.financeType else { return false }
             guard transaction.date >= monthStart && transaction.date <= monthEnd else { return false }
-            
+
             if let budgetCategory = budget.category {
                 return transaction.category?.id == budgetCategory.id
             }
             return true
         }
-        
+
         return abs(relevantTransactions.reduce(0) { $0 + $1.amount })
     }
 
@@ -258,15 +278,11 @@ struct BudgetListView: View {
         return min(monthlySpentTotal / monthlyBudgetTotal, 1.0)
     }
 
-    /// Progress bar color matching individual budget card pattern
+    /// Progress bar color using the BudgetStatus tier system. Uses the
+    /// cent-precise factory so the new onTarget tier fires only when we're
+    /// actually at (not just near) 100 %.
     private var monthlyProgressColor: Color {
-        if monthlyProgress >= 1.0 {
-            return .expenseRed
-        } else if monthlyProgress >= 0.8 {
-            return .orange
-        } else {
-            return .incomeGreen
-        }
+        BudgetStatus.from(spent: monthlySpentTotal, budget: monthlyBudgetTotal).color
     }
 
     /// Build 10: Budget items paired with spent amounts for circle grid, alphabetically sorted
@@ -286,7 +302,9 @@ struct BudgetListView: View {
                 financeModeSegment
                     .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : -10)
-                
+
+                businessProfileFilter
+
                 contentTypeSegment
                     .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : -10)
@@ -304,6 +322,15 @@ struct BudgetListView: View {
             .sheet(isPresented: $showingBudgetHistory) {
                 BudgetHistoryView(allBudgets: allBudgets, allTransactions: allTransactions)
             }
+            // v4.1: Wrap-up sheet with per-budget paid/carryover controls
+            .sheet(isPresented: $showingWrapUp) {
+                BudgetWrapUpView(
+                    budgets: previousMonthBudgets,
+                    allTransactions: allTransactions,
+                    monthStart: previousMonthStart,
+                    monthName: previousMonthName
+                )
+            }
             // Build 10: Navigate to budget detail when circle tapped
             .sheet(item: $selectedBudgetForDetail) { budget in
                 NavigationStack {
@@ -312,9 +339,18 @@ struct BudgetListView: View {
             }
             .onChange(of: financeMode) { oldValue, newValue in
                 HapticService.play(.selection)
+                if newValue != .business {
+                    selectedBusinessProfile = nil
+                }
             }
             .onChange(of: selectedTab) { oldValue, newValue in
                 HapticService.play(.selection)
+            }
+            .task {
+                loadTransactions()
+            }
+            .onDisappear {
+                allTransactions = []
             }
             .onAppear {
                 DispatchQueue.main.async {
@@ -323,6 +359,23 @@ struct BudgetListView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Data Loading
+
+    private func loadTransactions() {
+        let endOfCurrentMonth = calendar.date(byAdding: .month, value: 1, to: currentMonthStart)!
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= previousMonthStart && $0.date < endOfCurrentMonth },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        do {
+            allTransactions = try modelContext.fetch(descriptor)
+        } catch {
+            #if DEBUG
+            print("BudgetListView loadTransactions error: \(error)")
+            #endif
         }
     }
     
@@ -345,6 +398,52 @@ struct BudgetListView: View {
         .accessibilityHint("Select to filter by business, personal, or all")
     }
     
+    @ViewBuilder
+    private var businessProfileFilter: some View {
+        if financeMode == .business && businessProfiles.count > 1 {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    Button {
+                        withAnimation(FLOAnimation.quick) { selectedBusinessProfile = nil }
+                        HapticService.play(.light)
+                    } label: {
+                        Text("All")
+                            .font(.caption.weight(.medium))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(selectedBusinessProfile == nil ? Color.brandPrimary : Color.floSecondarySystemBackground)
+                            .foregroundStyle(selectedBusinessProfile == nil ? .white : .primary)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+
+                    ForEach(businessProfiles) { profile in
+                        Button {
+                            withAnimation(FLOAnimation.quick) { selectedBusinessProfile = profile }
+                            HapticService.play(.light)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: profile.displayIcon)
+                                    .font(.caption2)
+                                Text(profile.businessName)
+                                    .font(.caption.weight(.medium))
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(selectedBusinessProfile?.id == profile.id ? Color.brandPrimary : Color.floSecondarySystemBackground)
+                            .foregroundStyle(selectedBusinessProfile?.id == profile.id ? .white : .primary)
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+            }
+        }
+    }
+
     private var contentTypeSegment: some View {
         Picker("Content", selection: $selectedTab) {
             ForEach(ContentTab.allCases, id: \.self) { tab in
@@ -601,11 +700,11 @@ struct BudgetListView: View {
             
             Button {
                 HapticService.play(.light)
-                showingBudgetHistory = true
+                showingWrapUp = true
             } label: {
                 HStack {
                     Spacer()
-                    Text("View \(previousMonthName)")
+                    Text("Review \(previousMonthName)")
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                     Image(systemName: "chevron.right")
@@ -615,8 +714,8 @@ struct BudgetListView: View {
                 .fontWeight(.medium)
                 .foregroundStyle(Color.brandPrimary)
             }
-            .accessibilityLabel("View \(previousMonthName) budget history")
-            .accessibilityHint("Double tap to see detailed budget history")
+            .accessibilityLabel("Review \(previousMonthName) budgets")
+            .accessibilityHint("Double tap to mark paid and set carryover for each budget")
         }
         .padding()
         .background(Color.floSecondarySystemBackground)
@@ -843,8 +942,7 @@ struct BudgetListView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Text(monthlySpentTotal.formatted(.currency(code: "USD")))
-                .font(.subheadline)
-                .fontWeight(.medium)
+                .floFinancialNumber()
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
                 .contentTransition(.numericText())
@@ -861,8 +959,7 @@ struct BudgetListView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Text(monthlyBudgetTotal.formatted(.currency(code: "USD")))
-                .font(.subheadline)
-                .fontWeight(.medium)
+                .floFinancialNumber()
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
         }
@@ -878,8 +975,7 @@ struct BudgetListView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Text(monthlyRemainingTotal.formatted(.currency(code: "USD")))
-                .font(.subheadline)
-                .fontWeight(.semibold)
+                .floFinancialNumber()
                 .foregroundStyle(monthlyRemainingTotal < 0 ? Color.expenseRed : Color.incomeGreen)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
@@ -958,11 +1054,11 @@ struct BudgetListView: View {
     
     private func copyPreviousMonthBudgets() {
         HapticService.play(.medium)
-        
+
         for previousBudget in previousMonthBudgets {
-            let carryOver = previousBudget.budgetType == .envelope ?
+            let carryOver = previousBudget.effectiveShouldCarryOver ?
                 calculateCarryOver(for: previousBudget) : 0
-            
+
             let newBudget = Budget(
                 month: currentMonthStart,
                 planned: previousBudget.planned,
@@ -971,7 +1067,9 @@ struct BudgetListView: View {
                 budgetType: previousBudget.budgetType,
                 financeType: previousBudget.financeType
             )
-            
+            // v4.1: Propagate persistent carryover preference (not monthly skip)
+            newBudget.allowCarryOverOverride = previousBudget.allowCarryOverOverride
+
             modelContext.insert(newBudget)
         }
         
@@ -1182,24 +1280,26 @@ struct BudgetCardWithComparison: View {
             return ("\(amount) more than \(previousMonthName)", false, "arrow.up")
         }
     }
-    
+
     private func calculateSpent(for budget: Budget, in monthStart: Date) -> Double {
+        let calendar = Calendar.current
         let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart) ?? monthStart
-        
+
         let relevantTransactions = allTransactions.filter { transaction in
+            guard !transaction.isDeleted else { return false }
             guard !transaction.isIncome else { return false }
             guard transaction.financeType == budget.financeType else { return false }
             guard transaction.date >= monthStart && transaction.date <= monthEnd else { return false }
-            
+
             if let budgetCategory = budget.category {
                 return transaction.category?.id == budgetCategory.id
             }
             return true
         }
-        
+
         return abs(relevantTransactions.reduce(0) { $0 + $1.amount })
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
@@ -1364,13 +1464,9 @@ struct BudgetCardWithComparison: View {
     }
     
     private var progressColor: Color {
-        if animatedProgress >= 1.0 {
-            return .expenseRed
-        } else if animatedProgress >= 0.8 {
-            return .orange
-        } else {
-            return .incomeGreen
-        }
+        // Use the real spent/budget values (not the animation-clamped percentage)
+        // so the onTarget tier never gets stuck during the ring's growth animation.
+        BudgetStatus.from(spent: spent, budget: budget.totalAvailable).color
     }
 }
 

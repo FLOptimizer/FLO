@@ -1,7 +1,7 @@
 //  BudgetSettingsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.5 - VoiceOver Audit: Decorative icons hidden
+//  Version 1.6 - Catalyst picker style · VoiceOver Audit
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v1.5 - VoiceOver Audit:
@@ -54,7 +54,7 @@ struct BudgetSettingsView: View {
                             .tag(type.rawValue)
                     }
                 }
-                #if os(macOS)
+                #if os(macOS) || targetEnvironment(macCatalyst)
                 .pickerStyle(.menu)
                 #else
                 .pickerStyle(.navigationLink)
@@ -179,6 +179,7 @@ struct BudgetSettingsView: View {
             .offset(y: viewAppeared ? 0 : 10)
             .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Budget Preferences")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -266,6 +267,7 @@ struct BudgetCategoryDefaultsView: View {
                 .padding(.vertical, 8)
             }
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Category Defaults")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {

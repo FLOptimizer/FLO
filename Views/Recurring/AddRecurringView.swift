@@ -42,6 +42,11 @@ struct AddRecurringView: View {
     @Query(sort: \Category.name) private var categories: [Category]
     @Query(sort: \Account.name) private var accounts: [Account]
     @Query(sort: \Budget.month, order: .reverse) private var allBudgets: [Budget]
+    @Query(
+        filter: #Predicate<BusinessProfile> { $0.isActive },
+        sort: \BusinessProfile.sortOrder
+    )
+    private var businessProfiles: [BusinessProfile]
     
     let preselectedFinanceType: Transaction.FinanceType?
     
@@ -56,6 +61,7 @@ struct AddRecurringView: View {
     @State private var startDate = Date()
     @State private var hasEndDate = false
     @State private var endDate = Date()
+    @State private var selectedBusinessProfile: BusinessProfile?
     @State private var showBudgetOffer = false
     @State private var savedRecurringAmount: Double = 0
     
@@ -69,6 +75,7 @@ struct AddRecurringView: View {
                 typeSection
                 detailsSection
                 financeTypeSection
+                businessProfileSection
                 categorySection
                 accountSection
                 frequencySection
@@ -173,8 +180,28 @@ struct AddRecurringView: View {
                     .tag(Transaction.FinanceType.personal)
             }
             .pickerStyle(.segmented)
-            .onChange(of: financeType) { _, _ in
+            .onChange(of: financeType) { _, newType in
                 HapticService.play(.light)
+                if newType == .business && businessProfiles.count == 1 {
+                    selectedBusinessProfile = businessProfiles.first
+                } else if newType == .personal {
+                    selectedBusinessProfile = nil
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var businessProfileSection: some View {
+        if financeType == .business && businessProfiles.count > 1 {
+            Section("Business Profile") {
+                Picker("Business", selection: $selectedBusinessProfile) {
+                    Text("Select...").tag(nil as BusinessProfile?)
+                    ForEach(businessProfiles) { profile in
+                        Text(profile.businessName).tag(profile as BusinessProfile?)
+                    }
+                }
+                .pickerStyle(.menu)
             }
         }
     }
@@ -224,7 +251,7 @@ struct AddRecurringView: View {
                             HapticService.play(.light)
                         }
                         .font(.caption)
-                         .foregroundStyle(Color.brandPrimaryText)
+                         .foregroundStyle(Color.brandPrimary)
                     }
                 }
             } footer: {
@@ -436,6 +463,7 @@ struct AddRecurringView: View {
             endDate: hasEndDate ? endDate : nil,
             category: selectedCategory,
             account: selectedAccount,
+            businessProfile: financeType == .business ? selectedBusinessProfile : nil,
             isActive: true
         )
         
@@ -538,7 +566,7 @@ struct RecurringAccountChip: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.subheadline)
-                         .foregroundStyle(Color.brandPrimaryText)
+                         .foregroundStyle(Color.brandPrimary)
                         .accessibilityHidden(true)
                 }
             }

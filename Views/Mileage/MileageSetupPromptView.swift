@@ -314,7 +314,7 @@ struct MileageSetupPromptView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color.brandPrimary)
-                    .cornerRadius(12)
+                    .cornerRadius(10)
                 }
                 
                 Button {

@@ -52,15 +52,21 @@ final class CSVImportCommitService {
         reconciliationChoice: ReconciliationService.ReconciliationChoice = .adjustBalance,
         context: ModelContext
     ) -> Result<Int, Error> {
-        // Step 1: Filter to selected transactions only
-        let selected = transactions.filter { $0.isSelected }
-        
+        // Step 1: Filter to selected, non-duplicate transactions
+        let selected = transactions.filter { $0.isSelected && !$0.isDuplicate }
+
         guard !selected.isEmpty else {
-            Self.logger.warning("commitImport called with no selected transactions")
+            let dupCount = transactions.filter { $0.isSelected && $0.isDuplicate }.count
+            if dupCount > 0 {
+                Self.logger.info("All \(dupCount) selected transactions were duplicates — skipped")
+            } else {
+                Self.logger.warning("commitImport called with no selected transactions")
+            }
             return .success(0)
         }
-        
-        Self.logger.info("Committing \(selected.count) of \(transactions.count) transactions")
+
+        let skippedDuplicates = transactions.filter { $0.isSelected && $0.isDuplicate }.count
+        Self.logger.info("Committing \(selected.count) of \(transactions.count) transactions (skipped \(skippedDuplicates) duplicate\(skippedDuplicates == 1 ? "" : "s"))")
         
         // Step 2: Track balance changes
         var balanceChange: Double = 0.0  // Net change for account

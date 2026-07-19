@@ -1,10 +1,19 @@
 //  ReceiptManagementCard.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 4.1.1 - Accessibility: text clipping prevention for Dynamic Type
+//  Version 4.2 - ReceiptListView reusable as a pushed destination (More tab)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Dashboard card showing receipt scanning status and actionable insights
+//
+//  CHANGES v4.2:
+//  ✅ ADDED: ReceiptListView(embedInOwnStack:showScanButton:) so it can be pushed
+//           onto an existing NavigationStack (e.g. the More tab → Receipts) instead
+//           of only presented as a sheet. Pushed mode drops the inner NavigationStack
+//           and "Done" button (system back button handles it) so the nav bar isn't doubled.
+//  ✅ ADDED: Optional nav-bar scan button + empty-state "Scan a Receipt" CTA that
+//           present SmartReceiptScanningView as a sheet, reloading the list on dismiss.
+//  ✅ UNCHANGED: Existing sheet usage (dashboard "View All") keeps its own stack + Done.
 //
 //  CHANGES v4.0:
 //  ✅ ADDED: Pending matches badge with tap to open matching queue
@@ -24,6 +33,9 @@
 import SwiftUI
 import FLODesignSystem
 import SwiftData
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct ReceiptManagementCard: View {
     @Environment(\.modelContext) private var modelContext
@@ -492,11 +504,21 @@ struct AnimatedStatPill: View {
 struct ReceiptListView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \ReceiptData.date, order: .reverse) private var receipts: [ReceiptData]
-    
+
+    /// When true (default — sheet presentation) the view supplies its own
+    /// NavigationStack and a "Done" button. When false (pushed onto an existing
+    /// stack, e.g. the More tab) it renders bare and relies on the system back
+    /// button so the nav bar isn't doubled.
+    var embedInOwnStack: Bool = true
+    /// When true, shows a scan button in the nav bar that opens the receipt
+    /// scanner as a sheet, plus a "Scan a Receipt" CTA in the empty state.
+    var showScanButton: Bool = false
+
+    @State private var receipts: [ReceiptData] = []
     @State private var filterMode: FilterMode = .all
     @State private var errorMessage: String?
     @State private var showingError = false
+    @State private var showingScanner = false
     @State private var viewAppeared = false
     
     private var filteredReceipts: [ReceiptData] {
@@ -513,75 +535,139 @@ struct ReceiptListView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            Group {
-                if filteredReceipts.isEmpty {
-                    ContentUnavailableView {
-                        Label("No Receipts", systemImage: "doc.text")
-                    } description: {
-                        Text("No receipts match the current filter")
-                    }
-                } else {
-                    List {
-                        ForEach(Array(filteredReceipts.enumerated()), id: \.element.id) { index, receipt in
-                            ReceiptListRow(receipt: receipt)
-                                .opacity(viewAppeared ? 1 : 0.001)
-                                .offset(x: viewAppeared ? 0 : 20)
-                                .animation(
-                                    FLOAnimation.standard.delay(Double(min(index, 10)) * 0.03),
-                                    value: viewAppeared
-                                )
-                        }
-                        .onDelete(perform: deleteReceipts)
-                    }
-                    .listStyle(.plain)
-                }
+        if embedInOwnStack {
+            NavigationStack {
+                listContent
             }
-            .navigationTitle("Receipts")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
+        } else {
+            listContent
+        }
+    }
+
+    private var listContent: some View {
+        Group {
+            if filteredReceipts.isEmpty {
+                ContentUnavailableView {
+                    Label("No Receipts", systemImage: "doc.text")
+                } description: {
+                    Text(filterMode == .all
+                         ? "Scan a receipt to get started."
+                         : "No receipts match the current filter.")
+                } actions: {
+                    if showScanButton {
+                        Button {
+                            HapticService.play(.light)
+                            showingScanner = true
+                        } label: {
+                            Label("Scan a Receipt", systemImage: "doc.text.viewfinder")
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+            } else {
+                List {
+                    ForEach(Array(filteredReceipts.enumerated()), id: \.element.id) { index, receipt in
+                        ReceiptListRow(receipt: receipt)
+                            .opacity(viewAppeared ? 1 : 0.001)
+                            .offset(x: viewAppeared ? 0 : 20)
+                            .animation(
+                                FLOAnimation.standard.delay(Double(min(index, 10)) * 0.03),
+                                value: viewAppeared
+                            )
+                    }
+                    .onDelete(perform: deleteReceipts)
+                }
+                .listStyle(.plain)
+            }
+        }
+        .navigationTitle("Receipts")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if embedInOwnStack {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") {
                         HapticService.play(.light)
                         dismiss()
                     }
                 }
-                
+            }
+
+            if showScanButton {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        ForEach(FilterMode.allCases, id: \.self) { mode in
-                            Button {
-                                HapticService.play(.selection)
-                                filterMode = mode
-                            } label: {
-                                HStack {
-                                    Text(mode.rawValue)
-                                    if filterMode == mode {
-                                        Image(systemName: "checkmark")
-                                    }
+                    Button {
+                        HapticService.play(.light)
+                        showingScanner = true
+                    } label: {
+                        Image(systemName: "doc.text.viewfinder")
+                    }
+                    .accessibilityLabel("Scan Receipt")
+                }
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    ForEach(FilterMode.allCases, id: \.self) { mode in
+                        Button {
+                            HapticService.play(.selection)
+                            filterMode = mode
+                        } label: {
+                            HStack {
+                                Text(mode.rawValue)
+                                if filterMode == mode {
+                                    Image(systemName: "checkmark")
                                 }
                             }
                         }
-                    } label: {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
                     }
-                }
-            }
-            .onAppear {
-                withAnimation(FLOAnimation.standard) {
-                    viewAppeared = true
-                }
-            }
-            .alert("Error", isPresented: $showingError) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                if let errorMessage = errorMessage {
-                    Text(errorMessage)
+                } label: {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
                 }
             }
         }
+        .sheet(isPresented: $showingScanner, onDismiss: { loadData() }) {
+            SmartReceiptScanningView()
+        }
+        .task {
+            loadData()
+        }
+        .onDisappear {
+            receipts = []
+        }
+        .onAppear {
+            withAnimation(FLOAnimation.standard) {
+                viewAppeared = true
+            }
+        }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            if let errorMessage = errorMessage {
+                Text(errorMessage)
+            }
+        }
     }
-    
+
+    // MARK: - Data Loading
+
+    private func loadData() {
+        let calendar = Calendar.current
+        let year = calendar.component(.year, from: Date())
+        let startOfYear = calendar.date(from: DateComponents(year: year, month: 1, day: 1))!
+        let endOfYear = calendar.date(from: DateComponents(year: year + 1, month: 1, day: 1))!
+
+        let descriptor = FetchDescriptor<ReceiptData>(
+            predicate: #Predicate<ReceiptData> { $0.date >= startOfYear && $0.date < endOfYear },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        do {
+            receipts = try modelContext.fetch(descriptor)
+        } catch {
+            #if DEBUG
+            print("ReceiptListView loadData error: \(error)")
+            #endif
+        }
+    }
+
     private func deleteReceipts(at offsets: IndexSet) {
         HapticService.play(.heavy)
         
@@ -618,17 +704,104 @@ struct ReceiptListView: View {
     }
 }
 
+// MARK: - Receipt Thumbnail Cache
+
+/// In-memory NSCache for decoded receipt thumbnails. Evicted automatically under memory pressure.
+@MainActor
+final class ReceiptThumbnailCache {
+    static let shared = ReceiptThumbnailCache()
+
+    #if canImport(UIKit)
+    private let cache: NSCache<NSString, UIImage> = {
+        let c = NSCache<NSString, UIImage>()
+        c.countLimit = 200
+        c.totalCostLimit = 50 * 1024 * 1024  // 50 MB
+        return c
+    }()
+
+    func image(for filename: String) -> UIImage? {
+        cache.object(forKey: filename as NSString)
+    }
+
+    func store(_ image: UIImage, for filename: String) {
+        let cost = image.jpegData(compressionQuality: 1)?.count ?? 0
+        cache.setObject(image, forKey: filename as NSString, cost: cost)
+    }
+    #endif
+
+    private init() {}
+}
+
+// MARK: - Receipt Thumbnail View
+
+/// Asynchronously loads and displays a receipt thumbnail. Shows a placeholder while loading.
+/// Uses ReceiptThumbnailCache for in-memory caching; falls back to generating from the
+/// full image if the thumbnail file is absent.
+struct ReceiptThumbnailView: View {
+    let filename: String?
+    let size: CGFloat
+
+    #if canImport(UIKit)
+    @State private var thumbnail: UIImage?
+    #endif
+
+    var body: some View {
+        Group {
+            #if canImport(UIKit)
+            if let image = thumbnail {
+                Image(platformImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: "doc.text.image")
+                    .font(.system(size: size * 0.4))
+                    .foregroundStyle(.secondary)
+            }
+            #else
+            Image(systemName: "doc.text.image")
+                .font(.system(size: size * 0.4))
+                .foregroundStyle(.secondary)
+            #endif
+        }
+        .frame(width: size, height: size)
+        .background(Color.secondary.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        #if canImport(UIKit)
+        .task(id: filename) {
+            await loadThumbnail()
+        }
+        #endif
+    }
+
+    #if canImport(UIKit)
+    private func loadThumbnail() async {
+        guard let filename, !filename.isEmpty else { return }
+
+        // Check in-memory cache first
+        if let cached = await ReceiptThumbnailCache.shared.image(for: filename) {
+            thumbnail = cached
+            return
+        }
+
+        // Load from disk (PhotoStorageManager generates if missing)
+        guard let image = try? await PhotoStorageManager.shared.loadThumbnail(filename: filename) else { return }
+        await ReceiptThumbnailCache.shared.store(image, for: filename)
+        thumbnail = image
+    }
+    #endif
+}
+
 // MARK: - Receipt List Row
 
 struct ReceiptListRow: View {
     let receipt: ReceiptData
-    
+
     @State private var isPressed = false
-    
+
     private var currencyCode: String {
         Locale.current.currency?.identifier ?? "USD"
     }
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // Status Indicator
@@ -636,7 +809,13 @@ struct ReceiptListRow: View {
                 .fill(statusColor)
                 .frame(width: 10, height: 10)
                 .accessibilityHidden(true)
-            
+
+            // Thumbnail (file-backed receipts only)
+            if receipt.imageURL != nil {
+                ReceiptThumbnailView(filename: receipt.imageURL, size: 44)
+                    .accessibilityHidden(true)
+            }
+
             // Receipt Info
             VStack(alignment: .leading, spacing: 4) {
                 Text(receipt.merchantName)

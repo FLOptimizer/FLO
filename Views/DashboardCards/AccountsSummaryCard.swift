@@ -372,7 +372,7 @@ struct AccountsSummaryCard: View {
                 Text(netWorth, format: .currency(code: "USD"))
                     .font(.title2)
                     .fontWeight(.bold)
-                    .foregroundStyle(netWorth >= 0 ? Color.brandPrimaryText : Color.expenseRed)
+                    .foregroundStyle(netWorth >= 0 ? Color.brandPrimary : Color.expenseRed)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     .contentTransition(.numericText(value: netWorth))
@@ -504,7 +504,7 @@ struct AccountsSummaryCard: View {
                 Text("Add Account")
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .foregroundStyle(Color.brandPrimaryText)
+                    .foregroundStyle(Color.brandPrimary)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Add new account")

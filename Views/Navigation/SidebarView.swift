@@ -4,12 +4,17 @@
 //  Build 10 — Zone 1 sidebar for landscape iPhone, iPad, and macOS.
 //  Grouped sections: Dashboard (home) | Money | Clients | Business | Settings
 //  Step 12: Decoupled List selection to fix "Publishing changes from within view updates"
+//  Step 13 (v3.0 launch): Added iconOnly mode for 50pt landscape-iPhone strip.
+//  Step 14 (Build 10): sidebar min width now also applies on Mac Catalyst.
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 
 import SwiftUI
 
 struct SidebarView: View {
     @Binding var selection: AppTab
+
+    /// When true, renders a compact 50pt-wide icon-only column. Used on landscape iPhone.
+    var iconOnly: Bool = false
 
     // Intermediate state decouples List selection from @Published binding.
     @State private var listSelection: AppTab?
@@ -22,6 +27,8 @@ struct SidebarView: View {
         #if os(macOS)
         return true
         #else
+        // Always use SF Symbols when in icon-only strip (emoji wouldn't read well at 50pt).
+        if iconOnly { return true }
         return horizontalSizeClass == .regular
         #endif
     }
@@ -35,7 +42,7 @@ struct SidebarView: View {
     private static let assistantSection: [AppTab] = [.assistant]
 
     /// Core money management
-    private static let moneySection: [AppTab] = [.accounts, .budgets, .receipts, .transactions]
+    private static let moneySection: [AppTab] = [.accounts, .budgets, .debtAccelerator, .receipts, .transactions]
 
     /// Client & invoicing
     private static let clientsSection: [AppTab] = [.clients, .invoices]
@@ -62,22 +69,22 @@ struct SidebarView: View {
                 }
             }
 
-            // Money
-            Section("Money") {
+            // Money — hide header in icon-only mode (no room at 50pt)
+            Section(iconOnly ? "" : "Money") {
                 ForEach(Self.moneySection) { tab in
                     sidebarRow(for: tab).tag(tab)
                 }
             }
 
             // Clients & Invoicing
-            Section("Clients") {
+            Section(iconOnly ? "" : "Clients") {
                 ForEach(Self.clientsSection) { tab in
                     sidebarRow(for: tab).tag(tab)
                 }
             }
 
             // Business Tools
-            Section("Business") {
+            Section(iconOnly ? "" : "Business") {
                 ForEach(Self.businessSection) { tab in
                     sidebarRow(for: tab).tag(tab)
                 }
@@ -91,7 +98,7 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
-        .navigationTitle("FLO")
+        .navigationTitle(iconOnly ? "" : "FLO")
         .onAppear {
             listSelection = selection
         }
@@ -106,25 +113,36 @@ struct SidebarView: View {
                 listSelection = newValue
             }
         }
-        #if os(macOS)
+        #if os(macOS) || targetEnvironment(macCatalyst)
         .frame(minWidth: 200)
         #endif
     }
 
     // MARK: - Row
 
+    @ViewBuilder
     private func sidebarRow(for tab: AppTab) -> some View {
-        Label {
-            Text(tab.title)
-                .font(.system(size: 13, weight: .medium))
-        } icon: {
-            if useSymbolIcons {
-                Image(systemName: tab.icon)
-            } else {
-                Text(tab.emoji)
+        if iconOnly {
+            // Icon-only row for 50pt landscape-iPhone strip
+            Image(systemName: tab.icon)
+                .font(.system(size: 20, weight: .regular))
+                .frame(maxWidth: .infinity, minHeight: 36)
+                .contentShape(Rectangle())
+                .accessibilityLabel(tab.title)
+                .help(tab.title)
+        } else {
+            Label {
+                Text(tab.title)
+                    .font(.system(size: 13, weight: .medium))
+            } icon: {
+                if useSymbolIcons {
+                    Image(systemName: tab.icon)
+                } else {
+                    Text(tab.emoji)
+                }
             }
+            .accessibilityLabel(tab.title)
         }
-        .accessibilityLabel(tab.title)
     }
 }
 

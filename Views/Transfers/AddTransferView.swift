@@ -36,6 +36,7 @@ struct AddTransferView: View {
     @Environment(\.dismiss) private var dismiss
     
     @Query(sort: \Account.name) private var accounts: [Account]
+    @Query(sort: \Category.name) private var categories: [Category]
     
     // MARK: - Form State
     
@@ -56,6 +57,7 @@ struct AddTransferView: View {
     @State private var interestPortion: Double = 0
     @State private var principalPortion: Double = 0
     @State private var useAutoCalculate: Bool = true
+    @State private var selectedInterestCategory: Category? = nil
 
     // Recurring Fields
     @State private var makeRecurring: Bool = false
@@ -112,6 +114,20 @@ struct AddTransferView: View {
     private var destinationHasAPR: Bool {
         guard let to = toAccount else { return false }
         return (to.apr ?? 0) > 0
+    }
+
+    /// Whether the destination is a loan/credit account but APR is missing.
+    /// Used to surface a one-time warning so the user can populate APR
+    /// before relying on autoCalculatedInterest().
+    private var destinationMissingAPR: Bool {
+        guard let to = toAccount else { return false }
+        guard to.accountType == .loan || to.accountType == .creditCard else { return false }
+        return (to.apr ?? 0) <= 0
+    }
+
+    /// Business expense categories suitable for the interest portion picker.
+    private var interestCategoryCandidates: [Category] {
+        categories.filter { $0.isBusiness && !$0.isIncome && $0.isTaxDeductible }
     }
     
     // MARK: - Body
@@ -368,6 +384,17 @@ struct AddTransferView: View {
                 }
 
             if showPaymentBreakdown {
+                if destinationMissingAPR {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text("This loan account has no APR set. Auto-calculate is unavailable until you add an APR in the account's settings. Enter the interest portion manually below.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+
                 if destinationHasAPR {
                     Picker("Calculation Method", selection: $useAutoCalculate) {
                         Text("Auto-calculate").tag(true)
@@ -437,12 +464,25 @@ struct AddTransferView: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
+
+                // Interest category override picker (optional — defaults to resolver)
+                if interestPortion > 0 {
+                    Picker("Interest Category", selection: $selectedInterestCategory) {
+                        Text("Auto (default)").tag(Category?.none)
+                        ForEach(interestCategoryCandidates) { cat in
+                            Text(cat.name).tag(Category?.some(cat))
+                        }
+                    }
+                    .onChange(of: selectedInterestCategory) { _, _ in
+                        HapticService.play(.selection)
+                    }
+                }
             }
         } header: {
             Text("Payment Breakdown")
         } footer: {
             if showPaymentBreakdown {
-                Text("Interest is categorized as a tax-deductible expense (Schedule C Line 16a). Principal reduces the loan balance.")
+                Text("Interest is recorded as a deductible expense in your selected business's books. Principal reduces the loan balance.")
             } else {
                 Text("Optional: Split this payment into interest and principal for accurate tax reporting")
             }
@@ -701,8 +741,22 @@ struct AddTransferView: View {
             transfer.principalPortion = principalPortion
             transfer.paymentGroupId = UUID()
             try? context.save()
+
+            // Create the linked interest expense Transaction so the deduction
+            // actually lands on the P&L (v1.3 — fixes silent loss of deduction).
+            if interestPortion > 0 {
+                do {
+                    _ = try TransferService.shared.commitDebtPaymentSplit(
+                        transfer: transfer,
+                        interestCategory: selectedInterestCategory,
+                        context: context
+                    )
+                } catch {
+                    print("⚠️ AddTransferView: Failed to commit debt payment split: \(error.localizedDescription)")
+                }
+            }
         }
-        
+
         if transfer != nil {
             HapticService.play(.success)
             dismiss()

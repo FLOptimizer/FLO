@@ -410,7 +410,7 @@ struct ReportsView: View {
                             showComprehensiveReport = true
                         } label: {
                             Image(systemName: "doc.text.fill.viewfinder")
-                                 .foregroundStyle(Color.brandPrimaryText)
+                                 .foregroundStyle(Color.brandPrimary)
                         }
                         .accessibilityLabel("Generate CPA report")
                         .accessibilityHint("Opens comprehensive report generator for tax preparation")
@@ -421,7 +421,7 @@ struct ReportsView: View {
                             showExportSheet = true
                         } label: {
                             Image(systemName: "square.and.arrow.up")
-                                 .foregroundStyle(Color.brandPrimaryText)
+                                 .foregroundStyle(Color.brandPrimary)
                         }
                         .accessibilityLabel("Export report")
                         .accessibilityHint("Opens export options for PDF or CSV")
@@ -440,7 +440,7 @@ struct ReportsView: View {
                             }
                         } label: {
                             Image(systemName: selectedChartType.icon)
-                                 .foregroundStyle(Color.brandPrimaryText)
+                                 .foregroundStyle(Color.brandPrimary)
                         }
                         .accessibilityLabel("Chart type")
                         .accessibilityValue(selectedChartType.rawValue)
@@ -712,7 +712,7 @@ struct ReportsView: View {
             } label: {
                 Image(systemName: "chevron.left.circle.fill")
                     .font(.title2)
-                     .foregroundStyle(Color.brandPrimaryText)
+                     .foregroundStyle(Color.brandPrimary)
             }
             .accessibilityLabel("Previous \(selectedPeriod.rawValue.lowercased())")
             
@@ -734,7 +734,7 @@ struct ReportsView: View {
             } label: {
                 Image(systemName: "chevron.right.circle.fill")
                     .font(.title2)
-                     .foregroundStyle(Color.brandPrimaryText)
+                     .foregroundStyle(Color.brandPrimary)
             }
             .accessibilityLabel("Next \(selectedPeriod.rawValue.lowercased())")
         }
@@ -821,8 +821,7 @@ struct ReportsView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     Text(formatCompactCurrency(data.netCashFlow))
-                        .font(.caption)
-                        .fontWeight(.semibold)
+                        .floFinancialNumber()
                         .foregroundStyle(data.netCashFlow >= 0 ? Color.incomeGreen : Color.expenseRed)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
@@ -867,8 +866,7 @@ struct ReportsView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Text(formatCurrency(projectedNet))
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
+                    .floFinancialNumber()
                     .foregroundStyle(projectedNet >= 0 ? Color.incomeGreen : Color.orange)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)

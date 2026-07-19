@@ -1,8 +1,17 @@
 //  GettingStartedCard.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.4.1 - Accessibility: text clipping prevention for Dynamic Type
+//  Version 3.4.2 - Cold-start completion check for seeded data
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.4.2:
+//  ✅ FIXED (iPad §8): On first load with seeded data the card showed
+//           "0 of 8 completed" until the user tapped Dashboard refresh. The
+//           `.task` completion check could run BEFORE the async demo seed
+//           finished, and nothing re-checked afterward. Now also re-runs
+//           checkCompletionStatus() on `.demoDataSeeded` so the seeded state
+//           resolves to "You're all set!" without a manual refresh. Mirrors
+//           DashboardView v3.13 / DashboardSummaryPanel v1.1.
 //
 //  CHANGES v3.2:
 //  - Fixed "X of Y completed" text contrast on gradient background
@@ -368,6 +377,12 @@ struct GettingStartedCard: View {
             }
         }
         .task {
+            checkCompletionStatus()
+        }
+        // v3.4.2: Demo data seeds asynchronously and can finish AFTER this .task
+        // ran, leaving the checklist at "0 of N". Re-check when seeding completes
+        // so the seeded Pro scenario resolves to "You're all set!" on first load.
+        .onReceive(NotificationCenter.default.publisher(for: .demoDataSeeded)) { _ in
             checkCompletionStatus()
         }
         // Re-check completion when any sheet dismisses (user may have created data)

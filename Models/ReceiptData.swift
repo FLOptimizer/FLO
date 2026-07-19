@@ -1,8 +1,11 @@
 //  ReceiptData.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.1 - Fixed SwiftData schema issue
+//  Version 2.2 - Tip parsing
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.2:
+//  ✅ Added optional tipAmount captured by SmartReceiptService OCR parsing
 //
 //  CHANGES v2.1:
 //  ✅ Removed 'description' computed property from ReceiptLineItem
@@ -29,6 +32,10 @@ final class ReceiptData {
     var totalAmount: Double = 0.0
     var date: Date = Date()
     var rawOCRText: String = ""  // Full OCR text for reference
+
+    /// Tip amount parsed from receipt OCR (gratuity, service charge).
+    /// nil if no tip line was detected. Already included in totalAmount.
+    var tipAmount: Double?
 
     // Enhanced Data
     var suggestedCategoryID: UUID?
@@ -57,6 +64,16 @@ final class ReceiptData {
     var taxCategory: String?
     var deductionFlagged: Bool = false  // Has user been reminded about this?
     var deductionFlaggedDate: Date?
+
+    // Payment Card Info (v2.3 — for auto-account matching)
+    /// Last 4 digits extracted from payment method line on receipt
+    var paymentLastFour: String?
+    /// Card network detected (visa, mastercard, amex, discover)
+    var paymentNetwork: String?
+
+    // OCR Quality
+    /// Average Vision OCR confidence across all recognized text (0.0–1.0).
+    var ocrConfidence: Double = 0.0
 
     // Metadata
     var createdDate: Date = Date()

@@ -278,7 +278,7 @@ struct CSVImportReviewView: View {
             HStack {
                 Image(systemName: "doc.text.fill")
                     .font(.title2)
-                    .foregroundStyle(Color.brandPrimaryText)
+                    .foregroundStyle(Color.brandPrimary)
                     .accessibilityHidden(true)
                 
                 Text("Import Summary")
@@ -295,7 +295,7 @@ struct CSVImportReviewView: View {
                         .font(.title3.bold())
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                        .foregroundStyle(Color.brandPrimaryText)
+                        .foregroundStyle(Color.brandPrimary)
                     Text("rows parsed")
                         .font(.subheadline)
                         .lineLimit(1)
@@ -308,7 +308,7 @@ struct CSVImportReviewView: View {
                         .font(.title3.bold())
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                        .foregroundStyle(Color.brandPrimaryText)
+                        .foregroundStyle(Color.brandPrimary)
                     Text("valid transactions")
                         .font(.subheadline)
                         .lineLimit(1)

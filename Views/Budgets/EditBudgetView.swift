@@ -1,8 +1,12 @@
 //  EditBudgetView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.8 - Editable Category/Month + Done Button Fix
+//  Version 2.9 - Carryover Control Toggle
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.9 - Carryover Control:
+//  ✅ ADDED: "Allow Carry Over" toggle for persistent per-budget carryover preference
+//  ✅ ADDED: carryOverControlSection with footer explanation
 //
 //  CHANGES v2.8 - Editable Category/Month + Done Button Fix:
 //  ✅ FIXED: Two "Done" buttons on keyboard — both CurrencyInputFields had their own
@@ -74,6 +78,7 @@ struct EditBudgetView: View {
     @State private var selectedMonth: Date           // v2.8: Editable month
     @State private var viewAppeared = false
     @State private var showingDeleteConfirmation = false
+    @State private var allowCarryOver: Bool
 
     /// Expense categories only (exclude income categories)
     private var filteredCategories: [Category] {
@@ -105,6 +110,7 @@ struct EditBudgetView: View {
         _carryOver = State(initialValue: budget.carryOver)
         _selectedCategory = State(initialValue: budget.category)
         _selectedMonth = State(initialValue: budget.month)
+        _allowCarryOver = State(initialValue: budget.allowCarryOverOverride ?? (budget.budgetType == .envelope))
     }
      
     var body: some View {
@@ -129,6 +135,11 @@ struct EditBudgetView: View {
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
 
+            carryOverControlSection
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(y: viewAppeared ? 0 : 10)
+                .animation(FLOAnimation.standard.delay(0.22), value: viewAppeared)
+
             summarySection
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
@@ -139,6 +150,7 @@ struct EditBudgetView: View {
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.3), value: viewAppeared)
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Edit Budget")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -247,6 +259,25 @@ struct EditBudgetView: View {
         }
     }
     
+    private var carryOverControlSection: some View {
+        Section {
+            Toggle(isOn: $allowCarryOver) {
+                Label("Allow Carry Over", systemImage: "arrow.uturn.forward.circle")
+            }
+            .tint(Color.brandPrimary)
+            .onChange(of: allowCarryOver) { _, _ in
+                HapticService.play(.light)
+            }
+            .accessibilityLabel("Allow carry over")
+            .accessibilityHint("When enabled, unspent funds roll into the next month")
+        } footer: {
+            Text("When enabled, unspent funds roll into the next month. Enabled by default for envelope budgets.")
+                .font(.caption)
+                .lineLimit(3)
+                .minimumScaleFactor(0.7)
+        }
+    }
+
     private var summarySection: some View {
         Section("Total Available") {
             let total = amount + carryOver
@@ -321,6 +352,7 @@ struct EditBudgetView: View {
         budget.carryOver = carryOver
         budget.category = category      // v2.8
         budget.month = selectedMonth     // v2.8
+        budget.allowCarryOverOverride = allowCarryOver  // v2.9
 
         do {
             try context.save()

@@ -1,7 +1,7 @@
 //  AddAccountView_Accounts.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.5 - Loan Detail Fields
+//  Version 1.6 - Catalyst form style · Loan Detail Fields
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  NOTE: Named AddAccountView_Accounts to avoid collision with any other
@@ -48,10 +48,23 @@ struct AddAccountView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @Query(sort: \Account.name) private var existingAccounts: [Account]
-    
+
+    // Build 10 Phase 2: Adaptive presentation
+    // - `embedInNavigationStack`: true for sheet hosts (default), false when hosted in
+    //   Zone 3 detail column where the parent NavigationSplitView already provides one.
+    // - `onCancel` / `onSaved`: optional dismiss closures. When nil, falls back to
+    //   `@Environment(\.dismiss)` so existing sheet callers don't need to change.
+    var embedInNavigationStack: Bool = true
+    var onCancel: (() -> Void)? = nil
+    var onSaved: ((Account) -> Void)? = nil
+
+
     @State private var name = ""
     @State private var accountType: AccountType = .checking
     @State private var financeType: Transaction.FinanceType = .business
+    @State private var selectedBusinessProfile: BusinessProfile?  // v3.7: Multi-business
+    @Query(filter: #Predicate<BusinessProfile> { $0.isActive }, sort: \BusinessProfile.sortOrder)
+    private var businesses: [BusinessProfile]
     @State private var isPrimary = false
     @State private var showOnDashboard = true
     @State private var notes = ""
@@ -66,6 +79,10 @@ struct AddAccountView: View {
     @State private var minimumPaymentFloor: Double = 25
     @State private var paymentDueDay: Int = 1
 
+    // Linked Cards (queued for post-save)
+    @State private var pendingCards: [PendingCard] = []
+    @State private var showingAddCard = false
+
     // Loan specific
     @State private var originalLoanAmount: Double = 0
     @State private var loanTermMonths: Int = 360
@@ -75,7 +92,16 @@ struct AddAccountView: View {
     
     var body: some View {
         NavigationStack {
-            Form {
+            formContent
+        }
+        .floIf(embedInNavigationStack) { view in
+            view.floMacSheetFrame()
+        }
+    }
+
+    @ViewBuilder
+    private var formContent: some View {
+        Form {
                 // Account Details
                 Section("Account Details") {
                     TextField("Account Name", text: $name)
@@ -99,22 +125,52 @@ struct AddAccountView: View {
                         }
                     }
                     .accessibilityLabel("Classification: \(financeType.displayName)")
+                    .onChange(of: financeType) { _, newType in
+                        if newType == .business && selectedBusinessProfile == nil {
+                            selectedBusinessProfile = businesses.first(where: { $0.isPrimary }) ?? businesses.first
+                        } else if newType == .personal {
+                            selectedBusinessProfile = nil
+                        }
+                    }
+
+                    // v3.7+: Business assignment — always show for business accounts
+                    if financeType == .business && !businesses.isEmpty {
+                        if businesses.count == 1 {
+                            // Single business — show assignment confirmation
+                            HStack {
+                                Label(businesses[0].businessName, systemImage: businesses[0].displayIcon)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                Text("Auto-assigned")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .accessibilityLabel("Business: \(businesses[0].businessName), auto-assigned")
+                        } else {
+                            Picker("Business", selection: $selectedBusinessProfile) {
+                                ForEach(businesses) { business in
+                                    Label(business.businessName, systemImage: business.displayIcon)
+                                        .tag(business as BusinessProfile?)
+                                }
+                            }
+                            .accessibilityLabel("Business: \(selectedBusinessProfile?.businessName ?? "None")")
+                        }
+                    }
                 }
                 
-                // Balance (Premium feature)
-                if subscriptionManager.currentTier.hasBalanceTracking {
-                    Section("Starting Balance") {
-                        CurrencyInputField(
-                            amount: $startingBalance,
-                            accessibilityLabelText: "Starting balance in dollars",
-                            showDoneButton: false
-                        )
-                        
-                        if !accountType.isAsset {
-                            Text("Enter the amount you currently owe")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                // Balance — available on all tiers so new users can set an
+                // accurate starting point (balance display elsewhere remains gated)
+                Section("Starting Balance") {
+                    CurrencyInputField(
+                        amount: $startingBalance,
+                        accessibilityLabelText: "Starting balance in dollars",
+                        showDoneButton: false
+                    )
+
+                    if !accountType.isAsset {
+                        Text("Enter the amount you currently owe")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 
@@ -292,6 +348,45 @@ struct AddAccountView: View {
                         .accessibilityHint("Enter up to 4 digits for identification")
                 }
                 
+                // Linked Cards (for receipt auto-matching)
+                Section {
+                    ForEach(pendingCards) { card in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(card.cardholderName)
+                                    .font(.subheadline.weight(.medium))
+                                HStack(spacing: 4) {
+                                    Text("****\(card.lastFourDigits)")
+                                        .font(.caption.monospacedDigit())
+                                    if let exp = card.expirationDisplay {
+                                        Text("Exp: \(exp)")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                            Spacer()
+                            Button(role: .destructive) {
+                                pendingCards.removeAll { $0.id == card.id }
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .foregroundStyle(.red)
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+
+                    Button {
+                        showingAddCard = true
+                    } label: {
+                        Label("Add Card", systemImage: "plus.circle")
+                    }
+                } header: {
+                    Text("Linked Cards")
+                } footer: {
+                    Text("Add cards associated with this account. Receipts showing matching card numbers will auto-select this account.")
+                }
+
                 // Settings
                 Section {
                     Toggle("Set as Primary Account", isOn: $isPrimary)
@@ -323,6 +418,9 @@ struct AddAccountView: View {
                     .accessibilityLabel("Preview of new account")
                 }
             }
+            #if os(macOS) || targetEnvironment(macCatalyst)
+            .formStyle(.grouped)
+            #endif
             .navigationTitle("Add Account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -342,7 +440,7 @@ struct AddAccountView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         HapticService.play(.light)
-                        dismiss()
+                        performDismiss()
                     }
                     .accessibilityLabel("Cancel")
                     .accessibilityHint("Double tap to discard and go back")
@@ -359,12 +457,20 @@ struct AddAccountView: View {
                 }
             }
             .onAppear {
+                // v3.7: Default to primary business
+                if selectedBusinessProfile == nil {
+                    selectedBusinessProfile = businesses.first(where: { $0.isPrimary }) ?? businesses.first
+                }
                 // v1.0: Announce screen
                 AccessibilityAnnouncement.screenChanged("Add Account form")
             }
-        }
+            .sheet(isPresented: $showingAddCard) {
+                AddLinkedCardSheet { pending in
+                    pendingCards.append(pending)
+                }
+            }
     }
-    
+
     // MARK: - Computed Properties
 
     /// Balance adjusted for liability accounts (auto-negated for preview)
@@ -377,6 +483,14 @@ struct AddAccountView: View {
     }
 
     // MARK: - Actions
+
+    private func performDismiss() {
+        if let onCancel {
+            onCancel()
+        } else {
+            dismiss()
+        }
+    }
 
     private func saveAccount() {
         HapticService.play(.medium)
@@ -417,8 +531,27 @@ struct AddAccountView: View {
             loanTypeRaw: accountType == .loan ? loanType.rawValue : nil
         )
         
+        // v3.7: Assign business profile for business accounts
+        if financeType == .business {
+            account.businessProfile = selectedBusinessProfile ?? businesses.first
+        }
+
         modelContext.insert(account)
-        
+
+        // Attach queued linked cards
+        for pending in pendingCards {
+            let card = LinkedCard(
+                lastFourDigits: pending.lastFourDigits,
+                cardholderName: pending.cardholderName,
+                nickname: pending.nickname.isEmpty ? nil : pending.nickname,
+                network: pending.network,
+                expirationMonth: pending.expirationMonth,
+                expirationYear: pending.expirationYear
+            )
+            card.account = account
+            modelContext.insert(card)
+        }
+
         do {
             try modelContext.save()
 
@@ -431,7 +564,11 @@ struct AddAccountView: View {
 
             HapticService.play(.success)
             AccessibilityAnnouncement.announce("Account saved successfully")
-            dismiss()
+            if let onSaved {
+                onSaved(account)
+            } else {
+                dismiss()
+            }
         } catch {
             print("Failed to save account: \(error)")
             HapticService.play(.error)

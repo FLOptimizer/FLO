@@ -16,8 +16,6 @@ struct QuickActionsView: View {
     @Binding var showingCreateInvoice: Bool
     @Binding var showingReceiptScanner: Bool
     @Binding var showingMileageTracking: Bool
-    @Binding var showingBasicReceiptCapture: Bool
-
     let financeMode: FinanceMode
 
     @StateObject private var subscriptionManager = SubscriptionManager.shared
@@ -25,10 +23,6 @@ struct QuickActionsView: View {
 
     private var hasInvoicing: Bool {
         subscriptionManager.currentTier.hasInvoicing
-    }
-
-    private var hasSmartReceiptScanning: Bool {
-        subscriptionManager.currentTier.hasSmartReceiptScanning
     }
 
     /// Show Invoice button only in Business or All mode (and only if tier allows)
@@ -93,22 +87,16 @@ struct QuickActionsView: View {
                 .opacity(buttonsAppeared ? 1 : 0.001)
                 .offset(y: buttonsAppeared ? 0 : 10)
 
-                // 3. Scan Receipt
+                // 3. Scan — opens smart scanner directly
                 QuickActionButton(
                     floIcon: .receipt,
-                    title: "Receipt",
+                    title: "Scan",
                     color: .blue,
                     delay: 0.10,
-                    accessibilityHintText: hasSmartReceiptScanning
-                        ? "Opens smart scanner to capture and parse receipt with AI"
-                        : "Opens camera to capture receipt image"
+                    accessibilityHintText: "Opens scanner to scan a receipt or bill"
                 ) {
                     HapticService.play(.medium)
-                    if hasSmartReceiptScanning {
-                        showingReceiptScanner = true
-                    } else {
-                        showingBasicReceiptCapture = true
-                    }
+                    showingReceiptScanner = true
                 }
                 .opacity(buttonsAppeared ? 1 : 0.001)
                 .offset(y: buttonsAppeared ? 0 : 10)
@@ -175,7 +163,7 @@ struct QuickActionButton: View {
         case "Income": return "Add new income"
         case "Invoice": return "Create new invoice"
         case "Trip": return "Log mileage trip"
-        case "Receipt": return "Scan receipt"
+        case "Scan": return "Scan receipt or bill"
         default: return title
         }
     }
@@ -226,7 +214,6 @@ struct QuickActionButton: View {
         showingCreateInvoice: .constant(false),
         showingReceiptScanner: .constant(false),
         showingMileageTracking: .constant(false),
-        showingBasicReceiptCapture: .constant(false),
         financeMode: .all
     )
     .padding()

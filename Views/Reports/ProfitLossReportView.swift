@@ -337,7 +337,7 @@ struct ProfitLossReportView: View {
                             }
                         } label: {
                             Image(systemName: "ellipsis.circle")
-                                 .foregroundStyle(Color.brandPrimaryText)
+                                 .foregroundStyle(Color.brandPrimary)
                         }
                         .accessibilityLabel("Report options")
                         .accessibilityHint("Show comparison toggle and export options")
@@ -1203,7 +1203,7 @@ struct PLExportView: View {
                         .padding()
                         .background(Color.brandPrimary)
                         .foregroundStyle(.white)
-                        .cornerRadius(12)
+                        .cornerRadius(10)
                 }
                 .padding(.horizontal)
                 .accessibilityHint("Generates and shares a PDF profit and loss report")

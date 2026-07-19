@@ -1,8 +1,24 @@
 //  RecurringTransaction.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.8 - Account balance update on instance creation
+//  Version 2.11 - Not Paid Yet Override
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.11:
+//  ✅ ADDED: notSentMonth property — override to mark auto-created transaction as "not paid yet"
+//  ✅ ADDED: markAsNotSent(for:in:) — deletes premature auto-transaction + adjusts balance
+//  ✅ UPDATED: isSentForMonth respects notSentMonth override
+//
+//  CHANGES v2.10:
+//  ✅ ADDED: isSentForMonth(_:) — checks BOTH payment logs AND auto-created transactions
+//  ✅ ADDED: transactionForMonth(_:) — retrieves auto-created transaction for a month
+//  ✅ FIX: Auto-engine transactions now auto-detect as "sent" so user won't duplicate
+//
+//  CHANGES v2.9:
+//  ✅ ADDED: paymentLogs relationship for tracking actual payment dates/amounts
+//  ✅ ADDED: suggestedDayOfMonth computed property based on payment history
+//  ✅ ADDED: hasPaymentForMonth(_:) helper to check if already marked sent
+//  ✅ ADDED: markAsSent(for:amount:date:context:) method to create log + transaction
 //
 //  CHANGES v2.8:
 //  - CRITICAL FIX: Account balance now updates when recurring instances are created
@@ -69,6 +85,10 @@ final class RecurringTransaction {
 
     /// Whether this recurrence is currently active.
     var isActive: Bool = true
+
+    /// When set, overrides auto-detection for this month — treats it as "not paid yet"
+    /// even if the auto-engine created a transaction. Cleared when manually marked as sent.
+    var notSentMonth: Date?
     
     // MARK: - Relationships
     
@@ -79,10 +99,18 @@ final class RecurringTransaction {
     /// Optional account for generated transactions (Premium feature)
     @Relationship(deleteRule: .nullify)
     var account: Account?
+
+    /// Optional business profile for per-business recurring tracking (v4.1)
+    @Relationship(deleteRule: .nullify)
+    var businessProfile: BusinessProfile?
     
     /// All transaction instances created from this recurring template.
     @Relationship(deleteRule: .cascade, inverse: \Transaction.recurringParent)
     var transactions: [Transaction]?
+
+    /// Payment logs tracking actual payment dates and amounts (v2.9)
+    @Relationship(deleteRule: .cascade, inverse: \RecurringPaymentLog.recurringTransaction)
+    var paymentLogs: [RecurringPaymentLog]?
     
     // MARK: - Initialization
     
@@ -97,6 +125,7 @@ final class RecurringTransaction {
         endDate: Date? = nil,
         category: Category? = nil,
         account: Account? = nil,
+        businessProfile: BusinessProfile? = nil,
         isActive: Bool = true
     ) {
         self.id = UUID()
@@ -112,6 +141,7 @@ final class RecurringTransaction {
         self.isActive = isActive
         self.category = category
         self.account = account
+        self.businessProfile = businessProfile
     }
     
     // MARK: - Computed Properties
@@ -246,13 +276,30 @@ final class RecurringTransaction {
     @discardableResult
     func createNextInstance(in context: ModelContext, on date: Date = .now) -> Transaction? {
         guard shouldCreateInstance(today: date) else { return nil }
-        
+
         // Prevent duplicates on same day
         let calendar = Calendar.current
         if let last = lastCreated, calendar.isDate(last, inSameDayAs: date) {
             return nil
         }
-        
+
+        // v2.10 FIX: Belt-and-suspenders dedup against the actual transactions relationship.
+        // The lastCreated flag alone is not sufficient under CloudKit sync — two devices can
+        // each materialize an instance before syncing, and lastCreated merges last-write-wins
+        // while both Transaction rows survive. Querying the relationship catches post-sync
+        // duplicates and in-session retries.
+        let existingForDay = (transactions ?? []).filter {
+            calendar.isDate($0.date, inSameDayAs: date)
+        }
+        if !existingForDay.isEmpty {
+            // Sync the flag so future runs short-circuit on the cheap check above.
+            lastCreated = date
+            #if DEBUG
+            print("[Recurring] Skipped duplicate for \(merchantName) on \(date.formatted(date: .abbreviated, time: .omitted)) — \(existingForDay.count) already exist")
+            #endif
+            return nil
+        }
+
         // v2.7 FIX: Amount is ALWAYS positive - isIncome determines direction
         // This matches Transaction model spec: "Transaction amount (always positive, use isIncome to determine direction)"
         let transactionAmount = abs(amount)  // Ensure positive
@@ -301,6 +348,213 @@ final class RecurringTransaction {
         return transaction
     }
     
+    // MARK: - Payment Log Helpers (v2.9)
+
+    /// Suggested day of month based on actual payment history (weighted toward recent payments).
+    /// Returns nil if fewer than 2 payment logs exist.
+    var suggestedDayOfMonth: Int? {
+        let logs = (paymentLogs ?? []).sorted { $0.dateSent < $1.dateSent }
+        guard logs.count >= 2 else { return nil }
+
+        // Use last 6 payments max, weighted toward recent
+        let recentLogs = Array(logs.suffix(6))
+        var weightedSum: Double = 0
+        var totalWeight: Double = 0
+
+        for (index, log) in recentLogs.enumerated() {
+            let weight = Double(index + 1) // More recent = higher weight
+            weightedSum += Double(log.dayOfMonthSent) * weight
+            totalWeight += weight
+        }
+
+        guard totalWeight > 0 else { return nil }
+        return Int(round(weightedSum / totalWeight))
+    }
+
+    /// Check if a payment has already been logged for a given month.
+    func hasPaymentForMonth(_ month: Date) -> Bool {
+        let calendar = Calendar.current
+        return (paymentLogs ?? []).contains { log in
+            calendar.isDate(log.billingMonth, equalTo: month, toGranularity: .month)
+        }
+    }
+
+    /// Get the payment log for a specific month (if exists).
+    func paymentLog(for month: Date) -> RecurringPaymentLog? {
+        let calendar = Calendar.current
+        return (paymentLogs ?? []).first { log in
+            calendar.isDate(log.billingMonth, equalTo: month, toGranularity: .month)
+        }
+    }
+
+    /// Find an auto-engine-created transaction for a given month (even without a payment log).
+    func transactionForMonth(_ month: Date) -> Transaction? {
+        let calendar = Calendar.current
+        return (transactions ?? []).first { txn in
+            !txn.isDeleted &&
+            calendar.isDate(txn.date, equalTo: month, toGranularity: .month)
+        }
+    }
+
+    /// Check if this recurring is effectively "sent" for a month — either via a payment log
+    /// OR because the auto-engine already created a transaction for this month.
+    /// Respects `notSentMonth` override — if user explicitly marked "not paid yet", returns false.
+    func isSentForMonth(_ month: Date) -> Bool {
+        let calendar = Calendar.current
+        // Check for explicit "not paid yet" override
+        if let notSent = notSentMonth,
+           calendar.isDate(notSent, equalTo: month, toGranularity: .month) {
+            return false
+        }
+        if hasPaymentForMonth(month) { return true }
+        return transactionForMonth(month) != nil
+    }
+
+    /// Mark a recurring as "not paid yet" for a given month.
+    /// Deletes the auto-created transaction (if any), adjusts account balance, and sets the override.
+    /// When the user later marks as sent, the override is cleared automatically.
+    func markAsNotSent(for month: Date, in context: ModelContext) {
+        let calendar = Calendar.current
+
+        // Remove any payment log for this month
+        if let log = paymentLog(for: month) {
+            context.delete(log)
+            paymentLogs?.removeAll { $0.id == log.id }
+        }
+
+        // Delete the auto-created transaction and reverse account balance
+        if let txn = transactionForMonth(month) {
+            // Reverse the balance impact
+            if let account = txn.account ?? self.account {
+                if txn.isIncome {
+                    account.currentBalance -= abs(txn.amount)
+                } else {
+                    account.currentBalance += abs(txn.amount)
+                }
+                account.lastBalanceUpdate = Date()
+                account.touch()
+            }
+
+            // Remove from our transactions list and delete
+            transactions?.removeAll { $0.id == txn.id }
+            context.delete(txn)
+        }
+
+        // Set the override so isSentForMonth returns false even if auto-engine recreates
+        let components = calendar.dateComponents([.year, .month], from: month)
+        notSentMonth = calendar.date(from: components)
+
+        #if DEBUG
+        print("[Recurring] Marked \(merchantName) as not sent for \(month)")
+        #endif
+    }
+
+    /// Mark this recurring as sent for a given month.
+    /// If the auto-engine already created a transaction for this month, links to it instead of duplicating.
+    /// Otherwise creates a new transaction.
+    /// - Parameters:
+    ///   - month: The billing month this payment covers
+    ///   - sentAmount: Actual amount sent (defaults to template amount)
+    ///   - sentDate: Date payment was made (defaults to now)
+    ///   - context: ModelContext for persistence
+    /// - Returns: The created RecurringPaymentLog, or nil if already fully logged for this month
+    @discardableResult
+    func markAsSent(
+        for month: Date,
+        amount sentAmount: Double? = nil,
+        on sentDate: Date = .now,
+        in context: ModelContext
+    ) -> RecurringPaymentLog? {
+        // Don't double-log if a payment log already exists
+        guard !hasPaymentForMonth(month) else { return nil }
+
+        let calendar = Calendar.current
+        let paymentAmount = sentAmount ?? amount
+
+        // Check if the auto-engine already created a transaction for this month
+        let existingTransaction = (transactions ?? []).first { txn in
+            calendar.isDate(txn.date, equalTo: month, toGranularity: .month) &&
+            txn.merchantName == merchantName
+        }
+
+        // Create the payment log
+        let log = RecurringPaymentLog(
+            recurringTransaction: self,
+            billingMonth: month,
+            amountSent: paymentAmount,
+            dateSent: sentDate,
+            isManual: true
+        )
+
+        let transaction: Transaction
+        if let existing = existingTransaction {
+            // Link to existing auto-generated transaction — no duplicate
+            transaction = existing
+            #if DEBUG
+            print("[Recurring] Linking to existing transaction for \(merchantName)")
+            #endif
+        } else {
+            // No auto-generated transaction yet — create one
+            let transactionAmount = abs(paymentAmount)
+            transaction = Transaction(
+                amount: transactionAmount,
+                date: sentDate,
+                note: note.isEmpty ? merchantName : note,
+                isIncome: isIncome,
+                merchantName: merchantName,
+                category: category,
+                financeType: financeType,
+                account: account
+            )
+            transaction.recurringParent = self
+
+            if transactions != nil {
+                transactions?.append(transaction)
+            } else {
+                transactions = [transaction]
+            }
+
+            context.insert(transaction)
+
+            // Update account balance only for new transactions
+            if let account = account {
+                if isIncome {
+                    account.currentBalance += transactionAmount
+                } else {
+                    account.currentBalance -= transactionAmount
+                }
+                account.lastBalanceUpdate = Date()
+                account.touch()
+            }
+        }
+
+        // Link log to transaction
+        log.transaction = transaction
+
+        if paymentLogs != nil {
+            paymentLogs?.append(log)
+        } else {
+            paymentLogs = [log]
+        }
+
+        context.insert(log)
+
+        // Clear "not paid yet" override if it was set for this month
+        if let notSent = notSentMonth,
+           calendar.isDate(notSent, equalTo: month, toGranularity: .month) {
+            notSentMonth = nil
+        }
+
+        // Update lastCreated so the auto-engine doesn't create another instance
+        lastCreated = sentDate
+
+        #if DEBUG
+        print("[Recurring] Marked sent: \(merchantName) - $\(abs(paymentAmount)) for \(DateFormatter.monthYear.string(from: month))")
+        #endif
+
+        return log
+    }
+
     /// Deactivate this recurring transaction.
     func deactivate() {
         isActive = false

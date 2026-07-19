@@ -29,7 +29,7 @@
 //
 //  PURPOSE:
 //  Reusable SwiftUI component that displays usage warnings and upgrade prompts.
-//  Used in AddTransactionView, CreateInvoiceView, FreeTierReceiptView, etc.
+//  Used in AddTransactionView, CreateInvoiceView, etc.
 //
 //  WARNING LEVELS:
 //  - Warning (80-89%): Informational yellow/orange banner
@@ -169,7 +169,7 @@ struct UsageWarningBanner: View {
                 .font(.caption.weight(.semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-                .foregroundStyle(Color.brandPrimaryText)
+                .foregroundStyle(Color.brandPrimary)
             }
         }
         .padding(.vertical, 8)
@@ -443,7 +443,7 @@ struct UsageLimitIndicator: View {
                     .fontWeight(.semibold)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                    .foregroundStyle(Color.brandPrimaryText)
+                    .foregroundStyle(Color.brandPrimary)
                     .accessibilityHint("Double tap to view upgrade options")
                 }
             }
@@ -510,7 +510,7 @@ struct MonthlyUsageIndicator: View {
                         .fontWeight(.semibold)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
-                        .foregroundStyle(Color.brandPrimaryText)
+                        .foregroundStyle(Color.brandPrimary)
                     }
                 }
                 

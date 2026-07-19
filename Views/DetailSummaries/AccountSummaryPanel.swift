@@ -1,207 +1,362 @@
 //  AccountSummaryPanel.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Build 10 — Zone 3 contextual summary for the Accounts tab.
-//  Complements Zone 2 (which already shows net worth, assets, liabilities).
-//  Shows account balances bar chart with brand colors and type breakdown.
+//  Build 10 v2 — Zone 3 account analysis panel.
+//  Shows net worth breakdown (assets vs liabilities), each account with
+//  expandable recent transactions, reconciliation status, and tappable
+//  navigation to account detail.
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 
 import SwiftUI
 import SwiftData
-import Charts
+import FLODesignSystem
 
 struct AccountSummaryPanel: View {
     @Query private var accounts: [Account]
+
+    @State private var expandedAccounts: Set<UUID> = []
+
+    private let fmt = NumberFormatter.appCurrency
+    private let balanceService = AccountBalanceService.shared
+
+    // MARK: - Computed Data
 
     private var activeAccounts: [Account] {
         accounts.filter { $0.isActive }
     }
 
-    /// Sorted by absolute balance descending, top 8
-    private var accountBars: [AccountBar] {
+    private var assetAccounts: [Account] {
         activeAccounts
+            .filter { !isLiability($0) }
+            .sorted { $0.currentBalance > $1.currentBalance }
+    }
+
+    private var liabilityAccounts: [Account] {
+        activeAccounts
+            .filter { isLiability($0) }
             .sorted { abs($0.currentBalance) > abs($1.currentBalance) }
-            .prefix(8)
-            .map { account in
-                AccountBar(
-                    name: account.name,
-                    balance: account.currentBalance,
-                    color: barColor(for: account),
-                    type: account.accountType.rawValue.capitalized
-                )
-            }
     }
 
-    private var accountsByType: [(type: String, count: Int, total: Double)] {
-        var map: [String: (count: Int, total: Double)] = [:]
-        for account in activeAccounts {
-            let typeName = account.accountType.rawValue.capitalized
-            var entry = map[typeName] ?? (0, 0)
-            entry.count += 1
-            entry.total += account.currentBalance
-            map[typeName] = entry
-        }
-        return map.sorted { $0.value.total > $1.value.total }
-            .map { ($0.key, $0.value.count, $0.value.total) }
+    private var totalAssets: Double {
+        assetAccounts.filter { $0.currentBalance > 0 }.reduce(0) { $0 + $1.currentBalance }
     }
 
-    /// Accounts with notable status (high debt, large balance, zero balance)
-    private var insights: [AccountInsight] {
-        var results: [AccountInsight] = []
-
-        let highDebt = activeAccounts
-            .filter { ($0.accountType == .creditCard || $0.accountType == .loan) && abs($0.currentBalance) > 5000 }
-        for account in highDebt.prefix(2) {
-            results.append(AccountInsight(
-                icon: "exclamationmark.triangle.fill",
-                text: "\(account.name): \(formatCompact(account.currentBalance)) balance",
-                style: .urgent
-            ))
-        }
-
-        let zeroBalance = activeAccounts
-            .filter { $0.currentBalance == 0 && $0.accountType != .creditCard }
-        if zeroBalance.count > 0 {
-            results.append(AccountInsight(
-                icon: "info.circle",
-                text: "\(zeroBalance.count) account\(zeroBalance.count == 1 ? "" : "s") at $0",
-                style: .neutral
-            ))
-        }
-
-        return results
+    private var totalLiabilities: Double {
+        liabilityAccounts.reduce(0) { $0 + abs($1.currentBalance) }
     }
+
+    private var netWorth: Double {
+        totalAssets - totalLiabilities
+    }
+
+    private var needsReconciliation: [Account] {
+        balanceService.accountsNeedingReconciliation(accounts: activeAccounts)
+    }
+
+    private func isLiability(_ account: Account) -> Bool {
+        account.accountType == .creditCard || account.accountType == .loan
+    }
+
+    private func reconciliationStatus(for account: Account) -> (isReconciled: Bool, discrepancy: Double) {
+        balanceService.checkReconciliation(for: account)
+    }
+
+    private func recentTransactions(for account: Account) -> [Transaction] {
+        (account.transactions ?? [])
+            .sorted { $0.date > $1.date }
+            .prefix(5)
+            .map { $0 }
+    }
+
+    // MARK: - Body
 
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Header
-                HStack {
-                    Image(systemName: "building.columns.fill")
-                        .font(.title2)
-                        .foregroundStyle(Color.brandPrimary)
-                    Text("Account Balances")
-                        .font(.title3.weight(.semibold))
-                    Spacer()
+                // Net worth hero
+                netWorthSection
+
+                // Reconciliation alert
+                if !needsReconciliation.isEmpty {
+                    SummaryChip(
+                        icon: "exclamationmark.triangle.fill",
+                        text: "\(needsReconciliation.count) account\(needsReconciliation.count == 1 ? "" : "s") need reconciliation",
+                        style: .warning
+                    )
                 }
 
-                // Account Balances Bar Chart
-                if !accountBars.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Chart(accountBars) { bar in
-                            BarMark(
-                                x: .value("Balance", abs(bar.balance)),
-                                y: .value("Account", bar.name)
-                            )
-                            .foregroundStyle(bar.color)
-                            .cornerRadius(4)
-                            .annotation(position: .trailing) {
-                                Text(formatCompact(bar.balance))
-                                    .font(.caption2.weight(.medium))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .chartXAxis(.hidden)
-                        .frame(height: CGFloat(accountBars.count) * 40)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Account balances chart")
-                    }
-                    .padding()
-                    .background(Color.floSecondarySystemBackground)
-                    .cornerRadius(12)
+                // Assets
+                if !assetAccounts.isEmpty {
+                    accountGroup(title: "Assets", accounts: assetAccounts)
                 }
 
-                // Insights / Alerts
-                if !insights.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(insights) { insight in
-                            SummaryChip(
-                                icon: insight.icon,
-                                text: insight.text,
-                                style: insight.style
-                            )
-                        }
-                    }
+                // Liabilities
+                if !liabilityAccounts.isEmpty {
+                    accountGroup(title: "Liabilities", accounts: liabilityAccounts)
                 }
 
-                // Account type breakdown
-                if !accountsByType.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("By Account Type")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-
-                        ForEach(accountsByType, id: \.type) { item in
-                            HStack {
-                                Text(item.type)
-                                    .font(.subheadline)
-                                Spacer()
-                                Text("\(item.count) acct\(item.count == 1 ? "" : "s")")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                                Text(item.total, format: .currency(code: "USD").precision(.fractionLength(0)))
-                                    .font(.subheadline.monospacedDigit().weight(.medium))
-                                    .foregroundStyle(item.total >= 0 ? Color.incomeGreen : Color.expenseRed)
-                            }
-                        }
-                    }
-                    .padding()
-                    .background(Color.floSecondarySystemBackground)
-                    .cornerRadius(12)
+                if activeAccounts.isEmpty {
+                    emptyState
                 }
-
-                // Active accounts count
-                SummaryChip(
-                    icon: "building.columns",
-                    text: "\(activeAccounts.count) active account\(activeAccounts.count == 1 ? "" : "s")",
-                    style: .info
-                )
             }
             .padding()
         }
-    }
-
-    // MARK: - Bar Color Logic
-    //
-    // Three brand colors based on balance sentiment:
-    //   #14B8A6 (teal/brandPrimary) — healthy positive balances
-    //   #FBBF24 (warning/amber)     — small balances or moderate debt
-    //   #F87171 (expenseRed)        — large liabilities
-
-    private func barColor(for account: Account) -> Color {
-        let balance = account.currentBalance
-        let isDebt = account.accountType == .creditCard || account.accountType == .loan
-
-        if isDebt {
-            // Large liability (> $5k) = red, smaller = amber
-            return abs(balance) > 5000 ? Color.expenseRed : Color.brandWarning
-        } else {
-            // Positive asset = teal, zero/negative checking = amber
-            return balance > 0 ? Color.brandPrimary : Color.brandWarning
+        .navigationTitle("Account Overview")
+        .onAppear {
+            // Auto-expand accounts needing reconciliation
+            for account in needsReconciliation {
+                expandedAccounts.insert(account.id)
+            }
         }
     }
 
-    private func formatCompact(_ value: Double) -> String {
-        let absValue = abs(value)
-        let prefix = value < 0 ? "-" : ""
-        if absValue >= 1000 {
-            return "\(prefix)$\(String(format: "%.1f", absValue / 1000))k"
+    // MARK: - Net Worth Section
+
+    private var netWorthSection: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                metricBox(label: "Assets", amount: totalAssets, color: .incomeGreen)
+                metricBox(label: "Liabilities", amount: totalLiabilities, color: .expenseRed)
+            }
+            // Net worth row
+            HStack {
+                Text("Net Worth")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(fmt.string(from: NSNumber(value: netWorth)) ?? "$0")
+                    .font(.subheadline.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(netWorth >= 0 ? Color.incomeGreen : Color.expenseRed)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Color.floSystemGroupedSectionBackground)
+            .cornerRadius(10)
         }
-        return "\(prefix)$\(Int(absValue))"
     }
-}
 
-private struct AccountBar: Identifiable {
-    let id = UUID()
-    let name: String
-    let balance: Double
-    let color: Color
-    let type: String
-}
+    private func metricBox(label: String, amount: Double, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(fmt.string(from: NSNumber(value: amount)) ?? "$0")
+                .font(.subheadline.monospacedDigit().weight(.semibold))
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(Color.floSystemGroupedSectionBackground)
+        .cornerRadius(10)
+    }
 
-private struct AccountInsight: Identifiable {
-    let id = UUID()
-    let icon: String
-    let text: String
-    let style: SummaryChip.ChipStyle
+    // MARK: - Account Group
+
+    private func accountGroup(title: String, accounts: [Account]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 2)
+
+            ForEach(accounts) { account in
+                accountSection(account)
+            }
+        }
+    }
+
+    // MARK: - Account Section
+
+    private func accountSection(_ account: Account) -> some View {
+        let (isReconciled, discrepancy) = reconciliationStatus(for: account)
+        let txns = recentTransactions(for: account)
+        let isExpanded = expandedAccounts.contains(account.id)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            // Account header row — tappable to navigate
+            HStack(spacing: 10) {
+                // Expand/collapse recent transactions
+                Button {
+                    withAnimation(FLOAnimation.quick) {
+                        if expandedAccounts.contains(account.id) {
+                            expandedAccounts.remove(account.id)
+                        } else {
+                            expandedAccounts.insert(account.id)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 10) {
+                        // Reconciliation indicator
+                        Circle()
+                            .fill(isReconciled ? Color.incomeGreen : Color.brandWarning)
+                            .frame(width: 8, height: 8)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 4) {
+                                Text(account.name)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+                                if account.isPrimary {
+                                    Text("Primary")
+                                        .font(.caption2)
+                                        .foregroundStyle(Color.brandPrimary)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 1)
+                                        .background(Color.brandPrimary.opacity(0.12))
+                                        .cornerRadius(4)
+                                }
+                            }
+                            HStack(spacing: 4) {
+                                Text(account.accountType.rawValue.capitalized)
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                                if !isReconciled {
+                                    Text("· off \(fmt.string(from: NSNumber(value: abs(discrepancy))) ?? "$0")")
+                                        .font(.caption)
+                                        .foregroundStyle(Color.brandWarning)
+                                }
+                            }
+                        }
+
+                        Spacer()
+
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                // Balance + navigate to detail
+                Button {
+                    NavigationService.shared.selectedDetail = .accountDetail(id: account.id)
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(fmt.string(from: NSNumber(value: account.currentBalance)) ?? "$0")
+                            .font(.subheadline.monospacedDigit().weight(.semibold))
+                            .foregroundStyle(isLiability(account) ? Color.expenseRed : Color.incomeGreen)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        Image(systemName: "arrow.right.circle")
+                            .font(.caption)
+                            .foregroundStyle(Color.brandPrimary.opacity(0.6))
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+
+            // Recent transactions (expanded)
+            if isExpanded {
+                Divider().padding(.leading, 22)
+
+                if txns.isEmpty {
+                    Text("No recent transactions")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 8)
+                } else {
+                    ForEach(txns) { txn in
+                        Button {
+                            NavigationService.shared.selectedDetail = .transactionDetail(id: txn.id)
+                        } label: {
+                            HStack(spacing: 10) {
+                                Text(DateFormatter.shortMonthDay.string(from: txn.date))
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.tertiary)
+                                    .frame(width: 42, alignment: .leading)
+
+                                Text(txn.merchantName.isEmpty ? txn.note : txn.merchantName)
+                                    .font(.caption)
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+
+                                Spacer()
+
+                                Text(txn.isIncome ? "+" : "-")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(txn.isIncome ? Color.incomeGreen : Color.expenseRed)
+                                Text(fmt.string(from: NSNumber(value: abs(txn.amount))) ?? "$0")
+                                    .font(.caption.monospacedDigit().weight(.medium))
+                                    .foregroundStyle(txn.isIncome ? Color.incomeGreen : Color.expenseRed)
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 8))
+                                    .foregroundStyle(.quaternary)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.leading, 8)
+                            .padding(.vertical, 6)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+
+                        if txn.id != txns.last?.id {
+                            Divider().padding(.leading, 64)
+                        }
+                    }
+                }
+
+                // Amortization schedule shortcut for loan accounts
+                if account.accountType.hasLoanFields,
+                   (account.apr ?? 0) > 0,
+                   (account.monthlyPaymentAmount ?? 0) > 0 {
+                    Divider().padding(.leading, 22)
+                    Button {
+                        NavigationService.shared.selectedDetail = .accountDetail(id: account.id)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "chart.line.downtrend.xyaxis")
+                                .font(.caption)
+                                .foregroundStyle(Color.brandPrimary)
+                            Text("Amortization Schedule")
+                                .font(.caption)
+                                .foregroundStyle(Color.brandPrimary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.quaternary)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.leading, 8)
+                        .padding(.vertical, 8)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .background(Color.floSystemGroupedSectionBackground)
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                    isReconciled ? Color.floCardBorder : Color.brandWarning.opacity(0.25),
+                    lineWidth: 1
+                )
+        )
+    }
+
+    // MARK: - Empty State
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "building.columns")
+                .font(.system(size: 36, weight: .ultraLight))
+                .foregroundStyle(.quaternary)
+            Text("No active accounts")
+                .font(.subheadline)
+                .foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
+    }
 }

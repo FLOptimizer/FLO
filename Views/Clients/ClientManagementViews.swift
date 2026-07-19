@@ -1,7 +1,7 @@
 //  ClientManagementViews.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 4.2 - Dark Mode Optimization: Adaptive color fixes
+//  Version 4.3 - Size-class-aware edit routing (Catalyst/iPad Zone 3) · Dark Mode Optimization
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v4.2 - Dark Mode Optimization:
@@ -36,6 +36,7 @@
 
 import SwiftUI
 import SwiftData
+import FLODesignSystem
 
 // MARK: - Client List View (With Gating Wrapper)
 
@@ -385,7 +386,7 @@ struct AnimatedClientRow: View {
                     .font(.headline)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                    .foregroundStyle(Color.brandPrimaryText)
+                    .foregroundStyle(Color.brandPrimary)
             }
             
             VStack(alignment: .leading, spacing: 4) {
@@ -407,7 +408,7 @@ struct AnimatedClientRow: View {
             
             // Status indicator
             Circle()
-                .fill(client.status == .active ? Color.green : Color.gray.opacity(0.3))
+                .fill(client.status == .active ? Color.incomeGreen : Color.floCardBorder)
                 .frame(width: 8, height: 8)
         }
         .padding(.vertical, 4)
@@ -431,9 +432,23 @@ struct AnimatedClientRow: View {
 struct ClientDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var client: Client
-    
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
+
     @State private var showingEditSheet = false
-    
+
+    /// Route edit to the Zone 3 pane on a wide layout (native macOS, iPad
+    /// landscape, wide Mac Catalyst window); use a sheet on compact. Replaces the
+    /// old hard `#if os(macOS)` switch, which was dead on Catalyst.
+    private var routesToDetailPane: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return horizontalSizeClass == .regular
+        #endif
+    }
+
     var body: some View {
         List {
             Section("Contact Information") {
@@ -536,7 +551,13 @@ struct ClientDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    showingEditSheet = true
+                    if routesToDetailPane {
+                        withAnimation(FLOAnimation.quick) {
+                            NavigationService.shared.selectedDetail = .editClient(id: client.id)
+                        }
+                    } else {
+                        showingEditSheet = true
+                    }
                 } label: {
                     Text("Edit")
                 }
@@ -706,9 +727,14 @@ struct EditClientView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Bindable var client: Client
-    
+
+    // Zone 3 adaptive presentation — when false, omits NavigationStack wrapper.
+    var embedInNavigationStack: Bool = true
+    /// Zone 3 dismiss callback — called instead of SwiftUI `dismiss()` when set.
+    var onDismiss: (() -> Void)? = nil
+
     @State private var saveButtonScale: CGFloat = 1.0
-    
+
     @FocusState private var focusedField: Field?
     
     enum Field: Hashable {
@@ -720,7 +746,15 @@ struct EditClientView: View {
     }
     
     var body: some View {
-        NavigationStack {
+        if embedInNavigationStack {
+            NavigationStack { formContent }
+        } else {
+            formContent
+        }
+    }
+
+    @ViewBuilder
+    private var formContent: some View {
             Form {
                 Section("Basic Information") {
                     TextField("Company Name", text: $client.name)
@@ -818,10 +852,10 @@ struct EditClientView: View {
                         }
                         
                         try? modelContext.save()
-                        
+
                         HapticService.shared.success()
-                        
-                        dismiss()
+
+                        performDismiss()
                     }
                     .disabled(!isValid)
                     .scaleEffect(saveButtonScale)
@@ -830,6 +864,13 @@ struct EditClientView: View {
             .onAppear {
                 AccessibilityAnnouncement.screenChanged("Edit client")
             }
+    }
+
+    private func performDismiss() {
+        if let onDismiss {
+            onDismiss()
+        } else {
+            dismiss()
         }
     }
 }

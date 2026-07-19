@@ -1,46 +1,289 @@
 //  BusinessProfileSettingsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.3 - VoiceOver Audit: Verified excellent accessibility
+//  Version 3.0 - Multi-Business List + Detail Pattern
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
-//  CHANGES v2.3 - VoiceOver Audit:
-//  ✅ VERIFIED: Building icon already hidden from VoiceOver
-//  ✅ VERIFIED: Validation checkmarks already hidden from VoiceOver
-//  ✅ VERIFIED: TextFields inherit placeholder text as accessibility labels (SwiftUI auto-handled)
-//  ✅ VERIFIED: Field labels properly combined with TextFields by Form
-//  ✅ VERIFIED: Save button has clear label and disabled state
-//  ✅ VERIFIED: Screen change announcement present
-//  ✅ NOTE: This view already has excellent VoiceOver coverage from previous audits
-//
-//  CHANGES v2.2:
-//  ✅ Screen change announcement on appear
-//  ✅ Header icon hidden from VoiceOver
-//  ✅ Validation checkmarks hidden from VoiceOver
-//  ✅ Fixed garbled UTF-8 characters in print statements
-//
-//  Business profile settings for invoice customization
-//
-//  ENHANCEMENTS v2.0:
-//  - Haptic feedback on save, field focus, and validation
-//  - Animated header with business icon bounce
-//  - Section reveal animations with staggered timing
-//  - Save button press animation with scale effect
-//  - Success confirmation with checkmark animation
-//  - Field validation feedback with color transitions
-//  - Error shake animation on validation failure
+//  CHANGES v3.0:
+//  ✅ REWRITE: List+Detail pattern supporting up to 5 businesses
+//  ✅ ADDED: BusinessListView showing all business profiles
+//  ✅ ADDED: Business type picker, color, and icon configuration
+//  ✅ ADDED: Add/deactivate business support
+//  ✅ RETAINED: All v2.3 form fields, animations, and accessibility
 //
 
 import SwiftUI
 import FLODesignSystem
 import SwiftData
 
+// MARK: - Business List View (New Entry Point)
+
+struct BusinessListView: View {
+    @Environment(\.modelContext) private var modelContext
+
+    @Query(
+        filter: #Predicate<BusinessProfile> { $0.isActive },
+        sort: \BusinessProfile.sortOrder
+    )
+    private var businesses: [BusinessProfile]
+
+    @State private var showingAddBusiness = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                ProfileHeaderCard(
+                    icon: "building.2.fill",
+                    title: "Your Businesses",
+                    subtitle: "Manage up to \(BusinessProfileService.maxBusinesses) business profiles",
+                    color: .businessColor
+                )
+
+                ForEach(businesses) { business in
+                    NavigationLink(value: business) {
+                        BusinessRowCard(business: business)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if businesses.count < BusinessProfileService.maxBusinesses {
+                    Button {
+                        showingAddBusiness = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title3)
+                            Text("Add Business")
+                                .fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if businesses.isEmpty {
+                    ProfileFooterNote(
+                        icon: "info.circle",
+                        text: "Add your first business to get started with multi-business tracking."
+                    )
+                } else {
+                    ProfileFooterNote(
+                        icon: "doc.text.fill",
+                        text: "Business information appears on invoices and tax reports."
+                    )
+                }
+            }
+            .padding(16)
+        }
+        .navigationTitle("Businesses")
+        #if !os(macOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
+        .navigationDestination(for: BusinessProfile.self) { business in
+            BusinessProfileSettingsView(business: business)
+        }
+        .sheet(isPresented: $showingAddBusiness) {
+            AddBusinessOnboardingView()
+        }
+        .onAppear {
+            // Auto-migrate: if there are no businesses, check for legacy singleton
+            if businesses.isEmpty {
+                migrateFromSingleton()
+            }
+        }
+    }
+
+    private func migrateFromSingleton() {
+        // Check if there's a legacy BusinessProfile without isPrimary set
+        let descriptor = FetchDescriptor<BusinessProfile>()
+        guard let allProfiles = try? modelContext.fetch(descriptor),
+              let legacy = allProfiles.first,
+              !legacy.isPrimary else { return }
+
+        legacy.isPrimary = true
+        legacy.isActive = true
+        legacy.sortOrder = 0
+        if legacy.businessTypeRaw.isEmpty {
+            legacy.businessType = .soleProprietorship
+        }
+
+        // Auto-create TaxSettings if missing
+        if legacy.taxSettings == nil {
+            let existingSettings = try? modelContext.fetch(FetchDescriptor<TaxSettings>())
+            if let settings = existingSettings?.first {
+                settings.businessProfile = legacy
+            } else {
+                let settings = TaxSettings()
+                settings.businessProfile = legacy
+                modelContext.insert(settings)
+            }
+        }
+
+        try? modelContext.save()
+    }
+}
+
+// MARK: - Business Row Card
+
+struct BusinessRowCard: View {
+    let business: BusinessProfile
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: business.displayIcon)
+                .font(.title2)
+                .foregroundStyle(business.isPrimary ? .blue : .secondary)
+                .frame(width: 40, height: 40)
+                .background(.ultraThinMaterial)
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(business.businessName)
+                        .font(.headline)
+                        .lineLimit(1)
+                    if business.isPrimary {
+                        Text("Primary")
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.blue.opacity(0.15))
+                            .foregroundStyle(.blue)
+                            .clipShape(Capsule())
+                    }
+                }
+                Text(business.businessType.displayName)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if let email = business.email.isEmpty ? nil : business.email {
+                    Text(email)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(14)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+// MARK: - Add Business View
+
+struct AddBusinessView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var businessName = ""
+    @State private var email = ""
+    @State private var businessType: BusinessType = .soleProprietorship
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                ProfileHeaderCard(
+                    icon: "plus.circle.fill",
+                    title: "Add Business",
+                    subtitle: "Set up a new business profile",
+                    color: .green
+                )
+
+                ProfileSectionCard(title: "Business Details") {
+                    ProfileFieldRow(
+                        label: "Business Name",
+                        placeholder: "e.g., Anderson Farm",
+                        text: $businessName,
+                        isValid: businessName.isEmpty ? nil : true,
+                        isRequired: true
+                    )
+
+                    ProfileFieldRow(
+                        label: "Email",
+                        placeholder: "business@example.com",
+                        text: $email,
+                        isValid: email.isEmpty ? nil : email.contains("@"),
+                        isRequired: true,
+                        capitalize: false
+                    )
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Business Type")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Picker("Business Type", selection: $businessType) {
+                            ForEach(BusinessType.allCases, id: \.self) { type in
+                                Label(type.displayName, systemImage: type.defaultIcon)
+                                    .tag(type)
+                            }
+                        }
+                        .pickerStyle(.menu)
+
+                        Text("Tax form: \(businessType.taxFormName)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            .padding(16)
+        }
+        .navigationTitle("Add Business")
+        #if !os(macOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { dismiss() }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Add") {
+                    addBusiness()
+                }
+                .disabled(!isValid)
+                .fontWeight(.semibold)
+            }
+        }
+    }
+
+    private var isValid: Bool {
+        !businessName.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !email.trimmingCharacters(in: .whitespaces).isEmpty &&
+        email.contains("@")
+    }
+
+    private func addBusiness() {
+        let _ = BusinessProfileService.shared.createProfile(
+            businessName: businessName.trimmingCharacters(in: .whitespaces),
+            email: email.trimmingCharacters(in: .whitespaces),
+            businessType: businessType,
+            context: modelContext
+        )
+        HapticService.shared.success()
+        dismiss()
+    }
+}
+
+// MARK: - Business Profile Detail (Existing Form, Enhanced)
+
 struct BusinessProfileSettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    
+
+    /// The business profile being edited (passed from list)
+    var business: BusinessProfile?
+
     @State private var profile: BusinessProfile?
-    
+
     // Form fields
     @State private var businessName: String = ""
     @State private var contactName: String = ""
@@ -53,12 +296,13 @@ struct BusinessProfileSettingsView: View {
     @State private var country: String = ""
     @State private var website: String = ""
     @State private var taxId: String = ""
-    
+    @State private var businessType: BusinessType = .soleProprietorship
+
     @State private var showingSaveConfirmation = false
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
     @State private var hasChanges = false
-    
+
     // Animation States
     @State private var headerScale: CGFloat = 0.9
     @State private var headerOpacity: Double = 0
@@ -71,145 +315,25 @@ struct BusinessProfileSettingsView: View {
     @State private var nameFieldShake = false
     @State private var emailFieldShake = false
     @State private var isSaving = false
-    
+
     // Validation visual states
     @State private var nameValidationColor: Color = .secondary
     @State private var emailValidationColor: Color = .secondary
-    
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Header
-                ProfileHeaderCard(
-                    icon: "building.2.fill",
-                    title: "Business Profile",
-                    subtitle: "This information appears on your invoices",
-                    color: .businessColor
-                )
-                .scaleEffect(headerScale)
-                .opacity(headerOpacity)
-
-                // Required Information
-                ProfileSectionCard(title: "Required Information") {
-                    ProfileFieldRow(
-                        label: "Business Name",
-                        placeholder: "Your Business Name",
-                        text: $businessName,
-                        isValid: businessName.isEmpty ? nil : true,
-                        isRequired: true
-                    )
-                    .onChange(of: businessName) { _, newValue in
-                        hasChanges = true
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            nameValidationColor = newValue.isEmpty ? .orange : .secondary
-                        }
-                    }
-
-                    ProfileFieldRow(
-                        label: "Email",
-                        placeholder: "business@example.com",
-                        text: $email,
-                        isValid: email.isEmpty ? nil : email.contains("@"),
-                        isRequired: true,
-                        capitalize: false
-                    )
-                    .onChange(of: email) { _, newValue in
-                        hasChanges = true
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            if newValue.isEmpty { emailValidationColor = .orange }
-                            else if !newValue.contains("@") { emailValidationColor = .red }
-                            else { emailValidationColor = .secondary }
-                        }
-                    }
-                }
-                .opacity(requiredSectionOpacity)
-
-                // Optional Information
-                ProfileSectionCard(title: "Optional Information") {
-                    ProfileFieldRow(
-                        label: "Contact Name",
-                        placeholder: "Your Name",
-                        text: $contactName
-                    )
-                    .onChange(of: contactName) { _, _ in hasChanges = true }
-
-                    ProfileFieldRow(
-                        label: "Phone",
-                        placeholder: "(555) 123-4567",
-                        text: $phone
-                    )
-                    .onChange(of: phone) { _, _ in hasChanges = true }
-
-                    ProfileFieldRow(
-                        label: "Website",
-                        placeholder: "www.yourbusiness.com",
-                        text: $website,
-                        capitalize: false
-                    )
-                    .onChange(of: website) { _, _ in hasChanges = true }
-
-                    ProfileFieldRow(
-                        label: "Tax ID / EIN",
-                        placeholder: "12-3456789",
-                        text: $taxId,
-                        capitalize: false
-                    )
-                    .onChange(of: taxId) { _, _ in hasChanges = true }
-                }
-                .opacity(optionalSectionOpacity)
-
-                // Business Address
-                ProfileSectionCard(title: "Business Address") {
-                    ProfileFieldRow(
-                        label: "Street Address",
-                        placeholder: "123 Main Street",
-                        text: $address
-                    )
-                    .onChange(of: address) { _, _ in hasChanges = true }
-
-                    ProfileFieldRow(
-                        label: "City",
-                        placeholder: "City",
-                        text: $city
-                    )
-                    .onChange(of: city) { _, _ in hasChanges = true }
-
-                    ProfileFieldRowPair(
-                        label1: "State", placeholder1: "State", text1: $state,
-                        label2: "ZIP", placeholder2: "12345", text2: $zipCode
-                    )
-                    .onChange(of: state) { _, _ in hasChanges = true }
-                    .onChange(of: zipCode) { _, _ in hasChanges = true }
-
-                    ProfileFieldRow(
-                        label: "Country",
-                        placeholder: "United States",
-                        text: $country
-                    )
-                    .onChange(of: country) { _, _ in hasChanges = true }
-                }
-                .opacity(addressSectionOpacity)
-
-                // Footer
-                if showSavedCheck {
-                    HStack(spacing: 6) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                        Text("Saved!")
-                            .fontWeight(.medium)
-                            .foregroundStyle(.green)
-                    }
-                    .transition(.scale.combined(with: .opacity))
-                } else {
-                    ProfileFooterNote(
-                        icon: "doc.text.fill",
-                        text: "This information will appear on all invoices you create."
-                    )
-                }
+                headerSection
+                businessTypeSection
+                requiredInfoSection
+                optionalInfoSection
+                addressSection
+                actionsSection
+                footerSection
             }
             .padding(16)
         }
-        .navigationTitle("Business Profile")
+        .navigationTitle(profile?.businessName ?? "Business Profile")
         #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -248,37 +372,190 @@ struct BusinessProfileSettingsView: View {
             Text(errorMessage)
         }
     }
-    
+
+    // MARK: - Extracted Sections
+
+    private var headerSection: some View {
+        ProfileHeaderCard(
+            icon: profile?.displayIcon ?? "building.2.fill",
+            title: profile?.businessName ?? "Business Profile",
+            subtitle: headerSubtitle,
+            color: .businessColor
+        )
+        .scaleEffect(headerScale)
+        .opacity(headerOpacity)
+    }
+
+    private var headerSubtitle: String {
+        if let p = profile {
+            return "\(p.businessType.displayName) - \(p.businessType.taxFormName)"
+        }
+        return "This information appears on your invoices"
+    }
+
+    private var businessTypeSection: some View {
+        ProfileSectionCard(title: "Business Type") {
+            VStack(alignment: .leading, spacing: 8) {
+                Picker("Type", selection: $businessType) {
+                    ForEach(BusinessType.allCases, id: \.self) { type in
+                        Label(type.displayName, systemImage: type.defaultIcon)
+                            .tag(type)
+                    }
+                }
+                .pickerStyle(.menu)
+                .onChange(of: businessType) { _, _ in hasChanges = true }
+
+                Text("Tax form: \(businessType.taxFormName)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 4)
+        }
+        .opacity(requiredSectionOpacity)
+    }
+
+    private var requiredInfoSection: some View {
+        ProfileSectionCard(title: "Required Information") {
+            ProfileFieldRow(
+                label: "Business Name",
+                placeholder: "Your Business Name",
+                text: $businessName,
+                isValid: businessName.isEmpty ? nil : true,
+                isRequired: true
+            )
+            .onChange(of: businessName) { _, newValue in
+                hasChanges = true
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    nameValidationColor = newValue.isEmpty ? .orange : .secondary
+                }
+            }
+
+            ProfileFieldRow(
+                label: "Email",
+                placeholder: "business@example.com",
+                text: $email,
+                isValid: email.isEmpty ? nil : email.contains("@"),
+                isRequired: true,
+                capitalize: false
+            )
+            .onChange(of: email) { _, newValue in
+                hasChanges = true
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    if newValue.isEmpty { emailValidationColor = .orange }
+                    else if !newValue.contains("@") { emailValidationColor = .red }
+                    else { emailValidationColor = .secondary }
+                }
+            }
+        }
+        .opacity(requiredSectionOpacity)
+    }
+
+    private var optionalInfoSection: some View {
+        ProfileSectionCard(title: "Optional Information") {
+            ProfileFieldRow(label: "Contact Name", placeholder: "Your Name", text: $contactName)
+                .onChange(of: contactName) { _, _ in hasChanges = true }
+            ProfileFieldRow(label: "Phone", placeholder: "(555) 123-4567", text: $phone)
+                .onChange(of: phone) { _, _ in hasChanges = true }
+            ProfileFieldRow(label: "Website", placeholder: "www.yourbusiness.com", text: $website, capitalize: false)
+                .onChange(of: website) { _, _ in hasChanges = true }
+            ProfileFieldRow(label: "Tax ID / EIN", placeholder: "12-3456789", text: $taxId, capitalize: false)
+                .onChange(of: taxId) { _, _ in hasChanges = true }
+        }
+        .opacity(optionalSectionOpacity)
+    }
+
+    private var addressSection: some View {
+        ProfileSectionCard(title: "Business Address") {
+            ProfileFieldRow(label: "Street Address", placeholder: "123 Main Street", text: $address)
+                .onChange(of: address) { _, _ in hasChanges = true }
+            ProfileFieldRow(label: "City", placeholder: "City", text: $city)
+                .onChange(of: city) { _, _ in hasChanges = true }
+            ProfileFieldRowPair(
+                label1: "State", placeholder1: "State", text1: $state,
+                label2: "ZIP", placeholder2: "12345", text2: $zipCode
+            )
+            .onChange(of: state) { _, _ in hasChanges = true }
+            .onChange(of: zipCode) { _, _ in hasChanges = true }
+            ProfileFieldRow(label: "Country", placeholder: "United States", text: $country)
+                .onChange(of: country) { _, _ in hasChanges = true }
+        }
+        .opacity(addressSectionOpacity)
+    }
+
+    @ViewBuilder
+    private var actionsSection: some View {
+        if let profile = profile, !profile.isPrimary {
+            ProfileSectionCard(title: "Actions") {
+                Button {
+                    BusinessProfileService.shared.setPrimary(profile, context: modelContext)
+                    HapticService.shared.success()
+                } label: {
+                    Label("Set as Primary Business", systemImage: "star.fill")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.blue)
+
+                Button(role: .destructive) {
+                    BusinessProfileService.shared.deactivateProfile(profile, context: modelContext)
+                    HapticService.shared.mediumImpact()
+                    dismiss()
+                } label: {
+                    Label("Deactivate Business", systemImage: "archivebox")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red)
+            }
+            .opacity(footerOpacity)
+        }
+    }
+
+    @ViewBuilder
+    private var footerSection: some View {
+        if showSavedCheck {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text("Saved!")
+                    .fontWeight(.medium)
+                    .foregroundStyle(.green)
+            }
+            .transition(.scale.combined(with: .opacity))
+        } else {
+            ProfileFooterNote(
+                icon: "doc.text.fill",
+                text: "This information will appear on all invoices for this business."
+            )
+        }
+    }
+
     // MARK: - Animations
-    
+
     private func animateEntrance() {
-        // Header animation
         withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
             headerScale = 1.0
             headerOpacity = 1.0
         }
-        
-        // Staggered section reveals
+
         withAnimation(.easeOut(duration: 0.3).delay(0.1)) {
             requiredSectionOpacity = 1.0
         }
-        
+
         withAnimation(.easeOut(duration: 0.3).delay(0.2)) {
             optionalSectionOpacity = 1.0
         }
-        
+
         withAnimation(.easeOut(duration: 0.3).delay(0.3)) {
             addressSectionOpacity = 1.0
         }
-        
+
         withAnimation(.easeOut(duration: 0.3).delay(0.4)) {
             footerOpacity = 1.0
         }
     }
-    
+
     private func triggerValidationShake(for field: String) {
         HapticService.shared.error()
-        
+
         if field == "name" {
             withAnimation(.easeInOut(duration: 0.05).repeatCount(5, autoreverses: true)) {
                 nameFieldShake = true
@@ -295,20 +572,21 @@ struct BusinessProfileSettingsView: View {
             }
         }
     }
-    
+
     // MARK: - Computed Properties
-    
+
     private var isValid: Bool {
         !businessName.trimmingCharacters(in: .whitespaces).isEmpty &&
         !email.trimmingCharacters(in: .whitespaces).isEmpty &&
         email.contains("@")
     }
-    
+
     // MARK: - Methods
-    
+
     private func loadProfile() {
-        profile = BusinessProfileService.shared.fetchProfile(context: modelContext)
-        
+        // Use the passed-in business, or fall back to fetching primary
+        profile = business ?? BusinessProfileService.shared.fetchProfile(context: modelContext)
+
         if let profile = profile {
             businessName = profile.businessName
             contactName = profile.contactName ?? ""
@@ -321,55 +599,40 @@ struct BusinessProfileSettingsView: View {
             country = profile.country ?? ""
             website = profile.website ?? ""
             taxId = profile.taxId ?? ""
+            businessType = profile.businessType
         }
-        
+
         hasChanges = false
     }
-    
+
     private func saveProfile() {
-        // Validate with haptic feedback
         let trimmedBusinessName = businessName.trimmingCharacters(in: .whitespaces)
         let trimmedEmail = email.trimmingCharacters(in: .whitespaces)
-        
+
         if trimmedBusinessName.isEmpty {
             triggerValidationShake(for: "name")
             return
         }
-        
+
         if trimmedEmail.isEmpty || !trimmedEmail.contains("@") {
             triggerValidationShake(for: "email")
             return
         }
-        
-        // Button press animation
+
         withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
             saveButtonPressed = true
         }
-        
+
         isSaving = true
-        
-        // Processing haptic
         HapticService.play(.heavy)
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                 saveButtonPressed = false
             }
         }
-        
-        #if DEBUG
-        print("🔵 Starting Business Profile save...")
-        print("✅ Validation passed")
-        print("📝 Business Name: \(trimmedBusinessName)")
-        print("📧 Email: \(trimmedEmail)")
-        #endif
-        
+
         if let existingProfile = profile {
-            #if DEBUG
-            print("🔄 Updating existing profile (ID: \(existingProfile.id))")
-            #endif
-            
-            // Update existing profile
             existingProfile.businessName = trimmedBusinessName
             existingProfile.email = trimmedEmail
             existingProfile.contactName = contactName.isEmpty ? nil : contactName
@@ -381,83 +644,61 @@ struct BusinessProfileSettingsView: View {
             existingProfile.country = country.isEmpty ? nil : country
             existingProfile.website = website.isEmpty ? nil : website
             existingProfile.taxId = taxId.isEmpty ? nil : taxId
+            existingProfile.businessType = businessType
             existingProfile.updateModifiedDate()
-            
+
             performSave()
-            
         } else {
-            #if DEBUG
-            print("📝 Creating NEW profile")
-            #endif
-            
-            // Create new profile
-            let newProfile = BusinessProfile(
+            let newProfile = BusinessProfileService.shared.createProfile(
                 businessName: trimmedBusinessName,
                 email: trimmedEmail,
-                contactName: contactName.isEmpty ? nil : contactName,
-                phone: phone.isEmpty ? nil : phone,
-                address: address.isEmpty ? nil : address,
-                city: city.isEmpty ? nil : city,
-                state: state.isEmpty ? nil : state,
-                zipCode: zipCode.isEmpty ? nil : zipCode,
-                country: country.isEmpty ? nil : country,
-                website: website.isEmpty ? nil : website,
-                taxId: taxId.isEmpty ? nil : taxId
+                businessType: businessType,
+                isPrimary: true,
+                context: modelContext
             )
-            
-            #if DEBUG
-            print("📦 Profile object created (ID: \(newProfile.id))")
-            print("📝 Inserting into ModelContext...")
-            #endif
-            
-            modelContext.insert(newProfile)
             profile = newProfile
-            
+
+            // Update remaining fields
+            newProfile.contactName = contactName.isEmpty ? nil : contactName
+            newProfile.phone = phone.isEmpty ? nil : phone
+            newProfile.address = address.isEmpty ? nil : address
+            newProfile.city = city.isEmpty ? nil : city
+            newProfile.state = state.isEmpty ? nil : state
+            newProfile.zipCode = zipCode.isEmpty ? nil : zipCode
+            newProfile.country = country.isEmpty ? nil : country
+            newProfile.website = website.isEmpty ? nil : website
+            newProfile.taxId = taxId.isEmpty ? nil : taxId
+
             performSave()
         }
     }
-    
+
     private func performSave() {
         do {
             try modelContext.save()
 
-            // Mark Getting Started task as complete
             UserDefaults.standard.set(true, forKey: "hasBusinessProfileSetup")
 
-            #if DEBUG
-            print("✅ SAVE SUCCESS - Profile updated")
-            #endif
-
-            // Success haptic
             HapticService.shared.success()
-            
-            // Show saved check animation
+
             withAnimation(FLOAnimation.quick) {
                 showSavedCheck = true
             }
-            
+
             hasChanges = false
             isSaving = false
-            
-            // Dismiss after brief delay
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 withAnimation(FLOAnimation.quickEase) {
                     showSavedCheck = false
                 }
-                
+
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     showingSaveConfirmation = true
                 }
             }
-            
         } catch {
-            #if DEBUG
-            print("❌ SAVE FAILED: \(error.localizedDescription)")
-            print("📝 Error details: \(error)")
-            #endif
-            
             HapticService.shared.error()
-            
             isSaving = false
             errorMessage = "Failed to save profile: \(error.localizedDescription)"
             showingErrorAlert = true
@@ -467,35 +708,14 @@ struct BusinessProfileSettingsView: View {
 
 #Preview {
     NavigationStack {
-        BusinessProfileSettingsView()
-            .modelContainer(for: [BusinessProfile.self])
+        BusinessListView()
+            .modelContainer(ModelContainer.preview())
     }
 }
 
-#Preview("With Existing Profile") {
-    let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(
-        for: BusinessProfile.self,
-        configurations: config
-    )
-    
-    let profile = BusinessProfile(
-        businessName: "Acme Consulting",
-        email: "hello@acme.com",
-        contactName: "John Doe",
-        phone: "(555) 123-4567",
-        address: "123 Main Street",
-        city: "San Francisco",
-        state: "CA",
-        zipCode: "94102",
-        country: "United States",
-        website: "www.acme.com",
-        taxId: "12-3456789"
-    )
-    container.mainContext.insert(profile)
-    
-    return NavigationStack {
+#Preview("Detail") {
+    NavigationStack {
         BusinessProfileSettingsView()
+            .modelContainer(ModelContainer.preview())
     }
-    .modelContainer(container)
 }

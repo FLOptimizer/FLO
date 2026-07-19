@@ -1,10 +1,16 @@
 //  DocumentCameraView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.3 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
+//  Version 2.4 - Multi-page scan callback for Smart Receipt batch mode
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Document camera wrapper for VisionKit scanner
+//
+//  CHANGES v2.4:
+//  ✅ ADDED: Secondary init `DocumentCameraView(onPagesScanned:)` that returns
+//     every page from one scanning session. Used by SmartReceiptScanningView
+//     batch mode so a single camera burst can capture multiple receipts.
+//  ✅ PRESERVED: Existing `init(image:)` API — AddTransactionView unchanged.
 //
 //  CHANGES v2.3 - Dynamic Type Verification:
 //  ✅ FIXED: Preview headline text missing lineLimit + minimumScaleFactor
@@ -32,60 +38,82 @@ import VisionKit
 #if canImport(UIKit)
 struct DocumentCameraView: UIViewControllerRepresentable {
     @Binding var image: UIImage?
+    /// Invoked with every page from a single scanning session. Used by batch
+    /// mode. When non-nil, this takes precedence over the `image` binding.
+    var onPagesScanned: (([UIImage]) -> Void)?
     @Environment(\.dismiss) var dismiss
-    
+
+    /// Legacy single-page initializer. Sets `image` to the first scanned page.
+    init(image: Binding<UIImage?>) {
+        self._image = image
+        self.onPagesScanned = nil
+    }
+
+    /// Multi-page initializer. Receives every page from one scan session —
+    /// each page becomes one receipt in the batch queue.
+    init(onPagesScanned: @escaping ([UIImage]) -> Void) {
+        self._image = .constant(nil)
+        self.onPagesScanned = onPagesScanned
+    }
+
     func makeUIViewController(context: Context) -> VNDocumentCameraViewController {
         let controller = VNDocumentCameraViewController()
         controller.delegate = context.coordinator
         return controller
     }
-    
+
     func updateUIViewController(_ uiViewController: VNDocumentCameraViewController, context: Context) {}
-    
+
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
-    
+
     class Coordinator: NSObject, VNDocumentCameraViewControllerDelegate {
         let parent: DocumentCameraView
-        
+
         init(_ parent: DocumentCameraView) {
             self.parent = parent
         }
-        
+
         func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFinishWith scan: VNDocumentCameraScan) {
             guard scan.pageCount > 0 else {
                 #if DEBUG
                 print("📷 Document scan completed with 0 pages")
                 #endif
-                
+
                 // Light haptic for empty scan
                 Task { @MainActor in
                     HapticService.shared.mediumImpact()
                 }
-                
+
                 parent.dismiss()
                 return
             }
-            
+
             // Success haptic
             Task { @MainActor in
                 HapticService.shared.success()
-                
+
                 // Secondary celebration haptic
                 try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                 HapticService.shared.mediumImpact()
             }
-            
-            // Get the first scanned page
-            let image = scan.imageOfPage(at: 0)
-            parent.image = image
-            
+
+            let pages = (0..<scan.pageCount).map { scan.imageOfPage(at: $0) }
+
+            if let onPagesScanned = parent.onPagesScanned {
+                onPagesScanned(pages)
+            } else if let first = pages.first {
+                parent.image = first
+            }
+
             #if DEBUG
             print("📷 Document scan successful: \(scan.pageCount) page(s)")
-            print("   Image size: \(image.size.width) x \(image.size.height)")
+            if let first = pages.first {
+                print("   First page size: \(first.size.width) x \(first.size.height)")
+            }
             #endif
-            
+
             parent.dismiss()
         }
         

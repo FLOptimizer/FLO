@@ -1,12 +1,18 @@
 //  DashboardView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.12 — Predicated Fetch Performance Optimization
+//  Version 3.13 — Reload after async demo seed (empty hero chart fix)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Elite production-ready dashboard with Business/Personal/All filtering
 //
 //  THIS IS THE KILLER FEATURE - The app that finally understands freelancers
+//
+//  CHANGES v3.13 — Empty hero chart on first launch:
+//  ✅ FIXED: The one-shot .task fetch could run BEFORE the async demo seed finished,
+//           leaving the hero chart + metrics empty until a manual filter toggle.
+//           Now reloads on the .demoDataSeeded notification. (Pairs with the
+//           SpendingLine v1.1 scaling fix so the populated curve renders correctly.)
 //
 //  CHANGES v3.12 — Predicated Fetch Performance Optimization:
 //  ✅ REPLACED: @Query (all 946 transactions) with FetchDescriptor + date predicate
@@ -55,11 +61,10 @@
 //  ✅ ADDED: Skeleton loading hidden from VoiceOver
 //  ✅ ADDED: Announce mode/timeframe changes to VoiceOver
 //
-//  PREVIOUS (v3.6):
-//  ✅ FIXED: Basic receipt capture now uses FreeTierReceiptView (not ReceiptImageView)
-//  ✅ ReceiptImageView requires imagePath - it's a viewer, not a capture view
-//  ✅ FreeTierReceiptView provides camera capture + basic OCR for Free tier
-//  ✅ QuickActionsView routes: Free → FreeTierReceiptView, Premium+ → SmartReceiptScanningView
+//  PREVIOUS (v3.9):
+//  ✅ Scanner consolidation: FreeTierReceiptView removed, Smart Scanner is the only scanner
+//  ✅ Smart Scanner moved to Free tier (Phase 2)
+//  ✅ QuickActionsView scan button goes directly to Scanner (mode chosen inside)
 //
 //  PREVIOUS (v3.5):
 //  ✅ InvoiceDashboardCard hidden for Free tier (requires Premium+)
@@ -96,7 +101,7 @@
 //  - AccountsSummaryCard.swift
 //  - CreditCardSummaryCard.swift
 //  - GettingStartedCard.swift
-//  - FreeTierReceiptView.swift (NEW in v3.6)
+//  - SmartReceiptScanningView.swift (unified scanner, v3.9)
 //
 
 import SwiftUI
@@ -120,10 +125,10 @@ struct DashboardView: View {
     @State private var showingAddExpense = false
     @State private var showingAddIncome = false
     @State private var showingCreateInvoice = false
-    @State private var showingReceiptScanner = false      // Premium+: SmartReceiptScanningView
+    @State private var showingReceiptScanner = false      // SmartReceiptScanningView (mode chosen inside)
     @State private var showingMileageTracking = false
-    @State private var showingBasicReceiptCapture = false // Free: FreeTierReceiptView (v3.6)
     @State private var showingMoveMoney = false           // Premium+: MoveMoneyView (v3.8)
+    @ObservedObject private var navigation = NavigationService.shared
     
     @State private var financeMode: FinanceMode = .all
     @State private var selectedTimeframe: Timeframe = .thisMonth
@@ -135,6 +140,10 @@ struct DashboardView: View {
     @State private var summaryAnimated = false
     @State private var isInitialLoad = true
     @State private var hasLoaded = false
+
+    // Static: shared across all instances so NavigationSplitView duplicate mounts
+    // (each with their own @State hasLoaded=false) are also deduplicated.
+    private static var lastLoadTime: Date = .distantPast
     
     // MARK: - Computed Properties
     
@@ -186,9 +195,10 @@ struct DashboardView: View {
     }
 
     /// Single-pass aggregation — dates already filtered by FetchDescriptor (v3.12).
-    /// Only filters by finance mode and accumulates income/expenses.
+    /// Filters by finance mode AND active business (v3.13).
     private var dashboardMetrics: DashboardMetrics {
         var metrics = DashboardMetrics()
+        let businessManager = ActiveBusinessManager.shared
 
         for t in allTransactions {
             // Skip transfers for dashboard display
@@ -202,6 +212,16 @@ struct DashboardView: View {
             case .all: matchesMode = true
             }
             guard matchesMode else { continue }
+
+            // v3.13: Filter by active business when set
+            switch businessManager.effectiveViewMode {
+            case .specificBusiness(let business):
+                guard t.account?.businessProfile?.id == business.id else { continue }
+            case .personal:
+                guard t.account?.businessProfile == nil else { continue }
+            case .allBusinesses:
+                break
+            }
 
             // Accumulate into metrics (no date check needed — pre-filtered by fetch)
             metrics.filtered.append(t)
@@ -235,6 +255,23 @@ struct DashboardView: View {
             return filteredTransactions
                 .filter { !$0.isIncome && calendar.isDate($0.date, inSameDayAs: day) }
                 .reduce(0) { $0 + abs($1.amount) }
+        }
+    }
+
+    /// Daily budget threshold for the spending trend line.
+    /// Divides the total planned budget by the number of days in the current period.
+    private var dailyBudgetThreshold: Double {
+        let calendar = Calendar.current
+        let now = Date()
+        switch selectedTimeframe {
+        case .thisWeek:
+            return budgetTotal / 7
+        case .thisMonth:
+            let days = calendar.range(of: .day, in: .month, for: now)?.count ?? 30
+            return budgetTotal / Double(days)
+        case .thisYear:
+            let days = calendar.range(of: .day, in: .year, for: now)?.count ?? 365
+            return budgetTotal / Double(days)
         }
     }
 
@@ -316,6 +353,17 @@ struct DashboardView: View {
             }
             .navigationTitle(navigationTitle)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    BusinessSwitcherView()
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        NavigationService.shared.showGlobalSearch()
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                    }
+                    .accessibilityLabel("Search")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         refreshDashboard()
@@ -346,14 +394,10 @@ struct DashboardView: View {
             .sheet(isPresented: $showingCreateInvoice) {
                 CreateInvoiceView()
             }
-            // v3.6: Premium+ Smart Receipt Scanner
+            // Smart Scanner — mode (receipt vs bill) chosen inside via CaptureOptionsView buttons
             .sheet(isPresented: $showingReceiptScanner) {
                 SmartReceiptScanningView()
                     .environmentObject(subscriptionManager)
-            }
-            // v3.6: Free Tier Basic Receipt Capture (FIXED - was using ReceiptImageView which requires imagePath)
-            .sheet(isPresented: $showingBasicReceiptCapture) {
-                FreeTierReceiptView()
             }
             // Mileage tracking - MileageTrackingMainView handles tier routing internally
             .sheet(isPresented: $showingMileageTracking) {
@@ -377,6 +421,9 @@ struct DashboardView: View {
                 MoveMoneyView()
                     .environmentObject(subscriptionManager)
             }
+            .sheet(isPresented: $navigation.showingGlobalSearch) {
+                GlobalSearchView()
+            }
             .refreshable {
                 await refreshAsync()
             }
@@ -386,7 +433,7 @@ struct DashboardView: View {
                 hasLoaded = true
 
                 // v3.12: Fetch transactions with date predicate on appear
-                loadTransactions()
+                loadTransactions(caller: ".task")
 
                 // Sync Zone 3 summary panel with initial state
                 NotificationCenter.default.post(name: .dashboardTimeframeChanged, object: selectedTimeframe)
@@ -441,13 +488,22 @@ struct DashboardView: View {
                 HapticService.play(.selection)
 
                 // v3.12: Re-fetch with new timeframe date predicate
-                loadTransactions()
+                loadTransactions(caller: ".onChange(selectedTimeframe)")
 
                 // v3.7: Announce timeframe change to VoiceOver
                 AccessibilityAnnouncement.announce("Showing \(newValue.displayName)")
 
                 // Notify Zone 3 summary panel
                 NotificationCenter.default.post(name: .dashboardTimeframeChanged, object: newValue)
+            }
+            // Demo data seeds asynchronously and can finish AFTER the initial .task
+            // load, leaving the dashboard (hero chart + metrics) showing empty state.
+            // Reload when seeding completes so it populates without a manual toggle.
+            .onReceive(NotificationCenter.default.publisher(for: .demoDataSeeded)) { _ in
+                // force: bypass the 300ms debounce — this reload deliberately follows
+                // the seed and may land within 300ms of the empty initial .task load.
+                loadTransactions(caller: ".demoDataSeeded", force: true)
+                refreshWidgets()
             }
             .id(refreshID)
         }
@@ -468,6 +524,17 @@ struct DashboardView: View {
                         .opacity(cardsAppeared ? 1 : 0.001)
                         .offset(y: cardsAppeared ? 0 : -15)
 
+                    // 1b. Spending Trend Line — hero visualization
+                    SpendingLine(
+                        data: dailyTotals,
+                        budget: dailyBudgetThreshold,
+                        periodLabel: selectedTimeframe.displayName
+                    )
+                    .padding(.horizontal)
+                    .opacity(cardsAppeared ? 1 : 0.001)
+                    .offset(y: cardsAppeared ? 0 : -10)
+                    .animation(FLOAnimation.standard.delay(0.03), value: cardsAppeared)
+
                     // 2. Quick Actions — top priority, instant access
                     QuickActionsView(
                         showingAddExpense: $showingAddExpense,
@@ -475,7 +542,6 @@ struct DashboardView: View {
                         showingCreateInvoice: $showingCreateInvoice,
                         showingReceiptScanner: $showingReceiptScanner,
                         showingMileageTracking: $showingMileageTracking,
-                        showingBasicReceiptCapture: $showingBasicReceiptCapture,
                         financeMode: financeMode
                     )
                     .padding(.horizontal)
@@ -507,7 +573,7 @@ struct DashboardView: View {
                     .animation(FLOAnimation.standard.delay(0.10), value: cardsAppeared)
 
                     DashboardReviewBadge(count: unreviewedCount) {
-                        NavigationService.shared.navigateTo(.transactions)
+                        NavigationService.shared.openTransactionReview()
                     }
                     .padding(.horizontal)
                     .opacity(cardsAppeared ? 1 : 0.001)
@@ -538,6 +604,13 @@ struct DashboardView: View {
                         .offset(y: cardsAppeared ? 0 : 20)
                         .animation(FLOAnimation.standard.delay(0.21), value: cardsAppeared)
 
+                    // 7.5. Debt Accelerator — payoff plan summary
+                    DebtAcceleratorDashboardCard()
+                        .padding(.horizontal)
+                        .opacity(cardsAppeared ? 1 : 0.001)
+                        .offset(y: cardsAppeared ? 0 : 20)
+                        .animation(FLOAnimation.standard.delay(0.22), value: cardsAppeared)
+
                     // 8. Transfer Summary — recent money movement
                     TransferSummaryCard(showMoveMoneyView: $showingMoveMoney)
                         .padding(.horizontal)
@@ -549,9 +622,7 @@ struct DashboardView: View {
                     if !recentTransactions.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Recent")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                                .textCase(.uppercase)
+                                .floSectionHeader()
                                 .padding(.horizontal)
                                 .accessibilityAddTraits(.isHeader)
 
@@ -692,9 +763,31 @@ struct DashboardView: View {
     /// Fetches transactions using FetchDescriptor with a date predicate at the SQLite level.
     /// Reduces deserialization from ~946 (all transactions) to ~80 (current timeframe).
     /// Also fetches all-time business deductions separately (lightweight sum).
-    private func loadTransactions() {
-        let calendar = Calendar.current
+    ///
+    /// - Parameter caller: Debug identifier for which code path triggered this load.
+    ///   Used to diagnose duplicate-load scenarios (e.g. .task vs .onChange race).
+    private func loadTransactions(caller: String = "unknown", force: Bool = false) {
+        // Debounce: block any duplicate calls within 300ms of the last successful load.
+        // Uses a static (cross-instance) timestamp so NavigationSplitView mounting two
+        // DashboardView instances simultaneously only produces one real fetch.
         let now = Date()
+        let elapsed = now.timeIntervalSince(Self.lastLoadTime)
+        #if DEBUG
+        if Self.lastLoadTime != .distantPast {
+            print("📊 [Dashboard] loadTransactions() caller=\(caller) elapsed=\(String(format: "%.0f", elapsed * 1000))ms")
+        } else {
+            print("📊 [Dashboard] loadTransactions() caller=\(caller) (first load)")
+        }
+        #endif
+        guard force || elapsed > 0.3 else {
+            #if DEBUG
+            print("📊 [Dashboard] ⚡ Skipped duplicate load from '\(caller)' (within 300ms debounce)")
+            #endif
+            return
+        }
+        Self.lastLoadTime = now
+
+        let calendar = Calendar.current
 
         // Build start date based on selected timeframe
         let startDate: Date
@@ -764,7 +857,7 @@ struct DashboardView: View {
         refreshID = UUID()
 
         // v3.12: Re-fetch transactions on refresh
-        loadTransactions()
+        loadTransactions(caller: "refreshDashboard")
 
         // v3.7: Announce refresh to VoiceOver
         AccessibilityAnnouncement.announce("Refreshing dashboard")
@@ -799,7 +892,7 @@ struct DashboardView: View {
 
         await MainActor.run {
             // v3.12: Re-fetch transactions on pull-to-refresh
-            loadTransactions()
+            loadTransactions(caller: "refreshAsync")
             refreshID = UUID()
             isRefreshing = false
             HapticService.play(.success)

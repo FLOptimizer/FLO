@@ -10,6 +10,8 @@
 		436A0AA22EC02F920011973D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 436A0AA12EC02F920011973D /* WidgetKit.framework */; };
 		436A0AA42EC02F920011973D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 436A0AA32EC02F920011973D /* SwiftUI.framework */; };
 		436A0AB32EC02F930011973D /* FLOWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 436A0A9F2EC02F920011973D /* FLOWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		43AABC8C2F7C0AA40026F795 /* FLODesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 43F10D5B2F5A000000000002 /* FLODesignSystem */; };
+		43AABC8D2F7C0AA40026F795 /* FLODesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 43F10D5C2F5A000000000003 /* FLODesignSystem */; };
 		43C4F4492F4E0FD6005B3810 /* FLOWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 43C4F4292F4E0FD5005B3810 /* FLOWatch Watch App.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		43C4F46A2F4E15B4005B3810 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 436A0AA12EC02F920011973D /* WidgetKit.framework */; };
 		43C4F46B2F4E15B4005B3810 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 436A0AA32EC02F920011973D /* SwiftUI.framework */; };
@@ -138,6 +140,11 @@
 		4364D0D12F48C68C00AD1C84 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		4364D2E92F4C9F9400AD1C84 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		4364D4FF2F4CA34000AD1C84 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		4366A8002F88873D007A6DA2 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		4366AF352F8F2E79007A6DA2 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		4366B69C2F8F378D007A6DA2 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		4366BA802F90213B007A6DA2 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		4366C24C2F902B19007A6DA2 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		436A0A9F2EC02F920011973D /* FLOWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FLOWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		436A0AA12EC02F920011973D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		436A0AA32EC02F920011973D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -153,7 +160,11 @@
 		43AA9CAC2F75806A0026F795 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43AAA3212F79BB520026F795 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43AAB3D82F7C07DE0026F795 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43AABDD32F7C0AA40026F795 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43AAC4842F7CB2980026F795 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43AACEBF2F8405EB0026F795 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43B118CA2F5F391C00C52BB5 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43B49F4C2FD1485B00D27A97 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43B7396B2EF6521400B32076 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43C4F1BC2F4CB7AB005B3810 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43C4F4292F4E0FD5005B3810 /* FLOWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "FLOWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -260,19 +271,34 @@
 				FLOWidget/FLOWidgetLiveActivity.swift,
 				Models/Account.swift,
 				Models/BalanceAnchor.swift,
+				Models/Bill.swift,
+				Models/BillPayment.swift,
 				Models/Budget.swift,
 				Models/BusinessProfile.swift,
 				Models/Category.swift,
 				Models/Client.swift,
+				Models/DebtAcceleratorPlan.swift,
+				Models/DepreciableAsset.swift,
+				Models/EntityJurisdiction.swift,
 				Models/Invoice.swift,
 				Models/InvoicePayment.swift,
 				Models/InvoiceTypes.swift,
+				Models/LinkedCard.swift,
 				Models/MileageLiveActivityAttributes.swift,
+				Models/MileageTrip.swift,
+				Models/PartnerAllocation.swift,
+				Models/RecurringPaymentLog.swift,
 				Models/RecurringTransaction.swift,
 				Models/RecurringTransfer.swift,
+				Models/SubscriptionTier.swift,
+				Models/TaxCarryforward.swift,
+				Models/TaxFormLine.swift,
 				Models/TaxOptimizationModels.swift,
+				Models/TaxSettings.swift,
 				Models/Transaction.swift,
 				Models/Transfer.swift,
+				Models/Vendor.swift,
+				Services/MACRSCalculationService.swift,
 				Services/WidgetDataService.swift,
 			);
 			target = 436A0A9E2EC02F920011973D /* FLOWidgetExtension */;
@@ -293,20 +319,33 @@
 				"Extensions/NumberFormatter+Currency.swift",
 				Models/Account.swift,
 				Models/BalanceAnchor.swift,
+				Models/Bill.swift,
+				Models/BillPayment.swift,
 				Models/Budget.swift,
 				Models/BusinessProfile.swift,
 				Models/Category.swift,
 				Models/Client.swift,
+				Models/DebtAcceleratorPlan.swift,
+				Models/DepreciableAsset.swift,
+				Models/EntityJurisdiction.swift,
 				Models/Invoice.swift,
 				Models/InvoicePayment.swift,
 				Models/InvoiceTypes.swift,
+				Models/LinkedCard.swift,
+				Models/PartnerAllocation.swift,
+				Models/RecurringPaymentLog.swift,
 				Models/RecurringTransaction.swift,
 				Models/RecurringTransfer.swift,
+				Models/TaxCarryforward.swift,
+				Models/TaxFormLine.swift,
+				Models/TaxSettings.swift,
 				Models/Transaction.swift,
 				Models/Transfer.swift,
+				Models/Vendor.swift,
 				Services/AnimationService.swift,
 				Services/HapticService.swift,
 				Services/InvoiceService.swift,
+				Services/MACRSCalculationService.swift,
 			);
 			target = 43F4789F2F5CE2910098DC37 /* FLOInvoiceClip */;
 		};
@@ -383,6 +422,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				43AABC8C2F7C0AA40026F795 /* FLODesignSystem in Frameworks */,
 				43E4776D2F3F8F6900769F6C /* LinkKit in Frameworks */,
 				43C4F4882F4E1654005B3810 /* WatchConnectivity.framework in Frameworks */,
 			);
@@ -406,6 +446,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				43AABC8D2F7C0AA40026F795 /* FLODesignSystem in Frameworks */,
 				436A0AA42EC02F920011973D /* SwiftUI.framework in Frameworks */,
 				436A0AA22EC02F920011973D /* WidgetKit.framework in Frameworks */,
 			);
@@ -574,6 +615,31 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		4366A8082F88873D007A6DA2 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4366AF3D2F8F2E79007A6DA2 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4366B6A42F8F378D007A6DA2 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4366BA882F90213B007A6DA2 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4366C2542F902B19007A6DA2 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
 		436A0AA02EC02F920011973D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -639,7 +705,27 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		43AABDDA2F7C0AA40026F795 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		43AAC48B2F7CB2980026F795 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		43AACEC62F8405EB0026F795 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
 		43B118D02F5F391C00C52BB5 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		43B49F542FD1485B00D27A97 /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
@@ -1094,6 +1180,10 @@
 					ProjectRef = 43E3C9582EF6297400CC479E /* FLO.xcodeproj */;
 				},
 				{
+					ProductGroup = 4366A8082F88873D007A6DA2 /* Products */;
+					ProjectRef = 4366A8002F88873D007A6DA2 /* FLO.xcodeproj */;
+				},
+				{
 					ProductGroup = 438126D02EF63F46002EA8A5 /* Products */;
 					ProjectRef = 438126C82EF63F46002EA8A5 /* FLO.xcodeproj */;
 				},
@@ -1114,8 +1204,16 @@
 					ProjectRef = 43E3CA1F2EF62AF800CC479E /* FLO.xcodeproj */;
 				},
 				{
+					ProductGroup = 43AACEC62F8405EB0026F795 /* Products */;
+					ProjectRef = 43AACEBF2F8405EB0026F795 /* FLO.xcodeproj */;
+				},
+				{
 					ProductGroup = 43FACC292F187ADF006A54B9 /* Products */;
 					ProjectRef = 43FACC262F187ADF006A54B9 /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 43AABDDA2F7C0AA40026F795 /* Products */;
+					ProjectRef = 43AABDD32F7C0AA40026F795 /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 43B118D02F5F391C00C52BB5 /* Products */;
@@ -1128,6 +1226,10 @@
 				{
 					ProductGroup = 43FAC9DB2F145FCE006A54B9 /* Products */;
 					ProjectRef = 43FAC9D32F145FCE006A54B9 /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 43B49F542FD1485B00D27A97 /* Products */;
+					ProjectRef = 43B49F4C2FD1485B00D27A97 /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 43A5A4072F42ACB0007A781C /* Products */;
@@ -1152,6 +1254,10 @@
 				{
 					ProductGroup = 4364D5042F4CA34000AD1C84 /* Products */;
 					ProjectRef = 4364D4FF2F4CA34000AD1C84 /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 4366C2542F902B19007A6DA2 /* Products */;
+					ProjectRef = 4366C24C2F902B19007A6DA2 /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 43FAC7842F1080D4006A54B9 /* Products */;
@@ -1202,6 +1308,10 @@
 					ProjectRef = 4364D2E92F4C9F9400AD1C84 /* FLO.xcodeproj */;
 				},
 				{
+					ProductGroup = 4366AF3D2F8F2E79007A6DA2 /* Products */;
+					ProjectRef = 4366AF352F8F2E79007A6DA2 /* FLO.xcodeproj */;
+				},
+				{
 					ProductGroup = 4320D92F2F0187EC00A758F4 /* Products */;
 					ProjectRef = 4320D9272F0187EC00A758F4 /* FLO.xcodeproj */;
 				},
@@ -1222,12 +1332,24 @@
 					ProjectRef = 4364CEB72F47B3BB00AD1C84 /* FLO.xcodeproj */;
 				},
 				{
+					ProductGroup = 4366B6A42F8F378D007A6DA2 /* Products */;
+					ProjectRef = 4366B69C2F8F378D007A6DA2 /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 43AAC48B2F7CB2980026F795 /* Products */;
+					ProjectRef = 43AAC4842F7CB2980026F795 /* FLO.xcodeproj */;
+				},
+				{
 					ProductGroup = 435AF72B2EF6386100B42ECE /* Products */;
 					ProjectRef = 435AF7232EF6386100B42ECE /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 432D74A22F4F81DB00C57BCA /* Products */;
 					ProjectRef = 432D749C2F4F81DB00C57BCA /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 4366BA882F90213B007A6DA2 /* Products */;
+					ProjectRef = 4366BA802F90213B007A6DA2 /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 4318B1AC2F250ED300B9389E /* Products */;
@@ -1603,7 +1725,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = FLO.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1617,7 +1739,6 @@
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "FLO needs access to your photo library so you can select existing receipt or invoice images to import into the app.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = arm64;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -1628,7 +1749,7 @@
 					"@executable_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 2.1;
+				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
@@ -1646,7 +1767,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = FLO.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1660,7 +1781,6 @@
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "FLO needs access to your photo library so you can select existing receipt or invoice images to import into the app.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = arm64;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -1671,7 +1791,7 @@
 					"@executable_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 2.1;
+				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
@@ -1761,7 +1881,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = FLOWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = FLOWidget/Info.plist;
@@ -1772,7 +1892,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.1;
+				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1789,7 +1909,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = FLOWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = FLOWidget/Info.plist;
@@ -1800,7 +1920,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.1;
+				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -2047,7 +2167,7 @@
 				CODE_SIGN_ENTITLEMENTS = FLOInvoiceClip/FLOInvoiceClip.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				ENABLE_APP_CLIP = YES;
 				ENABLE_PREVIEWS = YES;
@@ -2064,7 +2184,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
-				MARKETING_VERSION = 2.1;
+				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -2086,7 +2206,7 @@
 				CODE_SIGN_ENTITLEMENTS = FLOInvoiceClip/FLOInvoiceClip.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = D9HZRHZ736;
 				ENABLE_APP_CLIP = YES;
 				ENABLE_PREVIEWS = YES;
@@ -2103,7 +2223,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
-				MARKETING_VERSION = 2.1;
+				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchandpoppy.flo.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

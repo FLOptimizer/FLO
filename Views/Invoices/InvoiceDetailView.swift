@@ -1,7 +1,7 @@
 //  InvoiceDetailView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 5.7 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
+//  Version 5.8 - Size-class-aware edit / mark-paid / mark-sent routing (Catalyst/iPad Zone 3)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v5.7 - Dynamic Type Verification:
@@ -65,7 +65,21 @@ struct InvoiceDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
+
+    /// Route detail actions to the Zone 3 pane on a wide layout (native macOS,
+    /// iPad landscape, wide Mac Catalyst window); use sheets on compact. Replaces
+    /// the old hard `#if os(macOS)` switch, which was dead on Catalyst.
+    private var routesToDetailPane: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return horizontalSizeClass == .regular
+        #endif
+    }
+
     let invoice: Invoice
     
     @State private var showingEditSheet = false
@@ -175,7 +189,13 @@ struct InvoiceDetailView: View {
                 Menu {
                     Button {
                         HapticService.play(.light)
-                        showingEditSheet = true
+                        if routesToDetailPane {
+                            withAnimation(FLOAnimation.quick) {
+                                NavigationService.shared.selectedDetail = .editInvoice(id: invoice.id)
+                            }
+                        } else {
+                            showingEditSheet = true
+                        }
                     } label: {
                         Label("Edit", systemImage: "pencil")
                     }
@@ -801,7 +821,7 @@ struct InvoiceDetailView: View {
                             .minimumScaleFactor(0.8)
                         Text(invoice.totalAmount.formatted(.currency(code: "USD")))
                             .font(.title3.bold())
-                            .foregroundStyle(Color.brandPrimaryText)
+                            .foregroundStyle(Color.brandPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.5)
                             .contentTransition(.numericText())
@@ -815,7 +835,7 @@ struct InvoiceDetailView: View {
                         Spacer()
                         Text(invoice.totalAmount.formatted(.currency(code: "USD")))
                             .font(.title3.bold())
-                            .foregroundStyle(Color.brandPrimaryText)
+                            .foregroundStyle(Color.brandPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.5)
                             .contentTransition(.numericText())
@@ -909,7 +929,13 @@ struct InvoiceDetailView: View {
             if !invoice.isFullyPaid && invoice.status != InvoiceStatus.cancelled {
                 Button {
                     HapticService.play(.medium)
-                    showingMarkPaidSheet = true
+                    if routesToDetailPane {
+                        withAnimation(FLOAnimation.quick) {
+                            NavigationService.shared.selectedDetail = .markInvoicePaid(id: invoice.id)
+                        }
+                    } else {
+                        showingMarkPaidSheet = true
+                    }
                 } label: {
                     Label(
                         invoice.hasPayments ? "Record Payment" : "Mark as Paid",
@@ -926,7 +952,13 @@ struct InvoiceDetailView: View {
             if invoice.status == InvoiceStatus.draft {
                 Button {
                     HapticService.play(.medium)
-                    showingMarkSentSheet = true
+                    if routesToDetailPane {
+                        withAnimation(FLOAnimation.quick) {
+                            NavigationService.shared.selectedDetail = .markInvoiceSent(id: invoice.id)
+                        }
+                    } else {
+                        showingMarkSentSheet = true
+                    }
                 } label: {
                     Label("Ready to Send", systemImage: "paperplane.fill")
                         .frame(maxWidth: .infinity)

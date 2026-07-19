@@ -86,7 +86,7 @@ struct AppearanceSettingsView: View {
                         } icon: {
                             Image(systemName: "circle.lefthalf.filled")
                                 .accessibilityHidden(true)
-                                .foregroundStyle(Color.brandPrimaryText)
+                                .foregroundStyle(Color.brandPrimary)
                         }
                         .tag("system")
 
@@ -96,7 +96,7 @@ struct AppearanceSettingsView: View {
                         } icon: {
                             Image(systemName: "sun.max.fill")
                                 .accessibilityHidden(true)
-                                .foregroundStyle(Color.brandPrimaryText)
+                                .foregroundStyle(Color.brandPrimary)
                         }
                         .tag("light")
 
@@ -106,7 +106,7 @@ struct AppearanceSettingsView: View {
                         } icon: {
                             Image(systemName: "moon.fill")
                                 .accessibilityHidden(true)
-                                .foregroundStyle(Color.brandPrimaryText)
+                                .foregroundStyle(Color.brandPrimary)
                         }
                         .tag("dark")
                     }

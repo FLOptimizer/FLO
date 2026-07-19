@@ -50,8 +50,13 @@ struct EnhancedEditInvoiceView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query private var clients: [Client]
-    
+
     let invoice: Invoice
+
+    // Zone 3 adaptive presentation — when false, omits NavigationStack wrapper.
+    var embedInNavigationStack: Bool = true
+    /// Zone 3 dismiss callback — called instead of SwiftUI `dismiss()` when set.
+    var onDismiss: (() -> Void)? = nil
     
     // MARK: - Form State
     @State private var selectedClient: Client?
@@ -141,7 +146,15 @@ struct EnhancedEditInvoiceView: View {
     // MARK: - Body
     
     var body: some View {
-        NavigationStack {
+        if embedInNavigationStack {
+            NavigationStack { formContent }
+        } else {
+            formContent
+        }
+    }
+
+    @ViewBuilder
+    private var formContent: some View {
             Form {
                 // Invoice Number (read-only display)
                 Section {
@@ -478,7 +491,7 @@ struct EnhancedEditInvoiceView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         HapticService.play(.light)
-                        dismiss()
+                        performDismiss()
                     }
                     // v1.1: VoiceOver
                     .accessibilityLabel("Cancel")
@@ -507,7 +520,7 @@ struct EnhancedEditInvoiceView: View {
             }
             .onAppear {
                 loadInvoiceData()
-                
+
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     withAnimation {
                         viewAppeared = true
@@ -516,9 +529,16 @@ struct EnhancedEditInvoiceView: View {
                 // v1.1: Announce screen
                 AccessibilityAnnouncement.screenChanged("Edit Invoice \(invoice.invoiceNumber)")
             }
+    }
+
+    private func performDismiss() {
+        if let onDismiss {
+            onDismiss()
+        } else {
+            dismiss()
         }
     }
-    
+
     // MARK: - Helper Methods
     
     private func loadInvoiceData() {
@@ -625,7 +645,7 @@ struct EnhancedEditInvoiceView: View {
             HapticService.play(.success)
             // v1.1: Announce save
             AccessibilityAnnouncement.announce("Invoice \(invoiceNumber) saved")
-            dismiss()
+            performDismiss()
         } catch {
             saveError = error
             showingSaveError = true

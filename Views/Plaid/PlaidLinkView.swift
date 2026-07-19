@@ -209,7 +209,7 @@ struct PlaidLinkView: View {
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Color.brandPrimary)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .cornerRadius(10)
                 }
                 .accessibilityLabel("Try connecting again")
                 .accessibilityHint("Double tap to retry connecting your bank account")
@@ -221,7 +221,7 @@ struct PlaidLinkView: View {
                         .font(.headline)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                         .foregroundStyle(Color.brandPrimaryText)
+                         .foregroundStyle(Color.brandPrimary)
                 }
                 .accessibilityLabel("Cancel connection")
                 .accessibilityHint("Double tap to close and return")
@@ -496,8 +496,8 @@ struct ConnectBankButton: View {
             .frame(maxWidth: .infinity)
             .padding()
             .background(Color.brandPrimary)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            
+            .cornerRadius(10)
+
         case .secondary:
             HStack(spacing: 8) {
                 if isLoading {
@@ -510,7 +510,7 @@ struct ConnectBankButton: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
-             .foregroundStyle(Color.brandPrimaryText)
+             .foregroundStyle(Color.brandPrimary)
             
         case .minimal:
             if isLoading {
@@ -518,7 +518,7 @@ struct ConnectBankButton: View {
             } else {
                 Image(systemName: "plus.circle.fill")
                     .font(.title2)
-                     .foregroundStyle(Color.brandPrimaryText)
+                     .foregroundStyle(Color.brandPrimary)
             }
         }
     }
@@ -569,33 +569,21 @@ struct ConnectBankButton: View {
     private func handleLinkSuccess(_ metadata: LinkMetadata) {
         Task { @MainActor in
             do {
-                // Exchange token and create account
+                // Exchange token and create accounts
                 let itemId = try await PlaidService.shared.exchangePublicToken(
                     metadata.publicToken,
                     metadata: metadata
                 )
-                
-                // Create FLO accounts for linked accounts
-                for linkedAccount in metadata.accounts {
-                    let account = Account(
-                        name: linkedAccount.name,
-                        accountType: mapAccountType(linkedAccount.type, subtype: linkedAccount.subtype),
-                        lastFourDigits: linkedAccount.mask,
-                        institutionName: metadata.institutionName
-                    )
-                    account.isLinked = true
-                    account.plaidItemId = itemId
-                    account.plaidAccountId = linkedAccount.id
-                    account.plaidStatus = .connected
-                    
-                    modelContext.insert(account)
-                }
-                
-                try modelContext.save()
-                
-                // Initial sync
+                try PlaidService.shared.createAccounts(
+                    from: metadata,
+                    itemId: itemId,
+                    modelContext: modelContext
+                )
+
+                // Fetch real balances, then initial transaction sync
+                try? await PlaidService.shared.updateAccountBalances(modelContext: modelContext)
                 _ = try await PlaidService.shared.syncAllTransactions(modelContext: modelContext)
-                
+
                 showingSuccess = true
                 
             } catch let plaidError as PlaidError {
@@ -620,23 +608,6 @@ struct ConnectBankButton: View {
         }
     }
     
-    private func mapAccountType(_ type: String, subtype: String?) -> AccountType {
-        switch type {
-        case "depository":
-            if subtype == "savings" {
-                return .savings
-            }
-            return .checking
-        case "credit":
-            return .creditCard
-        case "investment":
-            return .investment
-        case "loan":
-            return .loan
-        default:
-            return .other
-        }
-    }
 }
 
 // MARK: - Sync Status View
@@ -746,7 +717,7 @@ struct PlaidSyncStatusView: View {
     
     private var statusText: String {
         if isSyncing {
-            return "Syncing transactions..."
+            return "Syncing balances & transactions..."
         } else if let error = currentError {
             return error.localizedDescription
         } else if let lastSync = lastSyncDate {
@@ -774,6 +745,7 @@ struct PlaidSyncStatusView: View {
         Task { @MainActor in
             do {
                 isSyncing = true
+                try await PlaidService.shared.updateAccountBalances(modelContext: modelContext)
                 lastResult = try await PlaidService.shared.syncAllTransactions(modelContext: modelContext)
                 loadState()
                 HapticService.play(.success)
@@ -793,136 +765,6 @@ struct PlaidSyncStatusView: View {
             }
             isSyncing = false
         }
-    }
-}
-
-// MARK: - Connected Accounts Card
-
-/// Dashboard card showing connected bank accounts
-struct ConnectedAccountsCard: View {
-    
-    @Query(filter: #Predicate<Account> { $0.isLinked == true })
-    private var linkedAccounts: [Account]
-    
-    @State private var lastSyncDate: Date?
-    
-    // Computed property to get first 3 accounts as Array
-    private var displayedAccounts: [Account] {
-        Array(linkedAccounts.prefix(3))
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header
-            HStack {
-                Label("Connected Banks", systemImage: "building.columns.fill")
-                    .font(.headline)
-                
-                Spacer()
-                
-                if !linkedAccounts.isEmpty {
-                    NavigationLink {
-                        ConnectedAccountsListView()
-                    } label: {
-                        Text("Manage")
-                            .font(.subheadline)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                    }
-                }
-            }
-            
-            if linkedAccounts.isEmpty {
-                // Empty State
-                VStack(spacing: 12) {
-                    Image(systemName: "link.badge.plus")
-                        .font(.largeTitle)
-                        .foregroundStyle(Color.brandPrimary.opacity(0.5))
-                        .accessibilityHidden(true)
-                    
-                    Text("No banks connected")
-                        .font(.subheadline)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(.secondary)
-                    
-                    ConnectBankButton(style: .secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
-            } else {
-                // Account List
-                VStack(spacing: 12) {
-                    ForEach(displayedAccounts) { (account: Account) in
-                        HStack {
-                            Image(systemName: account.plaidStatus.icon)
-                                .foregroundStyle(Color(hex: account.plaidStatus.color))
-                                .accessibilityHidden(true)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(account.displayNameWithDigits)
-                                    .font(.subheadline)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                                    .fontWeight(.medium)
-                                
-                                Text(account.institutionName ?? "Bank")
-                                    .font(.caption)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                                    .foregroundStyle(.secondary)
-                            }
-                            
-                            Spacer()
-                            
-                            Text(account.currentBalance, format: .currency(code: "USD"))
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(account.currentBalance >= 0 ? .primary : Color.red)
-                        }
-                    }
-                    
-                    if linkedAccounts.count > 3 {
-                        Text("+\(linkedAccounts.count - 3) more accounts")
-                            .font(.caption)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                
-                // Sync Status
-                if let lastSync = lastSyncDate {
-                    HStack {
-                        Text("Last synced")
-                            .font(.caption)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(.tertiary)
-                        
-                        Text(lastSync, style: .relative)
-                            .font(.caption)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(.tertiary)
-                        
-                        Spacer()
-                    }
-                    .padding(.top, 4)
-                }
-            }
-        }
-        .padding()
-        .background(Color(uiColor: .secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .task {
-            loadSyncDate()
-        }
-    }
-    
-    @MainActor
-    private func loadSyncDate() {
-        lastSyncDate = PlaidService.shared.lastSyncDate
     }
 }
 

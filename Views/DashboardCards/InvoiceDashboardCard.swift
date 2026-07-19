@@ -39,6 +39,7 @@
 
 import SwiftUI
 import SwiftData
+import FLODesignSystem
 
 // MARK: - Invoice Dashboard Card
 
@@ -315,7 +316,7 @@ struct InvoiceDashboardCard: View {
                     .fontWeight(.medium)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                    .foregroundStyle(Color.brandPrimaryText)
+                    .foregroundStyle(Color.brandPrimary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
                     .background(Color.brandPrimary.opacity(0.1))

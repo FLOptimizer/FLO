@@ -251,7 +251,7 @@ struct CSVFilePickerView: View {
             .padding(.vertical, 16)
             .background(Color.brandPrimary)
             .foregroundStyle(.white)
-            .cornerRadius(12)
+            .cornerRadius(10)
         }
         .disabled(isProcessing)
         .accessibilityLabel("Select CSV file to import")

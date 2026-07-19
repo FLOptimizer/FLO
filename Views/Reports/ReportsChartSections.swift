@@ -85,12 +85,10 @@ extension ReportsView {
                         .frame(width: 16, height: 16)
                         .accessibilityHidden(true)
                     
-                    Text(item.category)
-                        .font(.subheadline)
-                        .lineLimit(1)
-                    
+                    CategoryTag(category: item.category, size: .compact)
+
                     Spacer()
-                    
+
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(item.amount, format: .currency(code: currencyCode))
                             .font(.subheadline)
@@ -504,8 +502,7 @@ extension ReportsView {
                         .fill(item.color)
                         .frame(width: 12, height: 12)
                         .accessibilityHidden(true)
-                    Text(item.category)
-                        .font(.subheadline)
+                    CategoryTag(category: item.category, size: .compact)
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(item.amount, format: .currency(code: currencyCode))

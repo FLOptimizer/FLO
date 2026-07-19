@@ -24,6 +24,10 @@ struct ParsedReceipt {
     var merchantName: String?
     var suggestedCategory: String?
     var notes: String?
+    /// Last 4 digits extracted from a payment method line (e.g., "VISA ****1234")
+    var paymentLastFour: String?
+    /// Card network detected from OCR (e.g., "visa", "mastercard")
+    var paymentNetwork: String?
 }
 
 final class ReceiptParser {
@@ -31,21 +35,25 @@ final class ReceiptParser {
     
     private init() {}
     
-    func parseReceipt(text: String) -> ParsedReceipt {
+    func parseReceipt(text: String, isBillMode: Bool = false) -> ParsedReceipt {
         #if DEBUG
         print("================================================================================")
         print("📄 RAW OCR TEXT:")
         print(text)
         print("================================================================================")
         #endif
-        
+
         var parsed = ParsedReceipt()
-        
-        parsed.amount = extractAmount(from: text)
+
+        parsed.amount = extractAmount(from: text, isBillMode: isBillMode)
         parsed.date = extractDate(from: text)
         parsed.merchantName = extractMerchant(from: text)
         parsed.suggestedCategory = suggestCategory(from: text)
-        
+
+        let cardInfo = extractPaymentCardInfo(from: text)
+        parsed.paymentLastFour = cardInfo.lastFour
+        parsed.paymentNetwork = cardInfo.network
+
         let notes = extractNotes(from: text, merchantName: parsed.merchantName)
         if !notes.isEmpty {
             parsed.notes = notes
@@ -60,27 +68,108 @@ final class ReceiptParser {
         if let notes = parsed.notes {
             print("  Notes: \(notes)")
         }
+        if let lastFour = parsed.paymentLastFour {
+            print("  Card: \(parsed.paymentNetwork ?? "unknown") ****\(lastFour)")
+        }
         #endif
         
         return parsed
     }
     
-    // MARK: - Amount Extraction v2.0
-    private func extractAmount(from text: String) -> Double? {
+    // MARK: - Amount Extraction v3.0 (loyalty/points blacklist + column-layout peek fix)
+    private func extractAmount(from text: String, isBillMode: Bool = false) -> Double? {
         let lines = text.components(separatedBy: .newlines)
+
+        // v2.1: Bill-mode pre-pass — look for bill-specific labels where the amount
+        // may be on the SAME line OR the NEXT line (common on medical/utility bills).
+        // Scans BOTTOM-UP because the definitive "Amount Due" summary typically
+        // appears at the end of the bill, while line-item details appear higher up.
+        if isBillMode {
+            let billKeywords = [
+                "AMOUNT DUE", "BALANCE DUE", "TOTAL DUE", "PLEASE PAY",
+                "PAY THIS AMOUNT", "PAYMENT DUE", "NOW DUE", "DUE AMOUNT",
+                "AMOUNT OWED", "YOU OWE", "MINIMUM DUE", "MINIMUM PAYMENT"
+            ]
+
+            // Scan from the bottom of the document upward
+            for index in stride(from: lines.count - 1, through: 0, by: -1) {
+                let line = lines[index]
+                let upperLine = line.uppercased()
+
+                for keyword in billKeywords {
+                    guard upperLine.contains(keyword) else { continue }
+
+                    // Skip lines that are clearly itemized detail, not summary totals
+                    // e.g. "Patient Balance Note: 1 - Deductible Amount (Amount: 86.83)"
+                    if upperLine.contains("NOTE") || upperLine.contains("DETAIL") ||
+                       upperLine.contains("DESCRIPTION") || upperLine.contains("CHARGES:") {
+                        #if DEBUG
+                        print("⏭️ Bill: skipping detail line: \(line.trimmingCharacters(in: .whitespaces))")
+                        #endif
+                        continue
+                    }
+
+                    // Try same-line amount first
+                    if let amount = extractFirstAmount(from: line), amount > 0 && amount < 100_000 {
+                        #if DEBUG
+                        print("💵 Bill amount (same line): $\(amount) from: \(line.trimmingCharacters(in: .whitespaces))")
+                        #endif
+                        return amount
+                    }
+
+                    // Try next line (OCR often splits label and value onto adjacent lines)
+                    if index + 1 < lines.count {
+                        let nextLine = lines[index + 1]
+                        if let amount = extractFirstAmount(from: nextLine), amount > 0 && amount < 100_000 {
+                            #if DEBUG
+                            print("💵 Bill amount (next line): $\(amount) from label: \(line.trimmingCharacters(in: .whitespaces))")
+                            #endif
+                            return amount
+                        }
+                    }
+                }
+            }
+
+            #if DEBUG
+            print("ℹ️ No bill-specific amount label found, falling back to receipt parser")
+            #endif
+        }
+
+        // Standard receipt amount extraction (used as fallback for bills too)
         var candidates: [(amount: Double, score: Int, line: String)] = []
-        
-        for line in lines {
+
+        // v3.0: Skip keywords — lines with these words should never provide an amount.
+        // Categories:
+        //   · Payment metadata: AUTH, APPROVED, TRACE, INVOICE, TERMINAL, CHANGE, CASH
+        //   · Tax lines (we want the post-tax Total, not the tax itself): TAX ·, TAX:
+        //   · Discounts and tip lines: TIP, DISCOUNT
+        //   · Running balances: BALANCE, INITIAL (e.g. "Initial Balance"), FORWARD, PREVIOUS
+        //   · Loyalty / rewards — showed up as the $274.28 "Total New Points" bug on
+        //     Hustonville where a loyalty statement amount outranked the real total.
+        //   · Fuel station per-unit metrics ($/gal, gallons) — never transaction totals.
+        let skipWords = [
+            "TIP", "APPROVED", "AUTH", "DISCOUNT",
+            "CHANGE", "CASH",
+            "TAX ", "TAX:",
+            // Loyalty / rewards statements
+            "POINTS", "POINT", "REWARDS", "REWARD", "SAVINGS",
+            // Running balances & statement history
+            "BALANCE", "INITIAL", "FORWARD", "PREVIOUS",
+            // Fuel-station per-unit lines
+            "PRICE/GAL", "NET/GAL", "DISC/GAL", "QTY (GAL)", "QTY(GAL)",
+            // Bookkeeping / reference numbers that can contain amount-shaped digits
+            "INVOICE", "TRACE", "TERMINAL"
+        ]
+
+        for (index, line) in lines.enumerated() {
             let upperLine = line.uppercased()
-            
+
             // Skip invalid lines
-            if upperLine.contains("TIP") || upperLine.contains("%") ||
-               upperLine.contains("APPROVED") || upperLine.contains("AUTH") ||
-               upperLine.contains("TAX ") || upperLine.contains("DISCOUNT") ||
-               upperLine.contains("CHANGE") || upperLine.contains("BALANCE") {
+            if skipWords.contains(where: { upperLine.contains($0) }) {
                 continue
             }
-            
+            if upperLine.contains("%") { continue }
+
             // Check for "SUB" on same line
             if upperLine.contains("SUB") && (upperLine.contains("TOTAL") || upperLine.contains("0TAL")) {
                 #if DEBUG
@@ -88,51 +177,108 @@ final class ReceiptParser {
                 #endif
                 continue
             }
-            
-            // Extract amount
+
+            // Normalize OCR errors (0→O, 1→I, etc.)
+            let normalized = upperLine
+                .replacingOccurrences(of: "0", with: "O")
+                .replacingOccurrences(of: "1", with: "I")
+                .replacingOccurrences(of: "5", with: "S")
+
+            // Determine keyword score for this line
+            var lineScore = 0
+            if normalized.contains("TOTAL CHARGE") || normalized.contains("TOTAL AMT") ||
+               normalized.contains("TOTAL AMOUNT") || normalized.contains("TOTAL TENDERED") ||
+               normalized.contains("AMOUNT DUE") || normalized.contains("EMV TOTAL") ||
+               normalized.contains("GRAND TOTAL") || normalized.contains("BALANCE DUE") {
+                lineScore = 100
+            } else if normalized.contains("TOTAL") || upperLine.contains("OTAL") {
+                lineScore = 50
+            } else if normalized.contains("AMOUNT:") || normalized.contains("AMT:") {
+                lineScore = 10
+            }
+
+            // Extract amount from this line
             if let amount = extractFirstAmount(from: line), amount < 10000 {
-                // Normalize OCR errors (0→O, 1→I, etc.)
-                let normalized = upperLine
-                    .replacingOccurrences(of: "0", with: "O")
-                    .replacingOccurrences(of: "1", with: "I")
-                    .replacingOccurrences(of: "5", with: "S")
-                
-                var score = 0
-                
-                // High confidence (100 points)
-                if normalized.contains("TOTAL CHARGE") || normalized.contains("TOTAL AMT") ||
-                   normalized.contains("TOTAL AMOUNT") || normalized.contains("TOTAL TENDERED") ||
-                   normalized.contains("AMOUNT DUE") || normalized.contains("EMV TOTAL") ||
-                   normalized.contains("GRAND TOTAL") || normalized.contains("BALANCE DUE") ||
-                   (normalized.contains("PURCHASE") && amount > 1.0) {
+                var score = lineScore
+                if score == 0 && normalized.contains("PURCHASE") && amount > 1.0 {
                     score = 100
                 }
-                // Medium confidence (50 points) - handles "otal", "T0TAL"
-                else if normalized.contains("TOTAL") || upperLine.contains("OTAL") {
-                    score = 50
-                }
-                // Low confidence (10 points)
-                else if normalized.contains("AMOUNT:") || normalized.contains("AMT:") {
-                    score = 10
-                }
-                
+
                 candidates.append((amount, score, line))
-                
+
                 #if DEBUG
                 if score > 0 {
                     print("💰 Candidate: $\(amount) [score: \(score)] from: \(line.trimmingCharacters(in: .whitespaces))")
                 }
                 #endif
             }
+            // v3.0: Keyword on this line but no amount — column-layout peek ahead.
+            //
+            // Column-layout receipts stack all labels in one block then all amounts
+            // in another (sometimes with 10+ lines of payment/auth metadata between
+            // them). The old "first amount wins" rule picked the first LINE-ITEM
+            // price instead of the real total. We now collect every amount in the
+            // peek window and return the LAST one, which on a column-layout receipt
+            // is the summary total (line items come first, total comes last).
+            //
+            // Breaks on another top-tier scored keyword so each keyword still owns
+            // its own amount and we don't merge two sections.
+            else if lineScore >= 50, index + 1 < lines.count {
+                let maxPeek = min(15, lines.count - index - 1)
+                var collectedInPeek: [(amount: Double, offset: Int, line: String)] = []
+                for peekOffset in 1...maxPeek {
+                    let peekLine = lines[index + peekOffset]
+                    let peekUpper = peekLine.uppercased()
+
+                    // Stop on subtotal/sub-total — that's its own concept.
+                    if peekUpper.contains("SUBTOTAL") || peekUpper.contains("SUB TOTAL") { break }
+
+                    // Stop on another TOP-TIER keyword — that line deserves its own
+                    // peek and its own amount.
+                    let peekNormalized = peekUpper
+                        .replacingOccurrences(of: "0", with: "O")
+                        .replacingOccurrences(of: "1", with: "I")
+                        .replacingOccurrences(of: "5", with: "S")
+                    if peekNormalized.contains("TOTAL CHARGE") || peekNormalized.contains("TOTAL AMT") ||
+                       peekNormalized.contains("TOTAL AMOUNT") || peekNormalized.contains("TOTAL TENDERED") ||
+                       peekNormalized.contains("AMOUNT DUE") || peekNormalized.contains("GRAND TOTAL") ||
+                       peekNormalized.contains("BALANCE DUE") {
+                        break
+                    }
+
+                    // Skip noise lines (auth codes, loyalty labels, blank lines).
+                    if skipWords.contains(where: { peekUpper.contains($0) }) { continue }
+                    if peekLine.trimmingCharacters(in: .whitespaces).isEmpty { continue }
+
+                    // Collect any amount but DON'T break — column layouts have several
+                    // amounts in a row, and we want the last (summary) one.
+                    if let amount = extractFirstAmount(from: peekLine), amount < 10_000 {
+                        collectedInPeek.append((amount, peekOffset, peekLine))
+                    }
+                    // A non-amount residue line (like "CARD 3385" or "Customer Name :")
+                    // between label block and amount block is common on column-layout
+                    // receipts — keep peeking rather than breaking.
+                }
+
+                if let last = collectedInPeek.last {
+                    candidates.append((last.amount, lineScore, last.line))
+                    #if DEBUG
+                    let picked = collectedInPeek.count > 1
+                        ? " (last of \(collectedInPeek.count) amounts in peek block)"
+                        : " (adjacent +\(last.offset))"
+                    print("💰 Candidate (peek): $\(last.amount) [score: \(lineScore)] keyword: \(line.trimmingCharacters(in: .whitespaces))\(picked)")
+                    #endif
+                }
+            }
         }
-        
+
         guard !candidates.isEmpty else {
             #if DEBUG
             print("❌ No amount candidates found")
             #endif
             return nil
         }
-        
+
         // Return highest scored, then highest value
         let best = candidates.max { first, second in
             if first.score != second.score {
@@ -140,13 +286,13 @@ final class ReceiptParser {
             }
             return first.amount < second.amount
         }
-        
+
         #if DEBUG
         if let best = best {
             print("✅ Selected amount: $\(best.amount) [score: \(best.score)]")
         }
         #endif
-        
+
         return best?.amount
     }
 
@@ -309,10 +455,10 @@ final class ReceiptParser {
         return nil
     }
     
-    // MARK: - Merchant Extraction v2.0
+    // MARK: - Merchant Extraction v2.1 (FIXED: Skip promotional lines)
     private func extractMerchant(from text: String) -> String? {
         let lines = text.components(separatedBy: .newlines)
-        
+
         let skipKeywords = [
             "VISA", "MASTERCARD", "AMEX", "DISCOVER", "DEBIT", "CREDIT",
             "RECEIPT", "TRANSACTION", "APPROVED", "DECLINED", "AUTH",
@@ -320,18 +466,43 @@ final class ReceiptParser {
             "THANK YOU", "THANKS", "CUSTOMER COPY", "MERCHANT COPY",
             "DATE", "TIME", "EXPIRES", "CONTACTLESS"
         ]
+
+        // v2.1: Skip promotional / marketing lines that aren't merchant names
+        let promoKeywords = [
+            "BUY ONE", "GET ONE", "BOGO", "FREE", "COUPON", "PROMO",
+            "DISCOUNT", "SPECIAL OFFER", "LIMITED TIME", "DEAL",
+            "% OFF", "SAVE ", "SAVINGS", "EARN ", "REWARD",
+            "SURVEY", "VALIDATION", "VALIDATION CODE",
+            "VISIT ", "WWW.", "HTTP", ".COM",
+            "SCAN ME", "SCAN TO", "QR CODE"
+        ]
         
         let knownBrands = [
             "ollies bargain outlet", "tj maxx", "t.j. maxx", "tjmaxx",
             "walmart", "target", "starbucks", "whole foods", "trader joe",
             "cvs", "walgreens", "kroger", "safeway", "costco", "sams club",
             "home depot", "lowes", "best buy", "apple store", "amazon",
-            "wings and rings", "w&r"
+            "wings and rings", "w&r",
+            // v2.1: Added fast food and common chains
+            "mcdonald", "burger king", "wendy", "chick-fil-a", "chickfila",
+            "taco bell", "subway", "chipotle", "popeyes", "arby",
+            "dunkin", "sonic drive", "dairy queen", "domino", "pizza hut",
+            "papa john", "five guys", "panera", "chili's", "applebee",
+            "olive garden", "outback", "red lobster", "cracker barrel",
+            "waffle house", "ihop", "denny"
         ]
         
         // First pass: Look for exact known brands
+        // v2.2: Also apply promo filter so survey/feedback URLs don't win
         for line in lines {
             let lowerLine = line.lowercased()
+            let upperLine = line.uppercased()
+
+            // Skip promotional / survey / URL lines even for known brands
+            if promoKeywords.contains(where: { upperLine.contains($0) }) {
+                continue
+            }
+
             for brand in knownBrands {
                 if lowerLine.contains(brand) {
                     var cleaned = line
@@ -340,7 +511,7 @@ final class ReceiptParser {
                     cleaned = cleaned.replacingOccurrences(of: "\\s*[#-]\\s*\\d{3,}$",
                                                            with: "", options: .regularExpression)
                     cleaned = cleaned.trimmingCharacters(in: .whitespaces)
-                    
+
                     #if DEBUG
                     print("✅ Found known brand: '\(cleaned.capitalized)' (matched '\(brand)')")
                     #endif
@@ -352,8 +523,13 @@ final class ReceiptParser {
         // Second pass: Search entire receipt for merchant name
         for line in lines {
             let upperLine = line.uppercased()
-            
+
             if skipKeywords.contains(where: { upperLine.contains($0) }) {
+                continue
+            }
+
+            // v2.1: Skip promotional / marketing lines
+            if promoKeywords.contains(where: { upperLine.contains($0) }) {
                 continue
             }
             
@@ -399,6 +575,64 @@ final class ReceiptParser {
         return nil
     }
     
+    // MARK: - Payment Card Info Extraction
+
+    /// Extracts last 4 digits and card network from payment method lines.
+    /// Handles patterns like: "VISA ****1234", "MASTERCARD ENDING 5678",
+    /// "CARD #: ****9012", "AMEX x1234", "Visa ending in 5678"
+    private func extractPaymentCardInfo(from text: String) -> (lastFour: String?, network: String?) {
+        let lines = text.components(separatedBy: .newlines)
+
+        // Network keywords → CardNetwork raw values
+        let networkMap: [(keyword: String, network: String)] = [
+            ("VISA", "visa"),
+            ("MASTERCARD", "mastercard"),
+            ("MASTER CARD", "mastercard"),
+            ("MC", "mastercard"),
+            ("AMEX", "amex"),
+            ("AMERICAN EXPRESS", "amex"),
+            ("DISCOVER", "discover"),
+        ]
+
+        // Regex patterns for last 4 digits (order by specificity)
+        let patterns: [String] = [
+            #"\*{2,}(\d{4})"#,                      // ****1234 or **1234
+            #"[Xx]{2,}(\d{4})"#,                     // XXXX1234 or xx1234
+            #"(?i)ending\s+(?:in\s+)?(\d{4})"#,     // "ending 1234" or "ending in 1234"
+            #"(?i)card\s*#?\s*[:=]?\s*\*+(\d{4})"#, // "CARD #: ****1234"
+            #"(?i)(?:VISA|MASTERCARD|AMEX|DISCOVER|MC)\s+[Xx]*(\d{4})"#, // "VISA 1234" or "VISA x1234"
+        ]
+
+        for line in lines {
+            let upperLine = line.uppercased().trimmingCharacters(in: .whitespaces)
+
+            // Check if this line mentions a card network
+            var detectedNetwork: String?
+            for (keyword, network) in networkMap {
+                if upperLine.contains(keyword) {
+                    detectedNetwork = network
+                    break
+                }
+            }
+
+            // Try each pattern for last-4
+            for pattern in patterns {
+                if let regex = try? NSRegularExpression(pattern: pattern),
+                   let match = regex.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
+                   match.numberOfRanges > 1,
+                   let range = Range(match.range(at: 1), in: line) {
+                    let lastFour = String(line[range])
+                    return (lastFour, detectedNetwork)
+                }
+            }
+
+            // If we found a network on this line but no digits, still note the network
+            // (digits might be on next line — but don't return without digits)
+        }
+
+        return (nil, nil)
+    }
+
     // MARK: - Notes Extraction v2.0
     private func extractNotes(from text: String, merchantName: String?) -> String {
         var notesParts: [String] = []

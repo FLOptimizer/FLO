@@ -1,10 +1,17 @@
 //  DashboardSummaryPanel.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Build 10 — Zone 3 contextual summary for the Dashboard tab.
+//  Build 10 v1.1 — Zone 3 contextual summary for the Dashboard tab.
 //  Three charts: Income vs Spending with budget overlay, Cash Flow trend,
 //  Savings Rate gauge. Responds to Timeframe and FinanceMode changes.
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v1.1:
+//  ✅ FIXED (iPad §2): Monthly Trends / Cash Flow / Savings Rate showed $0 with
+//           seeded data. The panel's `.task` load can run BEFORE the async demo
+//           seed finishes, and nothing re-fetched afterward. Now subscribes to
+//           `.demoDataSeeded` and reloads — mirrors DashboardView v3.13's fix so
+//           the middle and right columns agree on the numbers.
 
 import SwiftUI
 import SwiftData
@@ -15,6 +22,10 @@ import Charts
 extension Notification.Name {
     static let dashboardTimeframeChanged = Notification.Name("dashboardTimeframeChanged")
     static let dashboardFinanceModeChanged = Notification.Name("dashboardFinanceModeChanged")
+    /// Posted after demo data finishes seeding so views that loaded before the async
+    /// seed completed (notably the Dashboard) can refresh instead of showing empty
+    /// state until a manual filter toggle. Demo/DEBUG only.
+    static let demoDataSeeded = Notification.Name("demoDataSeeded")
 }
 
 struct DashboardSummaryPanel: View {
@@ -92,6 +103,12 @@ struct DashboardSummaryPanel: View {
                 financeMode = mode
                 loadData()
             }
+        }
+        // v1.1: Demo data seeds asynchronously and can finish AFTER this panel's
+        // initial `.task` load, leaving all three charts showing $0. Reload when
+        // seeding completes so the right column populates without a manual toggle.
+        .onReceive(NotificationCenter.default.publisher(for: .demoDataSeeded)) { _ in
+            loadData()
         }
     }
 
@@ -209,7 +226,7 @@ struct DashboardSummaryPanel: View {
             }
         }
         .padding()
-        .background(Color.floSecondarySystemBackground)
+        .background(Color.floSystemGroupedSectionBackground)
         .cornerRadius(12)
     }
 
@@ -273,7 +290,7 @@ struct DashboardSummaryPanel: View {
             }
         }
         .padding()
-        .background(Color.floSecondarySystemBackground)
+        .background(Color.floSystemGroupedSectionBackground)
         .cornerRadius(12)
     }
 
@@ -322,7 +339,7 @@ struct DashboardSummaryPanel: View {
             )
         }
         .padding()
-        .background(Color.floSecondarySystemBackground)
+        .background(Color.floSystemGroupedSectionBackground)
         .cornerRadius(12)
     }
 

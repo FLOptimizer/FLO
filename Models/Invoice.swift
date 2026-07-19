@@ -1,10 +1,13 @@
 //  Invoice.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.3 - ReminderRecord now Codable struct (auto-serialized by SwiftData)
+//  Version 2.4 - Multi-Business Invoice Support
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Invoice tracking and management model
+//
+//  CHANGES v2.4:
+//  ✅ ADDED: businessProfile relationship — which business issued this invoice
 //
 //  CHANGES v2.3:
 //  ✅ ReminderRecord is now a Codable struct (not @Model)
@@ -27,7 +30,11 @@ final class Invoice {
     
     /// Client this invoice is for
     var client: Client?
-    
+
+    /// Which business issued this invoice (v2.4)
+    @Relationship(deleteRule: .nullify)
+    var businessProfile: BusinessProfile?
+
     /// Invoice issue date
     var issueDate: Date = Date() {
         didSet { updateModifiedDate() }

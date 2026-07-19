@@ -1,7 +1,7 @@
 //  TransactionListView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 5.0 - Build 10 Review Flow + Segmented Filter
+//  Version 5.1 - Catalyst list style · Build 10 Review Flow + Segmented Filter
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v5.0 - Build 10 Transaction List Redesign:
@@ -91,6 +91,7 @@ import SwiftData
 
 struct TransactionListView: View {
     @Environment(\.modelContext) private var context
+    @ObservedObject private var navService = NavigationService.shared  // Build 10
 
     // Build 10: Top-level segmented control replaces direction filter
     enum TransactionSegment: String, CaseIterable {
@@ -100,25 +101,82 @@ struct TransactionListView: View {
         case expense = "Expense"
     }
 
+    // v4.7: Date range quick picks
+    enum DateRangeFilter: String, CaseIterable {
+        case all = "All Time"
+        case thisMonth = "This Month"
+        case lastMonth = "Last Month"
+        case last90Days = "Last 90 Days"
+        case thisYear = "This Year"
+        case lastYear = "Last Year"
+
+        var dateRange: (start: Date, end: Date)? {
+            let cal = Calendar.current
+            let now = Date()
+            switch self {
+            case .all: return nil
+            case .thisMonth:
+                let start = cal.dateInterval(of: .month, for: now)!.start
+                return (start, now)
+            case .lastMonth:
+                let prevMonth = cal.date(byAdding: .month, value: -1, to: now)!
+                let interval = cal.dateInterval(of: .month, for: prevMonth)!
+                return (interval.start, interval.end)
+            case .last90Days:
+                return (cal.date(byAdding: .day, value: -90, to: now)!, now)
+            case .thisYear:
+                let start = cal.dateInterval(of: .year, for: now)!.start
+                return (start, now)
+            case .lastYear:
+                let prevYear = cal.date(byAdding: .year, value: -1, to: now)!
+                let interval = cal.dateInterval(of: .year, for: prevYear)!
+                return (interval.start, interval.end)
+            }
+        }
+    }
+
     // v4.6: Replaced @Query (loaded all ~946 txns) with manual FetchDescriptor + fetchLimit
     @State private var allTransactions: [Transaction] = []
     @State private var totalTransactionCount: Int = 0
     @Query(sort: \Category.name) private var categories: [Category]
+    @Query(
+        filter: #Predicate<BusinessProfile> { $0.isActive },
+        sort: \BusinessProfile.sortOrder
+    )
+    private var businessProfiles: [BusinessProfile]
+    @Query(sort: \Account.name) private var accounts: [Account]
+
+    // Bills feature: pull all bills and filter in-memory
+    // (SwiftData enum-equality predicates throw at runtime — see BillService.fetchUpcomingBills)
+    @Query(sort: \Bill.createdDate, order: .reverse) private var allBills: [Bill]
 
     @State private var searchText = ""
     @State private var selectedCategory: Category?
     @State private var selectedFinanceType: Transaction.FinanceType?
     @State private var selectedSegment: TransactionSegment = .all  // Build 10
+    @State private var hideReviewed = false  // Build 10: filter menu toggle
     @State private var showingAddTransaction = false
     @State private var showMoveMoneyView = false
     @State private var showingBatchCategorization = false  // v4.4: Batch categorization
     @State private var isSelecting = false                 // v4.5: Multi-select mode
     @State private var selectedTransactionIDs = Set<UUID>()  // v4.5: Selected transaction IDs
     @State private var showingCategoryPickerForSelection = false  // v4.5: Category picker for selection
+    @State private var showingFinanceTypePicker = false           // v4.7: Batch financeType
+    @State private var showingAccountPickerForSelection = false   // v4.7: Batch account
+    @State private var showingDeleteConfirmation = false          // v4.7: Batch delete
+    @State private var showingAnchorWarning = false               // v4.8: Balance anchor warning
+    @State private var selectedAccount: Account?                  // v4.7: Account filter
+    @State private var selectedBusinessProfile: BusinessProfile?  // v4.7: Business profile filter
+    @State private var selectedDateRange: DateRangeFilter = .all  // v4.7: Date range filter
     @State private var transactionToEdit: Transaction?
     @State private var isRefreshing = false
     @State private var listAppeared = false
     @State private var isInitialLoad = true
+
+    // Bills feature: detail navigation, add, and mark-paid sheets
+    @State private var selectedBill: Bill?
+    @State private var showingAddBill = false
+    @State private var billPendingMarkPaid: Bill?
 
     // v4.4: Pagination — display transactions in batches for performance
     @State private var displayLimit = 100
@@ -131,7 +189,7 @@ struct TransactionListView: View {
             Group {
                 if isInitialLoad && allTransactions.isEmpty {
                     skeletonLoadingView
-                } else if filteredTransactions.isEmpty {
+                } else if filteredTransactions.isEmpty && upcomingBills.isEmpty {
                     emptyStateView
                 } else {
                     transactionList
@@ -157,15 +215,25 @@ struct TransactionListView: View {
                     }
                 } else {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            HapticService.play(.medium)
-                            showingAddTransaction = true
+                        Menu {
+                            Button {
+                                HapticService.play(.medium)
+                                showingAddTransaction = true
+                            } label: {
+                                Label("New Transaction", systemImage: "creditcard")
+                            }
+                            Button {
+                                HapticService.play(.medium)
+                                showingAddBill = true
+                            } label: {
+                                Label("New Bill", systemImage: "doc.text.fill")
+                            }
                         } label: {
                             Image(systemName: "plus")
                         }
                         // v3.2: VoiceOver label
-                        .accessibilityLabel("Add transaction")
-                        .accessibilityHint("Double tap to create a new transaction")
+                        .accessibilityLabel("Add")
+                        .accessibilityHint("Choose to create a new transaction or bill")
                     }
 
                     ToolbarItem(placement: .topBarTrailing) {
@@ -207,9 +275,54 @@ struct TransactionListView: View {
             .sheet(item: $transactionToEdit, onDismiss: { loadTransactions() }) { transaction in
                 EditTransactionView(transaction: transaction)
             }
+            // Bills feature
+            .sheet(isPresented: $showingAddBill) {
+                BillFormView()
+            }
+            .sheet(item: $selectedBill) { bill in
+                NavigationStack {
+                    BillDetailView(bill: bill)
+                }
+            }
+            .sheet(item: $billPendingMarkPaid) { bill in
+                MarkBillPaidSheet(bill: bill)
+            }
             // v4.5: Category picker for multi-select batch assignment
             .sheet(isPresented: $showingCategoryPickerForSelection) {
                 selectionCategoryPicker
+            }
+            // v4.7: Account picker for multi-select batch assignment
+            .sheet(isPresented: $showingAccountPickerForSelection) {
+                selectionAccountPicker
+            }
+            // v4.7: FinanceType picker for multi-select batch assignment
+            .confirmationDialog(
+                "Set Type for \(selectedTransactionIDs.count) Transactions",
+                isPresented: $showingFinanceTypePicker,
+                titleVisibility: .visible
+            ) {
+                Button("Business") { applyFinanceTypeToSelection(.business) }
+                Button("Personal") { applyFinanceTypeToSelection(.personal) }
+                Button("Cancel", role: .cancel) { }
+            }
+            // v4.7: Delete confirmation for multi-select
+            .alert(
+                "Delete \(selectedTransactionIDs.count) Transactions?",
+                isPresented: $showingDeleteConfirmation
+            ) {
+                Button("Delete", role: .destructive) { checkAnchorConflictAndDelete() }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This cannot be undone.")
+            }
+            // v4.8: Balance anchor conflict warning for batch delete
+            .alert("Balance Checkpoint Warning", isPresented: $showingAnchorWarning) {
+                Button("Delete Anyway", role: .destructive) {
+                    deleteSelection()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Some transactions are dated before your last reconciliation checkpoint. Deleting them may cause balance drift.")
             }
             .onChange(of: selectedCategory) { oldValue, newValue in
                 HapticService.play(.selection)
@@ -221,6 +334,9 @@ struct TransactionListView: View {
             }
             .onChange(of: selectedFinanceType) { oldValue, newValue in
                 HapticService.play(.selection)
+                if newValue != .business {
+                    selectedBusinessProfile = nil
+                }
                 if let type = newValue {
                     AccessibilityAnnouncement.announce("Filtered by \(type.displayName). \(filteredTransactions.count) transactions.")
                 } else if oldValue != nil {
@@ -231,6 +347,15 @@ struct TransactionListView: View {
             .onChange(of: selectedSegment) { oldValue, newValue in
                 HapticService.play(.selection)
                 AccessibilityAnnouncement.announce("Showing \(newValue.rawValue). \(filteredTransactions.count) transactions.")
+            }
+            // Build 10: Navigate from Dashboard review badge → open To Review segment
+            .onChange(of: navService.openTransactionReviewSection) { _, shouldOpen in
+                if shouldOpen {
+                    withAnimation(FLOAnimation.quick) {
+                        selectedSegment = .toReview
+                    }
+                    navService.openTransactionReviewSection = false
+                }
             }
             .onAppear {
                 loadTransactions()  // v4.6: Database-level pagination
@@ -277,7 +402,7 @@ struct TransactionListView: View {
                     .frame(width: 100, height: 14)
             }
         }
-        #if os(macOS)
+        #if os(macOS) || targetEnvironment(macCatalyst)
         .listStyle(.inset)
         #else
         .listStyle(.insetGrouped)
@@ -309,6 +434,18 @@ struct TransactionListView: View {
     private var currentTransactions: [Transaction] {
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date())) ?? Date()
         return filteredTransactions.filter { $0.date < tomorrow }
+    }
+
+    /// Pending or partially-paid bills, sorted with Upon Receipt first then by due date.
+    private var upcomingBills: [Bill] {
+        allBills
+            .filter { $0.status == .pending || $0.status == .partiallyPaid }
+            .sorted { lhs, rhs in
+                if lhs.isUponReceipt != rhs.isUponReceipt {
+                    return lhs.isUponReceipt
+                }
+                return lhs.effectiveSortDate < rhs.effectiveSortDate
+            }
     }
 
     private var upcomingGrouped: [Date: [Transaction]] {
@@ -381,7 +518,7 @@ struct TransactionListView: View {
             }
 
             // MARK: — Upcoming (future-dated) transactions — hidden above scroll
-            if !upcomingTransactions.isEmpty {
+            if !upcomingTransactions.isEmpty || !upcomingBills.isEmpty {
                 Section {
                     HStack(spacing: 8) {
                         Image(systemName: "calendar.badge.clock")
@@ -390,7 +527,7 @@ struct TransactionListView: View {
                             .font(.subheadline.weight(.bold))
                             .foregroundStyle(Color.brandPrimary)
                         Spacer()
-                        Text("\(upcomingTransactions.count)")
+                        Text("\(upcomingTransactions.count + upcomingBills.count)")
                             .font(.caption.weight(.semibold))
                             .monospacedDigit()
                             .foregroundStyle(.white)
@@ -400,6 +537,52 @@ struct TransactionListView: View {
                             .clipShape(Capsule())
                     }
                     .listRowBackground(Color.clear)
+                }
+
+                // Bills subsection — Upon Receipt first, then by due date
+                if !upcomingBills.isEmpty {
+                    Section {
+                        ForEach(upcomingBills, id: \.id) { bill in
+                            BillRow(bill: bill)
+                                .onTapGesture {
+                                    HapticService.play(.light)
+                                    selectedBill = bill
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button {
+                                        HapticService.play(.medium)
+                                        billPendingMarkPaid = bill
+                                    } label: {
+                                        Label("Mark Paid", systemImage: "checkmark.circle.fill")
+                                    }
+                                    .tint(.green)
+                                }
+                                .contextMenu {
+                                    Button {
+                                        HapticService.play(.light)
+                                        billPendingMarkPaid = bill
+                                    } label: {
+                                        Label("Mark Paid", systemImage: "checkmark.circle.fill")
+                                    }
+                                    Button {
+                                        HapticService.play(.light)
+                                        selectedBill = bill
+                                    } label: {
+                                        Label("Open", systemImage: "doc.text.magnifyingglass")
+                                    }
+                                }
+                        }
+                    } header: {
+                        HStack {
+                            Image(systemName: "doc.text.fill")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text("Bills")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .textCase(.uppercase)
+                        }
+                    }
                 }
 
                 ForEach(upcomingGrouped.keys.sorted(by: >), id: \.self) { date in
@@ -503,7 +686,7 @@ struct TransactionListView: View {
                 }
             }
         }
-        #if os(macOS)
+        #if os(macOS) || targetEnvironment(macCatalyst)
         .listStyle(.inset)
         #else
         .listStyle(.insetGrouped)
@@ -567,6 +750,9 @@ struct TransactionListView: View {
                     },
                     onSelect: {
                         toggleSelection(transaction.id)
+                    },
+                    onReview: { transaction in
+                        toggleReviewed(transaction)
                     }
                 )
             }
@@ -603,6 +789,7 @@ struct TransactionListView: View {
         let onDelete: (Transaction) -> Void
         let onEdit: (Transaction) -> Void
         let onSelect: () -> Void    // v4.5
+        let onReview: (Transaction) -> Void  // Build 10
 
         var body: some View {
             rowContent
@@ -702,6 +889,19 @@ struct TransactionListView: View {
             .tint(Color.brandPrimary)
             .accessibilityLabel("Edit transaction")
             .accessibilityHint("Opens form to modify this transaction")
+
+            // Build 10: Review toggle swipe action
+            Button {
+                onReview(transaction)
+            } label: {
+                Label(
+                    transaction.isReviewed ? "Unreviewed" : "Reviewed",
+                    systemImage: transaction.isReviewed ? "eye.slash" : "checkmark.circle.fill"
+                )
+            }
+            .tint(transaction.isReviewed ? .orange : .green)
+            .accessibilityLabel(transaction.isReviewed ? "Mark as unreviewed" : "Mark as reviewed")
+            .accessibilityHint("Toggles the review status of this transaction")
         }
     }
     
@@ -735,9 +935,30 @@ struct TransactionListView: View {
             }
         }
 
-        if !categories.isEmpty {
+        // v4.7: Business Profile filter (when viewing business transactions with multiple profiles)
+        if selectedFinanceType == .business && businessProfiles.count > 1 {
+            Section("Business Profile") {
+                ForEach(businessProfiles) { profile in
+                    Button {
+                        withAnimation(FLOAnimation.quick) {
+                            selectedBusinessProfile = selectedBusinessProfile?.id == profile.id ? nil : profile
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: selectedBusinessProfile?.id == profile.id ? "checkmark.circle.fill" : profile.displayIcon)
+                                .accessibilityHidden(true)
+                            Text(profile.businessName)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                    }
+                }
+            }
+        }
+
+        if !uniqueCategories.isEmpty {
             Section("Category") {
-                ForEach(categories) { category in
+                ForEach(uniqueCategories) { category in
                     Button {
                         withAnimation(FLOAnimation.quick) {
                             selectedCategory = selectedCategory?.id == category.id ? nil : category
@@ -755,7 +976,46 @@ struct TransactionListView: View {
                 }
             }
         }
-        
+
+        // v4.7: Account filter
+        let activeAccounts = accounts.filter { $0.isActive }
+        if !activeAccounts.isEmpty {
+            Section("Account") {
+                ForEach(activeAccounts) { account in
+                    Button {
+                        withAnimation(FLOAnimation.quick) {
+                            selectedAccount = selectedAccount?.id == account.id ? nil : account
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: selectedAccount?.id == account.id ? "checkmark.circle.fill" : account.accountType.icon)
+                                .accessibilityHidden(true)
+                            Text(account.name)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                    }
+                }
+            }
+        }
+
+        // v4.7: Date Range filter
+        Section("Date Range") {
+            ForEach(DateRangeFilter.allCases, id: \.self) { range in
+                Button {
+                    withAnimation(FLOAnimation.quick) {
+                        selectedDateRange = selectedDateRange == range ? .all : range
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: selectedDateRange == range ? "checkmark.circle.fill" : "calendar")
+                            .accessibilityHidden(true)
+                        Text(range.rawValue)
+                    }
+                }
+            }
+        }
+
         if hasActiveFilters {
             Section {
                 Button(role: .destructive) {
@@ -769,6 +1029,24 @@ struct TransactionListView: View {
                     }
                 }
             }
+        }
+
+        // Build 10: Hide Reviewed toggle
+        Section("Review") {
+            Button {
+                withAnimation(FLOAnimation.quick) {
+                    hideReviewed.toggle()
+                }
+                HapticService.play(.selection)
+            } label: {
+                HStack {
+                    Image(systemName: hideReviewed ? "checkmark.circle.fill" : "eye.slash")
+                        .accessibilityHidden(true)
+                    Text(hideReviewed ? "Showing Unreviewed Only" : "Hide Reviewed")
+                }
+            }
+            .accessibilityLabel(hideReviewed ? "Show all transactions" : "Hide reviewed transactions")
+            .accessibilityHint("Double tap to toggle visibility of reviewed transactions")
         }
 
         // v4.4: Batch Categorization
@@ -835,7 +1113,63 @@ struct TransactionListView: View {
                     }
                     .transition(.scale.combined(with: .opacity))
                 }
-                
+
+                // v4.7: Business profile badge
+                if let bp = selectedBusinessProfile {
+                    filterBadge(
+                        text: bp.businessName,
+                        icon: bp.displayIcon,
+                        color: .brandPrimary
+                    ) {
+                        withAnimation(FLOAnimation.quick) {
+                            selectedBusinessProfile = nil
+                        }
+                    }
+                    .transition(.scale.combined(with: .opacity))
+                }
+
+                // v4.7: Account badge
+                if let acct = selectedAccount {
+                    filterBadge(
+                        text: acct.name,
+                        icon: acct.accountType.icon,
+                        color: .teal
+                    ) {
+                        withAnimation(FLOAnimation.quick) {
+                            selectedAccount = nil
+                        }
+                    }
+                    .transition(.scale.combined(with: .opacity))
+                }
+
+                // v4.7: Date range badge
+                if selectedDateRange != .all {
+                    filterBadge(
+                        text: selectedDateRange.rawValue,
+                        icon: "calendar",
+                        color: .purple
+                    ) {
+                        withAnimation(FLOAnimation.quick) {
+                            selectedDateRange = .all
+                        }
+                    }
+                    .transition(.scale.combined(with: .opacity))
+                }
+
+                // Build 10: Hide Reviewed badge
+                if hideReviewed {
+                    filterBadge(
+                        text: "Unreviewed",
+                        icon: "eye.slash",
+                        color: .orange
+                    ) {
+                        withAnimation(FLOAnimation.quick) {
+                            hideReviewed = false
+                        }
+                    }
+                    .transition(.scale.combined(with: .opacity))
+                }
+
                 Button {
                     HapticService.play(.medium)
                     clearFilters()
@@ -845,10 +1179,10 @@ struct TransactionListView: View {
                         .fontWeight(.medium)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Color.expenseRed)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.red.opacity(0.1))
+                        .background(Color.expenseRed.opacity(0.1))
                         .clipShape(Capsule())
                 }
                 // v3.2: VoiceOver label
@@ -975,12 +1309,22 @@ struct TransactionListView: View {
     // Now: search text is lowercased once, Calendar is cached, and displayLimit
     // controls how many transactions are rendered.
 
+    /// Categories deduplicated by name so the filter menu never shows "Accounting &
+    /// Bookkeeping" five times. Defense-in-depth — `SeedData.migrateCategories`
+    /// also prunes duplicates on every launch, but some installs have stale data
+    /// that this hid before the migration fix landed.
+    private var uniqueCategories: [Category] {
+        var seen = Set<String>()
+        return categories.filter { seen.insert($0.name).inserted }
+    }
+
     private var filteredTransactions: [Transaction] {
         let lowercasedSearch = searchText.lowercased()
         let pendingDeleteID = pendingDeleteTransaction?.id
         let filterCategory = selectedCategory
         let filterFinanceType = selectedFinanceType
         let segment = selectedSegment  // Build 10
+        let filterHideReviewed = hideReviewed  // Build 10
 
         return allTransactions.filter { transaction in
             if transaction.id == pendingDeleteID {
@@ -995,6 +1339,11 @@ struct TransactionListView: View {
             case .expense:  if transaction.isIncome { return false }
             }
 
+            // Build 10: Hide reviewed filter (independent of segment)
+            if filterHideReviewed && segment == .all && transaction.isReviewed {
+                return false
+            }
+
             // Finance type filter
             if let ft = filterFinanceType, transaction.financeType != ft {
                 return false
@@ -1003,6 +1352,21 @@ struct TransactionListView: View {
             // Category filter
             if let cat = filterCategory, transaction.category?.id != cat.id {
                 return false
+            }
+
+            // v4.7: Business profile filter
+            if let bp = selectedBusinessProfile {
+                if transaction.account?.businessProfile?.id != bp.id { return false }
+            }
+
+            // v4.7: Account filter
+            if let acct = selectedAccount {
+                if transaction.account?.id != acct.id { return false }
+            }
+
+            // v4.7: Date range filter
+            if let range = selectedDateRange.dateRange {
+                if transaction.date < range.start || transaction.date > range.end { return false }
             }
 
             // Text search (most expensive, evaluated last)
@@ -1038,7 +1402,8 @@ struct TransactionListView: View {
     }
 
     private var hasActiveFilters: Bool {
-        selectedCategory != nil || selectedFinanceType != nil
+        selectedCategory != nil || selectedFinanceType != nil || hideReviewed
+        || selectedAccount != nil || selectedBusinessProfile != nil || selectedDateRange != .all
     }
 
     private var filterIconName: String {
@@ -1054,18 +1419,32 @@ struct TransactionListView: View {
 
     /// Bottom bar shown during selection mode
     private var selectionBar: some View {
-        HStack {
+        HStack(spacing: 12) {
             Text("\(selectedTransactionIDs.count) selected")
                 .font(.subheadline)
                 .fontWeight(.medium)
 
             Spacer()
 
+            // Build 10: Bulk mark as reviewed
+            Button {
+                HapticService.play(.medium)
+                markSelectionAsReviewed()
+            } label: {
+                Label("Review", systemImage: "checkmark.circle.fill")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+            .accessibilityLabel("Mark \(selectedTransactionIDs.count) transactions as reviewed")
+            .accessibilityHint("Double tap to mark all selected transactions as reviewed")
+
             Button {
                 HapticService.play(.medium)
                 showingCategoryPickerForSelection = true
             } label: {
-                Label("Set Category", systemImage: "tag.fill")
+                Label("Category", systemImage: "tag.fill")
                     .font(.subheadline)
                     .fontWeight(.semibold)
             }
@@ -1073,6 +1452,45 @@ struct TransactionListView: View {
             .tint(Color.brandPrimary)
             .accessibilityLabel("Set category for \(selectedTransactionIDs.count) transactions")
             .accessibilityHint("Double tap to choose a category for all selected transactions")
+
+            // v4.7: Batch financeType
+            Button {
+                HapticService.play(.medium)
+                showingFinanceTypePicker = true
+            } label: {
+                Label("Type", systemImage: "briefcase.fill")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+            .accessibilityLabel("Set type for \(selectedTransactionIDs.count) transactions")
+
+            // v4.7: Batch account
+            Button {
+                HapticService.play(.medium)
+                showingAccountPickerForSelection = true
+            } label: {
+                Label("Account", systemImage: "building.columns.fill")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.teal)
+            .accessibilityLabel("Set account for \(selectedTransactionIDs.count) transactions")
+
+            // v4.7: Batch delete
+            Button {
+                HapticService.play(.medium)
+                showingDeleteConfirmation = true
+            } label: {
+                Label("Delete", systemImage: "trash.fill")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.red)
+            .accessibilityLabel("Delete \(selectedTransactionIDs.count) transactions")
         }
         .padding()
         .background(.ultraThinMaterial)
@@ -1166,6 +1584,101 @@ struct TransactionListView: View {
         exitSelectionMode()
     }
 
+    // v4.7: Batch financeType assignment
+    private func applyFinanceTypeToSelection(_ type: Transaction.FinanceType) {
+        let matching = allTransactions.filter { selectedTransactionIDs.contains($0.id) }
+        for t in matching { t.financeType = type }
+        do {
+            try context.save()
+            HapticService.play(.success)
+            AccessibilityAnnouncement.announce("\(matching.count) transactions set to \(type.displayName)")
+        } catch {
+            HapticService.play(.error)
+        }
+        showingFinanceTypePicker = false
+        exitSelectionMode()
+    }
+
+    // v4.7: Batch account assignment
+    private func applyAccountToSelection(_ account: Account) {
+        let matching = allTransactions.filter { selectedTransactionIDs.contains($0.id) }
+        for t in matching { t.account = account }
+        do {
+            try context.save()
+            HapticService.play(.success)
+            AccessibilityAnnouncement.announce("\(matching.count) transactions assigned to \(account.name)")
+        } catch {
+            HapticService.play(.error)
+        }
+        showingAccountPickerForSelection = false
+        exitSelectionMode()
+    }
+
+    // v4.8: Check for balance anchor conflicts before batch delete
+    private func checkAnchorConflictAndDelete() {
+        let transactionsToDelete = allTransactions.filter { selectedTransactionIDs.contains($0.id) }
+        let accountIds = Set(transactionsToDelete.compactMap { $0.account?.id })
+        var hasAnchorConflict = false
+        if let anchors = try? context.fetch(FetchDescriptor<BalanceAnchor>()) {
+            for accountId in accountIds {
+                let accountAnchors = anchors.filter { $0.account?.id == accountId }
+                guard let latestAnchor = accountAnchors.max(by: { $0.anchorDate < $1.anchorDate }) else { continue }
+                if transactionsToDelete.contains(where: { $0.account?.id == accountId && $0.date < latestAnchor.anchorDate }) {
+                    hasAnchorConflict = true
+                    break
+                }
+            }
+        }
+        if hasAnchorConflict {
+            showingAnchorWarning = true
+        } else {
+            deleteSelection()
+        }
+    }
+
+    // v4.7: Batch delete
+    private func deleteSelection() {
+        let matching = allTransactions.filter { selectedTransactionIDs.contains($0.id) }
+        let count = matching.count
+        for t in matching { context.delete(t) }
+        do {
+            try context.save()
+            HapticService.play(.success)
+            AccessibilityAnnouncement.announce("\(count) transactions deleted")
+        } catch {
+            HapticService.play(.error)
+        }
+        loadTransactions()
+        exitSelectionMode()
+    }
+
+    // v4.7: Account picker for batch assignment
+    private var selectionAccountPicker: some View {
+        NavigationStack {
+            List(accounts.filter { $0.isActive }) { account in
+                Button {
+                    applyAccountToSelection(account)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: account.accountType.icon)
+                            .frame(width: 28)
+                            .accessibilityHidden(true)
+                        Text(account.name)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                    }
+                }
+            }
+            .navigationTitle("Set Account")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showingAccountPickerForSelection = false }
+                }
+            }
+        }
+    }
+
     // MARK: - Data Loading (v4.6)
 
     /// Fetch transactions with database-level pagination.
@@ -1198,6 +1711,37 @@ struct TransactionListView: View {
 
     // MARK: - Actions
 
+    // Build 10: Bulk mark selected transactions as reviewed
+    private func markSelectionAsReviewed() {
+        let matching = allTransactions.filter { selectedTransactionIDs.contains($0.id) && !$0.isReviewed }
+        for transaction in matching {
+            transaction.isReviewed = true
+        }
+
+        do {
+            try context.save()
+            HapticService.play(.success)
+            AccessibilityAnnouncement.announce("\(matching.count) transactions marked as reviewed")
+        } catch {
+            HapticService.play(.error)
+        }
+
+        exitSelectionMode()
+    }
+
+    // Build 10: Toggle review status for a single transaction (swipe action)
+    private func toggleReviewed(_ transaction: Transaction) {
+        transaction.isReviewed.toggle()
+        do {
+            try context.save()
+            HapticService.play(.selection)
+            let verb = transaction.isReviewed ? "reviewed" : "unreviewed"
+            AccessibilityAnnouncement.announce("\(transaction.merchantName) marked as \(verb)")
+        } catch {
+            HapticService.play(.error)
+        }
+    }
+
     // Build 10: Mark all visible unreviewed transactions as reviewed
     private func markAllAsReviewed() {
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date())) ?? Date()
@@ -1222,6 +1766,10 @@ struct TransactionListView: View {
         withAnimation(FLOAnimation.quick) {
             selectedCategory = nil
             selectedFinanceType = nil
+            selectedAccount = nil
+            selectedBusinessProfile = nil
+            selectedDateRange = .all
+            hideReviewed = false  // Build 10
             displayLimit = 100  // v4.4: Reset pagination on filter clear
         }
         // v3.2: Announce

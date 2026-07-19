@@ -1,0 +1,25 @@
+{
+  "configurations" : [
+    {
+      "id" : "31AB7B62-C614-4C01-8429-BD10C84976C0",
+      "name" : "Bill Tests Only",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:FLO.xcodeproj",
+        "identifier" : "433FDBDB2EB992B10008DA09",
+        "name" : "FLOTests"
+      }
+    }
+  ],
+  "version" : 1
+}

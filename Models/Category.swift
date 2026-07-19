@@ -1,7 +1,7 @@
 //  Category.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.0 — Add ScheduleCLine enum for IRS tax form mapping
+//  Version 3.1 — Add TaxFormLine multi-form support (1065, Schedule F, Schedule E)
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Category model with tax treatment classification and Schedule C line mapping.
@@ -421,6 +421,49 @@ final class Category {
         set { scheduleCLineRaw = newValue?.rawValue }
     }
 
+    // MARK: - Multi-Form Tax Line (v3.1)
+
+    /// Raw string backing for taxFormLine — supports Schedule C, Form 1065, Schedule F, Schedule E.
+    /// When set, takes precedence over scheduleCLineRaw for multi-form-aware code paths.
+    /// nil = falls back to scheduleCLine (backward compatible).
+    var taxFormLineRaw: String?
+
+    /// Typed accessor for taxFormLineRaw.
+    var taxFormLine: TaxFormLine? {
+        get {
+            guard let raw = taxFormLineRaw else { return nil }
+            return TaxFormLine(rawValue: raw)
+        }
+        set { taxFormLineRaw = newValue?.rawValue }
+    }
+
+    /// Resolves the correct tax form line for a given business type.
+    /// Priority: explicit taxFormLine > translate scheduleCLine via ExpenseConcept > nil
+    func effectiveTaxLine(for businessType: BusinessType) -> TaxFormLine? {
+        let targetForm = TaxFormType.formType(for: businessType)
+
+        // If taxFormLine is explicitly set and matches the target form, use it directly
+        if let explicit = taxFormLine, explicit.formType == targetForm {
+            return explicit
+        }
+
+        // Translate from scheduleCLine via ExpenseConcept cross-form mapping
+        if let concept = scheduleCLine?.expenseConcept {
+            return concept.taxFormLine(for: targetForm)
+        }
+
+        // If taxFormLine is set but for a different form, still try to translate
+        if let explicit = taxFormLine, explicit.formType == .scheduleC {
+            // Find the matching ScheduleCLine to get the concept
+            let matchingSchCLine = ScheduleCLine.allCases.first { $0.asTaxFormLine == explicit }
+            if let concept = matchingSchCLine?.expenseConcept {
+                return concept.taxFormLine(for: targetForm)
+            }
+        }
+
+        return taxFormLine
+    }
+
     // MARK: - Relationships
     // NOTE: Category defines the inverse for all to-many relationships
 
@@ -435,6 +478,14 @@ final class Category {
     /// All recurring transactions using this category.
     @Relationship(deleteRule: .cascade, inverse: \RecurringTransaction.category)
     var recurringTransactions: [RecurringTransaction]?
+
+    /// All bills using this category (v3.9)
+    @Relationship(deleteRule: .nullify, inverse: \Bill.category)
+    var bills: [Bill]?
+
+    /// Vendors that use this category as their default (v3.9)
+    @Relationship(deleteRule: .nullify, inverse: \Vendor.defaultCategory)
+    var defaultForVendors: [Vendor]?
 
     // MARK: - Initialization
 

@@ -40,9 +40,14 @@ import SwiftData
 struct MarkAsSentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    
+
     let invoice: Invoice
-    
+
+    // Zone 3 adaptive presentation — when false, omits NavigationStack wrapper.
+    var embedInNavigationStack: Bool = true
+    /// Zone 3 dismiss callback — called instead of SwiftUI `dismiss()` when set.
+    var onDismiss: (() -> Void)? = nil
+
     @State private var sentDate = Date()
     @State private var showingShareSheet = false
     @State private var showingPDFError = false
@@ -67,7 +72,15 @@ struct MarkAsSentView: View {
     }
     
     var body: some View {
-        NavigationStack {
+        if embedInNavigationStack {
+            NavigationStack { formContent }
+        } else {
+            formContent
+        }
+    }
+
+    @ViewBuilder
+    private var formContent: some View {
             VStack(spacing: 24) {
                 // Header
                 VStack(spacing: 8) {
@@ -81,7 +94,7 @@ struct MarkAsSentView: View {
                         
                         Image(systemName: "paperplane.circle.fill")
                             .font(.largeTitle)
-                            .foregroundStyle(Color.brandPrimaryText)
+                            .foregroundStyle(Color.brandPrimary)
                             .rotationEffect(.degrees(iconRotation))
                             .offset(x: flyAway ? 200 : 0, y: flyAway ? -200 : 0)
                             .opacity(flyAway ? 0 : 1)
@@ -142,7 +155,7 @@ struct MarkAsSentView: View {
                                 .fontWeight(.bold)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.5)
-                                .foregroundStyle(Color.brandPrimaryText)
+                                .foregroundStyle(Color.brandPrimary)
                         }
                     }
                     // v2.4: Client and amount grouped
@@ -232,7 +245,7 @@ struct MarkAsSentView: View {
                         .padding()
                         .background(Color.brandPrimary)
                         .foregroundStyle(.white)
-                        .cornerRadius(12)
+                        .cornerRadius(10)
                         .scaleEffect(markButtonPressed ? 0.95 : 1.0)
                     }
                     .disabled(isMarking)
@@ -254,7 +267,7 @@ struct MarkAsSentView: View {
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Color.floSecondarySystemBackground)
-                        .foregroundStyle(Color.brandPrimaryText)
+                        .foregroundStyle(Color.brandPrimary)
                         .cornerRadius(12)
                         .scaleEffect(shareButtonPressed ? 0.95 : 1.0)
                     }
@@ -273,7 +286,7 @@ struct MarkAsSentView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         HapticService.play(.medium)
-                        dismiss()
+                        performDismiss()
                     }
                     // v2.4: VoiceOver
                     .accessibilityLabel("Cancel")
@@ -292,7 +305,7 @@ struct MarkAsSentView: View {
             }
             .alert("Invoice Sent!", isPresented: $showingSuccess) {
                 Button("Done") {
-                    dismiss()
+                    performDismiss()
                 }
             } message: {
                 Text("Invoice \(invoice.invoiceNumber) has been marked as sent on \(sentDate.formatted(date: .abbreviated, time: .omitted)).\n\nPayment due in \(daysUntilDue) days.")
@@ -302,9 +315,16 @@ struct MarkAsSentView: View {
             } message: {
                 Text("Unable to generate the invoice PDF. Please ensure the invoice has at least one line item and try again.")
             }
+    }
+
+    private func performDismiss() {
+        if let onDismiss {
+            onDismiss()
+        } else {
+            dismiss()
         }
     }
-    
+
     // MARK: - Animations
     
     private func animateEntrance() {

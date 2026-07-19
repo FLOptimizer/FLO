@@ -1,10 +1,14 @@
 //  TaxSettings.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.5 - User-Defined State Tax Exemptions
+//  Version 2.6 - Multi-Business Tax Settings
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Tax configuration and settings model
+//
+//  CHANGES IN v2.6:
+//  ✅ ADDED: businessProfile relationship — per-business tax configuration
+//  ✅ NOTE: TaxSettings is no longer a singleton; each BusinessProfile gets its own
 //
 //  CHANGES IN v2.5:
 //  ✅ ADDED: stateRetirementExemption — user-defined retirement income exempt from state tax
@@ -84,6 +88,12 @@ final class TaxSettings {
 
     /// Date when settings were last updated
     var lastUpdated: Date = Date()
+
+    // MARK: - Business Profile (v2.6)
+
+    /// Which business these tax settings belong to (nil = legacy/unassigned)
+    @Relationship(deleteRule: .nullify)
+    var businessProfile: BusinessProfile?
 
     // MARK: - State Tax Exemptions (v2.5)
 

@@ -16,6 +16,7 @@
 
 import SwiftUI
 import SwiftData
+import FLODesignSystem
 
 // MARK: - Dashboard Hero Section
 
@@ -321,65 +322,15 @@ struct DashboardBudgetCircles: View {
     }
 
     private func budgetCircle(for item: (budget: Budget, spent: Double)) -> some View {
-        let budget = item.budget
-        let spent = item.spent
-        let planned = budget.planned
-        let progress = planned > 0 ? min(spent / planned, 1.5) : 0
-        let emoji = categoryEmoji(for: budget.category?.name ?? budget.displayName)
-        let color = progressColor(progress)
-
-        return VStack(spacing: 4) {
-            ZStack {
-                // Background ring
-                Circle()
-                    .stroke(color.opacity(0.15), lineWidth: 5)
-                    .frame(width: 60, height: 60)
-
-                // Progress ring
-                Circle()
-                    .trim(from: 0, to: min(progress, 1.0))
-                    .stroke(color, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                    .frame(width: 60, height: 60)
-                    .rotationEffect(.degrees(-90))
-
-                // Emoji center
-                Text(emoji)
-                    .font(.system(size: 22))
-            }
-
-            Text(budget.displayName)
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .frame(maxWidth: 80)
-
-            Text(spent, format: .currency(code: "USD"))
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .foregroundStyle(color)
-                .lineLimit(1)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(budget.displayName): \(spent, format: .currency(code: "USD")) of \(planned, format: .currency(code: "USD"))")
+        BudgetCircle(
+            sfSymbol: item.budget.category?.icon,
+            name: item.budget.displayName,
+            spent: item.spent,
+            budget: item.budget.planned,
+            size: .standard
+        )
         .accessibilityHint("Double tap to view budget details")
         .accessibilityAddTraits(.isButton)
-    }
-
-    private func progressColor(_ progress: Double) -> Color {
-        if progress > 1.0 { return .red }
-        if progress >= 0.8 { return .orange }
-        return .green
-    }
-
-    private func categoryEmoji(for name: String) -> String {
-        let emojiMap: [String: String] = [
-            "Dining Out": "🍽️", "Groceries": "🥬", "Coffee": "☕",
-            "Software & Tools": "💻", "Transportation": "🚗", "Entertainment": "🎬",
-            "Shopping": "🛍️", "Housing": "🏠", "Office Supplies": "📎",
-            "Health": "🏥", "Utilities": "💡", "Client Payment": "💰",
-            "Education": "📚", "Travel": "✈️", "Insurance": "🛡️",
-            "Subscriptions": "📱", "Personal Care": "💇", "Gifts": "🎁",
-        ]
-        return emojiMap[name] ?? "📊"
     }
 }
 

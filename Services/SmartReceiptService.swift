@@ -1,8 +1,12 @@
 //  SmartReceiptService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.2 - Fixed Storage Architecture
+//  Version 3.3 - Tip extraction
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.3:
+//  ✅ ADDED: extractTipAmount() — captures gratuity/tip/service-charge lines
+//  ✅ Tip amount populated on ReceiptData.tipAmount during processing
 //
 //  CHANGES v3.2:
 //  ✅ FIXED: Images now stored as FILES via PhotoStorageManager
@@ -41,17 +45,24 @@ class SmartReceiptService {
     /// Images are stored as FILES, not embedded in database
     func processReceipt(
         image: UIImage,
-        context: ModelContext
+        context: ModelContext,
+        isBillMode: Bool = false
     ) async throws -> ReceiptData {
-        // Step 1: Extract raw OCR text using Vision
-        let rawText = try await extractRawOCRText(from: image)
-        
+        // Step 1: Extract raw OCR text using Vision (with confidence)
+        let ocrResult = try await extractOCRWithConfidence(from: image)
+        let rawText = ocrResult.text
+
         guard !rawText.isEmpty else {
             throw ReceiptError.noDataExtracted
         }
-        
+
+        #if DEBUG
+        print("🧠 OCR Confidence: \(String(format: "%.0f%%", ocrResult.averageConfidence * 100))")
+        #endif
+
         // Step 2: Use ReceiptParser for accurate parsing
-        let parsed = ReceiptParser.shared.parseReceipt(text: rawText)
+        // v3.9: Pass bill mode so the parser can prioritize "Amount Due" patterns
+        let parsed = ReceiptParser.shared.parseReceipt(text: rawText, isBillMode: isBillMode)
         
         let merchantName = parsed.merchantName ?? "Unknown Merchant"
         let amount = parsed.amount ?? 0.0
@@ -82,9 +93,10 @@ class SmartReceiptService {
             imageData: nil  // ← CRITICAL: Don't store image in database!
         )
         
-        // Store filename reference
+        // Store filename reference and OCR confidence
         receiptData.imageURL = imageFilename
-        
+        receiptData.ocrConfidence = Double(ocrResult.averageConfidence)
+
         // Step 5: Smart category suggestion
         if let suggestion = suggestCategoryWithLearning(
             for: merchantName,
@@ -103,9 +115,21 @@ class SmartReceiptService {
             #endif
         }
         
+        // Step 5b: Store payment card info for account auto-matching
+        receiptData.paymentLastFour = parsed.paymentLastFour
+        receiptData.paymentNetwork = parsed.paymentNetwork
+
         // Step 6: Extract line items
         receiptData.lineItems = extractLineItems(from: rawText)
-        
+
+        // Step 6b: Extract tip amount (gratuity / service charge)
+        if let tip = extractTipAmount(from: rawText) {
+            receiptData.tipAmount = tip
+            #if DEBUG
+            print("   Tip detected: $\(String(format: "%.2f", tip))")
+            #endif
+        }
+
         // Step 7: Insert into database (small footprint - no image data)
         context.insert(receiptData)
         try context.save()
@@ -227,42 +251,65 @@ class SmartReceiptService {
         }.count
     }
     
+    // MARK: - OCR Result
+
+    /// Result of OCR extraction including text and confidence score.
+    struct OCRResult {
+        let text: String
+        /// Average confidence across all recognized text observations (0.0–1.0).
+        let averageConfidence: Float
+    }
+
     // MARK: - Raw OCR Extraction
-    
-    private func extractRawOCRText(from image: UIImage) async throws -> String {
+
+    /// Extract text from image. Returns raw text string (for backward compatibility).
+    func extractRawOCRText(from image: UIImage) async throws -> String {
+        try await extractOCRWithConfidence(from: image).text
+    }
+
+    /// Extract text and confidence from image.
+    func extractOCRWithConfidence(from image: UIImage) async throws -> OCRResult {
         guard let cgImage = image.cgImage else {
             throw ReceiptError.invalidImage
         }
-        
+
         return try await withCheckedThrowingContinuation { continuation in
             let request = VNRecognizeTextRequest { request, error in
                 if let error = error {
                     continuation.resume(throwing: error)
                     return
                 }
-                
+
                 guard let observations = request.results as? [VNRecognizedTextObservation] else {
                     continuation.resume(throwing: ReceiptError.ocrFailed)
                     return
                 }
-                
+
                 let recognizedStrings = observations.compactMap { observation in
                     observation.topCandidates(1).first?.string
                 }
-                
+
                 guard !recognizedStrings.isEmpty else {
                     continuation.resume(throwing: ReceiptError.noDataExtracted)
                     return
                 }
-                
-                continuation.resume(returning: recognizedStrings.joined(separator: "\n"))
+
+                // Calculate average confidence across observations
+                let avgConfidence: Float = observations.isEmpty ? 0 :
+                    observations.reduce(Float(0)) { $0 + $1.confidence } / Float(observations.count)
+
+                let result = OCRResult(
+                    text: recognizedStrings.joined(separator: "\n"),
+                    averageConfidence: avgConfidence
+                )
+                continuation.resume(returning: result)
             }
-            
+
             request.recognitionLevel = .accurate
             request.usesLanguageCorrection = true
-            
+
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            
+
             do {
                 try handler.perform([request])
             } catch {
@@ -279,44 +326,13 @@ class SmartReceiptService {
         receiptParserSuggestion: String?,
         context: ModelContext
     ) -> CategorySuggestion? {
-        let normalizedMerchant = merchantName.lowercased().trimmingCharacters(in: .whitespaces)
-        
-        // Priority 1: Learned mappings
-        let descriptor = FetchDescriptor<MerchantCategoryMapping>()
-        if let allMappings = try? context.fetch(descriptor) {
-            for mapping in allMappings {
-                if mapping.matches(merchantName) {
-                    return CategorySuggestion(
-                        categoryID: mapping.categoryID,
-                        categoryName: mapping.categoryName,
-                        confidence: mapping.confidence
-                    )
-                }
-            }
-        }
-        
-        // Priority 2: Common merchant patterns
-        for mapping in MerchantCategoryMapping.commonMappings {
-            for pattern in mapping.patterns {
-                if normalizedMerchant.contains(pattern) {
-                    let categoryDescriptor = FetchDescriptor<Category>()
-                    
-                    if let categories = try? context.fetch(categoryDescriptor),
-                       let matchedCategory = categories.first(where: { $0.name == mapping.category }) {
-                        return CategorySuggestion(
-                            categoryID: matchedCategory.id,
-                            categoryName: matchedCategory.name,
-                            confidence: 0.75
-                        )
-                    } else {
-                        return CategorySuggestion(
-                            categoryID: nil,
-                            categoryName: mapping.category,
-                            confidence: 0.75
-                        )
-                    }
-                }
-            }
+        // Priority 1+2: Delegate learned mappings and common merchant patterns to MerchantLearningService
+        if let result = MerchantLearningService.shared.suggestCategory(for: merchantName, context: context) {
+            return CategorySuggestion(
+                categoryID: result.category.id,
+                categoryName: result.category.name,
+                confidence: result.confidence
+            )
         }
         
         // Priority 3: ReceiptParser suggestion
@@ -406,6 +422,34 @@ class SmartReceiptService {
         return items
     }
     
+    // MARK: - Tip Extraction
+
+    /// Scan raw OCR text for a tip / gratuity / service-charge line and return the amount.
+    /// Returns nil if no recognizable tip line is found.
+    /// Note: We treat the totalAmount as already including the tip — this value is
+    /// stored separately on Transaction.tipAmount for display, export, and reporting.
+    func extractTipAmount(from text: String) -> Double? {
+        let lines = text.components(separatedBy: .newlines)
+        let tipKeywords = ["gratuity", "service charge", "service chg", "tip"]
+
+        for line in lines {
+            let lower = line.lowercased()
+
+            // Skip lines that mention tip in a non-amount context (e.g., "tip suggestions").
+            // We require an extractable amount on the same line.
+            guard tipKeywords.contains(where: { lower.contains($0) }) else { continue }
+
+            // Skip "tip suggestion" or "suggested tip" tables which list multiple percentages.
+            if lower.contains("suggest") || lower.contains("%") { continue }
+
+            if let amount = extractAmountFromLine(line), amount > 0, amount < 10_000 {
+                return amount
+            }
+        }
+
+        return nil
+    }
+
     private func extractAmountFromLine(_ line: String) -> Double? {
         let pattern = #/\$?\s?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/#
         if let match = line.firstMatch(of: pattern) {

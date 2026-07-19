@@ -19,6 +19,7 @@
 import SwiftUI
 import SwiftData
 import CoreLocation
+import FLODesignSystem
 
 struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
@@ -51,7 +52,7 @@ struct OnboardingView: View {
                         } label: {
                             Text("Skip")
                                 .font(.subheadline)
-                                 .foregroundStyle(Color.brandPrimaryText)
+                                 .foregroundStyle(Color.brandPrimary)
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 8)
                         }
@@ -122,7 +123,7 @@ struct OnboardingView: View {
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.brandPrimary)
-                            .cornerRadius(12)
+                            .cornerRadius(10)
                         }
                     }
                 }
@@ -174,7 +175,7 @@ struct WelcomePageView: View {
                 
                 Text("Finance Ledger Optimizer")
                     .font(.title3)
-                     .foregroundStyle(Color.brandPrimaryText)
+                     .foregroundStyle(Color.brandPrimary)
             }
             .opacity(textOpacity)
             
@@ -516,7 +517,7 @@ struct GetStartedPageView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color.brandPrimary)
-                    .cornerRadius(12)
+                    .cornerRadius(10)
             }
             .padding(.horizontal, 30)
             .padding(.bottom, 20)
@@ -654,9 +655,9 @@ struct LimitedModeExplanationView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color.brandPrimary)
-                    .cornerRadius(12)
+                    .cornerRadius(10)
                 }
-                
+
                 Button {
                     onContinue()
                 } label: {

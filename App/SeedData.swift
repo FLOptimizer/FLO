@@ -36,12 +36,13 @@ struct SeedData {
 
     private static let versionKey                = "com.finchandpoppy.flo.seeddata.version"
     private static let iconMigrationKey          = "com.finchandpoppy.flo.seeddata.iconmigrationv24"       // v3.12 perf
-    private static let missingCategoriesKey      = "com.finchandpoppy.flo.seeddata.missingcategoriesv26"   // v3.12 perf
+    private static let missingCategoriesKey      = "com.finchandpoppy.flo.seeddata.missingcategoriesv40"   // v3.14: full-defaults restore
     private static let taxTreatmentMigrationKey  = "com.finchandpoppy.flo.seeddata.taxtreatmentv27"
     private static let scheduleCMigrationKey     = "com.finchandpoppy.flo.seeddata.schedulecv30"
     private static let plaidIncomeFixKey          = "com.finchandpoppy.flo.seeddata.plaidincomefixv312"
     private static let granularCategoriesV40Key  = "com.finchandpoppy.flo.seeddata.granularcategoriesv40"
     private static let militaryVAEducationV41Key = "com.finchandpoppy.flo.seeddata.milVAeduv41"
+    private static let legacyBusinessFixKey      = "com.finchandpoppy.flo.seeddata.legacybizfixv42"
 
     private static var seededVersion: String? {
         get { UserDefaults.standard.string(forKey: versionKey) }
@@ -665,14 +666,11 @@ struct SeedData {
             }
         } catch { /* non-fatal — guarded migrations below will catch anything missed */ }
 
-        // v2.6 + v3.0: missing category checks — Gas + 4 new Schedule C categories
-        let missingCategoryChecks: [(name: String, icon: String, colorHex: String, isIncome: Bool, isTaxDeductible: Bool, isBusiness: Bool, taxTreatment: TaxTreatment, scheduleCLine: ScheduleCLine?)] = [
-            ("Gas", "fuelpump.fill", "F97316", false, true, true, .selfEmployment, .line9_carAndTruck),
-            ("Commissions & Fees", "percent", "FB7185", false, true, true, .selfEmployment, .line10_commissionsAndFees),
-            ("Repairs & Maintenance", "hammer.fill", "84CC16", false, true, true, .selfEmployment, .line21_repairsMaintenance),
-            ("Taxes & Licenses", "checkmark.seal.fill", "DC2626", false, true, true, .selfEmployment, .line23_taxesAndLicenses),
-            ("Supplies", "shippingbox.fill", "D97706", false, true, true, .selfEmployment, .line22_supplies),
-        ]
+        // v3.14: The previous "missing category" pass hardcoded 5 specific names.
+        // It's now replaced by a walk of the full `defaults` array below — any
+        // default that isn't present locally gets restored. Names already on
+        // device (defaults or user-created with overlapping names) are left
+        // untouched, so user customizations stay intact.
 
         do {
             let categories = try context.fetch(FetchDescriptor<Category>())
@@ -680,60 +678,148 @@ struct SeedData {
             var duplicatesRemoved = 0
             var categoriesAdded  = 0
 
-            // ── v2.4/v2.5: Icon fix + duplicate removal ───────────────
-            // v3.12 perf: Guarded — only runs once per device, skips on subsequent launches
-            var seenNames: Set<String> = []
+            // ── v2.5+: Duplicate removal (always runs, relationship-safe) ──
+            //
+            // Pre-v3.13 this was gated by `iconMigrationKey` and ran once per
+            // device — duplicates that accumulated AFTER that (CloudKit sync
+            // races, re-install cycles) were stuck forever.
+            //
+            // v3.13.1 CRITICAL FIX: before v3.13.1 this deleted duplicate
+            // Categories directly. Category→Budget and Category→RecurringTransaction
+            // use `.cascade` delete rules, so each duplicate deletion silently
+            // destroyed the user's Budgets and RecurringTransactions (and the
+            // RecurringTransaction cascade took its generated Transactions with
+            // it). One beta user lost 10+ budgets and 9 recurring templates.
+            //
+            // The safe pattern is: find the keeper (first occurrence by name),
+            // re-point every Budget / RecurringTransaction / Transaction / Bill /
+            // Vendor that references a duplicate to the keeper, SAVE to persist
+            // the new pointers, and only then delete the duplicate Categories.
+            var keepersByName: [String: Category] = [:]
+            var toDelete: [Category] = []
+            var budgetsReassigned = 0
+            var recurringReassigned = 0
+            var transactionsReassigned = 0
+            var billsReassigned = 0
+            var vendorsReassigned = 0
 
-            if !UserDefaults.standard.bool(forKey: iconMigrationKey) {
-                var toDelete: [Category]  = []
-
-                for category in categories {
-                    if let newIcon = iconMigrations[category.icon] {
-                        category.icon = newIcon
-                        migratedCount += 1
-                        print("🔄 SeedData: Fixed icon for '\(category.name)'")
+            for category in categories {
+                if let keeper = keepersByName[category.name] {
+                    // Budgets — CASCADE delete rule, MUST reassign or they die.
+                    if let budgets = category.budgets {
+                        for budget in budgets where budget.category !== keeper {
+                            budget.category = keeper
+                            budgetsReassigned += 1
+                        }
                     }
-                    if seenNames.contains(category.name) {
-                        toDelete.append(category)
-                        duplicatesRemoved += 1
-                    } else {
-                        seenNames.insert(category.name)
+                    // Recurring transactions — CASCADE, and their delete further
+                    // cascades to generated Transactions. Reassignment is critical.
+                    if let recurrings = category.recurringTransactions {
+                        for r in recurrings where r.category !== keeper {
+                            r.category = keeper
+                            recurringReassigned += 1
+                        }
                     }
-                }
-                for cat in toDelete {
-                    print("🗑️ SeedData: Removing duplicate '\(cat.name)'")
-                    context.delete(cat)
-                }
-
-                UserDefaults.standard.set(true, forKey: iconMigrationKey)
-            } else {
-                // Still need seenNames for the missing categories check below
-                for category in categories {
-                    seenNames.insert(category.name)
+                    // Transactions — NULLIFY, but reassigning preserves their
+                    // classification rather than orphaning them.
+                    if let txns = category.transactions {
+                        for t in txns where t.category !== keeper {
+                            t.category = keeper
+                            transactionsReassigned += 1
+                        }
+                    }
+                    // Bills — NULLIFY, reassigned for the same reason.
+                    if let bills = category.bills {
+                        for b in bills where b.category !== keeper {
+                            b.category = keeper
+                            billsReassigned += 1
+                        }
+                    }
+                    // Vendors — NULLIFY, reassigned for the same reason.
+                    if let vendors = category.defaultForVendors {
+                        for v in vendors where v.defaultCategory !== keeper {
+                            v.defaultCategory = keeper
+                            vendorsReassigned += 1
+                        }
+                    }
+                    toDelete.append(category)
+                    duplicatesRemoved += 1
+                } else {
+                    keepersByName[category.name] = category
                 }
             }
 
-            // ── v2.6 + v3.0: Add missing default categories ──────────
-            // v3.12 perf: Guarded — only runs once per device, skips on subsequent launches
+            // Persist reassignments BEFORE any delete — otherwise a crash or
+            // early return mid-loop could leave stale pointers whose cascade
+            // rule fires on next launch and destroys the data we just saved.
+            if !toDelete.isEmpty {
+                do {
+                    try context.save()
+                } catch {
+                    print("❌ SeedData: Failed to save reassignments before dedup — ABORTING to avoid data loss: \(error)")
+                    // Bail out of dedup entirely. The duplicates remain but no
+                    // data is destroyed; user can retry next launch.
+                    return
+                }
+            }
+
+            for cat in toDelete {
+                print("🗑️ SeedData: Removing duplicate '\(cat.name)' (relationships reassigned to keeper)")
+                context.delete(cat)
+            }
+            if duplicatesRemoved > 0 {
+                print("🔄 SeedData: Reassigned \(budgetsReassigned) budget(s), \(recurringReassigned) recurring txn(s), \(transactionsReassigned) transaction(s), \(billsReassigned) bill(s), \(vendorsReassigned) vendor(s) before deletion")
+            }
+
+            // Mark the one-shot icon-migration flag so earlier versions of the
+            // app on this device don't re-run the (now redundant) legacy icon
+            // pass. Kept for backward compat with the existing UserDefaults key.
+            if !UserDefaults.standard.bool(forKey: iconMigrationKey) {
+                UserDefaults.standard.set(true, forKey: iconMigrationKey)
+            }
+
+            // ── v3.14: Restore any missing default categories ──
+            //
+            // Walks the full `defaults` array (147 entries) and re-inserts any
+            // whose name isn't present locally. Pre-v3.14 this only checked 5
+            // hardcoded names (Gas, Commissions & Fees, Repairs & Maintenance,
+            // Taxes & Licenses, Supplies); a user who lost defaults beyond that
+            // set — e.g. via the dedup-cascade incident on April 23 — had no
+            // path to recover them. Now any missing default name is restored
+            // with its correct icon, color, isBusiness, isIncome,
+            // taxTreatment, taxOwner, and Schedule C line.
+            //
+            // Guarded by `missingCategoriesKey` (bumped from v26 to v40 so it
+            // runs exactly once for every existing install). User-created
+            // categories and any defaults already present are left untouched.
             if !UserDefaults.standard.bool(forKey: missingCategoriesKey) {
-                for check in missingCategoryChecks {
-                    if !seenNames.contains(check.name) {
-                        let newCat = Category(
-                            name:            check.name,
-                            icon:            check.icon,
-                            colorHex:        check.colorHex,
-                            isDefault:       true,
-                            isIncome:        check.isIncome,
-                            isTaxDeductible: check.isTaxDeductible,
-                            isBusiness:      check.isBusiness,
-                            taxTreatment:    check.taxTreatment,
-                            taxOwner:        .primary,
-                            scheduleCLine:   check.scheduleCLine
-                        )
-                        context.insert(newCat)
-                        categoriesAdded += 1
-                        print("➕ SeedData: Added missing category '\(check.name)'")
-                    }
+                // After dedup, keepersByName holds every surviving category by name.
+                let seenNames = Set(keepersByName.keys)
+                var restoredNames: [String] = []
+                for dc in defaults {
+                    guard !seenNames.contains(dc.name) else { continue }
+                    let newCat = Category(
+                        name:            dc.name,
+                        icon:             dc.icon,
+                        colorHex:        dc.colorHex,
+                        isDefault:       true,
+                        isIncome:        dc.isIncome,
+                        isTaxDeductible: dc.isTaxDeductible,
+                        isBusiness:      dc.isBusiness,
+                        taxTreatment:    dc.taxTreatment,
+                        taxOwner:        dc.taxOwner,
+                        scheduleCLine:   dc.scheduleCLine
+                    )
+                    context.insert(newCat)
+                    categoriesAdded += 1
+                    restoredNames.append(dc.name)
+                    print("➕ SeedData: Restored missing default '\(dc.name)'")
+                }
+
+                if categoriesAdded > 0 {
+                    print("✅ SeedData v4: Restored \(categoriesAdded) missing default categor\(categoriesAdded == 1 ? "y" : "ies")")
+                } else {
+                    print("✅ SeedData v4: All \(defaults.count) default categories already present")
                 }
 
                 UserDefaults.standard.set(true, forKey: missingCategoriesKey)
@@ -944,6 +1030,43 @@ struct SeedData {
                     print("✅ SeedData v4.1: Added \(v41Added) military/VA/education categories")
                 } else {
                     print("✅ SeedData v4.1: All military/VA/education categories already present")
+                }
+            }
+
+            // ── v4.2: Fix isBusiness on legacy generic categories ─────
+            //
+            // Pre-Build-8 seeds created generic "Insurance", "Utilities",
+            // "Internet & Phone" as business expenses but with isBusiness = false
+            // (the flag didn't exist yet / defaulted to false).
+            // The v2.7 migration didn't fix them because those names were replaced
+            // by granular entries in the `defaults` array and no longer matched.
+            // This marks them correctly so they stop appearing in Personal lists.
+            if !UserDefaults.standard.bool(forKey: legacyBusinessFixKey) {
+
+                let legacyBusinessNames: Set<String> = [
+                    "Insurance", "Utilities", "Internet & Phone",
+                    "Vehicle Expenses", "Transportation"
+                ]
+
+                let allCats42 = try context.fetch(FetchDescriptor<Category>())
+                var legacyFixed = 0
+
+                for cat in allCats42 {
+                    if legacyBusinessNames.contains(cat.name) && !cat.isBusiness && !cat.isIncome {
+                        cat.isBusiness = true
+                        cat.isTaxDeductible = true
+                        legacyFixed += 1
+                        print("🔄 SeedData v4.2: Fixed isBusiness for legacy '\(cat.name)'")
+                    }
+                }
+
+                UserDefaults.standard.set(true, forKey: legacyBusinessFixKey)
+
+                if legacyFixed > 0 {
+                    migratedCount += legacyFixed
+                    print("✅ SeedData v4.2: Fixed \(legacyFixed) legacy business category(ies)")
+                } else {
+                    print("✅ SeedData v4.2: No legacy business categories to fix")
                 }
             }
 

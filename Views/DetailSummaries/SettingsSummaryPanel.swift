@@ -99,7 +99,7 @@ struct SettingsSummaryPanel: View {
             }
         }
         .padding()
-        .background(Color.floSecondarySystemBackground)
+        .background(Color.floSystemGroupedSectionBackground)
         .cornerRadius(12)
     }
 
@@ -140,7 +140,7 @@ struct SettingsSummaryPanel: View {
             }
         }
         .padding()
-        .background(Color.floSecondarySystemBackground)
+        .background(Color.floSystemGroupedSectionBackground)
         .cornerRadius(12)
     }
 
@@ -191,7 +191,7 @@ struct SettingsSummaryPanel: View {
             )
         }
         .padding()
-        .background(Color.floSecondarySystemBackground)
+        .background(Color.floSystemGroupedSectionBackground)
         .cornerRadius(12)
     }
 
@@ -254,7 +254,7 @@ struct SettingsSummaryPanel: View {
             }
         }
         .padding()
-        .background(Color.floSecondarySystemBackground)
+        .background(Color.floSystemGroupedSectionBackground)
         .cornerRadius(12)
     }
 

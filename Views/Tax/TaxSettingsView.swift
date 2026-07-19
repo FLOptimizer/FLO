@@ -1,7 +1,9 @@
 //  TaxSettingsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.9 — Income Sources Summary section
+//  Version 3.0 — Cross-platform PDF export (ShareSheet) replaces macOS NSSavePanel
+//                + removes AppKit import. Fixes Catalyst (and the empty iOS branch).
+//                Was: Income Sources Summary section.
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v2.9:
@@ -42,9 +44,6 @@ import SwiftUI
 import FLODesignSystem
 import SwiftData
 import UniformTypeIdentifiers
-#if os(macOS)
-import AppKit
-#endif
 
 struct TaxSettingsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -76,6 +75,35 @@ struct TaxSettingsView: View {
     @State private var isGeneratingPDF = false
     @State private var taxPDFError: String?
     @State private var showPDFError = false
+    /// Set to trigger the cross-platform export/share sheet for the generated
+    /// Tax Summary PDF. Replaces the old macOS-only NSSavePanel — works on iOS,
+    /// iPad, and Mac Catalyst (the activity sheet includes "Save to Files").
+    @State private var taxPDFShareItem: TaxPDFShareItem?
+
+    /// Identifiable wrapper so `.sheet(item:)` can present the PDF share sheet.
+    fileprivate struct TaxPDFShareItem: Identifiable {
+        let id = UUID()
+        let url: URL
+    }
+
+    // v6.5: Tax Tools section — sheet state
+    @StateObject private var subscriptionManager = SubscriptionManager.shared
+    @State private var showingTaxDeductions = false
+    @State private var showingProfitLoss = false
+    @State private var showingYearEndChecklist = false
+    @State private var showingDepreciation = false
+    @State private var showingCarryforwards = false
+    @State private var showingFilingChecklist = false
+    @State private var showingYearEndClosing = false
+    @State private var showingCPAExport = false
+    @State private var showingJurisdictions = false
+    @State private var showingBasisAlerts = false
+    @State private var showingEstimatedTax = false
+    @State private var showingNAICSCodes = false
+    @State private var showingMultiYearComparison = false
+    @State private var showingPreparerChecklist = false
+
+    private var currentTier: SubscriptionTier { subscriptionManager.currentTier }
 
     // MARK: - Computed Helpers
 
@@ -136,11 +164,17 @@ struct TaxSettingsView: View {
                     .offset(y: viewAppeared ? 0 : 10)
                     .animation(FLOAnimation.standard.delay(0.45), value: viewAppeared)
 
+                // v6.5: Tax Tools
+                taxToolsSection
+                    .opacity(viewAppeared ? 1 : 0.001)
+                    .offset(y: viewAppeared ? 0 : 10)
+                    .animation(FLOAnimation.standard.delay(0.50), value: viewAppeared)
+
                 // Income Sources — LAST (long list)
                 incomeSummarySection
                     .opacity(viewAppeared ? 1 : 0.001)
                     .offset(y: viewAppeared ? 0 : 10)
-                    .animation(FLOAnimation.standard.delay(0.50), value: viewAppeared)
+                    .animation(FLOAnimation.standard.delay(0.55), value: viewAppeared)
             }
             .padding(16)
         }
@@ -157,6 +191,21 @@ struct TaxSettingsView: View {
         .sheet(isPresented: $showHelp) {
             TaxHelpView()
         }
+        // v6.5: Tax Tools sheets
+        .sheet(isPresented: $showingTaxDeductions) { NavigationStack { TaxDeductionsWrapperView() } }
+        .sheet(isPresented: $showingProfitLoss) { NavigationStack { ProfitLossReportView() } }
+        .sheet(isPresented: $showingYearEndChecklist) { NavigationStack { YearEndChecklistView() } }
+        .sheet(isPresented: $showingDepreciation) { NavigationStack { DepreciationScheduleView() } }
+        .sheet(isPresented: $showingCarryforwards) { NavigationStack { CarryforwardRegisterView() } }
+        .sheet(isPresented: $showingFilingChecklist) { NavigationStack { FilingChecklistView() } }
+        .sheet(isPresented: $showingYearEndClosing) { NavigationStack { YearEndClosingView() } }
+        .sheet(isPresented: $showingCPAExport) { NavigationStack { TaxExportView() } }
+        .sheet(isPresented: $showingJurisdictions) { NavigationStack { JurisdictionManagementView() } }
+        .sheet(isPresented: $showingBasisAlerts) { NavigationStack { BasisAlertsDashboardView() } }
+        .sheet(isPresented: $showingEstimatedTax) { NavigationStack { EstimatedTaxDashboardView() } }
+        .sheet(isPresented: $showingNAICSCodes) { NavigationStack { NAICSCodeSuggestionView() } }
+        .sheet(isPresented: $showingMultiYearComparison) { NavigationStack { MultiYearComparisonView() } }
+        .sheet(isPresented: $showingPreparerChecklist) { NavigationStack { PreparerChecklistView() } }
         .onAppear {
             if !settingsLoaded, let existing = currentSettings {
                 selectedState        = existing.state
@@ -400,6 +449,9 @@ struct TaxSettingsView: View {
         } message: {
             Text(taxPDFError ?? "Failed to generate PDF.")
         }
+        .sheet(item: $taxPDFShareItem) { item in
+            ShareSheet(items: [item.url])
+        }
     }
 
     private func exportTaxSummaryPDF() {
@@ -417,29 +469,78 @@ struct TaxSettingsView: View {
                 return
             }
 
-            #if os(macOS)
-            // macOS: Open save dialog
-            let panel = NSSavePanel()
-            panel.allowedContentTypes = [.pdf]
-            panel.nameFieldStringValue = "FLO_Tax_Summary_2025.pdf"
-            panel.title = "Save Tax Summary"
+            // Present the cross-platform export/share sheet (Save to Files, Mail,
+            // etc. — and a native save panel on Mac Catalyst via the activity
+            // sheet). Replaces the macOS-only NSSavePanel and the previously
+            // empty iOS branch, so export now works on every platform.
+            taxPDFShareItem = TaxPDFShareItem(url: fileURL)
+        }
+    }
 
-            if panel.runModal() == .OK, let saveURL = panel.url {
-                do {
-                    if FileManager.default.fileExists(atPath: saveURL.path) {
-                        try FileManager.default.removeItem(at: saveURL)
-                    }
-                    try FileManager.default.copyItem(at: fileURL, to: saveURL)
-                    NSWorkspace.shared.open(saveURL)
-                } catch {
-                    taxPDFError = "Failed to save: \(error.localizedDescription)"
-                    showPDFError = true
-                }
+    // MARK: - Tax Tools Section (v6.5)
+
+    private var taxToolsSection: some View {
+        ProfileSectionCard(title: "Tax Tools") {
+            VStack(spacing: 0) {
+                taxToolsGroupA
+                taxToolsGroupB
+                taxToolsGroupC
             }
-            #else
-            // iOS: Share sheet would go here
-            // For now, open the file
-            #endif
+        }
+    }
+
+    // Split into sub-properties to avoid SwiftUI type-checker timeout
+    @ViewBuilder
+    private var taxToolsGroupA: some View {
+        LockedMenuRow(icon: "text.badge.minus", iconColor: .green, title: "Tax Deductions", subtitle: "Deduction tracking & optimization", requiredTier: .pro, isLocked: currentTier != .pro) {
+            HapticService.play(.medium); showingTaxDeductions = true
+        }
+        LockedMenuRow(icon: "chart.line.uptrend.xyaxis", iconColor: .blue, title: "Profit & Loss", subtitle: "Business income statements", requiredTier: .pro, isLocked: currentTier != .pro) {
+            HapticService.play(.medium); showingProfitLoss = true
+        }
+        LockedMenuRow(icon: "checklist", iconColor: .teal, title: "Year-End Checklist", subtitle: "Tax prep task list", requiredTier: .pro, isLocked: currentTier != .pro) {
+            HapticService.play(.medium); showingYearEndChecklist = true
+        }
+        LockedMenuRow(icon: "chart.bar.fill", iconColor: .cyan, title: "Depreciation", subtitle: "MACRS asset schedules", requiredTier: .pro, isLocked: currentTier != .pro) {
+            HapticService.play(.medium); showingDepreciation = true
+        }
+        LockedMenuRow(icon: "arrow.uturn.forward.circle.fill", iconColor: .orange, title: "Carryforwards", subtitle: "Suspended losses & NOL tracking", requiredTier: .pro, isLocked: currentTier != .pro) {
+            HapticService.play(.medium); showingCarryforwards = true
+        }
+    }
+
+    @ViewBuilder
+    private var taxToolsGroupB: some View {
+        LockedMenuRow(icon: "checklist.checked", iconColor: .indigo, title: "Filing Checklist", subtitle: "Required forms & deadlines", requiredTier: .pro, isLocked: currentTier != .pro) {
+            HapticService.play(.medium); showingFilingChecklist = true
+        }
+        LockedMenuRow(icon: "checkmark.seal.fill", iconColor: .purple, title: "Year-End Close", subtitle: "Roll carryforwards & reset capital", requiredTier: .pro, isLocked: currentTier != .pro) {
+            HapticService.play(.medium); showingYearEndClosing = true
+        }
+        LockedMenuRow(icon: "doc.badge.arrow.up", iconColor: .blue, title: "CPA Export", subtitle: "Lacerte CSV & generic formats", requiredTier: .pro, isLocked: currentTier != .pro) {
+            HapticService.play(.medium); showingCPAExport = true
+        }
+        LockedMenuRow(icon: "map.fill", iconColor: .green, title: "Jurisdictions", subtitle: "State, county & city filing", requiredTier: .pro, isLocked: currentTier != .pro) {
+            HapticService.play(.medium); showingJurisdictions = true
+        }
+    }
+
+    @ViewBuilder
+    private var taxToolsGroupC: some View {
+        LockedMenuRow(icon: "exclamationmark.triangle.fill", iconColor: .orange, title: "Basis Alerts", subtitle: "Partner basis monitoring & \u{00A7}704(d)", requiredTier: .pro, isLocked: currentTier != .pro) {
+            HapticService.play(.medium); showingBasisAlerts = true
+        }
+        LockedMenuRow(icon: "calendar.badge.clock", iconColor: .red, title: "Estimated Taxes", subtitle: "Quarterly payments & safe harbor", requiredTier: .pro, isLocked: currentTier != .pro) {
+            HapticService.play(.medium); showingEstimatedTax = true
+        }
+        LockedMenuRow(icon: "number.circle.fill", iconColor: .teal, title: "NAICS Codes", subtitle: "Auto-suggest from spending patterns", requiredTier: .pro, isLocked: currentTier != .pro) {
+            HapticService.play(.medium); showingNAICSCodes = true
+        }
+        LockedMenuRow(icon: "chart.bar.xaxis", iconColor: .purple, title: "Year Comparison", subtitle: "YoY income, expenses & depreciation", requiredTier: .pro, isLocked: currentTier != .pro) {
+            HapticService.play(.medium); showingMultiYearComparison = true
+        }
+        LockedMenuRow(icon: "person.badge.shield.checkmark.fill", iconColor: .indigo, title: "Preparer Checklist", subtitle: "What your CPA needs for filing", requiredTier: .pro, isLocked: currentTier != .pro) {
+            HapticService.play(.medium); showingPreparerChecklist = true
         }
     }
 
@@ -685,6 +786,7 @@ struct StatePickerView: View {
                 .accessibilityLabel("\(state.name)\(selectedState == state.code ? ", selected" : "")")
             }
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Select State")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -733,6 +835,7 @@ struct FilingStatusPickerView: View {
                 .accessibilityAddTraits(filingStatus == status ? .isSelected : [])
             }
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Filing Status")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {

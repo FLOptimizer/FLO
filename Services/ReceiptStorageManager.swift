@@ -418,8 +418,43 @@ class ReceiptStorageManager: ObservableObject {
         filterReceipts(receipts, year: year, month: nil).count
     }
     
+    // MARK: - Thumbnail Generation
+
+    /// Generates thumbnails for receipts whose thumbnail is missing from disk.
+    /// Safe to call at any time; skips receipts that already have a thumbnail.
+    /// Returns the number of thumbnails generated.
+    @discardableResult
+    func generateMissingThumbnails(receipts: [ReceiptData]) async -> Int {
+        var generated = 0
+
+        for receipt in receipts {
+            guard let filename = receipt.imageURL, !filename.isEmpty else { continue }
+
+            let exists = await PhotoStorageManager.shared.thumbnailExists(filename: filename)
+            guard !exists else { continue }
+
+            do {
+                let fullImage = try await PhotoStorageManager.shared.loadReceipt(filename: filename)
+                try await PhotoStorageManager.shared.saveThumbnail(forFilename: filename, from: fullImage)
+                generated += 1
+            } catch {
+                #if DEBUG
+                print("⚠️ Could not generate thumbnail for \(filename): \(error)")
+                #endif
+            }
+        }
+
+        #if DEBUG
+        if generated > 0 {
+            print("🖼️ Generated \(generated) missing thumbnail(s)")
+        }
+        #endif
+
+        return generated
+    }
+
     // MARK: - Cleanup Orphaned Images
-    
+
     /// Remove image files without corresponding ReceiptData records
     func cleanupOrphanedImages(receipts: [ReceiptData]) async -> Int {
         var validFilenames = Set<String>()

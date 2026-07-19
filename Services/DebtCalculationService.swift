@@ -715,12 +715,236 @@ final class DebtCalculationService {
             standardSchedule.count - acceleratedSchedule.count
         )
     }
+
+    // MARK: - Debt Accelerator: Hybrid Optimizer
+
+    /// Hybrid optimizer result for a single month across all debts
+    struct AcceleratorAllocation: Identifiable {
+        let id = UUID()
+        let accountID: UUID
+        let accountName: String
+        let debtType: DebtType
+        let minimumPayment: Double
+        let extraPayment: Double
+        let totalPayment: Double
+        let interestPortion: Double
+        let principalPortion: Double
+        let remainingBalance: Double
+        let priorityScore: Double
+    }
+
+    /// Full accelerator projection result
+    struct AcceleratorProjection {
+        let monthlyAllocations: [[AcceleratorAllocation]]  // Month-by-month
+        let payoffDate: Date
+        let totalInterest: Double
+        let totalPaid: Double
+        let interestSavedVsMinimum: Double
+        let monthsSavedVsMinimum: Int
+        let baselinePayoffDate: Date
+        let baselineTotalInterest: Double
+    }
+
+    /// Calculate hybrid priority score for a debt.
+    /// Formula: priority = (debtAPR - netVaultYield) × balance + urgencyBonus
+    /// Higher scores get extra payment dollars first.
+    func hybridPriorityScore(
+        debtAPR: Double,
+        balance: Double,
+        vaultAPY: Double,
+        promoExpirationDays: Int? = nil
+    ) -> Double {
+        let netRate = debtAPR - vaultAPY
+        var score = max(netRate, 0) * abs(balance)
+
+        // Urgency bonus: debts with expiring promo rates get prioritized
+        if let days = promoExpirationDays, days > 0, days < 180 {
+            // Exponential urgency as promo expiration approaches
+            let urgency = (180.0 - Double(days)) / 180.0
+            score += urgency * abs(balance) * 0.5
+        }
+
+        return score
+    }
+
+    /// Run the hybrid optimizer across multiple debts.
+    /// Allocates extra payment budget to highest-priority debts each month.
+    func runAcceleratorOptimization(
+        debts: [DebtInput],
+        extraBudget: Double,
+        vaultAPY: Double = 0.0,
+        promoExpirations: [UUID: Int] = [:],  // accountID → days until promo expires
+        maxMonths: Int = 600
+    ) -> AcceleratorProjection {
+        guard !debts.isEmpty else {
+            return AcceleratorProjection(
+                monthlyAllocations: [],
+                payoffDate: Date(),
+                totalInterest: 0,
+                totalPaid: 0,
+                interestSavedVsMinimum: 0,
+                monthsSavedVsMinimum: 0,
+                baselinePayoffDate: Date(),
+                baselineTotalInterest: 0
+            )
+        }
+
+        // Track state per debt
+        struct DebtState {
+            let input: DebtInput
+            var balance: Double
+            var monthsElapsed: Int = 0
+        }
+
+        var states = debts.map { DebtState(input: $0, balance: $0.currentBalance) }
+        var monthlyAllocations: [[AcceleratorAllocation]] = []
+        var totalInterestPaid = 0.0
+        var totalPaid = 0.0
+        let calendar = Calendar.current
+        let startDate = Date()
+
+        // Also compute baseline (minimum-only) for comparison
+        var baselineStates = debts.map { DebtState(input: $0, balance: $0.currentBalance) }
+        var baselineTotalInterest = 0.0
+        var baselineMonths = 0
+
+        // Run baseline first (minimum payments only)
+        for month in 1...maxMonths {
+            var allPaid = true
+            for i in 0..<baselineStates.count {
+                guard baselineStates[i].balance > 0.01 else { continue }
+                allPaid = false
+
+                let rate = baselineStates[i].input.interestRate / 100.0 / 12.0
+                let interest = baselineStates[i].balance * rate
+
+                let minPayment: Double
+                if baselineStates[i].input.debtType.isAmortized {
+                    minPayment = baselineStates[i].input.monthlyPayment
+                } else {
+                    let pctPayment = baselineStates[i].balance * (baselineStates[i].input.minimumPaymentPercent ?? 2.0) / 100.0
+                    minPayment = max(pctPayment, baselineStates[i].input.minimumPaymentFloor ?? 25.0)
+                }
+
+                let payment = min(minPayment, baselineStates[i].balance + interest)
+                let principal = payment - interest
+                baselineStates[i].balance = max(0, baselineStates[i].balance - principal)
+                baselineTotalInterest += interest
+            }
+            baselineMonths = month
+            if allPaid { break }
+        }
+        let baselinePayoffDate = calendar.date(byAdding: .month, value: baselineMonths, to: startDate) ?? startDate
+
+        // Run optimized schedule
+        for month in 1...maxMonths {
+            var allPaid = true
+            var monthAllocations: [AcceleratorAllocation] = []
+            var extraPool = extraBudget
+
+            // Step 1: Calculate minimum payments and interest for each active debt
+            struct MonthCalc {
+                let index: Int
+                let interest: Double
+                let minPayment: Double
+                var balance: Double
+            }
+
+            var calcs: [MonthCalc] = []
+            for i in 0..<states.count {
+                guard states[i].balance > 0.01 else { continue }
+                allPaid = false
+
+                let rate = states[i].input.interestRate / 100.0 / 12.0
+                let interest = states[i].balance * rate
+
+                let minPayment: Double
+                if states[i].input.debtType.isAmortized {
+                    minPayment = states[i].input.monthlyPayment
+                } else {
+                    let pctPayment = states[i].balance * (states[i].input.minimumPaymentPercent ?? 2.0) / 100.0
+                    minPayment = max(pctPayment, states[i].input.minimumPaymentFloor ?? 25.0)
+                }
+
+                calcs.append(MonthCalc(index: i, interest: interest, minPayment: minPayment, balance: states[i].balance))
+            }
+
+            if allPaid {
+                break
+            }
+
+            // Step 2: Calculate priority scores and sort
+            let scored = calcs.map { calc -> (MonthCalc, Double) in
+                let input = states[calc.index].input
+                let promoDays = promoExpirations[input.id].map { max(0, $0 - (month * 30)) }
+                let score = hybridPriorityScore(
+                    debtAPR: input.interestRate,
+                    balance: calc.balance,
+                    vaultAPY: vaultAPY,
+                    promoExpirationDays: promoDays
+                )
+                return (calc, score)
+            }.sorted { $0.1 > $1.1 }
+
+            // Step 3: Allocate extra to highest priority debts
+            for (calc, score) in scored {
+                let i = calc.index
+                let interest = calc.interest
+                let effectiveMin = min(calc.minPayment, states[i].balance + interest)
+                let principal = effectiveMin - interest
+
+                // Allocate extra from pool
+                let maxExtra = states[i].balance - max(0, principal)
+                let extra = min(extraPool, max(0, maxExtra))
+                extraPool -= extra
+
+                let totalPayment = effectiveMin + extra
+                let totalPrincipal = principal + extra
+                let newBalance = max(0, states[i].balance - totalPrincipal)
+
+                states[i].balance = newBalance
+                states[i].monthsElapsed = month
+                totalInterestPaid += interest
+                totalPaid += totalPayment
+
+                let schedDate = calendar.date(byAdding: .month, value: month, to: startDate) ?? startDate
+                monthAllocations.append(AcceleratorAllocation(
+                    accountID: states[i].input.id,
+                    accountName: states[i].input.name,
+                    debtType: states[i].input.debtType,
+                    minimumPayment: effectiveMin,
+                    extraPayment: extra,
+                    totalPayment: totalPayment,
+                    interestPortion: interest,
+                    principalPortion: totalPrincipal,
+                    remainingBalance: newBalance,
+                    priorityScore: score
+                ))
+            }
+
+            monthlyAllocations.append(monthAllocations)
+        }
+
+        let totalMonths = monthlyAllocations.count
+        let payoffDate = calendar.date(byAdding: .month, value: totalMonths, to: startDate) ?? startDate
+
+        return AcceleratorProjection(
+            monthlyAllocations: monthlyAllocations,
+            payoffDate: payoffDate,
+            totalInterest: totalInterestPaid,
+            totalPaid: totalPaid,
+            interestSavedVsMinimum: baselineTotalInterest - totalInterestPaid,
+            monthsSavedVsMinimum: baselineMonths - totalMonths,
+            baselinePayoffDate: baselinePayoffDate,
+            baselineTotalInterest: baselineTotalInterest
+        )
+    }
 }
 
 // MARK: - Currency Formatting Extension
 
 extension DebtCalculationService {
-    
+
     func formatCurrency(_ amount: Double) -> String {
         return NumberFormatter.appCurrencyCompact.string(from: NSNumber(value: amount)) ?? "$\(Int(amount))"
     }

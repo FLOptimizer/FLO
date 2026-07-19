@@ -1,10 +1,15 @@
 //  Transaction.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.1 - Performance Optimization
+//  Version 3.2 - Tip Amount + Split Pay
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  Elite Transaction model with Business/Personal classification
+//
+//  CHANGES FROM v3.1:
+//  ✅ Added optional tipAmount (Double?) — restaurant/service tips, included in total
+//  ✅ Added optional splitGroupId (UUID?) — links business/personal split transactions
+//  ✅ Added isSplitTransaction computed convenience
 //
 //  CHANGES FROM v3.0:
 //  ✅ Replaced per-access NumberFormatter/DateFormatter allocations with shared static formatters
@@ -138,6 +143,11 @@ final class Transaction {
     @Relationship(deleteRule: .nullify)
     var recurringParent: RecurringTransaction?
     
+    /// Payment log that created this transaction (if manually marked as sent)
+    /// Inverse defined on RecurringPaymentLog.transaction
+    @Relationship(deleteRule: .nullify)
+    var paymentLog: RecurringPaymentLog?
+
     /// Associated account (NEW in v2.3 - Premium feature)
     /// Inverse defined on Account.transactions
     @Relationship(deleteRule: .nullify)
@@ -152,6 +162,10 @@ final class Transaction {
     /// Invoice payment linked to this transaction (inverse of InvoicePayment.linkedTransaction)
     @Relationship(deleteRule: .nullify, inverse: \InvoicePayment.linkedTransaction)
     var linkedPayment: InvoicePayment?
+
+    /// Bill payment linked to this transaction (inverse of BillPayment.linkedTransaction) (v3.9)
+    @Relationship(deleteRule: .nullify, inverse: \BillPayment.linkedTransaction)
+    var linkedBillPayment: BillPayment?
 
     // MARK: - Receipt Properties
     
@@ -219,6 +233,11 @@ final class Transaction {
     /// nil for non-transfer transactions.
     var transferTypeRaw: String?
 
+    /// Groups this transaction with a related Transfer when it was auto-generated
+    /// from a debt payment split (e.g., the interest portion of a loan payment).
+    /// Mirrors Transfer.paymentGroupId on the principal side. nil for standalone transactions.
+    var paymentGroupId: UUID?
+
     // MARK: - Household Sharing (Build 8)
 
     /// Whether this transaction is shared with household members.
@@ -234,6 +253,30 @@ final class Transaction {
     /// Whether this transaction has been reviewed by the user.
     /// New transactions default to false. Review flow allows bulk marking.
     var isReviewed: Bool = false
+
+    // MARK: - Tip + Split Pay (v3.2)
+
+    /// Optional tip amount (e.g., restaurant tip, gratuity, service charge).
+    /// IMPORTANT: `amount` already INCLUDES the tip — tipAmount is stored
+    /// separately so it can be displayed/exported and analyzed, not added on top.
+    var tipAmount: Double? {
+        didSet {
+            if tipAmount != oldValue {
+                updatedAt = Date()
+            }
+        }
+    }
+
+    /// Links transactions that originated from the same split receipt.
+    /// Both the business and personal portions share this UUID.
+    /// nil for non-split transactions.
+    var splitGroupId: UUID? {
+        didSet {
+            if splitGroupId != oldValue {
+                updatedAt = Date()
+            }
+        }
+    }
 
     // MARK: - Metadata
 
@@ -270,7 +313,10 @@ final class Transaction {
         isTransfer: Bool = false,
         linkedTransferID: UUID? = nil,
         transferType: TransferType? = nil,
+        paymentGroupId: UUID? = nil,
         isReviewed: Bool = false,
+        tipAmount: Double? = nil,
+        splitGroupId: UUID? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -298,10 +344,16 @@ final class Transaction {
         self.isTransfer = isTransfer
         self.linkedTransferID = linkedTransferID
         self.transferTypeRaw = transferType?.rawValue
+        self.paymentGroupId = paymentGroupId
         self.isReviewed = isReviewed
+        self.tipAmount = tipAmount
+        self.splitGroupId = splitGroupId
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
+
+    /// Convenience: true if this transaction is one half of a split-receipt pair.
+    var isSplitTransaction: Bool { splitGroupId != nil }
     
     // MARK: - Finance Type Enum
     
@@ -346,7 +398,12 @@ final class Transaction {
         
         /// Created as part of a Move Money transfer (NEW in v3.0)
         case transfer = "transfer"
-        
+
+        /// Auto-generated as a side-effect of a transfer split (e.g., the interest
+        /// portion expense created from a debt payment with interest/principal breakdown).
+        /// Visually distinguishable so users know it can be reviewed/recategorized.
+        case derivedFromTransfer = "derived_from_transfer"
+
         var displayName: String {
             switch self {
             case .manual: return "Manual Entry"
@@ -355,9 +412,10 @@ final class Transaction {
             case .recurring: return "Recurring"
             case .csvImport: return "CSV Import"
             case .transfer: return "Transfer"
+            case .derivedFromTransfer: return "Transfer Split"
             }
         }
-        
+
         var icon: String {
             switch self {
             case .manual: return "pencil"
@@ -366,9 +424,10 @@ final class Transaction {
             case .recurring: return "repeat"
             case .csvImport: return "doc.badge.arrow.up"
             case .transfer: return "arrow.left.arrow.right"
+            case .derivedFromTransfer: return "arrow.triangle.branch"
             }
         }
-        
+
         /// Whether this source allows user editing of core fields
         var isEditable: Bool {
             switch self {
@@ -383,6 +442,9 @@ final class Transaction {
             case .transfer:
                 // Transfer transactions should be voided, not edited
                 return false
+            case .derivedFromTransfer:
+                // Auto-generated from a transfer split — user may need to recategorize
+                return true
             }
         }
         
@@ -672,6 +734,8 @@ final class Transaction {
             return "Imported"
         case .transfer:
             return "Transfer"
+        case .derivedFromTransfer:
+            return "Auto-Split"
         }
     }
     

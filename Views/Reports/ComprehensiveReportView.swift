@@ -100,8 +100,16 @@ struct ComprehensiveReportView: View {
     
     // Haptics
                 
-    private var taxSettings: TaxSettings? { taxSettingsQuery.first }
-    private var businessProfile: BusinessProfile? { businessProfiles.first }
+    // v1.7: Multi-business support
+    @State private var selectedBusiness: BusinessProfile?  // nil = all businesses
+
+    private var taxSettings: TaxSettings? {
+        // Use selected business's tax settings, or fall back to first available
+        selectedBusiness?.taxSettings ?? taxSettingsQuery.first
+    }
+    private var businessProfile: BusinessProfile? {
+        selectedBusiness ?? businessProfiles.first
+    }
     
     enum ReportType: String, CaseIterable {
         case annual = "Annual Report"
@@ -196,6 +204,14 @@ struct ComprehensiveReportView: View {
                         .offset(y: viewAppeared ? 0 : 20)
                         .animation(FLOAnimation.standard.delay(0.2), value: viewAppeared)
                     
+                    // Business Filter (v1.7)
+                    if businessProfiles.count > 1 {
+                        businessPickerSection
+                            .opacity(viewAppeared ? 1 : 0.001)
+                            .offset(y: viewAppeared ? 0 : 20)
+                            .animation(FLOAnimation.standard.delay(0.22), value: viewAppeared)
+                    }
+
                     // Report Sections
                     sectionsToggleSection
                         .opacity(viewAppeared ? 1 : 0.001)
@@ -409,8 +425,37 @@ struct ComprehensiveReportView: View {
         .cornerRadius(16)
     }
     
+    // MARK: - Business Picker (v1.7)
+
+    private var businessPickerSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Business")
+                .font(.headline)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .accessibilityAddTraits(.isHeader)
+
+            if businessProfiles.count > 1 {
+                Picker("Business", selection: $selectedBusiness) {
+                    Text("All Businesses").tag(nil as BusinessProfile?)
+                    ForEach(businessProfiles) { business in
+                        Label(business.businessName, systemImage: business.displayIcon)
+                            .tag(business as BusinessProfile?)
+                    }
+                }
+                .pickerStyle(.menu)
+                .padding()
+                .background(Color.floSystemBackground)
+                .cornerRadius(12)
+            }
+        }
+        .padding()
+        .background(Color.floSystemBackground)
+        .cornerRadius(16)
+    }
+
     // MARK: - Sections Toggle
-    
+
     private var sectionsToggleSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Include Sections")

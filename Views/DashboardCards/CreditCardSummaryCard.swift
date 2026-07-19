@@ -583,7 +583,7 @@ struct CreditCardSummaryCard: View {
                 HStack {
                     Text(showingAllCards ? "Hide Cards" : "Show All Cards")
                         .font(.caption)
-                         .foregroundStyle(Color.brandPrimaryText)
+                         .foregroundStyle(Color.brandPrimary)
                     
                     Image(systemName: showingAllCards ? "chevron.up" : "chevron.down")
                         .font(.caption)

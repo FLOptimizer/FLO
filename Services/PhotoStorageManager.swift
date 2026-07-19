@@ -162,6 +162,8 @@ actor PhotoStorageManager {
         do {
             try FileManager.default.removeItem(at: fileURL)
             Self.logger.info("🗑️ Deleted receipt: \(filename, privacy: .public)")
+            // Best-effort thumbnail removal
+            await deleteThumbnail(filename: filename)
             return true
         } catch {
             Self.logger.error("❌ Failed to delete \(filename): \(error.localizedDescription, privacy: .public)")
@@ -221,27 +223,40 @@ actor PhotoStorageManager {
         }
     }
     
-    /// Deletes all orphaned receipt images not present in the valid set
+    /// Deletes all orphaned receipt images not present in the valid set.
+    /// Also cleans orphaned thumbnails from the thumbnails/ subdirectory.
     @discardableResult
     func cleanupOrphanedReceipts(validFilenames: Set<String>) async -> Int {
         let allFiles = await allReceiptFilenames()
         let orphans = allFiles.filter { !validFilenames.contains($0) }
-        
+
         // Parallel deletion (safe - no shared state mutation)
         await withTaskGroup(of: Void.self) { group in
             for filename in orphans {
                 group.addTask {
-                    // FIX 4: Explicitly discard unused result
                     _ = try? await self.deleteReceipt(filename: filename)
                 }
             }
         }
-        
+
+        // Also purge orphaned thumbnails
+        if let thumbURLs = try? FileManager.default.contentsOfDirectory(
+            at: thumbnailDirectory,
+            includingPropertiesForKeys: nil
+        ) {
+            let orphanThumbs = thumbURLs
+                .map { $0.lastPathComponent }
+                .filter { !validFilenames.contains($0) }
+            for name in orphanThumbs {
+                await deleteThumbnail(filename: name)
+            }
+        }
+
         let count = orphans.count
         if count > 0 {
             Self.logger.info("🧹 Cleaned up \(count) orphaned receipt(s)")
         }
-        
+
         return count
     }
     
@@ -251,8 +266,110 @@ actor PhotoStorageManager {
         return FileManager.default.fileExists(atPath: fileURL.path)
     }
     
+    // MARK: - Thumbnail Support
+
+    private let thumbnailDirectoryName = "thumbnails"
+    private let thumbnailSize = CGSize(width: 150, height: 150)
+    private let thumbnailCompressionQuality: CGFloat = 0.60
+
+    nonisolated private var thumbnailDirectory: URL {
+        receiptsDirectory.appending(path: thumbnailDirectoryName, directoryHint: .isDirectory)
+    }
+
+    nonisolated private func ensureThumbnailDirectoryExists() {
+        guard !FileManager.default.fileExists(atPath: thumbnailDirectory.path) else { return }
+        do {
+            #if canImport(UIKit)
+            try FileManager.default.createDirectory(
+                at: thumbnailDirectory,
+                withIntermediateDirectories: true,
+                attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
+            )
+            #else
+            try FileManager.default.createDirectory(
+                at: thumbnailDirectory,
+                withIntermediateDirectories: true
+            )
+            #endif
+        } catch {
+            Self.logger.error("❌ Failed to create thumbnails directory: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Returns true if a thumbnail exists for the given receipt filename
+    func thumbnailExists(filename: String) -> Bool {
+        FileManager.default.fileExists(atPath: thumbnailDirectory.appending(path: filename).path)
+    }
+
+    /// Generates and saves a 150×150 JPEG thumbnail alongside a saved receipt image.
+    /// Silently skips if thumbnail already exists.
+    func saveThumbnail(forFilename filename: String, from image: UIImage) async throws {
+        ensureThumbnailDirectoryExists()
+
+        let fileURL = thumbnailDirectory.appending(path: filename)
+        guard !FileManager.default.fileExists(atPath: fileURL.path) else { return }
+
+        guard let thumb = generateThumbnail(from: image, size: thumbnailSize),
+              let jpegData = thumb.jpegData(compressionQuality: thumbnailCompressionQuality) else {
+            Self.logger.warning("⚠️ Could not generate thumbnail for \(filename, privacy: .public)")
+            return
+        }
+
+        do {
+            try jpegData.write(to: fileURL, options: .atomic)
+            Self.logger.info("✅ Saved thumbnail \(filename, privacy: .public) – \(jpegData.count / 1024) KB")
+        } catch {
+            Self.logger.error("❌ Failed to write thumbnail \(filename): \(error.localizedDescription, privacy: .public)")
+            throw PhotoStorageError.fileWriteFailed(error)
+        }
+    }
+
+    /// Loads a receipt thumbnail. Falls back to generating from the full image if the
+    /// thumbnail file is missing, and saves it for future calls.
+    func loadThumbnail(filename: String) async throws -> UIImage {
+        guard !filename.isEmpty else {
+            throw PhotoStorageError.fileReadFailed(
+                NSError(domain: "PhotoStorage", code: -1,
+                        userInfo: [NSLocalizedDescriptionKey: "Empty filename"])
+            )
+        }
+
+        let fileURL = thumbnailDirectory.appending(path: filename)
+
+        if FileManager.default.fileExists(atPath: fileURL.path),
+           let data = try? Data(contentsOf: fileURL),
+           let image = UIImage(data: data) {
+            return image
+        }
+
+        // Thumbnail missing – generate from full image and persist for next time
+        let fullImage = try await loadReceipt(filename: filename)
+        guard let thumb = generateThumbnail(from: fullImage, size: thumbnailSize) else {
+            throw PhotoStorageError.invalidImageData
+        }
+        try? await saveThumbnail(forFilename: filename, from: fullImage)
+        return thumb
+    }
+
+    /// Deletes the thumbnail for a receipt (best-effort, no error thrown).
+    func deleteThumbnail(filename: String) async {
+        let fileURL = thumbnailDirectory.appending(path: filename)
+        try? FileManager.default.removeItem(at: fileURL)
+    }
+
+    private func generateThumbnail(from image: UIImage, size: CGSize) -> UIImage? {
+        #if canImport(UIKit)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
+        #else
+        return nil
+        #endif
+    }
+
     // MARK: - Private Helpers
-    
+
     private func generateUniqueFilename() -> String {
         // Combines timestamp + random UUID segment – virtually collision-proof
         let timestamp = Int(Date().timeIntervalSince1970)

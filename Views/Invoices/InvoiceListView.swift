@@ -501,7 +501,7 @@ struct InvoiceRow: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(.red)
+                            .background(Color.expenseRed)
                             .clipShape(Capsule())
                     }
                 }

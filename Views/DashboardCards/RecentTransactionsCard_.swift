@@ -28,6 +28,7 @@
 
 import SwiftUI
 import SwiftData
+import FLODesignSystem
 
 struct RecentTransactionsCard: View {
     let transactions: [Transaction]

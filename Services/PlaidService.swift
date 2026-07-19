@@ -168,10 +168,59 @@ final class PlaidService: ObservableObject {
         // Track connection
         connectedItemIds.insert(response.itemId)
         saveStoredItemIds()
-        
+
         return response.itemId
     }
-    
+
+    // MARK: - Account Creation
+
+    /// Creates FLO Account records for the accounts linked in a successful
+    /// Link session. Shared by every link-success path so account setup
+    /// (Plaid IDs, status, type mapping) can't drift between callers.
+    @discardableResult
+    func createAccounts(
+        from metadata: LinkMetadata,
+        itemId: String,
+        modelContext: ModelContext
+    ) throws -> [Account] {
+        var created: [Account] = []
+
+        for linkedAccount in metadata.accounts {
+            let account = Account(
+                name: linkedAccount.name,
+                accountType: Self.mapAccountType(linkedAccount.type, subtype: linkedAccount.subtype),
+                lastFourDigits: linkedAccount.mask,
+                institutionName: metadata.institutionName
+            )
+            account.isLinked = true
+            account.plaidItemId = itemId
+            account.plaidAccountId = linkedAccount.id
+            account.plaidStatus = .connected
+
+            modelContext.insert(account)
+            created.append(account)
+        }
+
+        try modelContext.save()
+        return created
+    }
+
+    /// Maps Plaid account type strings to FLO AccountType
+    static func mapAccountType(_ type: String, subtype: String?) -> AccountType {
+        switch type {
+        case "depository":
+            return subtype == "savings" ? .savings : .checking
+        case "credit":
+            return .creditCard
+        case "investment":
+            return .investment
+        case "loan":
+            return .loan
+        default:
+            return .other
+        }
+    }
+
     // MARK: - Transaction Sync
     
     /// Syncs transactions for all connected accounts
@@ -516,22 +565,28 @@ final class PlaidService: ObservableObject {
     }
     
     /// Updates account balances from Plaid
+    /// One backend request per Plaid item (linked bank) — accounts from the
+    /// same institution share an itemId and arrive in the same response.
     func updateAccountBalances(modelContext: ModelContext) async throws {
         try checkSubscription()
-        
+
         let linkedAccounts = try await fetchLinkedAccounts(modelContext: modelContext)
-        
-        for account in linkedAccounts {
-            guard let itemId = account.plaidItemId else { continue }
-            
+        let accountsByItem = Dictionary(
+            grouping: linkedAccounts.filter { $0.plaidItemId != nil },
+            by: { $0.plaidItemId! }
+        )
+
+        for (itemId, accounts) in accountsByItem {
             do {
                 let response: AccountsResponse = try await getFromBackend(
                     endpoint: "/plaid-accounts",
                     itemId: itemId
                 )
-                
-                // Find matching Plaid account
-                if let plaidAccount = response.accounts.first(where: { $0.accountId == account.plaidAccountId }) {
+
+                for account in accounts {
+                    guard let plaidAccount = response.accounts.first(where: { $0.accountId == account.plaidAccountId }) else {
+                        continue
+                    }
                     // Credit cards & loans: use 'current' (amount owed)
                     // Depository (checking/savings): use 'available' (spendable amount)
                     if plaidAccount.type == .credit || plaidAccount.type == .loan {
@@ -546,12 +601,12 @@ final class PlaidService: ObservableObject {
                         account.creditLimit = limit
                     }
                 }
-                
+
             } catch {
-                print("⚠️ Failed to update balance for \(account.name): \(error)")
+                print("⚠️ Failed to update balances for item \(itemId): \(error)")
             }
         }
-        
+
         try modelContext.save()
     }
     

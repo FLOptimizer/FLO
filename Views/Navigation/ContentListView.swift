@@ -1,7 +1,8 @@
 //  ContentListView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Build 10 — Zone 2 content router.
+//  Build 10 — Zone 2 content router. (v1.1: content-column min width now also
+//  applies on Mac Catalyst, not just native macOS.)
 //  Dispatches to the correct list/main view based on the selected tab.
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 
@@ -23,12 +24,14 @@ struct ContentListView: View {
                 ClientListView()
             case .dashboard:
                 DashboardView()
+            case .debtAccelerator:
+                DebtAcceleratorDashboardView()
             case .invoices:
                 InvoiceListView()
             case .mileage:
                 MileageTrackingMainView()
             case .receipts:
-                SmartReceiptScanningView()
+                ReceiptsListView()
             case .reports:
                 ReportsView()
             case .settings:
@@ -40,7 +43,7 @@ struct ContentListView: View {
             }
         }
         .navigationTitle(tab.title)
-        #if os(macOS)
+        #if os(macOS) || targetEnvironment(macCatalyst)
         .frame(minWidth: 340)
         #endif
     }

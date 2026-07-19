@@ -1,8 +1,17 @@
 //  Account.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.6
+//  Version 3.8
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.8:
+//  ✅ ADDED: promoAPR, promoExpirationDate — promotional rate tracking for Debt Accelerator
+//  ✅ ADDED: isVaultDesignated — marks HYSA/savings as vault for optimizer yield comparison
+//  ✅ ADDED: hasActivePromo, effectiveAPR computed properties
+//
+//  CHANGES v3.7:
+//  ✅ ADDED: businessProfile relationship — links account to a specific business (nil = personal)
+//  ✅ ADDED: isBusinessAccount computed property
 //
 //  CHANGES v3.6:
 //  ✅ ADDED: Loan-specific fields (originalLoanAmount, loanTermMonths, monthlyPaymentAmount, loanStartDate, loanTypeRaw)
@@ -85,6 +94,11 @@ final class Account {
     /// Whether to show this account on the dashboard summary card
     /// Allows users to track accounts without cluttering the dashboard
     var showOnDashboard: Bool = true
+
+    /// Whether this account appears in transaction/scanner account pickers (v3.9)
+    /// Set to false for accounts that no longer receive new transactions
+    /// (e.g. closed credit cards, investment accounts)
+    var includeInTransactions: Bool = true
     
     // MARK: - Balance Tracking
     
@@ -98,12 +112,31 @@ final class Account {
     var startingBalance: Double = 0.0
     
     // MARK: - Classification
-    
+
     /// Business vs Personal classification - Uses Transaction.FinanceType for compatibility
+    /// NOTE: Eventually this becomes computed from businessProfile presence.
+    /// For now, kept as stored property for backward compatibility.
     var financeType: Transaction.FinanceType = Transaction.FinanceType.personal
-    
+
+    // MARK: - Business Profile (v3.7)
+
+    /// Which business this account belongs to (nil = personal account)
+    @Relationship(deleteRule: .nullify)
+    var businessProfile: BusinessProfile?
+
+    /// Whether this account is linked to a business
+    var isBusinessAccount: Bool {
+        businessProfile != nil
+    }
+
+    // MARK: - Linked Cards (v3.9)
+
+    /// Physical/virtual cards linked to this account (for receipt auto-matching)
+    @Relationship(deleteRule: .cascade, inverse: \LinkedCard.account)
+    var linkedCards: [LinkedCard]?
+
     // MARK: - Bank Identification
-    
+
     /// Last 4 digits of account number (for identification)
     var lastFourDigits: String?
     
@@ -150,6 +183,17 @@ final class Account {
 
     /// Loan type classification (maps to DebtType: sba, mortgage, auto, personal, student)
     var loanTypeRaw: String?
+
+    // MARK: - Debt Accelerator Fields (v3.8)
+
+    /// Promotional APR (e.g., 0% intro rate on credit card)
+    var promoAPR: Double?
+
+    /// When the promotional rate expires (reverts to standard APR)
+    var promoExpirationDate: Date?
+
+    /// Whether this account is designated as a vault/HYSA for the Debt Accelerator
+    var isVaultDesignated: Bool = false
 
     // MARK: - Plaid Integration (Pro tier)
     
@@ -213,6 +257,18 @@ final class Account {
     /// Balance anchors for reconciliation
     @Relationship(deleteRule: .nullify, inverse: \BalanceAnchor.account)
     var balanceAnchors: [BalanceAnchor]?
+
+    /// Bills paid from this account (v3.9)
+    @Relationship(deleteRule: .nullify, inverse: \Bill.account)
+    var bills: [Bill]?
+
+    /// Bill payments made from this account (v3.9)
+    @Relationship(deleteRule: .nullify, inverse: \BillPayment.account)
+    var billPayments: [BillPayment]?
+
+    /// Vendors that use this account as their default pay-from account (v3.9)
+    @Relationship(deleteRule: .nullify, inverse: \Vendor.defaultAccount)
+    var defaultForVendors: [Vendor]?
 
     // MARK: - Initialization
     
@@ -494,8 +550,36 @@ final class Account {
         }
     }
     
+    // MARK: - Debt Accelerator Computed Properties
+
+    /// Whether a promotional rate is currently active
+    var hasActivePromo: Bool {
+        guard let promoAPR = promoAPR, promoAPR >= 0,
+              let expiration = promoExpirationDate else { return false }
+        return expiration > Date()
+    }
+
+    /// The effective APR considering any active promotional rate
+    var effectiveAPR: Double {
+        if hasActivePromo, let promoAPR = promoAPR {
+            return promoAPR
+        }
+        return apr ?? 0
+    }
+
+    /// Days until promotional rate expires (nil if no active promo)
+    var daysUntilPromoExpires: Int? {
+        guard hasActivePromo, let expiration = promoExpirationDate else { return nil }
+        return Calendar.current.dateComponents([.day], from: Date(), to: expiration).day
+    }
+
+    /// Whether this is a debt account (negative balance on credit card or loan)
+    var isDebtAccount: Bool {
+        (accountType == .creditCard || accountType == .loan) && currentBalance < 0
+    }
+
     // MARK: - Credit Card Computed Properties
-    
+
     /// Whether this account is a credit card with balance
     var isCreditCardWithBalance: Bool {
         accountType == .creditCard && currentBalance < 0

@@ -1,7 +1,7 @@
 //  EditAccountView_Accounts.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 1.4 - Loan Detail Fields
+//  Version 1.5 - Catalyst form style · Loan Detail Fields
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  NOTE: Named EditAccountView_Accounts to avoid collision with any other
@@ -40,6 +40,7 @@
 
 import SwiftUI
 import SwiftData
+import FLODesignSystem
 
 struct EditAccountView: View {
     @Environment(\.modelContext) private var modelContext
@@ -48,18 +49,25 @@ struct EditAccountView: View {
     @Query(sort: \Account.name) private var allAccounts: [Account]
     
     let account: Account
-    
+
+    // Zone 3 adaptive presentation (Build 10 Phase 2)
+    // When false, omits NavigationStack wrapper — parent Zone 3 provides navigation.
+    var embedInNavigationStack: Bool = true
+    var onCancel: (() -> Void)? = nil
+    var onSaved: (() -> Void)? = nil
+
     @State private var name: String
     @State private var accountType: AccountType
     @State private var financeType: Transaction.FinanceType
     @State private var isPrimary: Bool
     @State private var isActive: Bool
     @State private var showOnDashboard: Bool
+    @State private var includeInTransactions: Bool
     @State private var notes: String
     @State private var currentBalance: Double
     @State private var lastFourDigits: String
     @State private var institutionName: String
-    
+
     // Credit card fields
     @State private var creditLimit: Double
     @State private var apr: String
@@ -70,21 +78,76 @@ struct EditAccountView: View {
     // Reconciliation
     @State private var showingReconciliation = false
 
+    // Delete confirmation
+    @State private var showingDeleteConfirmation = false
+
+    // Linked Cards
+    @State private var showingAddCard = false
+
     // Loan fields
     @State private var originalLoanAmount: Double
     @State private var loanTermMonths: Int
     @State private var monthlyPaymentAmount: Double
     @State private var loanStartDate: Date
     @State private var loanType: LoanType
-    
-    init(account: Account) {
+
+    // v3.14.1: Snapshot of all editable fields at FIRST init. `isDirty` compares
+    // current @State against this snapshot to detect unsaved edits and warn
+    // the user before they navigate away.
+    //
+    // Uses `@State` — NOT `let` — so SwiftUI captures the snapshot exactly once
+    // per view identity and preserves it across re-renders. A plain `let` would
+    // be recomputed on every `init` call, and because `account.loanStartDate ??
+    // Date()` yields a fresh `Date()` each time, the comparison would drift to
+    // `isDirty == true` after the first parent re-render even when the user
+    // hadn't touched anything. That caused two user-visible bugs in v3.14:
+    //   1. Confirmation prompt fired when switching accounts without edits
+    //   2. Once drift locked `isDirty` at true, `.onChange(of: isDirty)`
+    //      stopped firing (value unchanged), so real edits were silently
+    //      ignored forever after.
+    @State private var initialValues: InitialSnapshot
+
+    private struct InitialSnapshot: Equatable {
+        let name: String
+        let accountType: AccountType
+        let financeType: Transaction.FinanceType
+        let isPrimary: Bool
+        let isActive: Bool
+        let showOnDashboard: Bool
+        let includeInTransactions: Bool
+        let notes: String
+        let currentBalance: Double
+        let lastFourDigits: String
+        let institutionName: String
+        let creditLimit: Double
+        let apr: String
+        let minimumPaymentPercent: String
+        let minimumPaymentFloor: Double
+        let paymentDueDay: Int
+        let originalLoanAmount: Double
+        let loanTermMonths: Int
+        let monthlyPaymentAmount: Double
+        let loanStartDate: Date
+        let loanType: LoanType
+    }
+
+    init(
+        account: Account,
+        embedInNavigationStack: Bool = true,
+        onCancel: (() -> Void)? = nil,
+        onSaved: (() -> Void)? = nil
+    ) {
         self.account = account
+        self.embedInNavigationStack = embedInNavigationStack
+        self.onCancel = onCancel
+        self.onSaved = onSaved
         _name = State(initialValue: account.name)
         _accountType = State(initialValue: account.accountType)
         _financeType = State(initialValue: account.financeType)
         _isPrimary = State(initialValue: account.isPrimary)
         _isActive = State(initialValue: account.isActive)
         _showOnDashboard = State(initialValue: account.showOnDashboard)
+        _includeInTransactions = State(initialValue: account.includeInTransactions)
         _notes = State(initialValue: account.notes)
         // For liability accounts, show the absolute value since negation is automatic
         let displayBalance = account.isLiability ? abs(account.currentBalance) : account.currentBalance
@@ -101,13 +164,69 @@ struct EditAccountView: View {
         _originalLoanAmount = State(initialValue: account.originalLoanAmount ?? 0)
         _loanTermMonths = State(initialValue: account.loanTermMonths ?? 360)
         _monthlyPaymentAmount = State(initialValue: account.monthlyPaymentAmount ?? 0)
-        _loanStartDate = State(initialValue: account.loanStartDate ?? Date())
+        let initialLoanStartDate = account.loanStartDate ?? Date()
+        _loanStartDate = State(initialValue: initialLoanStartDate)
         _loanType = State(initialValue: account.loanType)
+
+        // v3.14.1: Capture the snapshot via `State(initialValue:)` so SwiftUI
+        // preserves it across re-renders — re-reading from `account` on every
+        // init drifted `loanStartDate` (falls back to `Date()`) and produced
+        // false-positive dirty detection. See the `initialValues` declaration
+        // for the full incident report.
+        _initialValues = State(initialValue: InitialSnapshot(
+            name: account.name,
+            accountType: account.accountType,
+            financeType: account.financeType,
+            isPrimary: account.isPrimary,
+            isActive: account.isActive,
+            showOnDashboard: account.showOnDashboard,
+            includeInTransactions: account.includeInTransactions,
+            notes: account.notes,
+            currentBalance: displayBalance,
+            lastFourDigits: account.lastFourDigits ?? "",
+            institutionName: account.institutionName ?? "",
+            creditLimit: account.creditLimit ?? 0,
+            apr: account.apr.map { String(format: "%.2f", $0) } ?? "",
+            minimumPaymentPercent: account.minimumPaymentPercent.map { String(format: "%.1f", $0) } ?? "2",
+            minimumPaymentFloor: account.minimumPaymentFloor ?? 25,
+            paymentDueDay: account.paymentDueDay ?? 1,
+            originalLoanAmount: account.originalLoanAmount ?? 0,
+            loanTermMonths: account.loanTermMonths ?? 360,
+            monthlyPaymentAmount: account.monthlyPaymentAmount ?? 0,
+            loanStartDate: initialLoanStartDate,
+            loanType: account.loanType
+        ))
+    }
+
+    /// True when any editable field differs from its initial snapshot.
+    /// Drives `NavigationService.hasUnsavedChanges` so sidebar taps can
+    /// prompt instead of silently destroying in-flight edits.
+    private var isDirty: Bool {
+        name != initialValues.name
+            || accountType != initialValues.accountType
+            || financeType != initialValues.financeType
+            || isPrimary != initialValues.isPrimary
+            || isActive != initialValues.isActive
+            || showOnDashboard != initialValues.showOnDashboard
+            || includeInTransactions != initialValues.includeInTransactions
+            || notes != initialValues.notes
+            || currentBalance != initialValues.currentBalance
+            || lastFourDigits != initialValues.lastFourDigits
+            || institutionName != initialValues.institutionName
+            || creditLimit != initialValues.creditLimit
+            || apr != initialValues.apr
+            || minimumPaymentPercent != initialValues.minimumPaymentPercent
+            || minimumPaymentFloor != initialValues.minimumPaymentFloor
+            || paymentDueDay != initialValues.paymentDueDay
+            || originalLoanAmount != initialValues.originalLoanAmount
+            || loanTermMonths != initialValues.loanTermMonths
+            || monthlyPaymentAmount != initialValues.monthlyPaymentAmount
+            || loanStartDate != initialValues.loanStartDate
+            || loanType != initialValues.loanType
     }
     
     var body: some View {
-        NavigationStack {
-            Form {
+        let formContent = Form {
                 // Account Details
                 Section("Account Details") {
                     TextField("Account Name", text: $name)
@@ -131,19 +250,18 @@ struct EditAccountView: View {
                     .accessibilityLabel("Classification: \(financeType.displayName)")
                 }
                 
-                // Balance (Premium feature)
-                if subscriptionManager.currentTier.hasBalanceTracking {
-                    Section(accountType.isAsset ? "Current Balance" : "Amount Owed") {
-                        CurrencyInputField(
-                            amount: $currentBalance,
-                            accessibilityLabelText: accountType.isAsset ? "Current balance in dollars" : "Amount owed in dollars",
-                            showDoneButton: false
-                        )
-                        if !accountType.isAsset {
-                            Text("Enter the amount you currently owe")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                // Balance — available on all tiers so users can maintain an
+                // accurate balance (balance display elsewhere remains gated)
+                Section(accountType.isAsset ? "Current Balance" : "Amount Owed") {
+                    CurrencyInputField(
+                        amount: $currentBalance,
+                        accessibilityLabelText: accountType.isAsset ? "Current balance in dollars" : "Amount owed in dollars",
+                        showDoneButton: false
+                    )
+                    if !accountType.isAsset {
+                        Text("Enter the amount you currently owe")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 
@@ -151,7 +269,14 @@ struct EditAccountView: View {
                 if subscriptionManager.currentTier.hasBalanceTracking {
                     Section("Reconciliation") {
                         Button {
-                            showingReconciliation = true
+                            if embedInNavigationStack {
+                                showingReconciliation = true
+                            } else {
+                                // Zone 3 mode — route through NavigationService.
+                                withAnimation(FLOAnimation.quick) {
+                                    NavigationService.shared.selectedDetail = .reconcileAccount(accountId: account.id)
+                                }
+                            }
                         } label: {
                             HStack {
                                 Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
@@ -193,7 +318,7 @@ struct EditAccountView: View {
                         HStack {
                             Text("APR")
                             Spacer()
-                            TextField("24.99", text: $apr)
+                            TextField("", text: $apr, prompt: Text("24.99"))
                                 .keyboardType(.decimalPad)
                                 .frame(width: 80)
                                 .multilineTextAlignment(.trailing)
@@ -203,7 +328,7 @@ struct EditAccountView: View {
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("Annual percentage rate")
                         .accessibilityValue(apr.isEmpty ? "Not set" : "\(apr) percent")
-                        
+
                         Picker("Payment Due Day", selection: $paymentDueDay) {
                             ForEach(1...31, id: \.self) { day in
                                 Text("\(day)").tag(day)
@@ -216,7 +341,7 @@ struct EditAccountView: View {
                         HStack {
                             Text("Percentage")
                             Spacer()
-                            TextField("2", text: $minimumPaymentPercent)
+                            TextField("", text: $minimumPaymentPercent, prompt: Text("2"))
                                 .keyboardType(.decimalPad)
                                 .frame(width: 60)
                                 .multilineTextAlignment(.trailing)
@@ -262,7 +387,7 @@ struct EditAccountView: View {
                         HStack {
                             Text("APR")
                             Spacer()
-                            TextField("3.75", text: $apr)
+                            TextField("", text: $apr, prompt: Text("3.75"))
                                 .keyboardType(.decimalPad)
                                 .frame(width: 80)
                                 .multilineTextAlignment(.trailing)
@@ -331,6 +456,19 @@ struct EditAccountView: View {
                     }
                 }
 
+                // Amortization Schedule link
+                if accountType == .loan,
+                   (account.apr ?? 0) > 0,
+                   (account.monthlyPaymentAmount ?? 0) > 0 {
+                    Section {
+                        NavigationLink {
+                            LoanAmortizationView(account: account)
+                        } label: {
+                            Label("Amortization Schedule", systemImage: "chart.line.downtrend.xyaxis")
+                        }
+                    }
+                }
+
                 // Bank Details
                 Section("Bank Details (Optional)") {
                     TextField("Institution Name", text: $institutionName)
@@ -344,7 +482,38 @@ struct EditAccountView: View {
                         }
                         .accessibilityLabel("Last four digits of account number")
                 }
-                
+
+                // Linked Cards (for receipt auto-matching)
+                Section {
+                    if let cards = account.linkedCards, !cards.isEmpty {
+                        ForEach(cards.sorted(by: { $0.createdDate < $1.createdDate })) { card in
+                            LinkedCardRow(card: card)
+                        }
+                        .onDelete { indexSet in
+                            deleteLinkedCards(at: indexSet)
+                        }
+                    }
+
+                    Button {
+                        if embedInNavigationStack {
+                            // Sheet/portrait mode — present locally
+                            showingAddCard = true
+                        } else {
+                            // Zone 3 mode — route through NavigationService so Add Card
+                            // replaces the account as a proper second layer in Zone 3.
+                            withAnimation(FLOAnimation.quick) {
+                                NavigationService.shared.selectedDetail = .addLinkedCard(accountId: account.id)
+                            }
+                        }
+                    } label: {
+                        Label("Add Card", systemImage: "plus.circle")
+                    }
+                } header: {
+                    Text("Linked Cards")
+                } footer: {
+                    Text("Add cards associated with this account. Receipts showing matching card numbers will auto-select this account.")
+                }
+
                 // Toggles
                 Section {
                     Toggle("Primary Account", isOn: $isPrimary)
@@ -353,8 +522,10 @@ struct EditAccountView: View {
                         .accessibilityHint("Inactive accounts stop tracking transactions")
                     Toggle("Show on Dashboard", isOn: $showOnDashboard)
                         .accessibilityHint("When disabled, this account won't appear on the main dashboard")
+                    Toggle("Include in Transactions", isOn: $includeInTransactions)
+                        .accessibilityHint("When disabled, this account won't appear in the scanner or transaction account pickers")
                 } footer: {
-                    Text("Hidden accounts are still tracked but won't appear on the dashboard summary")
+                    Text("Hidden accounts are still tracked but won't appear on the dashboard. Excluded accounts won't show in the scanner or transaction forms.")
                 }
                 
                 // Notes
@@ -429,9 +600,27 @@ struct EditAccountView: View {
                         .accessibilityHint("Double tap to disconnect the linked bank account")
                     }
                 }
+
+                // Delete Account
+                Section {
+                    Button(role: .destructive) {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        Label("Delete Account", systemImage: "trash")
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                    .accessibilityLabel("Delete account")
+                    .accessibilityHint("Double tap to permanently delete this account")
+                }
             }
+            #if os(macOS) || targetEnvironment(macCatalyst)
+            .formStyle(.grouped)
+            #endif
+            .scrollContentBackground(.hidden)
             .navigationTitle("Edit Account")
+            #if !os(macOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 // Single keyboard Done button for all numberPad/decimalPad fields
                 ToolbarItemGroup(placement: .keyboard) {
@@ -449,12 +638,12 @@ struct EditAccountView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         HapticService.play(.light)
-                        dismiss()
+                        performDismiss()
                     }
                     .accessibilityLabel("Cancel")
                     .accessibilityHint("Double tap to discard changes")
                 }
-                
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         saveChanges()
@@ -468,10 +657,83 @@ struct EditAccountView: View {
             .onAppear {
                 // v1.0: Announce screen
                 AccessibilityAnnouncement.screenChanged("Edit Account: \(account.name)")
+                // v3.14: A newly-appeared editor is clean. Reset the guard in
+                // case the previous editor left it set (e.g. user discarded).
+                NavigationService.shared.hasUnsavedChanges = false
+            }
+            .onDisappear {
+                // v3.14: When this editor goes away — via save, discard, or
+                // any other tear-down — the guard should be off so the next
+                // editor starts from a clean slate.
+                NavigationService.shared.hasUnsavedChanges = false
+            }
+            .onChange(of: isDirty) { _, newDirty in
+                // v3.14: Push dirty state up to the navigation guard. The
+                // `requestDetailNavigation` helper reads this to decide
+                // whether to route through the confirmation prompt.
+                NavigationService.shared.hasUnsavedChanges = newDirty
             }
             .sheet(isPresented: $showingReconciliation) {
                 ReconcileAccountView(account: account)
             }
+            .sheet(isPresented: $showingAddCard) {
+                AddLinkedCardSheet(account: account)
+            }
+            .alert("Delete Account", isPresented: $showingDeleteConfirmation) {
+                Button("Cancel", role: .cancel) {
+                    HapticService.play(.light)
+                }
+                Button("Delete", role: .destructive) {
+                    deleteAccount()
+                }
+            } message: {
+                Text("Are you sure you want to delete \(account.name)? This action cannot be undone.")
+            }
+
+        if embedInNavigationStack {
+            NavigationStack { formContent }
+                .floMacSheetFrame()
+        } else {
+            formContent
+        }
+    }
+
+    private func deleteLinkedCards(at offsets: IndexSet) {
+        let sorted = (account.linkedCards ?? []).sorted(by: { $0.createdDate < $1.createdDate })
+        for index in offsets {
+            let card = sorted[index]
+            modelContext.delete(card)
+        }
+        try? modelContext.save()
+    }
+
+    private func performDismiss() {
+        if let onCancel {
+            onCancel()
+        } else {
+            dismiss()
+        }
+    }
+
+    private func performSavedDismiss() {
+        if let onSaved {
+            onSaved()
+        } else {
+            dismiss()
+        }
+    }
+
+    private func deleteAccount() {
+        let name = account.name
+        HapticService.play(.heavy)
+        do {
+            try AccountBalanceService.shared.safelyDeleteAccount(account, context: modelContext)
+            HapticService.play(.success)
+            AccessibilityAnnouncement.announce("\(name) deleted")
+            performSavedDismiss()
+        } catch {
+            print("Failed to delete account: \(error)")
+            HapticService.play(.error)
         }
     }
     
@@ -559,6 +821,7 @@ struct EditAccountView: View {
         account.isPrimary = isPrimary
         account.isActive = isActive
         account.showOnDashboard = showOnDashboard
+        account.includeInTransactions = includeInTransactions
         account.notes = notes
         // Auto-negate for liability accounts (credit cards, loans)
         // Users enter the amount owed as a positive number; we store it as negative
@@ -615,7 +878,7 @@ struct EditAccountView: View {
             try modelContext.save()
             HapticService.play(.success)
             AccessibilityAnnouncement.announce("Account updated successfully")
-            dismiss()
+            performSavedDismiss()
         } catch {
             print("Failed to save account changes: \(error)")
             HapticService.play(.error)

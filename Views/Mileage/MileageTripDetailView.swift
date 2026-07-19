@@ -1,8 +1,32 @@
 //  MileageTripDetailView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.1 - Dynamic Type verification: lineLimit + minimumScaleFactor on all text
+//  Version 3.5 - Catalyst picker style · Suppress Picker .needsReview warning
 //  Copyright 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.4 - Picker warning fix:
+//  ✅ FIXED: Hide classificationSection entirely while trip.purpose == .needsReview.
+//           Previously, the section's Purpose Picker bound to a .needsReview
+//           selection that had no matching tag (selectablePurposes excludes
+//           .needsReview), spamming the console with "selection invalid,
+//           undefined results" warnings every render. Banner is now the sole
+//           classification UI for .needsReview trips; the toggle+picker section
+//           reappears for fine-tuning once the trip has a real purpose.
+//
+//  CHANGES v3.3 - Classify Banner:
+//  ✅ ADDED: classifyBanner section at the top of the Form, visible only when
+//           trip.purpose == .needsReview. Three large action buttons —
+//           Business / Personal / Commute — each call the model's classifyAs…
+//           helpers in one tap and animate the banner out. Resolves the
+//           "user doesn't know how to clear Needs Review" friction.
+//  ✅ ADDED: classifyChoice(label:icon:tint:action:) helper for the three CTAs.
+//  ✅ NOTE: The existing toggle + picker stay below for fine-tuning the purpose
+//           after the initial classification.
+//
+//  CHANGES v3.2 - Toggle bug fix (Build 10 launch):
+//  ✅ FIXED: Toggling "Business Trip" ON for a .needsReview trip now promotes
+//           the purpose to .other so deductionAmount calculates. Toggling OFF
+//           on a .needsReview trip sets purpose to .personal.
 //
 //  CHANGES v3.1 - Dynamic Type Verification:
 //  ✅ FIXED: AnimatedDetailRow label text missing lineLimit + minimumScaleFactor
@@ -69,14 +93,38 @@ struct MileageTripDetailView: View {
     
     var body: some View {
         Form {
-            mapSection
-            classificationSection
-            vehicleSection
-            detailsSection
-            routeSection
-            notesSection
-            auditTrailSection
-            deleteSection
+            // One-tap classification banner — only shown when trip needs review.
+            // Resolves the "I don't know how to clear Needs Review" friction by
+            // surfacing the three valid choices as primary buttons instead of
+            // burying them in the toggle/picker below.
+            //
+            // While the banner is shown, classificationSection is HIDDEN. The
+            // section's Purpose Picker uses `selectablePurposes` (which excludes
+            // .needsReview), so binding it while the trip is .needsReview
+            // produces SwiftUI's "selection invalid, undefined results" warning.
+            // The banner is the authoritative classification UI in that state;
+            // once the user picks Business/Personal/Commute, the banner
+            // disappears and classificationSection reappears for fine-tuning.
+            if trip.purpose == .needsReview {
+                classifyBanner
+                mapSection
+                // classificationSection intentionally omitted while .needsReview
+                vehicleSection
+                detailsSection
+                routeSection
+                notesSection
+                auditTrailSection
+                deleteSection
+            } else {
+                mapSection
+                classificationSection
+                vehicleSection
+                detailsSection
+                routeSection
+                notesSection
+                auditTrailSection
+                deleteSection
+            }
         }
         .navigationTitle("Trip Details")
         .navigationBarTitleDisplayMode(.inline)
@@ -135,8 +183,102 @@ struct MileageTripDetailView: View {
         }
     }
     
+    // MARK: - Classify Banner (Needs Review)
+
+    /// One-tap classification block shown at the top of the form when the trip
+    /// is still `.needsReview`. Each button promotes the trip to a real purpose
+    /// in one shot — no need to find the toggle or scroll to the picker.
+    private var classifyBanner: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                        .accessibilityHidden(true)
+                    Text("What kind of trip was this?")
+                        .font(.headline)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .accessibilityAddTraits(.isHeader)
+                }
+
+                Text("Pick one to clear the review flag. You can refine the purpose below afterwards.")
+                    .font(.caption)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.8)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 8) {
+                    classifyChoice(
+                        label: "Business",
+                        icon: "briefcase.fill",
+                        tint: Color.brandPrimary
+                    ) {
+                        withAnimation(FLOAnimation.standard) {
+                            trip.classifyAsBusiness(purpose: .other)
+                        }
+                        HapticService.play(.success)
+                        AccessibilityAnnouncement.announce("Classified as business trip")
+                    }
+
+                    classifyChoice(
+                        label: "Personal",
+                        icon: "person.fill",
+                        tint: .gray
+                    ) {
+                        withAnimation(FLOAnimation.standard) {
+                            trip.classifyAsPersonal()
+                        }
+                        HapticService.play(.success)
+                        AccessibilityAnnouncement.announce("Classified as personal trip")
+                    }
+
+                    classifyChoice(
+                        label: "Commute",
+                        icon: "house.fill",
+                        tint: .orange
+                    ) {
+                        withAnimation(FLOAnimation.standard) {
+                            trip.classifyAsCommute()
+                        }
+                        HapticService.play(.success)
+                        AccessibilityAnnouncement.announce("Classified as commute, not deductible")
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .listRowBackground(Color.orange.opacity(0.08))
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
+    /// Renders one of the three classify buttons. Uses .borderedProminent so the
+    /// CTA reads as an action, not a label.
+    private func classifyChoice(
+        label: String,
+        icon: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.title3)
+                Text(label)
+                    .font(.caption.bold())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(tint)
+        .accessibilityLabel("Classify as \(label.lowercased()) trip")
+    }
+
     // MARK: - Classification Section
-    
+
     private var classificationSection: some View {
         Section {
             HStack {
@@ -154,8 +296,12 @@ struct MileageTripDetailView: View {
                                     businessToggleScale = 1.0
                                 }
                             }
-                            if trip.purpose == .commute {
+                            if trip.purpose == .commute || trip.purpose == .needsReview {
                                 trip.purpose = .other
+                            }
+                        } else {
+                            if trip.purpose == .needsReview {
+                                trip.purpose = .personal
                             }
                         }
                         AccessibilityAnnouncement.announce(newValue ? "Marked as business trip, tax deductible" : "Marked as personal trip, not deductible")
@@ -170,7 +316,7 @@ struct MileageTripDetailView: View {
                         .tag(purpose)
                 }
             }
-            #if os(macOS)
+            #if os(macOS) || targetEnvironment(macCatalyst)
             .pickerStyle(.menu)
             #else
             .pickerStyle(.navigationLink)

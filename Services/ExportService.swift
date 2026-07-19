@@ -1,8 +1,14 @@
 //  ExportService.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.4 — Transfer Exclusion Fix
+//  Version 3.5 — Tip + Split Group columns
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.5:
+//  ✅ CSV header gained "Tip" and "Split Group" columns (after Merchant)
+//  ✅ Tip column shows the tip portion already included in Amount, blank if none
+//  ✅ Split Group column emits the splitGroupId UUID for both halves of a split,
+//     allowing spreadsheets to GROUP/SUM split-pair transactions back together.
 //
 //  CHANGES v3.4 — Transfer Exclusion:
 //  ✅ FIXED: filterTransactions() now excludes isTransfer transactions
@@ -111,7 +117,7 @@ final class ExportService {
     /// - Returns: Result with CSV string or error
     ///
     /// **CSV Format:**
-    /// - Header: Date,Description,Category,Amount,Type,Finance Type,Merchant
+    /// - Header: Date,Description,Category,Amount,Tip,Type,Finance Type,Merchant,Split Group
     /// - RFC 4180 compliant escaping (handles commas, quotes, newlines)
     /// - Locale-aware number formatting
     /// - Sorted by date descending (newest first)
@@ -138,7 +144,7 @@ final class ExportService {
         csvLines.reserveCapacity(sorted.count + (includeTotals ? 5 : 2))
         
         // Header
-        csvLines.append("Date,Description,Category,Amount,Type,Finance Type,Merchant")
+        csvLines.append("Date,Description,Category,Amount,Tip,Type,Finance Type,Merchant,Split Group")
 
         // Add disclaimer rows
         csvLines.append("# DISCLAIMER: This report is for informational purposes only.")
@@ -175,8 +181,19 @@ final class ExportService {
             
             let type = transaction.isIncome ? "Income" : "Expense"
             let financeTypeString = transaction.financeType == .business ? "Business" : "Personal"
-            
-            let line = "\(dateString),\(description),\(category),\(amountString),\(type),\(financeTypeString),\(merchant)"
+
+            // Tip column: blank if nil, signed-consistent with amount otherwise
+            let tipString: String = {
+                guard let tip = transaction.tipAmount, tip > 0 else { return "" }
+                let signed = transaction.isIncome ? abs(tip) : -abs(tip)
+                return amountFormatter.string(from: NSNumber(value: signed)) ??
+                       String(format: "%.2f", signed)
+            }()
+
+            // Split Group column: UUID string for both halves of a split, blank otherwise
+            let splitGroupString = transaction.splitGroupId?.uuidString ?? ""
+
+            let line = "\(dateString),\(description),\(category),\(amountString),\(tipString),\(type),\(financeTypeString),\(merchant),\(splitGroupString)"
             csvLines.append(line)
             
             // Track totals (amounts are now signed)
@@ -198,9 +215,9 @@ final class ExportService {
                            String(format: "%.2f", netValue)
             
             csvLines.append("")  // Blank line
-            csvLines.append(",,Total Income,\(incomeString),,,,")
-            csvLines.append(",,Total Expenses,-\(expensesString),,,,")
-            csvLines.append(",,Net Income,\(netString),,,,")
+            csvLines.append(",,Total Income,\(incomeString),,,,,")
+            csvLines.append(",,Total Expenses,-\(expensesString),,,,,")
+            csvLines.append(",,Net Income,\(netString),,,,,")
         }
         
         return .success(csvLines.joined(separator: "\n"))

@@ -200,7 +200,7 @@ struct MonthComparisonCard: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(data.label)
                 .font(.headline)
-                 .foregroundStyle(Color.brandPrimaryText)
+                 .foregroundStyle(Color.brandPrimary)
             
             Divider()
             

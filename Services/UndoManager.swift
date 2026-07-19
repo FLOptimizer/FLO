@@ -238,7 +238,7 @@ struct UndoToastView: View {
                     Text("Undo")
                         .font(.subheadline)
                         .fontWeight(.bold)
-                        .foregroundStyle(Color.brandPrimaryText)
+                        .foregroundStyle(Color.brandPrimary)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(Color.floSystemBackground)

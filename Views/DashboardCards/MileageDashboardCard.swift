@@ -28,6 +28,7 @@
 
 import SwiftUI
 import SwiftData
+import FLODesignSystem
 
 struct MileageDashboardCard: View {
     @Environment(\.modelContext) private var modelContext
@@ -506,7 +507,7 @@ private struct CurrentTripCard: View {
                 Text(String(format: "%.1f mi", distance))
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                     .foregroundStyle(Color.brandPrimaryText)
+                     .foregroundStyle(Color.brandPrimary)
                     .contentTransition(.numericText())
             }
             

@@ -1,8 +1,13 @@
 //  EditRecurringView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 2.5 - Penny-Up Currency Input
+//  Version 2.7 - Auto-Detect Sent from Transactions
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v2.6 - Mark as Sent:
+//  ✅ ADDED: "Mark as Sent" section visible directly in edit form (Zone 3 on macOS)
+//  ✅ ADDED: Shows sent status for current month with amount and date
+//  ✅ ADDED: Suggested payment day display when payment history exists
 //
 //  CHANGES v2.5 - Penny-Up Currency Input:
 //  ✅ REPLACED: Old TextField + String amount with CurrencyInputField component
@@ -47,6 +52,7 @@ struct EditRecurringView: View {
     @State private var financeType: Transaction.FinanceType
     @State private var isActive: Bool
     @State private var showingDeleteAlert = false
+    @State private var showingMarkSent = false
     @State private var viewAppeared = false
     
     // Haptic Generators
@@ -74,8 +80,19 @@ struct EditRecurringView: View {
                 startDateSection
                 endDateSection
                 categorySection
+
+                if !isIncome {
+                    markAsSentSection
+                        .opacity(viewAppeared ? 1 : 0.001)
+                        .offset(y: viewAppeared ? 0 : 10)
+                        .animation(FLOAnimation.standard.delay(0.32), value: viewAppeared)
+                }
+
                 statusSection
                 deleteSection
+            }
+            .sheet(isPresented: $showingMarkSent) {
+                MarkRecurringSentView(recurring: recurringTransaction)
             }
             .navigationTitle("Edit Recurring")
             .navigationBarTitleDisplayMode(.inline)
@@ -285,8 +302,196 @@ struct EditRecurringView: View {
         .animation(FLOAnimation.standard.delay(0.4), value: viewAppeared)
     }
     
+    // MARK: - Mark as Sent Section (v2.6)
+
+    private var markAsSentSection: some View {
+        Section {
+            if let log = currentMonthPaymentLog {
+                // Manually logged via payment log — show detailed status
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(Color.incomeGreen)
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Sent for \(currentMonthName)")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+
+                        Text("\(log.amountSent.formatted(.currency(code: "USD"))) on \(log.dateSentDisplay)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+
+                    Spacer()
+                }
+
+                // "Not Paid Yet" button to undo manual mark
+                Button(role: .destructive) {
+                    HapticService.play(.medium)
+                    markAsNotSent()
+                } label: {
+                    Label("Not Paid Yet", systemImage: "arrow.uturn.backward")
+                        .font(.subheadline)
+                }
+                .accessibilityLabel("Mark as not paid yet for \(currentMonthName)")
+                .accessibilityHint("Removes the payment record and reverses the transaction")
+            } else if let txn = currentMonthTransaction {
+                // Auto-engine already created a transaction — show auto-detected status
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(Color.incomeGreen)
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Recorded for \(currentMonthName)")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+
+                        Text("\(abs(txn.amount).formatted(.currency(code: "USD"))) on \(txn.date.formatted(date: .abbreviated, time: .omitted))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+
+                    Spacer()
+
+                    Text("Auto")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.secondary.opacity(0.6), in: Capsule())
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Automatically recorded for \(currentMonthName)")
+
+                // "Not Paid Yet" button to undo auto-detected status
+                Button(role: .destructive) {
+                    HapticService.play(.medium)
+                    markAsNotSent()
+                } label: {
+                    Label("Not Paid Yet", systemImage: "arrow.uturn.backward")
+                        .font(.subheadline)
+                }
+                .accessibilityLabel("Mark as not paid yet for \(currentMonthName)")
+                .accessibilityHint("Removes the auto-recorded transaction and marks as pending")
+            } else {
+                // Not sent — show button
+                Button {
+                    HapticService.play(.medium)
+                    showingMarkSent = true
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "paperplane.fill")
+                            .font(.title3)
+                            .foregroundStyle(Color.brandPrimary)
+                            .accessibilityHidden(true)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Mark as Sent")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(Color.brandPrimary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+
+                            Text("Record this month's payment")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .accessibilityHidden(true)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Mark as sent for \(currentMonthName)")
+                .accessibilityHint("Opens form to record this month's payment")
+            }
+
+            // Suggested day from payment history
+            if let suggestedDay = recurringTransaction.suggestedDayOfMonth {
+                HStack(spacing: 6) {
+                    Image(systemName: "lightbulb.fill")
+                        .font(.caption)
+                        .foregroundStyle(Color.brandPrimary)
+                        .accessibilityHidden(true)
+
+                    Text("Typically paid around the \(ordinalDay(suggestedDay))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+            }
+        } header: {
+            Text("This Month's Payment")
+        }
+    }
+
+    private var currentMonthPaymentLog: RecurringPaymentLog? {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month], from: Date())
+        guard let currentMonth = calendar.date(from: components) else { return nil }
+        return recurringTransaction.paymentLog(for: currentMonth)
+    }
+
+    /// Auto-engine transaction for this month (when no payment log exists yet)
+    private var currentMonthTransaction: Transaction? {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month], from: Date())
+        guard let currentMonth = calendar.date(from: components) else { return nil }
+        return recurringTransaction.transactionForMonth(currentMonth)
+    }
+
+    private var currentMonthName: String {
+        DateFormatter.fullMonth.string(from: Date())
+    }
+
+    private func ordinalDay(_ day: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .ordinal
+        return formatter.string(from: NSNumber(value: day)) ?? "\(day)"
+    }
+
+    /// Mark this recurring as "not paid yet" — removes auto-created transaction + payment log
+    private func markAsNotSent() {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month], from: Date())
+        guard let currentMonth = calendar.date(from: components) else { return }
+
+        recurringTransaction.markAsNotSent(for: currentMonth, in: context)
+
+        do {
+            try context.save()
+            HapticService.play(.success)
+        } catch {
+            HapticService.play(.error)
+            #if DEBUG
+            print("[EditRecurring] Failed to save markAsNotSent: \(error)")
+            #endif
+        }
+    }
+
     // MARK: - Computed Properties
-    
+
     private var filteredCategories: [Category] {
         categories.filter { $0.isIncome == isIncome }
     }

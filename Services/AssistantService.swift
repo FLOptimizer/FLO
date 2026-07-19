@@ -139,7 +139,7 @@ final class AssistantService {
             // Business expenses
             TemplatePattern(
                 dataType: .expenses,
-                keywords: [("business", 3), ("expense", 3), ("spending", 2), ("cost", 1)],
+                keywords: [("business", 3), ("expense", 2), ("spending", 2), ("cost", 1)],
                 responseBuilder: { dp, fmt in
                     let tax = dp.getTaxSnapshot(year: 2025)
                     let categories = dp.getCategoryBreakdown(year: 2025).filter { $0.isBusiness }
@@ -273,6 +273,28 @@ final class AssistantService {
                 }
             ),
 
+            // Category-specific spending ("how much did I spend on groceries?")
+            TemplatePattern(
+                dataType: .categories,
+                keywords: [("spend on", 4), ("spent on", 4), ("spending on", 4), ("how much on", 3), ("how much for", 3), ("cost of", 3), ("cost for", 3)],
+                responseBuilder: { dp, fmt in
+                    let categories = dp.getCategoryBreakdown(year: 2025)
+                    if categories.isEmpty { return "No categorized expenses found for 2025." }
+                    var r = "Here's your 2025 spending by category — find your specific one below:\n\n"
+                    for cat in categories.prefix(20) {
+                        let biz = cat.isBusiness ? " (Business)" : ""
+                        let ded = cat.isTaxDeductible ? " ✓" : ""
+                        r += "- **\(cat.categoryName):** \(fmt.string(from: NSNumber(value: cat.amount)) ?? "$0")\(biz)\(ded)\n"
+                    }
+                    if categories.count > 20 { r += "\n*...and \(categories.count - 20) more categories*" }
+                    r += "\n*✓ = Tax deductible. Ask \"break down by category\" for a full sorted list.*"
+                    return r
+                },
+                contextUpdater: { ctx, dp in
+                    ctx.showCategories(items: dp.getCategoryBreakdown(year: 2025), isIncome: false)
+                }
+            ),
+
             // Account balances
             TemplatePattern(
                 dataType: .accounts,
@@ -294,7 +316,7 @@ final class AssistantService {
             // General expenses
             TemplatePattern(
                 dataType: .expenses,
-                keywords: [("expense", 3), ("spent", 2), ("spending", 2), ("cost", 1), ("personal", 2)],
+                keywords: [("expense", 3), ("spent", 2), ("spending", 2), ("spend", 2), ("cost", 1), ("personal", 2), ("how much", 1), ("total", 1)],
                 responseBuilder: { dp, fmt in
                     let tax = dp.getTaxSnapshot(year: 2025)
                     let total = tax.totalBusinessExpenses + tax.totalPersonalExpenses
@@ -363,6 +385,25 @@ final class AssistantService {
                     return r
                 },
                 contextUpdater: { ctx, dp in ctx.showTransactions(items: dp.getRecentTransactions(limit: 10), title: "Recent Transactions") }
+            ),
+
+            // Transfers between accounts
+            TemplatePattern(
+                dataType: .transactions,
+                keywords: [("transfer", 4), ("transfers", 4), ("move money", 4), ("moved money", 4), ("between accounts", 5), ("internal transfer", 5)],
+                responseBuilder: { dp, fmt in
+                    let transfers = dp.getTransfers(limit: 15)
+                    if transfers.isEmpty { return "No transfers found in FLO.\n\n*Transfers are account-to-account movements (e.g., checking → savings) and are excluded from income & expense calculations.*" }
+                    var r = "Your recent account transfers (\(transfers.count) shown):\n\n"
+                    for t in transfers {
+                        r += "- **\(t.merchant)** — \(fmt.string(from: NSNumber(value: t.amount)) ?? "$0") (\(t.date))\n"
+                    }
+                    r += "\n*Transfers between your own accounts are excluded from income & expense calculations to avoid double-counting.*"
+                    return r
+                },
+                contextUpdater: { ctx, dp in
+                    ctx.showTransactions(items: dp.getTransfers(limit: 15), title: "Recent Transfers")
+                }
             ),
 
             TemplatePattern(
@@ -829,17 +870,20 @@ final class AssistantService {
         context?.reset()
 
         return "I can help you with questions about your:\n\n" +
-               "- **Income & Expenses** — totals, breakdowns, monthly trends\n" +
-               "- **Tax Estimates** — SE tax, deductions, Schedule C, tax rate\n" +
+               "- **Income & Expenses** — totals, breakdowns by category, monthly trends\n" +
+               "- **Category Spending** — \"how much did I spend on groceries?\"\n" +
+               "- **Tax Estimates** — SE tax, deductions, Schedule C, tax rate, quarterly payments\n" +
                "- **Mileage** — trips, deductions, IRS rates\n" +
                "- **Budgets** — spending vs planned, which are over limit\n" +
                "- **Transactions** — biggest expenses, recent activity, merchant spending\n" +
+               "- **Transfers** — account-to-account movements\n" +
                "- **Invoices** — unpaid, overdue, amounts owed\n" +
                "- **Debt & Payoff** — accounts, interest rates, payoff strategy, HELOC guidance\n" +
                "- **Affordability** — can I afford a car/house, debt-to-income\n" +
-               "- **Cash Flow** — savings rate, monthly surplus, trends\n" +
+               "- **Cash Flow & Savings** — savings rate, monthly surplus, income goals\n" +
+               "- **Net Worth** — total account balances across all accounts\n" +
                "- **Financial Health** — overall health check with score\n\n" +
-               "Try: \"Give me a financial health check\" or \"Can I afford a new car?\""
+               "Try: \"Give me a financial health check\" or \"How much did I spend on food?\""
     }
 
     // MARK: - Context Update (for Foundation Models path)

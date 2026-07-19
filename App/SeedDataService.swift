@@ -907,6 +907,14 @@ class SeedDataService {
         let tripData: [(startLat: Double, startLon: Double, endLat: Double, endLon: Double,
                         startAddr: String, endAddr: String, miles: Double, purpose: TripPurpose,
                         isBusiness: Bool, daysAgo: Int)] = [
+            // ── Unreviewed trips (top of Recent Trips list — drives the
+            //    "N NEED REVIEW" header pill and orange row badges introduced in v3.0).
+            //    Realistic mix: an unclear route the auto-tracker grabbed but the user
+            //    hasn't classified yet.
+            (homeOffice.lat,  homeOffice.lon,  30.2655,         -97.7510,        "Home Office", "Mozart's Coffee",    2.1, .needsReview,    false,  1),
+            (homeOffice.lat,  homeOffice.lon,  30.2849,         -97.7341,        "Home Office", "South Congress Ave", 6.8, .needsReview,    false,  3),
+            (30.2849,         -97.7341,        homeOffice.lat,  homeOffice.lon,  "South Congress Ave", "Home Office", 6.8, .needsReview,    false,  4),
+            // ── Business (already classified)
             (homeOffice.lat,  homeOffice.lon,  clientSite1.lat, clientSite1.lon, "Home Office", "TechStart Inc HQ",  12.4, .clientVisit,    true,  2),
             (clientSite1.lat, clientSite1.lon, homeOffice.lat,  homeOffice.lon,  "TechStart Inc HQ", "Home Office", 12.4, .clientVisit,    true,  2),
             (homeOffice.lat,  homeOffice.lon,  clientSite2.lat, clientSite2.lon, "Home Office", "Downtown Austin",    8.2, .clientMeeting,  true,  5),
@@ -916,7 +924,7 @@ class SeedDataService {
             (homeOffice.lat,  homeOffice.lon,  airport.lat,     airport.lon,     "Home Office", "Austin Airport",    18.7, .businessMeeting,true, 10),
             (airport.lat,     airport.lon,     homeOffice.lat,  homeOffice.lon,  "Austin Airport", "Home Office",   25.4, .businessMeeting,true, 12),
             (homeOffice.lat,  homeOffice.lon,  bank.lat,        bank.lon,        "Home Office", "Chase Bank",         3.4, .bankingErrand,  true, 20),
-            // Personal
+            // ── Personal
             (homeOffice.lat,  homeOffice.lon,  30.2900,         -97.7600,        "Home", "Grocery Store",            3.2, .personal,       false, 8),
             (30.2900,         -97.7600,        homeOffice.lat,  homeOffice.lon,  "Grocery Store", "Home",            3.2, .personal,       false, 8),
             (homeOffice.lat,  homeOffice.lon,  30.3000,         -97.7300,        "Home", "Gym",                      4.1, .personal,       false, 15),
@@ -932,6 +940,10 @@ class SeedDataService {
             let duration  = (trip.miles / 30.0) * 3600
             let endTime   = startTime.addingTimeInterval(duration)
 
+            // needsReview trips simulate GPS auto-tracking that hasn't been classified
+            // yet — so they should look like auto-tracked trips, not manual entries.
+            let isAutoTracked = (trip.purpose == .needsReview)
+
             let mileageTrip = MileageTrip(
                 startDate:       startTime,
                 endDate:         endTime,
@@ -945,7 +957,7 @@ class SeedDataService {
                 purpose:         trip.purpose,
                 isBusinessTrip:  trip.isBusiness,
                 notes:           trip.isBusiness ? "Business travel" : nil,
-                isManualEntry:   true
+                isManualEntry:   !isAutoTracked
             )
 
             context.insert(mileageTrip)

@@ -725,6 +725,84 @@ class TaxCalculationService {
     }
 }
 
+// MARK: - Multi-Business Tax Calculation (v1.7)
+
+extension TaxCalculationService {
+
+    /// Calculate tax estimate for a specific business
+    /// Filters transactions to those belonging to the given business's accounts
+    func calculateEstimate(
+        for business: BusinessProfile,
+        allTransactions: [Transaction],
+        context: ModelContext
+    ) -> TaxEstimate {
+        let businessTransactions = allTransactions.filter {
+            $0.account?.businessProfile?.id == business.id
+        }
+        let settings = business.taxSettings ?? TaxSettings()
+        return calculateYearToDateEstimate(
+            transactions: businessTransactions,
+            settings: settings,
+            forceRefresh: true
+        )
+    }
+
+    /// Calculate combined tax estimate across all businesses
+    /// Each business contributes its income; combined for bracket calculation
+    func calculateCombinedEstimate(
+        businesses: [BusinessProfile],
+        allTransactions: [Transaction],
+        context: ModelContext
+    ) -> TaxEstimate {
+        // For combined view, use the primary business's tax settings
+        // (filing status, state, etc. are personal — not per-business)
+        let primarySettings = businesses.first(where: { $0.isPrimary })?.taxSettings
+            ?? businesses.first?.taxSettings
+            ?? TaxSettings()
+
+        // Include all business transactions (exclude personal)
+        let businessTransactions = allTransactions.filter {
+            $0.account?.businessProfile != nil
+        }
+
+        return calculateYearToDateEstimate(
+            transactions: businessTransactions,
+            settings: primarySettings,
+            forceRefresh: true
+        )
+    }
+
+    /// Per-business income/expense summary (lightweight, no full tax calc)
+    struct BusinessFinancialSummary {
+        let business: BusinessProfile
+        let grossIncome: Double
+        let totalExpenses: Double
+        let netIncome: Double
+        let transactionCount: Int
+    }
+
+    /// Generate financial summaries for each business
+    func businessSummaries(
+        businesses: [BusinessProfile],
+        allTransactions: [Transaction]
+    ) -> [BusinessFinancialSummary] {
+        businesses.map { business in
+            let txns = allTransactions.filter {
+                !$0.isTransfer && $0.account?.businessProfile?.id == business.id
+            }
+            let income = txns.filter { $0.isIncome }.reduce(0.0) { $0 + $1.amount }
+            let expenses = txns.filter { !$0.isIncome }.reduce(0.0) { $0 + $1.amount }
+            return BusinessFinancialSummary(
+                business: business,
+                grossIncome: income,
+                totalExpenses: expenses,
+                netIncome: income - expenses,
+                transactionCount: txns.count
+            )
+        }
+    }
+}
+
 // MARK: - Double Formatting Extensions (v1.0 — unchanged)
 
 extension Double {

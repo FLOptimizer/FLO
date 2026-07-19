@@ -277,7 +277,7 @@ extension View {
                 
                 Text("$1,234.56")
                     .font(.title)
-                    .foregroundStyle(Color.brandPrimaryText)
+                    .foregroundStyle(Color.brandPrimary)
                 
                 Button("Share Invoice") {
                     showingShare = true

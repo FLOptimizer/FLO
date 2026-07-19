@@ -1,8 +1,47 @@
 //  MileageTrackingMainView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.3 - Brand Color Pass
+//  Version 3.6.1 - iPad Zone 3 routing + non-blocking setup prompt
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.6.1 - §7 follow-up:
+//  ✅ FIXED (iPad §7): The setup prompt still auto-presented on iPad despite the
+//           v3.6 gate. Cause: inside a NavigationSplitView the content column's
+//           horizontalSizeClass is unsettled when `.task` runs (briefly .compact
+//           during initial layout), so the size-class check passed. Re-gated on
+//           device idiom (autoPresentSetupAllowed) which is stable from launch.
+//
+//  CHANGES v3.6 - iPad NavigationSplitView fixes:
+//  ✅ FIXED (iPad §5): Tapping a Recent Trips row presented a modal sheet that
+//           covered the split view, leaving the Zone 3 detail pane empty. On
+//           regular width (iPad/macOS) the tap now routes the right pane to the
+//           trip's detail via `requestDetailNavigation`; compact width keeps the
+//           sheet. (The default right pane is also now MileageSummaryPanel.)
+//  ✅ FIXED (iPad §7): The "Mileage Setup" prompt auto-presented on first visit
+//           and blocked the screen with no obvious dismissal. It no longer
+//           auto-presents on regular width — the user opens it explicitly from
+//           the Setup GPS Tracking action. Compact width is unchanged.
+//
+//  CHANGES v3.5 - Limited-mode banner is less aggressive:
+//  ✅ FIXED: The full "Limited Tracking Mode" banner now appears only ONCE (the
+//           first visit while in limited mode), then collapses to the compact
+//           "Limited Mode" pill on every subsequent visit — instead of dominating
+//           the screen every time. Persisted via "limitedModeBannerSeen". Explicit
+//           dismissal (the X) still collapses it immediately within a visit.
+//
+//  CHANGES v3.4 - Recent Trips UX (option A from launch UX review):
+//  ✅ RENAMED: "View All Trips" → "Review All Trips" (action-oriented label)
+//  ✅ ADDED: Recent Trips section header now appends "N NEED REVIEW" pill in orange
+//           when unreviewed trips exist (count across ALL trips, not just shown 5)
+//  ✅ ADDED: TripRowCompact now renders a NEEDS REVIEW orange pill next to purpose
+//           name for trips with purpose == .needsReview
+//  ✅ ADDED: TripRowCompact disclosure chevron — signals row is tappable
+//  ✅ FIXED: Recent Trips rows are now actually tappable. Tap opens
+//           MileageTripDetailView in a sheet. Resolves "user doesn't know how
+//           to convert personal → business trip" — previously rows looked
+//           passive and required navigating through View All → list → detail.
+//  ✅ A11Y: Row hint reads "Tap to classify…" for needsReview, "Tap to edit
+//           trip" otherwise. Header announces "N need review" via combined elem.
 //
 //  CHANGES v3.3 - Brand Color Pass:
 //  ✅ FIXED: .green → Color.incomeGreen for deduction/money values
@@ -106,19 +145,40 @@ struct MileageTrackingMainView: View {
 /// Only allows manual trip entry and viewing trip history.
 struct FreeTierMileageView: View {
     @Environment(\.modelContext) private var modelContext
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @StateObject private var subscriptionManager = SubscriptionManager.shared
-    
+
     @Query(sort: \MileageTrip.startDate, order: .reverse) private var allTrips: [MileageTrip]
-    
+
     @State private var showingManualEntry = false
     @State private var showingAllTrips = false
+    /// Tapped trip — presented as a detail sheet from the Recent Trips list.
+    @State private var selectedTrip: MileageTrip?
     @State private var showingSubscriptionView = false
     @State private var viewAppeared = false
+
+    /// On regular width (iPad/macOS) trip taps route to the Zone 3 detail pane.
+    /// On compact width (iPhone) they present the trip as a sheet, as before.
+    private var routesToDetailPane: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return horizontalSizeClass == .regular
+        #endif
+    }
     
     private var recentTrips: [MileageTrip] {
         Array(allTrips.prefix(5))
     }
-    
+
+    /// Count of trips waiting for the user to classify as business/personal/commute.
+    /// Counted across ALL trips (not just the 5 shown) so the user sees the true backlog.
+    private var unreviewedTripCount: Int {
+        allTrips.filter { $0.purpose == .needsReview }.count
+    }
+
     private var thisMonthStats: MonthStats {
         let calendar = Calendar.current
         let now = Date()
@@ -208,14 +268,25 @@ struct FreeTierMileageView: View {
                     .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                 } else {
                     ForEach(Array(recentTrips.enumerated()), id: \.element.id) { index, trip in
-                        TripRowCompact(trip: trip)
-                            .opacity(viewAppeared ? 1 : 0.001)
-                            .offset(x: viewAppeared ? 0 : 20)
-                            .animation(
-                                .spring(response: 0.4, dampingFraction: 0.8)
-                                .delay(0.35 + Double(index) * 0.05),
-                                value: viewAppeared
-                            )
+                        Button {
+                            HapticService.play(.light)
+                            if routesToDetailPane {
+                                NavigationService.shared.requestDetailNavigation(to: .mileageTripDetail(id: trip.id))
+                            } else {
+                                selectedTrip = trip
+                            }
+                        } label: {
+                            TripRowCompact(trip: trip)
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Rectangle())
+                        .opacity(viewAppeared ? 1 : 0.001)
+                        .offset(x: viewAppeared ? 0 : 20)
+                        .animation(
+                            .spring(response: 0.4, dampingFraction: 0.8)
+                            .delay(0.35 + Double(index) * 0.05),
+                            value: viewAppeared
+                        )
                     }
 
                     Button {
@@ -223,7 +294,7 @@ struct FreeTierMileageView: View {
                         showingAllTrips = true
                     } label: {
                         HStack {
-                            Text("View All Trips")
+                            Text("Review All Trips")
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
                             Spacer()
@@ -233,12 +304,25 @@ struct FreeTierMileageView: View {
                                 .accessibilityHidden(true)
                         }
                     }
-                    .accessibilityHint("Opens full trip history list")
+                    .accessibilityHint(unreviewedTripCount > 0
+                        ? "Review and classify trips. \(unreviewedTripCount) need attention."
+                        : "Opens full trip history to review or edit trips")
                     .opacity(viewAppeared ? 1 : 0.001)
                     .animation(FLOAnimation.standard.delay(0.5), value: viewAppeared)
                 }
             } header: {
-                Text("Recent Trips")
+                HStack(spacing: 6) {
+                    Text("Recent Trips")
+                    if unreviewedTripCount > 0 {
+                        Text("·")
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
+                        Text("\(unreviewedTripCount) NEED\(unreviewedTripCount == 1 ? "S" : "") REVIEW")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.orange)
+                    }
+                }
+                .accessibilityElement(children: .combine)
             }
 
             // MARK: - Actions (Manual Only)
@@ -325,6 +409,11 @@ struct FreeTierMileageView: View {
                 MileageTripListView()
             }
         }
+        .sheet(item: $selectedTrip) { trip in
+            NavigationStack {
+                MileageTripDetailView(trip: trip)
+            }
+        }
         .sheet(isPresented: $showingSubscriptionView) {
             SubscriptionView()
         }
@@ -338,9 +427,37 @@ struct FreeTierMileageView: View {
 struct PremiumMileageTrackingView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @StateObject private var trackingService = MileageTrackingService.shared
     @StateObject private var setupLocationManager = MileageSetupLocationManager()
-    
+
+    /// On regular width (iPad/macOS) trip taps route to the Zone 3 detail pane.
+    /// On compact width (iPhone) they present the trip as a sheet, as before.
+    private var routesToDetailPane: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return horizontalSizeClass == .regular
+        #endif
+    }
+
+    /// Whether the GPS-setup prompt may auto-present on first visit.
+    /// v3.6.1: Gated on device idiom, NOT horizontalSizeClass. Inside a
+    /// NavigationSplitView the content column's size class is unsettled at
+    /// `.task` time (it can briefly report .compact during initial layout),
+    /// so the size-class gate let the modal slip through on iPad. Idiom is
+    /// stable from launch: auto-present only on iPhone; on iPad/macOS the user
+    /// opens setup explicitly via the "Set Up GPS Tracking" action.
+    private var autoPresentSetupAllowed: Bool {
+        #if canImport(UIKit)
+        return UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        return false
+        #endif
+    }
+
     @Query(sort: \MileageTrip.startDate, order: .reverse) private var allTrips: [MileageTrip]
     
     // User preferences
@@ -348,10 +465,16 @@ struct PremiumMileageTrackingView: View {
     @AppStorage("mileageTripNotifications") private var tripNotifications = true
     @AppStorage("mileageSetupCompleted") private var mileageSetupCompleted = false
     @AppStorage("limitedModeBannerDismissed") private var limitedModeBannerDismissed = false
+    // v3.5: Set once the user has seen the full banner (on leaving the screen while in
+    // limited mode). Thereafter the compact pill is shown by default instead of the
+    // full banner re-dominating the screen on every visit.
+    @AppStorage("limitedModeBannerSeen") private var limitedModeBannerSeen = false
     
     // Sheet states
     @State private var showingDiagnostics = false
     @State private var showingAllTrips = false
+    /// Tapped trip — presented as a detail sheet from the Recent Trips list.
+    @State private var selectedTrip: MileageTrip?
     @State private var showingManualEntry = false
     @State private var showingRecoveryAlert = false
     @State private var showingForceEndConfirmation = false
@@ -362,7 +485,13 @@ struct PremiumMileageTrackingView: View {
     private var recentTrips: [MileageTrip] {
         Array(allTrips.prefix(5))
     }
-    
+
+    /// Count of trips waiting for the user to classify as business/personal/commute.
+    /// Counted across ALL trips (not just the 5 shown) so the user sees the true backlog.
+    private var unreviewedTripCount: Int {
+        allTrips.filter { $0.purpose == .needsReview }.count
+    }
+
     private var thisMonthStats: MonthStats {
         let calendar = Calendar.current
         let now = Date()
@@ -402,8 +531,8 @@ struct PremiumMileageTrackingView: View {
     
     var body: some View {
         List {
-            // MARK: - Limited Mode Banner
-            if isLimitedMode && !limitedModeBannerDismissed && mileageSetupCompleted {
+            // MARK: - Limited Mode Banner — full banner only on the first visit
+            if isLimitedMode && !limitedModeBannerDismissed && !limitedModeBannerSeen && mileageSetupCompleted {
                 Section {
                     LimitedModeBanner(
                         hasNoPermission: hasNoPermission,
@@ -425,8 +554,8 @@ struct PremiumMileageTrackingView: View {
                 }
             }
             
-            // MARK: - Compact Limited Mode Indicator
-            if isLimitedMode && limitedModeBannerDismissed && mileageSetupCompleted {
+            // MARK: - Compact Limited Mode Indicator (default once the banner's been seen)
+            if isLimitedMode && (limitedModeBannerDismissed || limitedModeBannerSeen) && mileageSetupCompleted {
                 Section {
                     CompactLimitedModeIndicator(
                         hasNoPermission: hasNoPermission,
@@ -546,14 +675,25 @@ struct PremiumMileageTrackingView: View {
                     .animation(FLOAnimation.standard.delay(0.35), value: viewAppeared)
                 } else {
                     ForEach(Array(recentTrips.enumerated()), id: \.element.id) { index, trip in
-                        TripRowCompact(trip: trip)
-                            .opacity(viewAppeared ? 1 : 0.001)
-                            .offset(x: viewAppeared ? 0 : 20)
-                            .animation(
-                                .spring(response: 0.4, dampingFraction: 0.8)
-                                .delay(0.35 + Double(index) * 0.05),
-                                value: viewAppeared
-                            )
+                        Button {
+                            HapticService.play(.light)
+                            if routesToDetailPane {
+                                NavigationService.shared.requestDetailNavigation(to: .mileageTripDetail(id: trip.id))
+                            } else {
+                                selectedTrip = trip
+                            }
+                        } label: {
+                            TripRowCompact(trip: trip)
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Rectangle())
+                        .opacity(viewAppeared ? 1 : 0.001)
+                        .offset(x: viewAppeared ? 0 : 20)
+                        .animation(
+                            .spring(response: 0.4, dampingFraction: 0.8)
+                            .delay(0.35 + Double(index) * 0.05),
+                            value: viewAppeared
+                        )
                     }
                     
                     Button {
@@ -561,7 +701,7 @@ struct PremiumMileageTrackingView: View {
                         showingAllTrips = true
                     } label: {
                         HStack {
-                            Text("View All Trips")
+                            Text("Review All Trips")
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
                             Spacer()
@@ -571,12 +711,25 @@ struct PremiumMileageTrackingView: View {
                                 .accessibilityHidden(true)
                         }
                     }
-                    .accessibilityHint("Opens full trip history list")
+                    .accessibilityHint(unreviewedTripCount > 0
+                        ? "Review and classify trips. \(unreviewedTripCount) need attention."
+                        : "Opens full trip history to review or edit trips")
                     .opacity(viewAppeared ? 1 : 0.001)
                     .animation(FLOAnimation.standard.delay(0.5), value: viewAppeared)
                 }
             } header: {
-                Text("Recent Trips")
+                HStack(spacing: 6) {
+                    Text("Recent Trips")
+                    if unreviewedTripCount > 0 {
+                        Text("·")
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
+                        Text("\(unreviewedTripCount) NEED\(unreviewedTripCount == 1 ? "S" : "") REVIEW")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.orange)
+                    }
+                }
+                .accessibilityElement(children: .combine)
             }
             
             // MARK: - Quick Actions
@@ -706,8 +859,13 @@ struct PremiumMileageTrackingView: View {
             // Inject ModelContext
             trackingService.inject(modelContext: modelContext)
 
-            // Check if setup is needed
-            if needsSetup {
+            // Check if setup is needed.
+            // v3.6 (§7): Don't auto-present on iPad/macOS — the modal blocked
+            // the first-visit screen with no obvious dismissal. v3.6.1: gate on
+            // device idiom (autoPresentSetupAllowed), not size class, which is
+            // unsettled at .task time inside a NavigationSplitView column.
+            // The user opens setup explicitly from the Setup GPS Tracking action.
+            if needsSetup && autoPresentSetupAllowed {
                 try? await Task.sleep(for: .milliseconds(500))
                 showingSetupPrompt = true
             }
@@ -745,6 +903,13 @@ struct PremiumMileageTrackingView: View {
         .onChange(of: scenePhase) { oldPhase, newPhase in
             handleScenePhaseChange(from: oldPhase, to: newPhase)
         }
+        .onDisappear {
+            // v3.5: After the user has seen the full limited-mode banner once,
+            // default to the compact pill on subsequent visits.
+            if isLimitedMode {
+                limitedModeBannerSeen = true
+            }
+        }
         .onChange(of: trackingService.trackingPermissionStatus) { _, newStatus in
             if newStatus == .authorizedAlways {
                 limitedModeBannerDismissed = false
@@ -774,6 +939,11 @@ struct PremiumMileageTrackingView: View {
         .sheet(isPresented: $showingAllTrips) {
             NavigationStack {
                 MileageTripListView()
+            }
+        }
+        .sheet(item: $selectedTrip) { trip in
+            NavigationStack {
+                MileageTripDetailView(trip: trip)
             }
         }
         .sheet(isPresented: $showingManualEntry) {
@@ -1035,7 +1205,7 @@ struct TrackingButtonStyle: ButtonStyle {
             .foregroundStyle(.white)
             .frame(width: 70)
             .padding(.vertical, 10)
-            .background(isTracking ? Color.brandPrimary : Color.gray.opacity(0.4))
+            .background(isTracking ? Color.brandPrimary : Color.floCardBorder)
             .cornerRadius(8)
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
@@ -1436,35 +1606,55 @@ struct StatBox: View {
 
 struct TripRowCompact: View {
     let trip: MileageTrip
-    
+
     @State private var appeared = false
-    
+
+    private var needsReview: Bool {
+        trip.purpose == .needsReview
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: trip.purpose.icon)
                 .font(.title3)
-                .foregroundStyle(trip.isBusinessTrip ? Color.brandPrimary : .gray)
+                .foregroundStyle(iconColor)
                 .frame(width: 28)
                 .scaleEffect(appeared ? 1 : 0.5)
                 .animation(.spring(response: 0.4, dampingFraction: 0.6), value: appeared)
                 .accessibilityHidden(true)
-            
+
             VStack(alignment: .leading, spacing: 2) {
-                Text(trip.purpose.displayName)
-                    .font(.subheadline)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .fontWeight(.medium)
-                
+                HStack(spacing: 6) {
+                    Text(trip.purpose.displayName)
+                        .font(.subheadline)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .fontWeight(.medium)
+
+                    // NEEDS REVIEW pill — surfaces unclassified trips at a glance
+                    if needsReview {
+                        Text("NEEDS REVIEW")
+                            .font(.system(size: 9, weight: .bold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.orange)
+                            .clipShape(Capsule())
+                            .accessibilityHidden(true)
+                    }
+                }
+
                 Text(trip.startDate, style: .date)
                     .font(.caption)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                     .foregroundStyle(.secondary)
             }
-            
+
             Spacer()
-            
+
             VStack(alignment: .trailing, spacing: 2) {
                 Text(String(format: "%.1f mi", trip.distanceMiles))
                     .font(.subheadline)
@@ -1472,7 +1662,7 @@ struct TripRowCompact: View {
                     .minimumScaleFactor(0.7)
                     .fontWeight(.semibold)
                     .contentTransition(.numericText())
-                
+
                 if trip.isBusinessTrip {
                     Text(String(format: "$%.2f", trip.deductionAmount))
                         .font(.caption)
@@ -1481,6 +1671,12 @@ struct TripRowCompact: View {
                         .foregroundStyle(Color.incomeGreen)
                 }
             }
+
+            // Disclosure chevron — signals row is tappable to open detail editor
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
         }
         .padding(.vertical, 2)
         .onAppear {
@@ -1488,15 +1684,23 @@ struct TripRowCompact: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(tripRowAccessibilityLabel)
+        .accessibilityHint(needsReview ? "Tap to classify as business or personal" : "Tap to edit trip")
     }
-    
+
+    private var iconColor: Color {
+        if needsReview { return .orange }
+        return trip.isBusinessTrip ? Color.brandPrimary : .gray
+    }
+
     private var tripRowAccessibilityLabel: String {
         var parts = [
             trip.purpose.displayName,
             AccessibilityFormatters.spokenDate(trip.startDate),
             String(format: "%.1f miles", trip.distanceMiles)
         ]
-        if trip.isBusinessTrip {
+        if needsReview {
+            parts.insert("Needs review", at: 0)
+        } else if trip.isBusinessTrip {
             parts.append("deduction \(AccessibilityFormatters.spokenCurrency(trip.deductionAmount))")
         } else {
             parts.append("personal trip")

@@ -206,5 +206,64 @@ extension MerchantCategoryMapping {
         ("LinkedIn", "Marketing & Advertising", ["linkedin"]),
         ("Facebook", "Marketing & Advertising", ["facebook", "meta"]),
         ("Google Ads", "Marketing & Advertising", ["google ads", "googleads"]),
+
+        // Restaurants (additional)
+        ("Chick-fil-A", "Meals & Entertainment", ["chick-fil-a", "chickfila", "chick fil a"]),
+        ("Taco Bell", "Meals & Entertainment", ["taco bell", "tacobell"]),
+        ("Wendy's", "Meals & Entertainment", ["wendys", "wendy's"]),
+        ("Domino's", "Meals & Entertainment", ["dominos", "domino's"]),
+        ("DoorDash", "Meals & Entertainment", ["doordash"]),
+        ("Uber Eats", "Meals & Entertainment", ["uber eats", "ubereats"]),
+        ("GrubHub", "Meals & Entertainment", ["grubhub"]),
+
+        // Gas & Auto (additional)
+        ("Costco Gas", "Auto Expenses", ["costco gas", "costco fuel"]),
+        ("Wawa", "Auto Expenses", ["wawa"]),
+        ("QuikTrip", "Auto Expenses", ["quiktrip", "qt "]),
+        ("Circle K", "Auto Expenses", ["circle k", "circlek"]),
+
+        // Utilities & Telecom
+        ("AT&T", "Utilities", ["at&t", "att "]),
+        ("Verizon", "Utilities", ["verizon"]),
+        ("T-Mobile", "Utilities", ["t-mobile", "tmobile"]),
+        ("Comcast", "Utilities", ["comcast", "xfinity"]),
+        ("Duke Energy", "Utilities", ["duke energy"]),
+
+        // Insurance
+        ("State Farm", "Insurance", ["state farm", "statefarm"]),
+        ("Geico", "Insurance", ["geico"]),
+        ("Progressive", "Insurance", ["progressive"]),
+        ("Allstate", "Insurance", ["allstate"]),
+
+        // Travel
+        ("Delta Airlines", "Travel", ["delta air", "delta.com"]),
+        ("United Airlines", "Travel", ["united air", "united.com"]),
+        ("Southwest Airlines", "Travel", ["southwest air", "southwest.com"]),
+        ("Marriott", "Travel", ["marriott"]),
+        ("Hilton", "Travel", ["hilton"]),
+        ("Airbnb", "Travel", ["airbnb"]),
+        ("Uber", "Travel", ["uber trip", "uber ride"]),
+        ("Lyft", "Travel", ["lyft"]),
+
+        // Retail
+        ("Walmart", "Supplies", ["walmart"]),
+        ("Target", "Supplies", ["target"]),
+        ("Costco", "Supplies", ["costco"]),
+        ("Sam's Club", "Supplies", ["sams club", "sam's club"]),
+        ("Dollar General", "Supplies", ["dollar general"]),
+
+        // Subscriptions
+        ("Spotify", "Software & Subscriptions", ["spotify"]),
+        ("Netflix", "Software & Subscriptions", ["netflix"]),
+        ("Hulu", "Software & Subscriptions", ["hulu"]),
+        ("Dropbox", "Software & Subscriptions", ["dropbox"]),
+        ("Slack", "Software & Subscriptions", ["slack"]),
+        ("GitHub", "Software & Subscriptions", ["github"]),
+
+        // Professional Services
+        ("QuickBooks", "Professional Services", ["quickbooks", "intuit"]),
+        ("Canva", "Professional Services", ["canva"]),
+        ("Squarespace", "Professional Services", ["squarespace"]),
+        ("GoDaddy", "Professional Services", ["godaddy"]),
     ]
 }

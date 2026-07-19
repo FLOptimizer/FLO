@@ -1,6 +1,14 @@
 //  FLODemoConfiguration.swift
 //  FLO - Finance Ledger Optimizer
 //
+//  Version 1.1 - Simulator-only data-safety guard
+//
+//  CHANGES v1.1:
+//  ⛔️ CRITICAL: configure() now hard-refuses on a physical device
+//     (#if !targetEnvironment(simulator) → return). Demo mode wipes + seeds
+//     data; running the scheme on a real device destroyed real CloudKit data.
+//     Also disabled the DEMO_* launch args in FLO.xcscheme by default.
+//
 //  Version 1.0 - Demo Video Recording Support
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
@@ -72,7 +80,19 @@ struct DemoConfiguration {
     /// Applies all demo configuration based on launch arguments.
     static func configure(context: ModelContext) async {
         guard isDemoMode else { return }
-        
+
+        // ⛔️ DATA-SAFETY GUARD (added after running this scheme on a physical
+        // device wiped real, CloudKit-synced user data):
+        // Demo mode performs DESTRUCTIVE operations — resetAllData() + seed.
+        // It must NEVER run on a real device, which holds real user data.
+        // `#if DEBUG` is insufficient: a device Debug build from Xcode is still
+        // DEBUG. Gate on the simulator at compile time so the destructive path
+        // does not even exist in a device binary.
+        #if !targetEnvironment(simulator)
+        print("⛔️ DEMO_MODE requested on a physical device — refusing for data safety.")
+        return
+        #endif
+
         print("🎬 ═══════════════════════════════════════")
         print("🎬 DEMO MODE ACTIVE — Configuring for video recording")
         print("🎬 ═══════════════════════════════════════")
@@ -112,6 +132,9 @@ struct DemoConfiguration {
         #if DEBUG
         await SeedDataService.shared.seedAllData(context: context)
         print("🎬 Demo data: SEEDED")
+        // Views that loaded before this async seed finished (e.g. the Dashboard's
+        // .task fetch) would otherwise show empty state until a manual toggle.
+        NotificationCenter.default.post(name: .demoDataSeeded, object: nil)
         #endif
         
         // 6. Handle subscription tier simulation

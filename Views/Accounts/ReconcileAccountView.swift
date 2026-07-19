@@ -15,6 +15,11 @@ struct ReconcileAccountView: View {
 
     let account: Account
 
+    // Zone 3 adaptive presentation — when false, omits NavigationStack wrapper.
+    var embedInNavigationStack: Bool = true
+    /// Zone 3 dismiss callback — called instead of SwiftUI `dismiss()` when set.
+    var onDismiss: (() -> Void)? = nil
+
     // MARK: - State
 
     @State private var actualBalance: Double = 0
@@ -45,47 +50,62 @@ struct ReconcileAccountView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
-            Form {
-                // Section 1: Balance Comparison
-                balanceComparisonSection
+        if embedInNavigationStack {
+            NavigationStack { formContent }
+        } else {
+            formContent
+        }
+    }
 
-                // Section 2: Set Actual Balance
-                setBalanceSection
+    @ViewBuilder
+    private var formContent: some View {
+        Form {
+            // Section 1: Balance Comparison
+            balanceComparisonSection
 
-                // Section 3: Starting Balance
-                startingBalanceSection
+            // Section 2: Set Actual Balance
+            setBalanceSection
 
-                // Section 4: Anchor History
-                anchorHistorySection
+            // Section 3: Starting Balance
+            startingBalanceSection
+
+            // Section 4: Anchor History
+            anchorHistorySection
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .navigationTitle("Reconcile Account")
+        #if !os(macOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Done") { performDismiss() }
             }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-            .navigationTitle("Reconcile Account")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+        }
+        .task {
+            loadAnchors()
+            // Pre-populate with current balance (absolute for liabilities)
+            actualBalance = abs(account.currentBalance)
+            startingBalance = abs(account.startingBalance)
+        }
+        .alert("Delete Anchor?", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                if let anchor = anchorToDelete {
+                    deleteAnchor(anchor)
                 }
             }
-            .task {
-                loadAnchors()
-                // Pre-populate with current balance (absolute for liabilities)
-                actualBalance = abs(account.currentBalance)
-                startingBalance = abs(account.startingBalance)
-            }
-            .alert("Delete Anchor?", isPresented: $showDeleteConfirmation) {
-                Button("Delete", role: .destructive) {
-                    if let anchor = anchorToDelete {
-                        deleteAnchor(anchor)
-                    }
-                }
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("This will remove this balance checkpoint. Your balance may change.")
-            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will remove this balance checkpoint. Your balance may change.")
+        }
+    }
+
+    private func performDismiss() {
+        if let onDismiss {
+            onDismiss()
+        } else {
+            dismiss()
         }
     }
 

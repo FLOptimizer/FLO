@@ -1,7 +1,7 @@
 //  AccountsView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 4.4 - CRITICAL: Safe account deletion (crash fix)
+//  Version 4.6 - Size-class-aware edit routing (Catalyst/iPad Zone 3) + Catalyst limit-reached sheet
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 //  CHANGES v4.4 - Crash Fix:
@@ -65,10 +65,14 @@
 
 import SwiftUI
 import SwiftData
+import FLODesignSystem
 
 struct AccountsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @Query(sort: \Account.name) private var accounts: [Account]
     
@@ -83,6 +87,7 @@ struct AccountsView: View {
     
     // MARK: - Plaid Link State (v3.3)
     @State private var showingPlaidLink = false
+    @State private var showingConnectedAccounts = false
     @State private var plaidLinkToken: String?
     @State private var isLoadingLinkToken = false
     @State private var plaidError: String?
@@ -149,6 +154,10 @@ struct AccountsView: View {
     private var canAddMoreAccounts: Bool {
         subscriptionManager.currentTier.canAddMore(current: accounts.count, limitType: .accounts)
     }
+
+    private var linkedAccounts: [Account] {
+        accounts.filter { $0.isLinked }
+    }
     
     // MARK: - Body
     
@@ -186,6 +195,9 @@ struct AccountsView: View {
             plaidConnectionSection
         }
         .scrollContentBackground(.hidden)
+        .refreshable {
+            await refreshFromPlaid()
+        }
         .navigationTitle("Accounts")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -200,6 +212,12 @@ struct AccountsView: View {
                 .accessibilityHint(canAddMoreAccounts ? "Double tap to create a new account" : "Account limit reached. Double tap to view upgrade options.")
             }
         }
+        // Add/Edit hosting is size-class-aware (works correctly on Mac Catalyst,
+        // whose window resizes between regular and compact). On regular width the
+        // row actions route to the Zone 3 detail pane via `editAccount` /
+        // `handleAddAccount` and never set the sheet state, so these sheets simply
+        // don't present there. On compact width they're the presentation path.
+        // (Previously gated `#if os(macOS)`, which is dead on Catalyst.)
         .sheet(isPresented: $showingAddAccount) {
             AddAccountView()
         }
@@ -221,7 +239,9 @@ struct AccountsView: View {
         .sheet(isPresented: $showingUpgradePrompt) {
             SubscriptionView()
         }
-        #if os(macOS)
+        // Catalyst: present the limit-reached UI as a sheet (Mac-native), not a
+        // full-screen cover. fullScreenCover is the iPhone path.
+        #if os(macOS) || targetEnvironment(macCatalyst)
         .sheet(isPresented: $showingLimitReached) {
             LimitReachedOverlay(
                 limitType: .accounts,
@@ -261,6 +281,19 @@ struct AccountsView: View {
             }
         }
         #endif
+        .sheet(isPresented: $showingConnectedAccounts) {
+            NavigationStack {
+                ConnectedAccountsListView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") {
+                                showingConnectedAccounts = false
+                            }
+                        }
+                    }
+            }
+            .floMacSheetFrame()
+        }
         .alert("Connection Error", isPresented: .init(
             get: { plaidError != nil },
             set: { if !$0 { plaidError = nil } }
@@ -299,6 +332,7 @@ struct AccountsView: View {
                             Text(formatCurrency(netWorth))
                                 .font(.title2)
                                 .fontWeight(.bold)
+                                .monospacedDigit()
                                 .foregroundStyle(netWorth >= 0 ? Color.brandPrimary : .red)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.5)
@@ -356,15 +390,14 @@ struct AccountsView: View {
                             }
                             
                             Text(formatCurrency(totalAssets))
-                                .font(.headline)
-                                .foregroundStyle(.green)
+                                .floCurrency(isPositive: true)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.5)
                                 .contentTransition(.numericText())
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
-                        .background(Color.green.opacity(0.1))
+                        .background(Color.incomeGreen.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         // v3.5: Assets card
                         .accessibilityElement(children: .ignore)
@@ -382,15 +415,14 @@ struct AccountsView: View {
                             }
                             
                             Text(formatCurrency(totalLiabilities))
-                                .font(.headline)
-                                .foregroundStyle(.red)
+                                .floCurrency(isPositive: false)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.5)
                                 .contentTransition(.numericText())
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
-                        .background(Color.red.opacity(0.1))
+                        .background(Color.expenseRed.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         // v3.5: Liabilities card
                         .accessibilityElement(children: .ignore)
@@ -410,15 +442,14 @@ struct AccountsView: View {
                             }
                             
                             Text(formatCurrency(totalAssets))
-                                .font(.headline)
-                                .foregroundStyle(.green)
+                                .floCurrency(isPositive: true)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.5)
                                 .contentTransition(.numericText())
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
-                        .background(Color.green.opacity(0.1))
+                        .background(Color.incomeGreen.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         // v3.5: Assets card
                         .accessibilityElement(children: .ignore)
@@ -436,15 +467,14 @@ struct AccountsView: View {
                             }
                             
                             Text(formatCurrency(totalLiabilities))
-                                .font(.headline)
-                                .foregroundStyle(.red)
+                                .floCurrency(isPositive: false)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.5)
                                 .contentTransition(.numericText())
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
-                        .background(Color.red.opacity(0.1))
+                        .background(Color.expenseRed.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         // v3.5: Liabilities card
                         .accessibilityElement(children: .ignore)
@@ -492,7 +522,7 @@ struct AccountsView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         HapticService.play(.light)
-                        accountToEdit = account
+                        editAccount(account)
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
@@ -506,7 +536,7 @@ struct AccountsView: View {
                         
                         Button {
                             HapticService.play(.light)
-                            accountToEdit = account
+                            editAccount(account)
                         } label: {
                             Label("Edit", systemImage: "pencil")
                         }
@@ -537,7 +567,7 @@ struct AccountsView: View {
                     }
                     // v3.5: Rotor actions for VoiceOver
                     .accessibilityAction(named: "Edit") {
-                        accountToEdit = account
+                        editAccount(account)
                     }
                     .accessibilityAction(named: "Delete") {
                         accountToDelete = account
@@ -561,7 +591,7 @@ struct AccountsView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
-                    .background(Color.secondary.opacity(0.12))
+                    .background(Color.floCardGlass)
                     .clipShape(Capsule())
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -587,7 +617,7 @@ struct AccountsView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         HapticService.play(.light)
-                        accountToEdit = account
+                        editAccount(account)
                     }
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
@@ -638,8 +668,7 @@ struct AccountsView: View {
                     .minimumScaleFactor(0.7)
                 
                 Button {
-                    HapticService.play(.medium)
-                    showingAddAccount = true
+                    handleAddAccount()
                 } label: {
                     Label("Add Your First Account", systemImage: "plus.circle.fill")
                         .font(.headline)
@@ -818,7 +847,7 @@ struct AccountsView: View {
                     GeometryReader { geometry in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.gray.opacity(0.3).opacity(0.2))
+                                .fill(Color.floCardBorder)
                                 .frame(height: 8)
                             
                             RoundedRectangle(cornerRadius: 4)
@@ -850,7 +879,7 @@ struct AccountsView: View {
             } else {
                 HStack {
                     Image(systemName: "infinity")
-                         .foregroundStyle(Color.brandPrimaryText)
+                         .foregroundStyle(Color.brandPrimary)
                     
                     Text("Unlimited accounts")
                         .font(.subheadline)
@@ -913,13 +942,70 @@ struct AccountsView: View {
                         .foregroundStyle(.white)
                         .padding()
                         .background(Color.brandPrimary)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .cornerRadius(10)
                     }
                     .disabled(isLoadingLinkToken)
                     .accessibilityLabel(isLoadingLinkToken ? "Connecting to bank" : "Connect bank account")
                     .accessibilityHint("Double tap to link a bank account via Plaid for automatic transaction import")
+
+                    if !linkedAccounts.isEmpty {
+                        Button {
+                            HapticService.play(.medium)
+                            Task { await refreshFromPlaid() }
+                        } label: {
+                            HStack(spacing: 12) {
+                                if plaidService.isSyncing {
+                                    ProgressView()
+                                } else {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                        .foregroundStyle(Color.brandPrimary)
+                                }
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(plaidService.isSyncing ? "Refreshing..." : "Refresh Balances & Transactions")
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                    Text(lastPlaidRefreshText)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                }
+                                Spacer()
+                            }
+                        }
+                        .disabled(plaidService.isSyncing)
+                        .accessibilityLabel(plaidService.isSyncing ? "Refreshing bank data" : "Refresh balances and transactions")
+                        .accessibilityHint("Double tap to fetch the latest balances and transactions from your linked banks")
+
+                        Button {
+                            HapticService.play(.light)
+                            showingConnectedAccounts = true
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "building.columns")
+                                    .foregroundStyle(Color.brandPrimary)
+                                Text("Manage Connections")
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                                Spacer()
+                                Text("\(linkedAccounts.count)")
+                                    .foregroundStyle(.secondary)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .accessibilityLabel("Manage bank connections. \(linkedAccounts.count) linked.")
+                        .accessibilityHint("Double tap to view linked banks, sync status, and disconnect accounts")
+                    }
                 } header: {
                     Text("Bank Connection")
+                } footer: {
+                    if !linkedAccounts.isEmpty {
+                        Text("You can also pull down on this screen to refresh.")
+                    }
                 }
             } else {
                 // Non-Pro users: Upgrade teaser
@@ -964,93 +1050,83 @@ struct AccountsView: View {
         }
     }
     
+    // MARK: - Plaid Refresh
+
+    private var lastPlaidRefreshText: String {
+        if let lastSync = plaidService.lastSyncDate {
+            let formatter = RelativeDateTimeFormatter()
+            formatter.unitsStyle = .abbreviated
+            return "Last updated \(formatter.localizedString(for: lastSync, relativeTo: Date()))"
+        }
+        return "Fetch the latest balances and transactions"
+    }
+
+    /// Fetches current balances and new transactions for all linked accounts.
+    /// No-ops for non-Pro tiers or when nothing is linked, so pull-to-refresh
+    /// is safe to leave enabled for everyone.
+    private func refreshFromPlaid() async {
+        guard subscriptionManager.currentTier.hasPlaidIntegration,
+              !linkedAccounts.isEmpty,
+              !plaidService.isSyncing else { return }
+
+        do {
+            try await plaidService.updateAccountBalances(modelContext: modelContext)
+            _ = try await plaidService.syncAllTransactions(modelContext: modelContext)
+            HapticService.play(.success)
+        } catch {
+            plaidError = error.localizedDescription
+            HapticService.play(.error)
+        }
+    }
+
     // MARK: - Helper Methods
-    
+
     private func handleAddAccount() {
         HapticService.play(.medium)
-        if canAddMoreAccounts {
-            showingAddAccount = true
-        } else {
+        guard canAddMoreAccounts else {
             showingLimitReached = true
+            return
+        }
+        // Build 10 Phase 2: Route to Zone 3 detail column on regular width
+        // (macOS, iPad landscape). Fall back to sheet on compact (iPhone, iPad portrait).
+        if useZone3 {
+            withAnimation(FLOAnimation.quick) {
+                NavigationService.shared.selectedDetail = .addAccount
+            }
+        } else {
+            showingAddAccount = true
+        }
+    }
+
+    /// Whether detail add/edit should be hosted in the Zone 3 detail pane instead
+    /// of a sheet. True on a wide split-view layout — native macOS always, and
+    /// iPad landscape / a wide Mac Catalyst window via the size class — false on
+    /// compact (iPhone, narrow Catalyst window). Replaces the old hard
+    /// `#if os(macOS)` switch, which was dead on Catalyst.
+    private var useZone3: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return horizontalSizeClass == .regular
+        #endif
+    }
+
+    /// Edit an account: route to the Zone 3 detail pane on a wide layout, else
+    /// present the edit sheet. `requestDetailNavigation` lets an in-progress
+    /// Zone 3 edit prompt for confirmation before being discarded.
+    private func editAccount(_ account: Account) {
+        if useZone3 {
+            NavigationService.shared.requestDetailNavigation(to: .accountDetail(id: account.id))
+        } else {
+            accountToEdit = account
         }
     }
     
     private func deleteAccount(_ account: Account) {
         let name = account.name
-        let accountId = account.id
         HapticService.play(.heavy)
-        
-        // MARK: Pre-nullify all relationships before delete
-        // SwiftData's .nullify cascade only covers relationships with declared inverses
-        // (Account.transactions → Transaction.account, Account.budgets → Budget.account).
-        // Transfer, RecurringTransfer, and RecurringTransaction reference Account WITHOUT
-        // an inverse, so SwiftData leaves dangling PersistentIdentifiers that crash on fault.
-        // Pre-nullifying also prevents @Query observer race conditions during post-save vacuum.
-        
-        // 1. Transactions (has inverse, but pre-nullify to prevent @Query race)
-        if let transactions = account.transactions {
-            for transaction in transactions {
-                transaction.account = nil
-            }
-        }
-        
-        // 2. Budgets (has inverse, but pre-nullify for same reason)
-        if let budgets = account.budgets {
-            for budget in budgets {
-                budget.account = nil
-            }
-        }
-        
-        // 3. Transfers — NO inverse on Account, SwiftData won't cascade
         do {
-            let transferDescriptor = FetchDescriptor<Transfer>()
-            let allTransfers = try modelContext.fetch(transferDescriptor)
-            for transfer in allTransfers {
-                if transfer.fromAccount?.id == accountId {
-                    transfer.fromAccount = nil
-                }
-                if transfer.toAccount?.id == accountId {
-                    transfer.toAccount = nil
-                }
-            }
-        } catch {
-            print("⚠️ Failed to clean Transfer references: \(error)")
-        }
-        
-        // 4. RecurringTransfers — NO inverse on Account, SwiftData won't cascade
-        do {
-            let recurringTransferDescriptor = FetchDescriptor<RecurringTransfer>()
-            let allRecurringTransfers = try modelContext.fetch(recurringTransferDescriptor)
-            for rt in allRecurringTransfers {
-                if rt.fromAccount?.id == accountId {
-                    rt.fromAccount = nil
-                }
-                if rt.toAccount?.id == accountId {
-                    rt.toAccount = nil
-                }
-            }
-        } catch {
-            print("⚠️ Failed to clean RecurringTransfer references: \(error)")
-        }
-        
-        // 5. RecurringTransactions — @Relationship but no declared inverse on Account
-        do {
-            let recurringDescriptor = FetchDescriptor<RecurringTransaction>()
-            let allRecurring = try modelContext.fetch(recurringDescriptor)
-            for recurring in allRecurring {
-                if recurring.account?.id == accountId {
-                    recurring.account = nil
-                }
-            }
-        } catch {
-            print("⚠️ Failed to clean RecurringTransaction references: \(error)")
-        }
-        
-        // 6. Now safe to delete — all references point to nil
-        modelContext.delete(account)
-        
-        do {
-            try modelContext.save()
+            try AccountBalanceService.shared.safelyDeleteAccount(account, context: modelContext)
             HapticService.play(.success)
             AccessibilityAnnouncement.announce("\(name) deleted")
         } catch {
@@ -1168,26 +1244,14 @@ struct AccountsView: View {
                     metadata.publicToken,
                     metadata: metadata
                 )
-                
+
                 await MainActor.run {
-                    // Create FLO accounts for each linked bank account
-                    for linkedAccount in metadata.accounts {
-                        let account = Account(
-                            name: linkedAccount.name,
-                            accountType: mapPlaidAccountType(linkedAccount.type, subtype: linkedAccount.subtype),
-                            lastFourDigits: linkedAccount.mask,
-                            institutionName: metadata.institutionName
-                        )
-                        account.isLinked = true
-                        account.plaidItemId = itemId
-                        account.plaidAccountId = linkedAccount.id
-                        account.plaidStatus = .connected
-                        
-                        modelContext.insert(account)
-                    }
-                    
                     do {
-                        try modelContext.save()
+                        try plaidService.createAccounts(
+                            from: metadata,
+                            itemId: itemId,
+                            modelContext: modelContext
+                        )
                         HapticService.play(.success)
                         print("✅ Bank connected: \(metadata.institutionName ?? "Unknown") — \(metadata.accounts.count) account(s) created")
                     } catch {
@@ -1220,25 +1284,6 @@ struct AccountsView: View {
                     print("❌ Plaid error: \(error)")
                 }
             }
-        }
-    }
-    
-    /// Maps Plaid account type strings to FLO AccountType
-    private func mapPlaidAccountType(_ type: String, subtype: String?) -> AccountType {
-        switch type {
-        case "depository":
-            if subtype == "savings" {
-                return .savings
-            }
-            return .checking
-        case "credit":
-            return .creditCard
-        case "investment":
-            return .investment
-        case "loan":
-            return .loan
-        default:
-            return .other
         }
     }
     

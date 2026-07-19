@@ -38,6 +38,24 @@ struct TaxSummaryPanel: View {
                         deadlineSection(deadline: deadline, days: days)
                     }
 
+                    // Per-business breakdown (v2.0)
+                    NavigationLink(value: NavigationDestination.taxBusinessSummary) {
+                        HStack {
+                            Image(systemName: "chart.bar.doc.horizontal.fill")
+                                .foregroundStyle(.orange)
+                            Text("Per-Business Tax Summary")
+                                .font(.subheadline.weight(.medium))
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding()
+                        .background(Color.floSystemGroupedSectionBackground)
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(.plain)
+
                     // Effective rates
                     ratesSection(estimate)
 
@@ -86,7 +104,7 @@ struct TaxSummaryPanel: View {
             }
         }
         .padding()
-        .background(Color.floSecondarySystemBackground)
+        .background(Color.floSystemGroupedSectionBackground)
         .cornerRadius(12)
     }
 
@@ -129,7 +147,7 @@ struct TaxSummaryPanel: View {
             }
         }
         .padding()
-        .background(Color.floSecondarySystemBackground)
+        .background(Color.floSystemGroupedSectionBackground)
         .cornerRadius(12)
     }
 
@@ -165,7 +183,7 @@ struct TaxSummaryPanel: View {
             }
         }
         .padding()
-        .background(Color.floSecondarySystemBackground)
+        .background(Color.floSystemGroupedSectionBackground)
         .cornerRadius(12)
     }
 
@@ -186,7 +204,7 @@ struct TaxSummaryPanel: View {
             }
         }
         .padding()
-        .background(Color.floSecondarySystemBackground)
+        .background(Color.floSystemGroupedSectionBackground)
         .cornerRadius(12)
     }
 
@@ -228,7 +246,7 @@ struct TaxSummaryPanel: View {
             )
         }
         .padding()
-        .background(Color.floSecondarySystemBackground)
+        .background(Color.floSystemGroupedSectionBackground)
         .cornerRadius(12)
     }
 

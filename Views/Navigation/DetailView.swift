@@ -15,11 +15,41 @@ struct DetailView: View {
     let destination: NavigationDestination?
     var selectedTab: AppTab = .dashboard
 
+    // v3.14: Observe the navigation service so the unsaved-changes confirmation
+    // dialog re-renders when an editor requests navigation while dirty.
+    @ObservedObject private var navigationService = NavigationService.shared
+
     var body: some View {
-        if let destination {
-            destinationView(for: destination)
-        } else {
-            summaryView(for: selectedTab)
+        Group {
+            if let destination {
+                destinationView(for: destination)
+            } else {
+                summaryView(for: selectedTab)
+            }
+        }
+        // v3.14: Unsaved-changes guard. When an editor in Zone 3 (e.g.
+        // EditAccountView) has `isDirty == true` and the sidebar requests a
+        // navigation via `requestDetailNavigation`, the service stores the
+        // target in `pendingUnsavedNavigation` instead of applying it. This
+        // dialog then surfaces — user picks Discard (apply pending) or Keep
+        // Editing (drop pending, stay put). Prevents silent loss of in-flight
+        // edits when the user clicks another entity in the sidebar.
+        .confirmationDialog(
+            "Discard changes?",
+            isPresented: Binding(
+                get: { navigationService.pendingUnsavedNavigation != nil },
+                set: { if !$0 { navigationService.cancelPendingUnsavedNavigation() } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Discard Changes", role: .destructive) {
+                navigationService.discardUnsavedAndNavigate()
+            }
+            Button("Keep Editing", role: .cancel) {
+                navigationService.cancelPendingUnsavedNavigation()
+            }
+        } message: {
+            Text("Your edits haven't been saved. If you leave now they'll be lost.")
         }
     }
 
@@ -44,6 +74,12 @@ struct DetailView: View {
             TaxSummaryPanel()
         case .settings:
             SettingsSummaryPanel()
+        case .debtAccelerator:
+            DebtSummaryPanel()
+        case .mileage:
+            MileageSummaryPanel()
+        case .reports:
+            ReportsSummaryPanel()
         default:
             GenericSummaryPanel(tab: tab)
         }
@@ -91,6 +127,14 @@ struct DetailView: View {
         case .recurringList:
             RecurringListView()
 
+        // Debt Accelerator
+        case .debtAcceleratorDashboard:
+            DebtAcceleratorDashboardView()
+        case .debtAcceleratorDetail(let id):
+            DebtPlanLookupView(id: id)
+        case .createDebtPlan:
+            CreateDebtPlanView()
+
         // Invoices
         case .invoiceList:
             InvoiceListView()
@@ -116,6 +160,36 @@ struct DetailView: View {
             AccountsView()
         case .accountDetail(let id):
             AccountLookupView(id: id)
+        case .addAccount:
+            AddAccountView(
+                embedInNavigationStack: false,
+                onCancel: {
+                    withAnimation(FLOAnimation.quick) {
+                        NavigationService.shared.selectedDetail = nil
+                    }
+                },
+                onSaved: { _ in
+                    withAnimation(FLOAnimation.quick) {
+                        NavigationService.shared.selectedDetail = nil
+                    }
+                }
+            )
+        case .addLinkedCard(let accountId):
+            AddLinkedCardLookupView(accountId: accountId)
+        case .reconcileAccount(let accountId):
+            ReconcileAccountLookupView(accountId: accountId)
+
+        // Invoice sub-layers
+        case .editInvoice(let id):
+            EditInvoiceLookupView(id: id)
+        case .markInvoiceSent(let id):
+            MarkInvoiceSentLookupView(id: id)
+        case .markInvoicePaid(let id):
+            MarkInvoicePaidLookupView(id: id)
+
+        // Client sub-layers
+        case .editClient(let id):
+            EditClientLookupView(id: id)
 
         // Receipts
         case .receiptScanner, .receiptStorage, .receiptMatchingQueue:
@@ -137,7 +211,7 @@ struct DetailView: View {
         case .settingsDataStorage:
             DataManagementView()
         case .settingsBusinessProfile:
-            BusinessProfileSettingsView()
+            BusinessListView()
         case .settingsEditProfile:
             AccountDetailsWrapper()
         case .settingsAbout:
@@ -164,6 +238,47 @@ struct DetailView: View {
         // Tax
         case .taxOverview, .taxDeductions:
             TaxSettingsView()
+        case .taxBusinessSummary:
+            BusinessTaxSummaryView()
+        case .taxDepreciationSchedule:
+            DepreciationScheduleView()
+        case .taxCarryforwardRegister:
+            CarryforwardRegisterView()
+        case .taxFilingChecklist:
+            FilingChecklistView()
+        case .taxYearEndClosing:
+            YearEndClosingView()
+        case .taxCPAExport:
+            TaxExportView()
+        case .taxJurisdictions:
+            JurisdictionManagementView()
+
+        // Tax — Phase 3
+        case .taxBasisAlerts:
+            BasisAlertsDashboardView()
+        case .taxEstimatedPayments:
+            EstimatedTaxDashboardView()
+        case .taxNAICSCodes:
+            NAICSCodeSuggestionView()
+        case .taxMultiYearComparison:
+            MultiYearComparisonView()
+
+        // Tax — Phase 4
+        case .taxPreparerChecklist:
+            PreparerChecklistView()
+
+        // Settings — Tools (v6.5)
+        case .debtCalculator:
+            DebtPayoffCalculatorView()
+        case .cashFlowForecast:
+            CashFlowForecastView()
+        // .recurringList already handled in Budgets section above
+        case .invoiceSettings:
+            InvoiceSettingsView()
+        case .csvImport:
+            CSVFilePickerView()
+        case .householdSettings:
+            HouseholdSettingsView()
         }
     }
 
@@ -236,6 +351,7 @@ private struct TransactionLookupView: View {
     var body: some View {
         if let transaction = results.first {
             EditTransactionView(transaction: transaction)
+                .id(transaction.id)  // See AccountLookupView comment — prevents stale @State bleed across selections.
         } else {
             DetailNotFoundView(type: "Transaction")
         }
@@ -254,6 +370,7 @@ private struct BudgetLookupView: View {
     var body: some View {
         if let budget = results.first {
             EditBudgetView(budget: budget)
+                .id(budget.id)  // See AccountLookupView comment — prevents stale @State bleed across selections.
         } else {
             DetailNotFoundView(type: "Budget")
         }
@@ -272,6 +389,7 @@ private struct InvoiceLookupView: View {
     var body: some View {
         if let invoice = results.first {
             InvoiceDetailView(invoice: invoice)
+                .id(invoice.id)  // See AccountLookupView comment — prevents stale @State bleed across selections.
         } else {
             DetailNotFoundView(type: "Invoice")
         }
@@ -290,6 +408,7 @@ private struct ClientLookupView: View {
     var body: some View {
         if let client = results.first {
             ClientDetailView(client: client)
+                .id(client.id)  // See AccountLookupView comment — prevents stale @State bleed across selections.
         } else {
             DetailNotFoundView(type: "Client")
         }
@@ -308,8 +427,29 @@ private struct MileageTripLookupView: View {
     var body: some View {
         if let trip = results.first {
             MileageTripDetailView(trip: trip)
+                .id(trip.id)  // See AccountLookupView comment — prevents stale @State bleed across selections.
         } else {
             DetailNotFoundView(type: "Mileage Trip")
+        }
+    }
+}
+
+private struct DebtPlanLookupView: View {
+    let id: UUID
+    @Query private var results: [DebtAcceleratorPlan]
+
+    init(id: UUID) {
+        self.id = id
+        _results = Query(filter: #Predicate<DebtAcceleratorPlan> { $0.id == id })
+    }
+
+    var body: some View {
+        if let plan = results.first {
+            DebtAcceleratorDetailView(plan: plan)
+                .id(plan.id)  // See AccountLookupView comment — prevents stale @State bleed across selections.
+        } else {
+            // No matching plan (e.g. plan deleted) — fall back to the overview.
+            DebtAcceleratorDashboardView()
         }
     }
 }
@@ -325,9 +465,191 @@ private struct AccountLookupView: View {
 
     var body: some View {
         if let account = results.first {
-            EditAccountView(account: account)
+            EditAccountView(
+                account: account,
+                embedInNavigationStack: false,
+                onCancel: {
+                    withAnimation(FLOAnimation.quick) {
+                        NavigationService.shared.selectedDetail = nil
+                    }
+                },
+                onSaved: {
+                    withAnimation(FLOAnimation.quick) {
+                        NavigationService.shared.selectedDetail = nil
+                    }
+                }
+            )
+            // Critical: re-key on account.id so SwiftUI treats each selected
+            // account as a new view identity. EditAccountView initializes its
+            // @State from `account` exactly once; without this modifier, SwiftUI
+            // reuses the view instance when the user switches accounts in the
+            // sidebar and the stale @State gets written to the NEW account on
+            // Save — silently renaming it. (Zone 2 → Zone 3 state-corruption bug.)
+            .id(account.id)
         } else {
             DetailNotFoundView(type: "Account")
+        }
+    }
+}
+
+private struct AddLinkedCardLookupView: View {
+    let accountId: UUID
+    @Query private var results: [Account]
+
+    init(accountId: UUID) {
+        self.accountId = accountId
+        _results = Query(filter: #Predicate<Account> { $0.id == accountId })
+    }
+
+    var body: some View {
+        if let account = results.first {
+            AddLinkedCardSheet(
+                account: account,
+                embedInNavigationStack: false,
+                onCancel: {
+                    withAnimation(FLOAnimation.quick) {
+                        NavigationService.shared.selectedDetail = .accountDetail(id: accountId)
+                    }
+                }
+            )
+            .id(account.id)  // See AccountLookupView comment — prevents stale @State bleed across selections.
+        } else {
+            DetailNotFoundView(type: "Account")
+        }
+    }
+}
+
+private struct ReconcileAccountLookupView: View {
+    let accountId: UUID
+    @Query private var results: [Account]
+
+    init(accountId: UUID) {
+        self.accountId = accountId
+        _results = Query(filter: #Predicate<Account> { $0.id == accountId })
+    }
+
+    var body: some View {
+        if let account = results.first {
+            ReconcileAccountView(
+                account: account,
+                embedInNavigationStack: false,
+                onDismiss: {
+                    withAnimation(FLOAnimation.quick) {
+                        NavigationService.shared.selectedDetail = .accountDetail(id: accountId)
+                    }
+                }
+            )
+            .id(account.id)  // See AccountLookupView comment — prevents stale @State bleed across selections.
+        } else {
+            DetailNotFoundView(type: "Account")
+        }
+    }
+}
+
+private struct EditInvoiceLookupView: View {
+    let id: UUID
+    @Query private var results: [Invoice]
+
+    init(id: UUID) {
+        self.id = id
+        _results = Query(filter: #Predicate<Invoice> { $0.id == id })
+    }
+
+    var body: some View {
+        if let invoice = results.first {
+            EnhancedEditInvoiceView(
+                invoice: invoice,
+                embedInNavigationStack: false,
+                onDismiss: {
+                    withAnimation(FLOAnimation.quick) {
+                        NavigationService.shared.selectedDetail = .invoiceDetail(id: id)
+                    }
+                }
+            )
+            .id(invoice.id)  // See AccountLookupView comment — prevents stale @State bleed across selections.
+        } else {
+            DetailNotFoundView(type: "Invoice")
+        }
+    }
+}
+
+private struct MarkInvoiceSentLookupView: View {
+    let id: UUID
+    @Query private var results: [Invoice]
+
+    init(id: UUID) {
+        self.id = id
+        _results = Query(filter: #Predicate<Invoice> { $0.id == id })
+    }
+
+    var body: some View {
+        if let invoice = results.first {
+            MarkAsSentView(
+                invoice: invoice,
+                embedInNavigationStack: false,
+                onDismiss: {
+                    withAnimation(FLOAnimation.quick) {
+                        NavigationService.shared.selectedDetail = .invoiceDetail(id: id)
+                    }
+                }
+            )
+            .id(invoice.id)  // See AccountLookupView comment — prevents stale @State bleed across selections.
+        } else {
+            DetailNotFoundView(type: "Invoice")
+        }
+    }
+}
+
+private struct MarkInvoicePaidLookupView: View {
+    let id: UUID
+    @Query private var results: [Invoice]
+
+    init(id: UUID) {
+        self.id = id
+        _results = Query(filter: #Predicate<Invoice> { $0.id == id })
+    }
+
+    var body: some View {
+        if let invoice = results.first {
+            MarkAsPaidView(
+                invoice: invoice,
+                embedInNavigationStack: false,
+                onDismiss: {
+                    withAnimation(FLOAnimation.quick) {
+                        NavigationService.shared.selectedDetail = .invoiceDetail(id: id)
+                    }
+                }
+            )
+            .id(invoice.id)  // See AccountLookupView comment — prevents stale @State bleed across selections.
+        } else {
+            DetailNotFoundView(type: "Invoice")
+        }
+    }
+}
+
+private struct EditClientLookupView: View {
+    let id: UUID
+    @Query private var results: [Client]
+
+    init(id: UUID) {
+        self.id = id
+        _results = Query(filter: #Predicate<Client> { $0.id == id })
+    }
+
+    var body: some View {
+        if let client = results.first {
+            EditClientView(
+                client: client,
+                embedInNavigationStack: false,
+                onDismiss: {
+                    withAnimation(FLOAnimation.quick) {
+                        NavigationService.shared.selectedDetail = .clientDetail(id: id)
+                    }
+                }
+            )
+            .id(client.id)  // See AccountLookupView comment — prevents stale @State bleed across selections.
+        } else {
+            DetailNotFoundView(type: "Client")
         }
     }
 }

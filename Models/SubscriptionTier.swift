@@ -1,10 +1,25 @@
 // SubscriptionTier.swift
 // FLO - Finance Ledger Optimizer
 //
-// Version 1.5 - CSV Bank Statement Import Feature
+// Version 1.8 - Sync fallback strings to live App Store production prices
 // Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
 //
 // Defines subscription tiers and feature access control
+//
+//  CHANGES v1.8 - Sync to production prices:
+//  ✅ DISCOVERED via StoreKit logs that ACTUAL App Store Connect prices were
+//     materially different from code fallbacks. Code fallbacks now match the
+//     live production prices observed in logs.
+//  ✅ CHANGED: Premium monthly fallback $12.99 → $7.99 (matches production)
+//  ✅ CHANGED: Pro monthly fallback $19.99 → $12.99 (matches production)
+//  ✅ CHANGED: Pro yearly fallback $199.99 → $99.99 (matches production)
+//  ✅ KEPT: Premium yearly $59.99 (intro launch target — drops from current
+//           production $79.99, App Store Connect change still required)
+//  ✅ RECOMPUTED: yearlySavings strings based on real numbers
+//  ✅ ACTION REQUIRED in App Store Connect:
+//     • Drop com.finchandpoppy.flo.premium.yearly from $79.99 to $59.99
+//
+//  CHANGES v1.7 - Premium Annual Intro Pricing (superseded by v1.8 audit):
 //
 //  CHANGES v1.5:
 //  ✅ ADDED: hasCSVImport (Premium+) - CSV bank statement import
@@ -98,36 +113,46 @@ enum SubscriptionTier: Int, Codable, Comparable {
         }
     }
     
+    // NOTE on price strings:
+    // These are FALLBACKS for when StoreKit fails to load products. The truth
+    // lives in App Store Connect, and the cards/sheets render `product.displayPrice`
+    // from StoreKit when available. As of Build 10 launch, production prices are:
+    //   • Premium Monthly $7.99, Premium Yearly $59.99 (intro launch from $79.99)
+    //   • Pro Monthly $12.99, Pro Yearly $99.99
+    // Keep these strings in sync with App Store Connect.
+
     var monthlyPrice: String {
         switch self {
         case .free:
             return "$0"
         case .premium:
-            return "$12.99"
+            return "$7.99"
         case .pro:
-            return "$19.99"
+            return "$12.99"
         }
     }
-    
+
     var yearlyPrice: String? {
         switch self {
         case .free:
             return nil
         case .premium:
-            return "$129.99"
+            return "$59.99"
         case .pro:
-            return "$199.99"
+            return "$99.99"
         }
     }
-    
+
     var yearlySavings: String? {
         switch self {
         case .free:
             return nil
         case .premium:
-            return "Save $25.89/year"
+            // $7.99/mo × 12 = $95.88, annual $59.99 saves $35.89 (~37%)
+            return "Save $35.89/year"
         case .pro:
-            return "Save $39.89/year"
+            // $12.99/mo × 12 = $155.88, annual $99.99 saves $55.89 (~36%)
+            return "Save $55.89/year"
         }
     }
     
@@ -158,10 +183,11 @@ enum SubscriptionTier: Int, Codable, Comparable {
         self >= .premium
     }
     
-    /// Smart receipt scanning with AI parsing (Premium+)
+    /// Smart receipt scanning with AI parsing
     /// v1.3: Added for tier-aware receipt routing
+    /// v1.6: Moved to Free tier (Smart Scanner is now the only scanner)
     var hasSmartReceiptScanning: Bool {
-        self >= .premium
+        true
     }
     
     /// CSV bank statement import (Premium+)
@@ -276,21 +302,23 @@ enum SubscriptionTier: Int, Codable, Comparable {
     var transactionLimit: Int? {
         switch self {
         case .free:
-            return 50 // Free users get 50 transactions per month
+            return 75 // Free users get 75 transactions per month
         case .premium, .pro:
             return nil // Unlimited
         }
     }
     
     /// Receipt storage limit
+    /// v1.6: Removed Free-tier cap since Smart Scanner is now free for all users.
+    /// A hard cap here would be a rug-pull after users commit to scanning receipts.
     var receiptStorageLimit: Int? {
         switch self {
         case .free:
-            return 20 // Free users get 20 receipts
+            return nil // Unlimited — Smart Scanner is free, no cap on storage
         case .premium:
-            return 100 // Premium users get 100 receipts
+            return nil // Unlimited
         case .pro:
-            return nil // Pro users get unlimited
+            return nil // Unlimited
         }
     }
     
@@ -298,7 +326,7 @@ enum SubscriptionTier: Int, Codable, Comparable {
     var invoiceLimit: Int? {
         switch self {
         case .free:
-            return 0 // No invoices in free tier
+            return 3 // Free users get 3 invoices per month
         case .premium:
             return 25 // Premium users get 25 invoices per month
         case .pro:
@@ -311,7 +339,7 @@ enum SubscriptionTier: Int, Codable, Comparable {
     var clientLimit: Int? {
         switch self {
         case .free:
-            return 0 // No client management
+            return 3 // Free users get 3 clients (matches invoice limit)
         case .premium, .pro:
             return nil // Unlimited clients (invoice limit is the constraint for Premium)
         }
@@ -321,7 +349,7 @@ enum SubscriptionTier: Int, Codable, Comparable {
     var accountLimit: Int? {
         switch self {
         case .free:
-            return 1 // Free users get 1 account
+            return 2 // Free users get 2 accounts
         case .premium:
             return 5 // Premium users get 5 accounts
         case .pro:
@@ -346,14 +374,15 @@ enum SubscriptionTier: Int, Codable, Comparable {
         switch self {
         case .free:
             return [
-                "Up to 50 transactions per month",
-                "1 manual account",
+                "Up to 75 transactions per month",
+                "2 manual accounts",
                 "Manual transaction entry",
                 "Basic expense tracking",
                 "Simple budgeting tools",
-                "20 receipt storage",
+                "Unlimited receipt storage",
                 "Business/Personal separation",
-                "Basic receipt scanning"
+                "Smart Receipt Scanning with AI",
+                "Basic invoicing (3/month)"
             ]
         case .premium:
             return [
@@ -365,7 +394,6 @@ enum SubscriptionTier: Int, Codable, Comparable {
                 "Automated GPS mileage tracking",
                 "Professional invoicing (25/month)",
                 "Client management",
-                "Smart Receipt Scanning with AI",
                 "CSV Bank Statement Import",
                 "100 receipt storage",
                 "Advanced budgets with rollover",
@@ -373,7 +401,8 @@ enum SubscriptionTier: Int, Codable, Comparable {
                 "Dashboard widgets",
                 "Debt Payoff Calculator",
                 "Personalized Financial Tips",
-                "Smart Spending Predictions"
+                "Smart Spending Predictions",
+                "Unlimited receipt storage"
             ]
         case .pro:
             return [
@@ -387,7 +416,6 @@ enum SubscriptionTier: Int, Codable, Comparable {
                 "Year-End Tax Package",
                 "Export to CSV/PDF",
                 "Household Sharing",
-                "Unlimited receipt storage",
                 "Advanced reporting",
                 "Early access to new features"
             ]
@@ -400,8 +428,9 @@ enum SubscriptionTier: Int, Codable, Comparable {
         case .free:
             return [
                 "Basic expense tracking",
-                "1 account",
-                "50 transactions/month"
+                "2 accounts",
+                "75 transactions/month",
+                "3 invoices/month"
             ]
         case .premium:
             return [
@@ -526,6 +555,11 @@ extension SubscriptionTier {
             return hasMultiAccountReports
         case .householdSharing:
             return hasHouseholdSharing
+        case .taxHandoff, .depreciationTracking, .carryforwardRegister, .partnerTracking,
+             .filingChecklist, .yearEndClosing, .cpaExport, .jurisdictionTracking,
+             .basisAlerts, .estimatedTaxAlerts, .naicsCodeSuggestion, .multiYearComparison,
+             .preparerChecklist, .clientPortalExport:
+            return self == .pro
         }
     }
     
@@ -641,6 +675,28 @@ enum Feature {
 
     // Pro household feature (v1.5 / Build 8)
     case householdSharing
+
+    // Pro tax prep features (v2.0)
+    case taxHandoff
+    case depreciationTracking
+    case carryforwardRegister
+    case partnerTracking
+
+    // Pro tax prep Phase 2 features (v2.1)
+    case filingChecklist
+    case yearEndClosing
+    case cpaExport
+    case jurisdictionTracking
+
+    // Pro tax prep Phase 3 features (v2.2)
+    case basisAlerts
+    case estimatedTaxAlerts
+    case naicsCodeSuggestion
+    case multiYearComparison
+
+    // Pro tax prep Phase 4 features (v2.3)
+    case preparerChecklist
+    case clientPortalExport
     
     var displayName: String {
         switch self {
@@ -695,6 +751,34 @@ enum Feature {
             return "Multi-Account Reports"
         case .householdSharing:
             return "Household Sharing"
+        case .taxHandoff:
+            return "Tax Handoff PDF"
+        case .depreciationTracking:
+            return "Depreciation Tracking"
+        case .carryforwardRegister:
+            return "Carryforward Register"
+        case .partnerTracking:
+            return "Partner/K-1 Tracking"
+        case .filingChecklist:
+            return "Filing Checklist"
+        case .yearEndClosing:
+            return "Year-End Closing"
+        case .cpaExport:
+            return "CPA Export"
+        case .jurisdictionTracking:
+            return "Jurisdiction Tracking"
+        case .basisAlerts:
+            return "Basis Alerts"
+        case .estimatedTaxAlerts:
+            return "Estimated Tax Alerts"
+        case .naicsCodeSuggestion:
+            return "NAICS Code Finder"
+        case .multiYearComparison:
+            return "Multi-Year Comparison"
+        case .preparerChecklist:
+            return "Preparer Checklist"
+        case .clientPortalExport:
+            return "Client Data Export"
         }
     }
 
@@ -702,12 +786,19 @@ enum Feature {
         switch self {
         // Premium features
         case .taxEstimates, .automatedMileage, .invoicing, .advancedBudgets, .recurringTransactions,
-             .clientManagement, .smartReceiptScanning, .csvImport, .debtCalculator, .personalizedTips, .debtInsights,
+             .clientManagement, .csvImport, .debtCalculator, .personalizedTips, .debtInsights,
              .mlInsights, .aiAssistant, .multipleAccounts, .accountFiltering, .balanceTracking, .multiAccountReports:
             return .premium
+        // Free features
+        case .smartReceiptScanning:
+            return .free
         // Pro features
         case .advancedDeductions, .advancedExports, .profitLossReports, .yearEndTaxPackage,
-             .plaidIntegration, .bankSync, .accountReconciliation, .householdSharing:
+             .plaidIntegration, .bankSync, .accountReconciliation, .householdSharing,
+             .taxHandoff, .depreciationTracking, .carryforwardRegister, .partnerTracking,
+             .filingChecklist, .yearEndClosing, .cpaExport, .jurisdictionTracking,
+             .basisAlerts, .estimatedTaxAlerts, .naicsCodeSuggestion, .multiYearComparison,
+             .preparerChecklist, .clientPortalExport:
             return .pro
         }
     }
@@ -765,9 +856,37 @@ enum Feature {
             return "chart.pie.fill"
         case .householdSharing:
             return "person.2.circle.fill"
+        case .taxHandoff:
+            return "doc.text.fill"
+        case .depreciationTracking:
+            return "chart.bar.fill"
+        case .carryforwardRegister:
+            return "arrow.uturn.forward.circle.fill"
+        case .partnerTracking:
+            return "person.2.fill"
+        case .filingChecklist:
+            return "checklist.checked"
+        case .yearEndClosing:
+            return "checkmark.seal.fill"
+        case .cpaExport:
+            return "doc.badge.arrow.up"
+        case .jurisdictionTracking:
+            return "map.fill"
+        case .basisAlerts:
+            return "exclamationmark.triangle.fill"
+        case .estimatedTaxAlerts:
+            return "calendar.badge.clock"
+        case .naicsCodeSuggestion:
+            return "number.circle.fill"
+        case .multiYearComparison:
+            return "chart.bar.xaxis"
+        case .preparerChecklist:
+            return "person.badge.shield.checkmark.fill"
+        case .clientPortalExport:
+            return "square.and.arrow.up.on.square"
         }
     }
-    
+
     var description: String {
         switch self {
         case .taxEstimates:
@@ -821,6 +940,34 @@ enum Feature {
             return "See consolidated reports across all accounts"
         case .householdSharing:
             return "Share expenses and track finances with your household"
+        case .taxHandoff:
+            return "Generate a comprehensive tax handoff PDF for your CPA"
+        case .depreciationTracking:
+            return "Track assets with MACRS depreciation schedules"
+        case .carryforwardRegister:
+            return "Track suspended losses, NOLs, and other carryforward items"
+        case .partnerTracking:
+            return "Track partner allocations and K-1 worksheets"
+        case .filingChecklist:
+            return "Personalized list of required forms and filing deadlines"
+        case .yearEndClosing:
+            return "Roll carryforwards, reset partner capital, and close the tax year"
+        case .cpaExport:
+            return "Export tax data in Lacerte CSV or generic format for your CPA"
+        case .jurisdictionTracking:
+            return "Track state, county, and city filing requirements"
+        case .basisAlerts:
+            return "Real-time partner basis monitoring with §704(d) suspension alerts"
+        case .estimatedTaxAlerts:
+            return "Quarterly payment tracking with safe harbor compliance"
+        case .naicsCodeSuggestion:
+            return "Auto-suggest NAICS codes from spending category patterns"
+        case .multiYearComparison:
+            return "Year-over-year income, expense, and depreciation comparison"
+        case .preparerChecklist:
+            return "Shareable checklist of what your CPA needs for filing"
+        case .clientPortalExport:
+            return "Export comprehensive tax data snapshot as JSON for your preparer"
         }
     }
 }

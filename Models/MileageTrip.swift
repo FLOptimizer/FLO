@@ -86,7 +86,11 @@ final class MileageTrip {
     
     // MARK: - Finance Type
     var financeType: Transaction.FinanceType = Transaction.FinanceType.business
-    
+
+    // MARK: - Business Profile (v4.1: per-business mileage tracking)
+    @Relationship(deleteRule: .nullify)
+    var businessProfile: BusinessProfile?
+
     // MARK: - Initialization
     
     init(

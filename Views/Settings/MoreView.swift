@@ -90,6 +90,17 @@ struct MoreView: View {
     @State private var showingYearEnd = false
     @State private var showingDebtCalculator = false  // v5.6: Debt calculator sheet
     @State private var showingCSVImport = false  // v5.9: CSV Import sheet
+    @State private var showingDepreciation = false   // v6.3: Depreciation schedule sheet
+    @State private var showingCarryforwards = false  // v6.3: Carryforward register sheet
+    @State private var showingFilingChecklist = false  // v6.4: Filing checklist sheet
+    @State private var showingYearEndClosing = false   // v6.4: Year-end closing sheet
+    @State private var showingCPAExport = false        // v6.4: CPA export sheet
+    @State private var showingJurisdictions = false    // v6.4: Jurisdiction management sheet
+    @State private var showingBasisAlerts = false       // v6.5: Basis alerts sheet
+    @State private var showingEstimatedTax = false      // v6.5: Estimated tax sheet
+    @State private var showingNAICSCodes = false        // v6.5: NAICS code suggestion sheet
+    @State private var showingMultiYearComparison = false // v6.5: Multi-year comparison sheet
+    @State private var showingPreparerChecklist = false  // v6.5: Preparer checklist sheet
     @State private var showingSubscription = false  // v6.2: Subscription sheet
     @State private var showingCashFlowForecast = false  // v6.3: Cash Flow Forecast sheet
     @State private var showingHousehold = false  // v6.3: Household settings
@@ -259,6 +270,63 @@ struct MoreView: View {
                     YearEndChecklistView()
                 }
             }
+            .sheet(isPresented: $showingDepreciation) {
+                NavigationStack {
+                    DepreciationScheduleView()
+                }
+            }
+            .sheet(isPresented: $showingCarryforwards) {
+                NavigationStack {
+                    CarryforwardRegisterView()
+                }
+            }
+            // v6.4: Phase 2 tax prep sheets
+            .sheet(isPresented: $showingFilingChecklist) {
+                NavigationStack {
+                    FilingChecklistView()
+                }
+            }
+            .sheet(isPresented: $showingYearEndClosing) {
+                NavigationStack {
+                    YearEndClosingView()
+                }
+            }
+            .sheet(isPresented: $showingCPAExport) {
+                NavigationStack {
+                    TaxExportView()
+                }
+            }
+            .sheet(isPresented: $showingJurisdictions) {
+                NavigationStack {
+                    JurisdictionManagementView()
+                }
+            }
+            // v6.5: Phase 3+4 tax prep sheets
+            .sheet(isPresented: $showingBasisAlerts) {
+                NavigationStack {
+                    BasisAlertsDashboardView()
+                }
+            }
+            .sheet(isPresented: $showingEstimatedTax) {
+                NavigationStack {
+                    EstimatedTaxDashboardView()
+                }
+            }
+            .sheet(isPresented: $showingNAICSCodes) {
+                NavigationStack {
+                    NAICSCodeSuggestionView()
+                }
+            }
+            .sheet(isPresented: $showingMultiYearComparison) {
+                NavigationStack {
+                    MultiYearComparisonView()
+                }
+            }
+            .sheet(isPresented: $showingPreparerChecklist) {
+                NavigationStack {
+                    PreparerChecklistView()
+                }
+            }
             // v5.6: Debt calculator sheet
             .sheet(isPresented: $showingDebtCalculator) {
                 DebtPayoffCalculatorView()
@@ -347,12 +415,12 @@ struct MoreView: View {
             }
             .listRowAnimation(delay: 0.0, appeared: viewAppeared)
             
-            NavigationLink(destination: BusinessProfileSettingsView()) {
+            NavigationLink(destination: BusinessListView()) {
                 MenuRow(
                     icon: "building.2.fill",
                     iconColor: .indigo,
-                    title: "Business Profile",
-                    subtitle: "Company info for invoices",
+                    title: "Businesses",
+                    subtitle: "Manage your business profiles",
                     accessibilityLabel: "Business Profile Settings"
                 )
             }
@@ -509,7 +577,161 @@ struct MoreView: View {
                 showingYearEnd = true
             }
             .listRowAnimation(delay: 0.35, appeared: viewAppeared)
-            
+
+            // Depreciation Schedules - PRO
+            LockedMenuRow(
+                icon: "chart.bar.fill",
+                iconColor: .teal,
+                title: "Depreciation",
+                subtitle: "Track assets & MACRS schedules",
+                requiredTier: .pro,
+                isLocked: currentTier != .pro
+            ) {
+                HapticService.play(.medium)
+                showingDepreciation = true
+            }
+            .listRowAnimation(delay: 0.4, appeared: viewAppeared)
+
+            // Carryforward Register - PRO
+            LockedMenuRow(
+                icon: "arrow.uturn.forward.circle.fill",
+                iconColor: .orange,
+                title: "Carryforwards",
+                subtitle: "Suspended losses & NOL tracking",
+                requiredTier: .pro,
+                isLocked: currentTier != .pro
+            ) {
+                HapticService.play(.medium)
+                showingCarryforwards = true
+            }
+            .listRowAnimation(delay: 0.45, appeared: viewAppeared)
+
+            // Filing Checklist - PRO
+            LockedMenuRow(
+                icon: "checklist.checked",
+                iconColor: .indigo,
+                title: "Filing Checklist",
+                subtitle: "Required forms & deadlines",
+                requiredTier: .pro,
+                isLocked: currentTier != .pro
+            ) {
+                HapticService.play(.medium)
+                showingFilingChecklist = true
+            }
+            .listRowAnimation(delay: 0.5, appeared: viewAppeared)
+
+            // Year-End Closing - PRO
+            LockedMenuRow(
+                icon: "checkmark.seal.fill",
+                iconColor: .purple,
+                title: "Year-End Close",
+                subtitle: "Roll carryforwards & reset capital",
+                requiredTier: .pro,
+                isLocked: currentTier != .pro
+            ) {
+                HapticService.play(.medium)
+                showingYearEndClosing = true
+            }
+            .listRowAnimation(delay: 0.55, appeared: viewAppeared)
+
+            // CPA Export - PRO
+            LockedMenuRow(
+                icon: "doc.badge.arrow.up",
+                iconColor: .blue,
+                title: "CPA Export",
+                subtitle: "Lacerte CSV & generic formats",
+                requiredTier: .pro,
+                isLocked: currentTier != .pro
+            ) {
+                HapticService.play(.medium)
+                showingCPAExport = true
+            }
+            .listRowAnimation(delay: 0.6, appeared: viewAppeared)
+
+            // Jurisdictions - PRO
+            LockedMenuRow(
+                icon: "map.fill",
+                iconColor: .green,
+                title: "Jurisdictions",
+                subtitle: "State, county & city filing requirements",
+                requiredTier: .pro,
+                isLocked: currentTier != .pro
+            ) {
+                HapticService.play(.medium)
+                showingJurisdictions = true
+            }
+            .listRowAnimation(delay: 0.65, appeared: viewAppeared)
+
+            // Basis Alerts - PRO
+            LockedMenuRow(
+                icon: "exclamationmark.triangle.fill",
+                iconColor: .orange,
+                title: "Basis Alerts",
+                subtitle: "Partner basis monitoring & §704(d)",
+                requiredTier: .pro,
+                isLocked: currentTier != .pro
+            ) {
+                HapticService.play(.medium)
+                showingBasisAlerts = true
+            }
+            .listRowAnimation(delay: 0.7, appeared: viewAppeared)
+
+            // Estimated Taxes - PRO
+            LockedMenuRow(
+                icon: "calendar.badge.clock",
+                iconColor: .red,
+                title: "Estimated Taxes",
+                subtitle: "Quarterly payments & safe harbor",
+                requiredTier: .pro,
+                isLocked: currentTier != .pro
+            ) {
+                HapticService.play(.medium)
+                showingEstimatedTax = true
+            }
+            .listRowAnimation(delay: 0.75, appeared: viewAppeared)
+
+            // NAICS Codes - PRO
+            LockedMenuRow(
+                icon: "number.circle.fill",
+                iconColor: .teal,
+                title: "NAICS Codes",
+                subtitle: "Auto-suggest from spending patterns",
+                requiredTier: .pro,
+                isLocked: currentTier != .pro
+            ) {
+                HapticService.play(.medium)
+                showingNAICSCodes = true
+            }
+            .listRowAnimation(delay: 0.8, appeared: viewAppeared)
+
+            // Multi-Year Comparison - PRO
+            LockedMenuRow(
+                icon: "chart.bar.xaxis",
+                iconColor: .purple,
+                title: "Year Comparison",
+                subtitle: "YoY income, expenses & depreciation",
+                requiredTier: .pro,
+                isLocked: currentTier != .pro
+            ) {
+                HapticService.play(.medium)
+                showingMultiYearComparison = true
+            }
+            .listRowAnimation(delay: 0.85, appeared: viewAppeared)
+
+            // Preparer Checklist - PRO
+            LockedMenuRow(
+                icon: "person.badge.shield.checkmark.fill",
+                iconColor: .indigo,
+                title: "Preparer Checklist",
+                subtitle: "What your CPA needs for filing",
+                requiredTier: .pro,
+                isLocked: currentTier != .pro
+            ) {
+                HapticService.play(.medium)
+                showingPreparerChecklist = true
+            }
+            .listRowAnimation(delay: 0.9, appeared: viewAppeared)
+
         } header: {
             Label("Tax & Reports", systemImage: "doc.text.fill")
                 .font(.caption)

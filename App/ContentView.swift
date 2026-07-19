@@ -1,8 +1,13 @@
 //  ContentView.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 5.0 - Build 10 Adaptive Navigation
+//  Version 5.2 - Catalyst window-toolbar quick actions · Build 10 icon-only sidebar
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v5.1 (Build 10 launch):
+//  ✅ ADDED: @Environment(\.verticalSizeClass) + isLandscapeIPhone detector
+//  ✅ ADDED: 50pt icon-only sidebar column on landscape iPhone (Build 10 spec)
+//  ✅ PASSES: iconOnly to SidebarView so it can suppress text + section headers
 //
 //  CHANGES v5.0 (Build 10):
 //  ✅ REWRITE: Adaptive layout — portrait TabView / landscape+macOS NavigationSplitView
@@ -27,6 +32,17 @@ struct ContentView: View {
 
     // Layout detection
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
+    /// True on landscape iPhone (regular width + compact height). Used to render
+    /// a 50pt icon-only sidebar per Build 10 plan.
+    private var isLandscapeIPhone: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .regular && verticalSizeClass == .compact
+        #endif
+    }
 
     // Build 10 Step 11: iPad sidebar persistence — keep sidebar visible on wide screens
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -36,6 +52,8 @@ struct ContentView: View {
 
     // Theme picker support
     @AppStorage("preferredColorScheme") private var preferredColorScheme = "system"
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("hasCompletedWalkthrough") private var hasCompletedWalkthrough = true
 
     private var colorScheme: ColorScheme? {
         switch preferredColorScheme {
@@ -125,6 +143,17 @@ struct ContentView: View {
         .sheet(isPresented: $navigation.showingCreateBudget) {
             CreateBudgetView(month: Date())
         }
+        .sheet(isPresented: $navigation.showingGlobalSearch) {
+            GlobalSearchView()
+        }
+        #if os(iOS)
+        .fullScreenCover(isPresented: Binding(
+            get: { !hasCompletedWalkthrough && hasCompletedOnboarding },
+            set: { if !$0 { hasCompletedWalkthrough = true } }
+        )) {
+            FeatureWalkthroughView()
+        }
+        #endif
     }
 
     // MARK: - Portrait Tab View (iPhone Portrait)
@@ -139,6 +168,13 @@ struct ContentView: View {
                     .tag(tab)
                     .accessibilityLabel(tab.title)
             }
+
+            MoreTabView()
+                .tabItem {
+                    Label("More", systemImage: "ellipsis.circle.fill")
+                }
+                .tag(AppTab.settings)
+                .accessibilityLabel("More")
         }
         .tint(Color.brandPrimary)
     }
@@ -147,8 +183,12 @@ struct ContentView: View {
 
     private var landscapeLayout: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(selection: $navigation.selectedTab)
-                .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
+            SidebarView(selection: $navigation.selectedTab, iconOnly: isLandscapeIPhone)
+                .navigationSplitViewColumnWidth(
+                    min: isLandscapeIPhone ? 50 : 180,
+                    ideal: isLandscapeIPhone ? 50 : 200,
+                    max: isLandscapeIPhone ? 50 : 240
+                )
         } content: {
             NavigationStack(path: $contentPath) {
                 ContentListView(tab: navigation.selectedTab)
@@ -157,7 +197,9 @@ struct ContentView: View {
             .navigationSplitViewColumnWidth(ideal: 480)
             .floColumnBackground()
         } detail: {
-            DetailView(destination: navigation.selectedDetail, selectedTab: navigation.selectedTab)
+            NavigationStack {
+                DetailView(destination: navigation.selectedDetail, selectedTab: navigation.selectedTab)
+            }
                 .navigationSplitViewColumnWidth(ideal: 360)
                 .floColumnBackground()
                 .overlay(alignment: .leading) {
@@ -168,7 +210,10 @@ struct ContentView: View {
                 }
         }
         .tint(Color.brandPrimary)
-        #if os(macOS)
+        // Window-toolbar quick actions. Extended to Mac Catalyst (was os(macOS)
+        // only): under "Optimize for Mac" these render in the native window
+        // titlebar. iPhone/iPad keep their in-view buttons, so this stays off there.
+        #if os(macOS) || targetEnvironment(macCatalyst)
         .toolbar {
             ToolbarItemGroup(placement: .automatic) {
                 Button {

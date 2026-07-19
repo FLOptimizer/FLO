@@ -460,6 +460,86 @@ final class AccountBalanceService {
     }
 }
 
+// MARK: - Safe Deletion
+
+extension AccountBalanceService {
+
+    /// Safely delete an Account, pre-nullifying every relationship that references it
+    /// (including those without declared inverses) so SwiftData doesn't leave dangling
+    /// PersistentIdentifiers that crash on fault. Mirrors the cascade SwiftData *would*
+    /// perform if every Account-referencing model declared an inverse — which today
+    /// Transfer, RecurringTransfer, and RecurringTransaction do not.
+    ///
+    /// Callers are responsible for confirmation UI. This method commits the delete.
+    /// Throws if the final save fails; partial relationship cleanup is best-effort.
+    func safelyDeleteAccount(_ account: Account, context: ModelContext) throws {
+        let accountId = account.id
+
+        // 1. Transactions (has inverse, but pre-nullify to prevent @Query race during vacuum)
+        if let transactions = account.transactions {
+            for transaction in transactions {
+                transaction.account = nil
+            }
+        }
+
+        // 2. Budgets (has inverse, but pre-nullify for same reason)
+        if let budgets = account.budgets {
+            for budget in budgets {
+                budget.account = nil
+            }
+        }
+
+        // 3. Transfers — NO inverse on Account, SwiftData won't cascade
+        do {
+            let transferDescriptor = FetchDescriptor<Transfer>()
+            let allTransfers = try context.fetch(transferDescriptor)
+            for transfer in allTransfers {
+                if transfer.fromAccount?.id == accountId {
+                    transfer.fromAccount = nil
+                }
+                if transfer.toAccount?.id == accountId {
+                    transfer.toAccount = nil
+                }
+            }
+        } catch {
+            print("⚠️ Failed to clean Transfer references: \(error)")
+        }
+
+        // 4. RecurringTransfers — NO inverse on Account, SwiftData won't cascade
+        do {
+            let recurringTransferDescriptor = FetchDescriptor<RecurringTransfer>()
+            let allRecurringTransfers = try context.fetch(recurringTransferDescriptor)
+            for rt in allRecurringTransfers {
+                if rt.fromAccount?.id == accountId {
+                    rt.fromAccount = nil
+                }
+                if rt.toAccount?.id == accountId {
+                    rt.toAccount = nil
+                }
+            }
+        } catch {
+            print("⚠️ Failed to clean RecurringTransfer references: \(error)")
+        }
+
+        // 5. RecurringTransactions — @Relationship but no declared inverse on Account
+        do {
+            let recurringDescriptor = FetchDescriptor<RecurringTransaction>()
+            let allRecurring = try context.fetch(recurringDescriptor)
+            for recurring in allRecurring {
+                if recurring.account?.id == accountId {
+                    recurring.account = nil
+                }
+            }
+        } catch {
+            print("⚠️ Failed to clean RecurringTransaction references: \(error)")
+        }
+
+        // 6. Now safe to delete — all references point to nil
+        context.delete(account)
+        try context.save()
+    }
+}
+
 // MARK: - Formatting Helpers
 
 extension AccountBalanceService {

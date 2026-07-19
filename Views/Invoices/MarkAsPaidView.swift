@@ -42,11 +42,16 @@ import SwiftData
 struct MarkAsPaidView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    
+
     @Query(filter: #Predicate<Account> { $0.isActive }, sort: \Account.name) private var accounts: [Account]
     @Query(filter: #Predicate<Category> { $0.isIncome }, sort: \Category.name) private var incomeCategories: [Category]
-    
+
     let invoice: Invoice
+
+    // Zone 3 adaptive presentation — when false, omits NavigationStack wrapper.
+    var embedInNavigationStack: Bool = true
+    /// Zone 3 dismiss callback — called instead of SwiftUI `dismiss()` when set.
+    var onDismiss: (() -> Void)? = nil
     
     // Payment Details
     @State private var paymentAmount: Double = 0
@@ -90,7 +95,15 @@ struct MarkAsPaidView: View {
     }
     
     var body: some View {
-        NavigationStack {
+        if embedInNavigationStack {
+            NavigationStack { formContent }
+        } else {
+            formContent
+        }
+    }
+
+    @ViewBuilder
+    private var formContent: some View {
             Form {
                 // Invoice Summary Section
                 invoiceSummarySection
@@ -118,7 +131,7 @@ struct MarkAsPaidView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         HapticService.play(.heavy)
-                        dismiss()
+                        performDismiss()
                     }
                     // v2.2: VoiceOver
                     .accessibilityLabel("Cancel")
@@ -153,12 +166,19 @@ struct MarkAsPaidView: View {
                 amount: paymentAmount > 0 ? paymentAmount : nil,
                 message: isFullPayment ? "Paid in Full!" : "Payment Recorded",
                 onDismiss: {
-                    dismiss()
+                    performDismiss()
                 }
             )
+    }
+
+    private func performDismiss() {
+        if let onDismiss {
+            onDismiss()
+        } else {
+            dismiss()
         }
     }
-    
+
     // v2.2: Dynamic save button hint
     private var saveButtonHint: String {
         if isProcessing {
@@ -254,7 +274,7 @@ struct MarkAsPaidView: View {
                         Text(invoice.remainingBalance.formatted(.currency(code: "USD")))
                             .font(.title3)
                             .fontWeight(.bold)
-                             .foregroundStyle(Color.brandPrimaryText)
+                             .foregroundStyle(Color.brandPrimary)
                     }
                 }
                 .scaleEffect(headerScale)
@@ -366,7 +386,7 @@ struct MarkAsPaidView: View {
                 } label: {
                     Image(systemName: "info.circle")
                         .font(.caption)
-                         .foregroundStyle(Color.brandPrimaryText)
+                         .foregroundStyle(Color.brandPrimary)
                 }
                 // v2.2: VoiceOver
                 .accessibilityLabel("About partial payments")
@@ -712,7 +732,7 @@ private struct QuickAmountButton: View {
             Text(label)
                 .font(.caption)
                 .fontWeight(.medium)
-                 .foregroundStyle(Color.brandPrimaryText)
+                 .foregroundStyle(Color.brandPrimary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .background(
