@@ -80,6 +80,7 @@ struct AccountsView: View {
     @State private var accountToEdit: Account?
     @State private var showingDeleteConfirmation = false
     @State private var accountToDelete: Account?
+    @State private var deleteError: String?
     @State private var showingUpgradePrompt = false
     @State private var showingLimitReached = false
     @State private var selectedSegment: FinanceSegment = .all
@@ -281,6 +282,7 @@ struct AccountsView: View {
             }
         }
         #endif
+        #if canImport(LinkKit)
         .sheet(isPresented: $showingConnectedAccounts) {
             NavigationStack {
                 ConnectedAccountsListView()
@@ -293,6 +295,15 @@ struct AccountsView: View {
                     }
             }
             .floMacSheetFrame()
+        }
+        #endif
+        .alert("Delete Failed", isPresented: .init(
+            get: { deleteError != nil },
+            set: { if !$0 { deleteError = nil } }
+        )) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(deleteError ?? "The account couldn't be deleted. Please try again.")
         }
         .alert("Connection Error", isPresented: .init(
             get: { plaidError != nil },
@@ -978,6 +989,7 @@ struct AccountsView: View {
                         .accessibilityLabel(plaidService.isSyncing ? "Refreshing bank data" : "Refresh balances and transactions")
                         .accessibilityHint("Double tap to fetch the latest balances and transactions from your linked banks")
 
+                        #if canImport(LinkKit)
                         Button {
                             HapticService.play(.light)
                             showingConnectedAccounts = true
@@ -999,6 +1011,7 @@ struct AccountsView: View {
                         }
                         .accessibilityLabel("Manage bank connections. \(linkedAccounts.count) linked.")
                         .accessibilityHint("Double tap to view linked banks, sync status, and disconnect accounts")
+                        #endif
                     }
                 } header: {
                     Text("Bank Connection")
@@ -1132,6 +1145,8 @@ struct AccountsView: View {
         } catch {
             print("Failed to delete account: \(error)")
             HapticService.play(.error)
+            deleteError = "\(name) couldn't be deleted. Please try again."
+            AccessibilityAnnouncement.announce("Failed to delete \(name)")
         }
     }
     

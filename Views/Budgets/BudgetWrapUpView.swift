@@ -27,6 +27,7 @@ struct BudgetWrapUpView: View {
     let monthName: String
 
     @State private var viewAppeared = false
+    @State private var showingSaveError = false
 
     private let calendar = Calendar.current
 
@@ -68,8 +69,9 @@ struct BudgetWrapUpView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
                         HapticService.play(.light)
-                        saveChanges()
-                        dismiss()
+                        if saveChanges() {
+                            dismiss()
+                        }
                     }
                     .fontWeight(.semibold)
                     .accessibilityHint("Save changes and close wrap-up")
@@ -80,6 +82,11 @@ struct BudgetWrapUpView: View {
                     viewAppeared = true
                 }
                 AccessibilityAnnouncement.screenChanged("\(monthName) budget wrap-up")
+            }
+            .alert("Save Failed", isPresented: $showingSaveError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Your wrap-up changes couldn't be saved. Please try again.")
             }
         }
     }
@@ -210,13 +217,18 @@ struct BudgetWrapUpView: View {
         budget.touch()
     }
 
-    private func saveChanges() {
+    @discardableResult
+    private func saveChanges() -> Bool {
         do {
             try context.save()
             HapticService.play(.success)
+            return true
         } catch {
             print("Failed to save wrap-up changes: \(error)")
             HapticService.play(.error)
+            showingSaveError = true
+            AccessibilityAnnouncement.announce("Failed to save wrap-up changes")
+            return false
         }
     }
 }

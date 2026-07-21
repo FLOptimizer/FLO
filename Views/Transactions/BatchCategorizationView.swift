@@ -40,6 +40,7 @@ struct BatchCategorizationView: View {
     @State private var showingCategoryPicker = false
     @State private var categorizedCount = 0
     @State private var lastCategorizedMerchant: String?
+    @State private var showingLoadError = false
 
     var body: some View {
         NavigationStack {
@@ -80,6 +81,11 @@ struct BatchCategorizationView: View {
                     categoryPickerSheet(for: merchant)
                 }
             }
+            .alert("Couldn't Load Transactions", isPresented: $showingLoadError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Your transactions couldn't be loaded. Close this screen and try again.")
+            }
             .task {
                 loadTransactions()
                 refreshGroups()
@@ -104,6 +110,7 @@ struct BatchCategorizationView: View {
         do {
             allTransactions = try context.fetch(descriptor)
         } catch {
+            showingLoadError = true
             #if DEBUG
             print("BatchCategorizationView loadTransactions error: \(error)")
             #endif

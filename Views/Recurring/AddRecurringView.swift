@@ -236,7 +236,8 @@ struct AddRecurringView: View {
     
     @ViewBuilder
     private var accountSection: some View {
-        if subscriptionManager.currentTier.hasMultipleAccounts && !accounts.isEmpty {
+        // All tiers can pick among their accounts
+        if !accounts.isEmpty {
             Section {
                 accountChipsView
             } header: {
@@ -400,7 +401,6 @@ struct AddRecurringView: View {
     // MARK: - Account Helpers
     
     private func setDefaultAccount() {
-        guard subscriptionManager.currentTier.hasMultipleAccounts else { return }
         guard selectedAccount == nil else { return }
         
         let active = accounts.filter { $0.isActive }
@@ -424,8 +424,6 @@ struct AddRecurringView: View {
     }
     
     private func updateAccountForFinanceType(_ newType: Transaction.FinanceType) {
-        guard subscriptionManager.currentTier.hasMultipleAccounts else { return }
-        
         if let current = selectedAccount, current.financeType != newType {
             let active = accounts.filter { $0.isActive }
             

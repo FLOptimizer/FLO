@@ -262,54 +262,6 @@ struct RecentTransactionsCardSkeleton: View {
     }
 }
 
-// MARK: - Tax Estimate Card Skeleton (for Business mode)
-
-struct TaxEstimateCardSkeleton: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header
-            HStack {
-                SkeletonCircle(size: 24)
-                SkeletonShape()
-                    .frame(width: 120, height: 16)
-                Spacer()
-            }
-            
-            // Main estimate
-            VStack(alignment: .leading, spacing: 4) {
-                SkeletonShape()
-                    .frame(width: 100, height: 12)
-                SkeletonShape()
-                    .frame(width: 140, height: 32)
-            }
-            
-            Divider()
-            
-            // Breakdown
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    SkeletonShape()
-                        .frame(width: 80, height: 10)
-                    SkeletonShape()
-                        .frame(width: 60, height: 14)
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    SkeletonShape()
-                        .frame(width: 80, height: 10)
-                    SkeletonShape()
-                        .frame(width: 60, height: 14)
-                }
-            }
-        }
-        .padding()
-        .background(Color.floSecondarySystemBackground)
-        .cornerRadius(12)
-    }
-}
-
 // MARK: - Mileage Card Skeleton
 
 struct MileageCardSkeleton: View {
@@ -377,11 +329,6 @@ struct MileageCardSkeleton: View {
             
             Text("Recent Transactions").font(.headline)
             RecentTransactionsCardSkeleton()
-            
-            Divider()
-            
-            Text("Tax Estimate").font(.headline)
-            TaxEstimateCardSkeleton()
             
             Divider()
             

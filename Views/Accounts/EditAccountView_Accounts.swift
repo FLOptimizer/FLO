@@ -266,7 +266,7 @@ struct EditAccountView: View {
                 }
                 
                 // Reconciliation (Premium feature)
-                if subscriptionManager.currentTier.hasBalanceTracking {
+                if subscriptionManager.currentTier.hasAccountReconciliation {
                     Section("Reconciliation") {
                         Button {
                             if embedInNavigationStack {

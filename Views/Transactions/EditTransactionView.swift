@@ -458,7 +458,8 @@ struct EditTransactionView: View {
     
     @ViewBuilder
     private var accountSection: some View {
-        if subscriptionManager.currentTier.hasMultipleAccounts && !accounts.isEmpty {
+        // All tiers can pick among their accounts
+        if !accounts.isEmpty {
             Section {
                 accountChipsView
             } header: {
@@ -547,8 +548,7 @@ struct EditTransactionView: View {
     }
     
     private func updateAccountForFinanceType(_ newType: Transaction.FinanceType) {
-        guard subscriptionManager.currentTier.hasMultipleAccounts else { return }
-        
+
         // Only auto-switch if current account doesn't match new type
         if let current = selectedAccount, current.financeType != newType {
             let active = accounts.filter { $0.isActive }

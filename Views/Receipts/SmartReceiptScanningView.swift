@@ -374,7 +374,6 @@ struct SmartReceiptScanningView: View {
     // MARK: - Account Helpers
     
     private func setDefaultAccount(cardLastFour: String? = nil) {
-        guard subscriptionManager.currentTier.hasMultipleAccounts else { return }
         guard selectedAccount == nil else { return }
 
         let active = accounts.filter { $0.isActive }
@@ -420,8 +419,6 @@ struct SmartReceiptScanningView: View {
     }
     
     private func updateAccountForFinanceType(_ newType: Transaction.FinanceType) {
-        guard subscriptionManager.currentTier.hasMultipleAccounts else { return }
-
         if let current = selectedAccount, current.financeType != newType {
             let active = accounts.filter { $0.isActive }
 
@@ -1443,7 +1440,8 @@ struct EditableReceiptReviewViewWithAccount: View {
 
     @ViewBuilder
     private var accountSection: some View {
-        if subscriptionTier.hasMultipleAccounts && !accounts.isEmpty {
+        // All tiers can pick among their accounts
+        if !accounts.isEmpty {
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {

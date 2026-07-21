@@ -241,8 +241,10 @@ enum SubscriptionTier: Int, Codable, Comparable {
     }
     
     /// Balance tracking across accounts
+    /// Free for all tiers: seeing your balances is the core loop of a ledger
+    /// app. Paid tiers sell scale (more accounts), analysis, and automation.
     var hasBalanceTracking: Bool {
-        self >= .premium
+        true
     }
     
     /// Plaid integration for automatic bank sync (Pro only)
@@ -255,9 +257,11 @@ enum SubscriptionTier: Int, Codable, Comparable {
         self == .pro
     }
     
-    /// Account reconciliation tools (Pro only)
+    /// Account reconciliation tools (Premium+)
+    /// Premium rather than Pro: manual reconciliation complements manual
+    /// balance tracking. Pro users get Plaid auto-sync, which supersedes it.
     var hasAccountReconciliation: Bool {
-        self == .pro
+        self >= .premium
     }
     
     // MARK: - Pro-Only Features
@@ -375,7 +379,7 @@ enum SubscriptionTier: Int, Codable, Comparable {
         case .free:
             return [
                 "Up to 75 transactions per month",
-                "2 manual accounts",
+                "2 accounts with balance tracking",
                 "Manual transaction entry",
                 "Basic expense tracking",
                 "Simple budgeting tools",
@@ -388,7 +392,8 @@ enum SubscriptionTier: Int, Codable, Comparable {
             return [
                 "Everything in Free",
                 "Unlimited transactions",
-                "Up to 5 accounts with balance tracking",
+                "Up to 5 accounts",
+                "Account reconciliation tools",
                 "Account-based filtering & reports",
                 "Real-time quarterly tax estimates",
                 "Automated GPS mileage tracking",
@@ -409,7 +414,6 @@ enum SubscriptionTier: Int, Codable, Comparable {
                 "Everything in Premium",
                 "Unlimited accounts",
                 "Bank sync via Plaid",
-                "Account reconciliation tools",
                 "Unlimited invoices",
                 "Advanced tax deduction flagging",
                 "Profit & Loss Reports",
@@ -434,7 +438,7 @@ enum SubscriptionTier: Int, Codable, Comparable {
             ]
         case .premium:
             return [
-                "5 accounts with balance tracking",
+                "5 accounts + reconciliation",
                 "Tax estimates & GPS mileage",
                 "Professional invoicing + clients",
                 "Unlimited transactions"
@@ -787,14 +791,15 @@ enum Feature {
         // Premium features
         case .taxEstimates, .automatedMileage, .invoicing, .advancedBudgets, .recurringTransactions,
              .clientManagement, .csvImport, .debtCalculator, .personalizedTips, .debtInsights,
-             .mlInsights, .aiAssistant, .multipleAccounts, .accountFiltering, .balanceTracking, .multiAccountReports:
+             .mlInsights, .aiAssistant, .multipleAccounts, .accountFiltering, .multiAccountReports,
+             .accountReconciliation:
             return .premium
         // Free features
-        case .smartReceiptScanning:
+        case .smartReceiptScanning, .balanceTracking:
             return .free
         // Pro features
         case .advancedDeductions, .advancedExports, .profitLossReports, .yearEndTaxPackage,
-             .plaidIntegration, .bankSync, .accountReconciliation, .householdSharing,
+             .plaidIntegration, .bankSync, .householdSharing,
              .taxHandoff, .depreciationTracking, .carryforwardRegister, .partnerTracking,
              .filingChecklist, .yearEndClosing, .cpaExport, .jurisdictionTracking,
              .basisAlerts, .estimatedTaxAlerts, .naicsCodeSuggestion, .multiYearComparison,

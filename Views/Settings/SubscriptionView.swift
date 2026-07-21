@@ -1415,46 +1415,6 @@ struct SubscriptionOptionCard: View {
     }
 }
 
-// MARK: - Legacy Feature Comparison Row (kept for compatibility)
-
-struct FeatureComparisonRow: View {
-    let title: String
-    let free: Bool
-    let premium: Bool
-    let pro: Bool
-    var delay: Double = 0
-    var appeared: Bool = true
-    
-    var body: some View {
-        HStack {
-            Text(title)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
-            
-            Spacer()
-            
-            HStack(spacing: 8) {
-                CheckmarkIcon(enabled: free)
-                CheckmarkIcon(enabled: premium)
-                CheckmarkIcon(enabled: pro)
-            }
-        }
-        .opacity(appeared ? 1 : 0.001)
-        .offset(x: appeared ? 0 : 10)
-        .animation(.spring(response: 0.4, dampingFraction: 0.8).delay(delay), value: appeared)
-    }
-}
-
-struct CheckmarkIcon: View {
-    let enabled: Bool
-    
-    var body: some View {
-        Image(systemName: enabled ? "checkmark.circle.fill" : "xmark.circle.fill")
-            .foregroundColor(enabled ? Color.brandPrimary : Color.gray.opacity(0.3))
-            .frame(width: 44)
-    }
-}
-
 // MARK: - Color Extension
 
 extension Color {

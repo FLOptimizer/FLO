@@ -1496,32 +1496,6 @@ struct MenuRow: View {
     }
 }
 
-// MARK: - Feature Bullet Component
-
-struct FeatureBullet: View {
-    let text: String
-    @State private var checkmarkAppeared = false
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-                .scaleEffect(checkmarkAppeared ? 1 : 0.5)
-                .opacity(checkmarkAppeared ? 1 : 0.001)
-            Text(text)
-                .font(.subheadline)
-                .lineLimit(2)
-                .minimumScaleFactor(0.7)
-        }
-        .accessibilityElement(children: .combine)
-        .onAppear {
-            withAnimation(FLOAnimation.standard.delay(0.1)) {
-                checkmarkAppeared = true
-            }
-        }
-    }
-}
-
 // MARK: - Bundle Extension
 
 extension Bundle {

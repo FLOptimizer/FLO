@@ -256,7 +256,8 @@ struct CreateBudgetView: View {
     
     @ViewBuilder
     private var accountSection: some View {
-        if subscriptionManager.currentTier.hasMultipleAccounts && !accounts.isEmpty {
+        // All tiers can scope budgets to an account they own
+        if !accounts.isEmpty {
             Section {
                 accountChipsView
             } header: {
@@ -445,8 +446,6 @@ struct CreateBudgetView: View {
     }
     
     private func updateAccountForFinanceType(_ newType: Transaction.FinanceType) {
-        guard subscriptionManager.currentTier.hasMultipleAccounts else { return }
-        
         // If current account doesn't match new financeType, reset to "All Accounts"
         if let current = selectedAccount, current.financeType != newType {
             withAnimation(FLOAnimation.quick) {
@@ -629,23 +628,6 @@ struct BudgetAccountChip: View {
         .buttonStyle(PlainButtonStyle())
         .scaleEffect(isSelected ? 1.02 : 1.0)
         .animation(FLOAnimation.quick, value: isSelected)
-    }
-}
-
-// MARK: - Category Label
-
-struct CategoryLabel: View {
-    let category: Category
-    
-    var body: some View {
-        Label {
-            Text(category.name)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-        } icon: {
-            Image(systemName: category.icon)
-                .foregroundStyle(Color(flowHex: category.colorHex))
-        }
     }
 }
 

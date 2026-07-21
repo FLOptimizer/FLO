@@ -165,6 +165,7 @@ struct TransactionListView: View {
     @State private var showingAccountPickerForSelection = false   // v4.7: Batch account
     @State private var showingDeleteConfirmation = false          // v4.7: Batch delete
     @State private var showingAnchorWarning = false               // v4.8: Balance anchor warning
+    @State private var showingDeleteError = false
     @State private var selectedAccount: Account?                  // v4.7: Account filter
     @State private var selectedBusinessProfile: BusinessProfile?  // v4.7: Business profile filter
     @State private var selectedDateRange: DateRangeFilter = .all  // v4.7: Date range filter
@@ -314,6 +315,11 @@ struct TransactionListView: View {
                 Button("Cancel", role: .cancel) { }
             } message: {
                 Text("This cannot be undone.")
+            }
+            .alert("Delete Failed", isPresented: $showingDeleteError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("The transaction couldn't be deleted. Please try again.")
             }
             // v4.8: Balance anchor conflict warning for batch delete
             .alert("Balance Checkpoint Warning", isPresented: $showingAnchorWarning) {
@@ -1828,7 +1834,13 @@ struct TransactionListView: View {
             print("Transaction deleted")
             #endif
         } catch {
+            // Undo the in-memory delete and balance adjustments so the ledger
+            // doesn't silently drift from what's persisted
+            context.rollback()
+            loadTransactions()
             HapticService.play(.error)
+            showingDeleteError = true
+            AccessibilityAnnouncement.announce("Failed to delete transaction")
             #if DEBUG
             print("Failed to delete transaction: \(error)")
             #endif

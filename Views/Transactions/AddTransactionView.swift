@@ -532,8 +532,14 @@ struct AddTransactionView: View {
     
     private var accountSection: some View {
         Section {
-            if subscriptionManager.currentTier.hasMultipleAccounts {
-                // Premium+ users see all accounts
+            // All tiers can pick among their accounts (Free is capped at 2
+            // accounts at creation; selection itself is not a premium feature)
+            if accounts.isEmpty {
+                Text("No accounts created")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .foregroundStyle(.secondary)
+            } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach(filteredAccounts, id: \.id) { account in
@@ -549,25 +555,6 @@ struct AddTransactionView: View {
                     }
                     .padding(.vertical, 4)
                 }
-            } else {
-                // Free users see single account picker
-                if let account = accounts.first {
-                    HStack {
-                        Image(systemName: account.icon)
-                            .foregroundStyle(Color.brandPrimary)
-                            .accessibilityHidden(true)
-                        Text(account.name)
-                        Spacer()
-                        Text("Default")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                } else {
-                    Text("No accounts created")
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(.secondary)
-                }
             }
         } header: {
             Text("Account")
@@ -577,15 +564,6 @@ struct AddTransactionView: View {
                       systemImage: "exclamationmark.triangle")
                     .font(.caption)
                     .foregroundStyle(.orange)
-            } else if !subscriptionManager.currentTier.hasMultipleAccounts && accounts.count > 1 {
-                Button("Upgrade for multiple accounts") {
-                    HapticService.play(.light)
-                    showingSubscription = true
-                }
-                .font(.caption)
-                // v3.0: VoiceOver label
-                .accessibilityLabel("Upgrade to Premium for multiple account support")
-                .accessibilityHint("Double tap to view subscription options")
             }
         }
     }

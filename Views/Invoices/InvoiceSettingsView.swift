@@ -140,12 +140,6 @@ struct InvoiceSettingsView: View {
             
             Section {
                 NavigationLink {
-                    InvoiceTemplateEditor()
-                } label: {
-                    Text("Customize Invoice Template")
-                }
-                
-                NavigationLink {
                     BusinessInfoEditor()
                 } label: {
                     Text("Business Information")
@@ -215,41 +209,6 @@ struct InvoiceSettingsView: View {
             UIApplication.shared.open(settingsURL)
         }
         #endif
-    }
-}
-
-// MARK: - Invoice Template Editor
-
-struct InvoiceTemplateEditor: View {
-    @State private var viewAppeared = false
-    
-    var body: some View {
-        List {
-            Section {
-                VStack(spacing: 16) {
-                    Image(systemName: "doc.richtext")
-                        .accessibilityHidden(true)
-                        .font(.largeTitle)
-                        .foregroundStyle(Color.brandPrimary)
-                        .symbolEffect(.bounce, value: viewAppeared)
-                        .accessibilityHidden(true)
-                    
-                    Text("Invoice template customization coming soon")
-                        .font(.subheadline)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-            }
-        }
-        .navigationTitle("Invoice Template")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            viewAppeared = true
-        }
     }
 }
 
