@@ -953,12 +953,5 @@ struct PlaidSyncStatusView_Previews: PreviewProvider {
     }
 }
 
-struct ConnectedAccountsCard_Previews: PreviewProvider {
-    static var previews: some View {
-        ConnectedAccountsCard()
-            .padding()
-            .modelContainer(ModelContainer.preview())
-    }
-}
 #endif
 #endif // canImport(LinkKit)

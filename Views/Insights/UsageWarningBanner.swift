@@ -113,7 +113,7 @@ struct UsageWarningBanner: View {
                         HapticService.play(.medium)
                         showingSubscription = true
                     } label: {
-                        Text("Upgrade")
+                        Text("Try Free")
                             .font(.caption.weight(.semibold))
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
@@ -162,7 +162,7 @@ struct UsageWarningBanner: View {
             Spacer()
             
             if warning.level == .blocked {
-                Button("Upgrade") {
+                Button("Try Free") {
                     HapticService.play(.medium)
                     showingSubscription = true
                 }
@@ -209,7 +209,7 @@ struct UsageWarningBanner: View {
             HapticService.play(.medium)
             showingSubscription = true
         } label: {
-            Text("Upgrade")
+            Text("Try Premium Free")
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -362,7 +362,7 @@ struct LimitReachedOverlay: View {
                 HapticService.play(.medium)
                 showingSubscription = true
             } label: {
-                Text("View Upgrade Options")
+                Text("Try Premium Free for 7 Days")
                     .font(.headline)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -379,6 +379,10 @@ struct LimitReachedOverlay: View {
                     .cornerRadius(12)
             }
             .padding(.horizontal)
+
+            Text("Free for 7 days, cancel anytime")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             
             // Dismiss button
             if let onDismiss = onDismiss {

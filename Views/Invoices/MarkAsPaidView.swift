@@ -688,6 +688,7 @@ struct MarkAsPaidView: View {
             
             // Show celebration overlay (replaces success alert)
             showCelebration = true
+            ReviewRequestService.shared.recordSuccessMoment()
             
             #if DEBUG
             print("✅ Payment recorded: \(amount.formatted(.currency(code: "USD")))")

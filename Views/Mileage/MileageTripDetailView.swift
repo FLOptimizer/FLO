@@ -218,6 +218,7 @@ struct MileageTripDetailView: View {
                             trip.classifyAsBusiness(purpose: .other)
                         }
                         HapticService.play(.success)
+                        ReviewRequestService.shared.recordSuccessMoment()
                         AccessibilityAnnouncement.announce("Classified as business trip")
                     }
 

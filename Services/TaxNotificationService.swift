@@ -39,6 +39,7 @@ class TaxNotificationService {
     private let q2Identifier = "quarterly_tax_q2"
     private let q3Identifier = "quarterly_tax_q3"
     private let q4Identifier = "quarterly_tax_q4"
+    private let genericIdentifierPrefix = "quarterly_tax_generic_"
 
     // MARK: - Permission Handling
 
@@ -89,6 +90,63 @@ class TaxNotificationService {
     ///
     /// Important: Caller should use requestPermissionWithExplanation() or
     /// NotificationPermissionHelper before calling this method.
+    /// Schedules generic quarterly-deadline reminders for users with business
+    /// activity who haven't configured personalized estimates (especially Free
+    /// tier — the deadline reminder is free, the estimate itself is Premium).
+    /// No amounts, just the deadline. Silently no-ops when notification
+    /// permission hasn't been granted; never prompts.
+    /// Idempotent — safe to call on every launch.
+    func scheduleGenericDeadlineRemindersIfNeeded() async {
+        guard await checkPermissionGranted() else { return }
+
+        let center = UNUserNotificationCenter.current()
+        let pending = await center.pendingNotificationRequests()
+
+        // Personalized reminders already cover the deadlines — don't double-notify
+        let personalizedIds = [q1Identifier, q2Identifier, q3Identifier, q4Identifier]
+        if pending.contains(where: { personalizedIds.contains($0.identifier) }) { return }
+
+        // Refresh: clear old generic reminders, then schedule the remaining ones
+        let staleGenericIds = pending
+            .map(\.identifier)
+            .filter { $0.hasPrefix(genericIdentifierPrefix) }
+        center.removePendingNotificationRequests(withIdentifiers: staleGenericIds)
+
+        let deadlines = TaxSettings.quarterlyDeadlines()
+        let calendar = Calendar.current
+
+        for (index, deadline) in deadlines.enumerated() where deadline > Date() {
+            for daysBefore in [7, 1] {
+                guard let fireDate = calendar.date(byAdding: .day, value: -daysBefore, to: deadline),
+                      fireDate > Date() else { continue }
+
+                var components = calendar.dateComponents([.year, .month, .day], from: fireDate)
+                components.hour = 9
+
+                let content = UNMutableNotificationContent()
+                content.title = daysBefore == 1
+                    ? "Estimated taxes due tomorrow"
+                    : "Estimated taxes due in one week"
+                content.body = "Q\(index + 1) federal estimated taxes are due \(deadline.formatted(date: .abbreviated, time: .omitted)). Open FLO to see where your business stands."
+                content.sound = .default
+                content.categoryIdentifier = notificationCategory
+                content.userInfo = [
+                    "type": "quarterly_tax",
+                    "quarter": index + 1,
+                    "deadline": deadline.timeIntervalSince1970
+                ]
+
+                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+                let request = UNNotificationRequest(
+                    identifier: "\(genericIdentifierPrefix)q\(index + 1)_\(daysBefore)d",
+                    content: content,
+                    trigger: trigger
+                )
+                try? await center.add(request)
+            }
+        }
+    }
+
     func scheduleQuarterlyReminders(
         settings: TaxSettings,
         estimate: TaxCalculationService.TaxEstimate
@@ -108,7 +166,9 @@ class TaxNotificationService {
         }
 
         let center      = UNUserNotificationCenter.current()
-        let deadlines   = TaxSettings.quarterlyDeadlines2025
+        // Use the current tax year's deadlines (was hardcoded to 2025, which
+        // silently scheduled nothing once those dates passed)
+        let deadlines   = TaxSettings.quarterlyDeadlines()
         let identifiers = [q1Identifier, q2Identifier, q3Identifier, q4Identifier]
 
         // v1.3: Use adjustedQuarterlyPayment — after W-2 withholding credit — so
@@ -169,7 +229,12 @@ class TaxNotificationService {
     /// Cancel all quarterly tax reminder notifications
     func cancelAllQuarterlyReminders() async {
         let center      = UNUserNotificationCenter.current()
-        let identifiers = [q1Identifier, q2Identifier, q3Identifier, q4Identifier]
+        var identifiers = [q1Identifier, q2Identifier, q3Identifier, q4Identifier]
+        // Also clear generic deadline reminders — personalized ones replace them
+        let pending = await center.pendingNotificationRequests()
+        identifiers += pending
+            .map(\.identifier)
+            .filter { $0.hasPrefix(genericIdentifierPrefix) }
         center.removePendingNotificationRequests(withIdentifiers: identifiers)
         print("🗑️ Cancelled all quarterly tax reminders")
     }

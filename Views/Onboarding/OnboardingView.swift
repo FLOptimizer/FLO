@@ -443,9 +443,10 @@ struct ValuePropRow: View {
 
 struct GetStartedPageView: View {
     let completeAction: () -> Void
-    
+
     @State private var checkmarkScale: CGFloat = 0
     @State private var contentOpacity: Double = 0
+    @State private var showingTrialOffer = false
     
     var body: some View {
         VStack(spacing: 30) {
@@ -520,12 +521,30 @@ struct GetStartedPageView: View {
                     .cornerRadius(10)
             }
             .padding(.horizontal, 30)
-            .padding(.bottom, 20)
+            .padding(.bottom, 4)
             .opacity(contentOpacity)
             .accessibilityLabel("Let's Go!")
             .accessibilityHint("Double tap to complete setup and go to your dashboard")
-            
+
+            // Soft trial offer — secondary, skippable
+            Button {
+                HapticService.play(.light)
+                showingTrialOffer = true
+            } label: {
+                Text("Curious about GPS mileage & tax estimates? **Try Premium free for 7 days**")
+                    .font(.footnote)
+                    .foregroundStyle(Color.brandPrimary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 30)
+            .opacity(contentOpacity)
+            .accessibilityLabel("Try Premium free for 7 days")
+            .accessibilityHint("Double tap to see Premium features and start a free trial. You can skip this.")
+
             Spacer()
+        }
+        .sheet(isPresented: $showingTrialOffer) {
+            SubscriptionView()
         }
         .onAppear {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.6).delay(0.1)) {

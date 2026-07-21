@@ -799,9 +799,11 @@ struct FLOApp: App {
                     }
             } else {
                 // Lightweight splash while ModelContainer + CloudKit init runs off main thread
-                // Seamlessly extends LaunchScreen appearance
-                Color.floSystemBackground
-                    .ignoresSafeArea()
+                // Seamlessly extends LaunchScreen appearance. On slow cold starts
+                // (CloudKit schema init can take ~2.5s on device) a spinner fades in
+                // after a beat so the app reads as loading, not hung; fast launches
+                // never see it.
+                LaunchSplashView()
                     .task {
                         await loadContainerAsync()
                     }
@@ -1318,4 +1320,32 @@ struct FLOApp: App {
         }
     }
     #endif // os(iOS)
+}
+
+// MARK: - Launch Splash
+
+/// Shown while the ModelContainer (and CloudKit schema, on cold starts) is
+/// created off the main thread. Extends the LaunchScreen background; after a
+/// short delay a spinner fades in so long cold starts read as loading rather
+/// than frozen. Fast launches never see the spinner.
+private struct LaunchSplashView: View {
+    @State private var showSpinner = false
+
+    var body: some View {
+        ZStack {
+            Color.floSystemBackground
+                .ignoresSafeArea()
+
+            ProgressView()
+                .controlSize(.large)
+                .opacity(showSpinner ? 1 : 0)
+        }
+        .task {
+            try? await Task.sleep(for: .seconds(0.5))
+            withAnimation(.easeIn(duration: 0.3)) {
+                showSpinner = true
+            }
+        }
+        .accessibilityLabel("FLO is loading")
+    }
 }

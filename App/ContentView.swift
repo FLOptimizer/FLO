@@ -27,6 +27,7 @@ import CoreSpotlight
 @MainActor
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var authService: BiometricAuthService
     @ObservedObject private var navigation = NavigationService.shared
 
@@ -104,6 +105,10 @@ struct ContentView: View {
             }
         }
         .animation(FLOAnimation.standard, value: authService.isAuthenticated)
+        .reviewRequestPrompting()
+        .task {
+            await scheduleTaxDeadlineRemindersIfNeeded()
+        }
         .onChange(of: scenePhase) { _, newValue in
             handleScenePhaseChange(newValue)
         }
@@ -284,6 +289,32 @@ struct ContentView: View {
     }
 
     // MARK: - Scene Phase Handler
+
+    /// Growth hook: anyone with business activity gets quarterly estimated-tax
+    /// deadline reminders on all tiers — the deadline is free, the estimate
+    /// behind it is Premium. No-ops without notification permission.
+    private func scheduleTaxDeadlineRemindersIfNeeded() async {
+        var profileDescriptor = FetchDescriptor<BusinessProfile>(
+            predicate: #Predicate { $0.isActive }
+        )
+        profileDescriptor.fetchLimit = 1
+        let hasBusinessProfile = ((try? modelContext.fetchCount(profileDescriptor)) ?? 0) > 0
+
+        var hasBusinessActivity = hasBusinessProfile
+        if !hasBusinessActivity {
+            // Fall back to scanning recent transactions (enum predicates on
+            // SwiftData are unreliable, so filter in memory on a small window)
+            var txDescriptor = FetchDescriptor<Transaction>(
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            txDescriptor.fetchLimit = 100
+            let recent = (try? modelContext.fetch(txDescriptor)) ?? []
+            hasBusinessActivity = recent.contains { $0.financeType == .business }
+        }
+
+        guard hasBusinessActivity else { return }
+        await TaxNotificationService.shared.scheduleGenericDeadlineRemindersIfNeeded()
+    }
 
     private func handleScenePhaseChange(_ newPhase: ScenePhase) {
         switch newPhase {

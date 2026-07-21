@@ -398,7 +398,7 @@ struct MileageDashboardCard: View {
                             Image(systemName: "location.fill")
                                 .font(.caption)
                                 .accessibilityHidden(true)
-                            Text("Upgrade for GPS Tracking")
+                            Text("Try GPS Tracking Free for 7 Days")
                                 .font(.caption)
                         }
                         .foregroundStyle(Color.brandPrimary)

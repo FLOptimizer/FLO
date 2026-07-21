@@ -458,14 +458,19 @@ struct TaxEstimateCard: View {
                 }
                 showingPaywall = true
             } label: {
-                Text("Upgrade to Premium")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(Color.brandPrimary)
-                    .cornerRadius(10)
+                VStack(spacing: 2) {
+                    Text("Try Premium Free")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text("7-day free trial")
+                        .font(.caption2)
+                        .opacity(0.85)
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 10)
+                .background(Color.brandPrimary)
+                .cornerRadius(10)
             }
             .scaleEffect(upgradeButtonScale)
             .accessibilityLabel("Upgrade to Premium")

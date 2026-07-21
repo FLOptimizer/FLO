@@ -1,8 +1,14 @@
 //  GettingStartedCard.swift
 //  FLO - Finance Ledger Optimizer
 //
-//  Version 3.4.2 - Cold-start completion check for seeded data
+//  Version 3.5 - Free-tier receipt task
 //  Copyright © 2026 Finch & Poppy Co LLC. All rights reserved.
+//
+//  CHANGES v3.5:
+//  ✅ ADDED: "Scan your first receipt" to the Free tier list. Smart Scanner
+//           moved to Free (SubscriptionTier v1.6) but the checklist was never
+//           updated, so free users weren't guided to a feature they now have.
+//           Tax profile icon moved to cyan to match Premium/Pro rows.
 //
 //  CHANGES v3.4.2:
 //  ✅ FIXED (iPad §8): On first load with seeded data the card showed
@@ -130,7 +136,7 @@ struct GettingStartedCard: View {
     
     // MARK: - Task Definitions
     
-    // FREE TIER: 5 essential tasks
+    // FREE TIER: 6 essential tasks
     private var freeTierTasks: [FLOSetupTask] {
         [
             FLOSetupTask(
@@ -150,11 +156,19 @@ struct GettingStartedCard: View {
                 isCompleted: hasTransactions
             ),
             FLOSetupTask(
+                id: "receipt",
+                title: "Scan your first receipt",
+                subtitle: "Auto-extract expense details",
+                icon: "camera.fill",
+                iconColor: .orange,
+                isCompleted: hasReceipts
+            ),
+            FLOSetupTask(
                 id: "tax_profile",
                 title: "Set up your tax profile",
                 subtitle: "For accurate quarterly estimates",
                 icon: "percent",
-                iconColor: .orange,
+                iconColor: .cyan,
                 isCompleted: hasTaxSettings || hasTaxProfileSetup
             ),
             FLOSetupTask(

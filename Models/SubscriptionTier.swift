@@ -400,7 +400,6 @@ enum SubscriptionTier: Int, Codable, Comparable {
                 "Professional invoicing (25/month)",
                 "Client management",
                 "CSV Bank Statement Import",
-                "100 receipt storage",
                 "Advanced budgets with rollover",
                 "Recurring transaction automation",
                 "Dashboard widgets",

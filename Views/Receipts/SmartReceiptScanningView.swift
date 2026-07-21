@@ -857,6 +857,7 @@ struct SmartReceiptScanningView: View {
 
                         try modelContext.save()
                         HapticService.play(.success)
+                        ReviewRequestService.shared.recordSuccessMoment()
 
                         #if DEBUG
                         print("🔗 Created SPLIT transactions from receipt: \(finalMerchant)")
@@ -896,6 +897,7 @@ struct SmartReceiptScanningView: View {
 
                         try modelContext.save()
                         HapticService.play(.success)
+                        ReviewRequestService.shared.recordSuccessMoment()
 
                         #if DEBUG
                         print("🔗 Created transaction from receipt: \(finalMerchant) - Account: \(selectedAccount?.name ?? "None")")
