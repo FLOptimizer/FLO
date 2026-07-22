@@ -215,8 +215,113 @@ struct FinancialOverviewTool: Tool {
     }
 }
 
+// MARK: - Action Tools (Tier 2)
+
+/// Navigates the app immediately — harmless and reversible, so no
+/// confirmation is required.
 @available(iOS 26.0, macOS 26.0, *)
-func makeAssistantTools(dataProvider: AssistantDataProvider) -> [any Tool] {
+struct ShowInAppTool: Tool {
+    let name = "showInApp"
+    let description = "Navigate the app to a section for the user. Valid sections: dashboard, transactions, accounts, budgets, invoices, mileage, tax, reports, receipts, clients, debtAccelerator. Use when the user says things like 'show me' or 'take me to'."
+    let dataProvider: AssistantDataProvider
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "The app section to open, e.g. transactions")
+        var section: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        let section = arguments.section
+        return await MainActor.run {
+            guard let tab = AppTab(pathComponent: section) else {
+                return "Unknown section \"\(section)\". Valid sections: dashboard, transactions, accounts, budgets, invoices, mileage, tax, reports, receipts, clients, debtAccelerator."
+            }
+            NavigationService.shared.navigateTo(tab)
+            return "Opened the \(tab.title) section for the user."
+        }
+    }
+}
+
+/// Stages a categorization — the user must confirm in the chat before
+/// anything is written.
+@available(iOS 26.0, macOS 26.0, *)
+struct ProposeCategorizeTool: Tool {
+    let name = "proposeCategorizeTransactions"
+    let description = "Propose assigning a category to the user's UNCATEGORIZED transactions in a date range (optionally filtered by merchant/note text). This only stages a proposal — the user confirms it with a button in the chat. Use when asked to categorize or clean up transactions."
+    let dataProvider: AssistantDataProvider
+    let service: AssistantService
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "Start date in YYYY-MM-DD format")
+        var startDate: String
+        @Guide(description: "End date in YYYY-MM-DD format (inclusive)")
+        var endDate: String
+        @Guide(description: "Text to match against merchant or note. Empty string matches all uncategorized transactions in range.")
+        var searchTerm: String
+        @Guide(description: "The exact category name to assign")
+        var categoryName: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await MainActor.run {
+            let validNames = dataProvider.categoryNames()
+            guard let matchedCategory = validNames.first(where: { $0.lowercased() == arguments.categoryName.lowercased() }) else {
+                return "No category named \"\(arguments.categoryName)\". The user's categories are: \(validNames.joined(separator: ", "))."
+            }
+            guard let match = dataProvider.findUncategorizedTransactions(
+                startISO: arguments.startDate,
+                endISO: arguments.endDate,
+                searchTerm: arguments.searchTerm
+            ) else {
+                return "Dates must be in YYYY-MM-DD format."
+            }
+            guard match.count > 0 else {
+                return "No uncategorized transactions found in that range."
+            }
+            let examples = match.examples.joined(separator: ", ")
+            service.pendingAction = AssistantService.PendingAction(
+                kind: .categorize(transactionIDs: match.ids, categoryName: matchedCategory),
+                summary: "Assign \(match.count) uncategorized transaction\(match.count == 1 ? "" : "s") (e.g. \(examples)) to \(matchedCategory)"
+            )
+            return "Staged a proposal to assign \(match.count) uncategorized transactions to \(matchedCategory). Tell the user to review and tap Confirm in the chat to apply it — nothing has been changed yet."
+        }
+    }
+}
+
+/// Stages event creation — the user must confirm in the chat before
+/// anything is written.
+@available(iOS 26.0, macOS 26.0, *)
+struct ProposeCreateEventTool: Tool {
+    let name = "proposeCreateEvent"
+    let description = "Propose creating a spending event (a named trip/occasion date range like 'Baseball trip, Jul 4-12'). This only stages a proposal — the user confirms it with a button in the chat."
+    let dataProvider: AssistantDataProvider
+    let service: AssistantService
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "Event name, e.g. Baseball trip")
+        var name: String
+        @Guide(description: "Start date in YYYY-MM-DD format")
+        var startDate: String
+        @Guide(description: "End date in YYYY-MM-DD format (inclusive)")
+        var endDate: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await MainActor.run {
+            service.pendingAction = AssistantService.PendingAction(
+                kind: .createEvent(name: arguments.name, startISO: arguments.startDate, endISO: arguments.endDate),
+                summary: "Create event \"\(arguments.name)\" (\(arguments.startDate) to \(arguments.endDate))"
+            )
+            return "Staged a proposal to create the event \"\(arguments.name)\". Tell the user to tap Confirm in the chat to create it — nothing has been created yet."
+        }
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func makeAssistantTools(dataProvider: AssistantDataProvider, service: AssistantService) -> [any Tool] {
     [
         FinancialOverviewTool(dataProvider: dataProvider),
         SpendingByCategoryTool(dataProvider: dataProvider),
@@ -228,7 +333,10 @@ func makeAssistantTools(dataProvider: AssistantDataProvider) -> [any Tool] {
         MonthlyTrendTool(dataProvider: dataProvider),
         BudgetStatusTool(dataProvider: dataProvider),
         InvoicesAndDebtsTool(dataProvider: dataProvider),
-        EventsTool(dataProvider: dataProvider)
+        EventsTool(dataProvider: dataProvider),
+        ShowInAppTool(dataProvider: dataProvider),
+        ProposeCategorizeTool(dataProvider: dataProvider, service: service),
+        ProposeCreateEventTool(dataProvider: dataProvider, service: service)
     ]
 }
 #endif

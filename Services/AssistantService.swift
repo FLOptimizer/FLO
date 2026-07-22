@@ -67,6 +67,43 @@ final class AssistantService {
     /// Reset the model conversation (call when the user starts a new chat)
     func startNewConversation() {
         sessionStorage = nil
+        pendingAction = nil
+    }
+
+    // MARK: - Guardrailed Actions
+
+    /// A write the model has PROPOSED. Nothing mutates until the user taps
+    /// Confirm in the chat UI — tools can only stage, never apply.
+    struct PendingAction: Identifiable {
+        enum Kind {
+            case categorize(transactionIDs: [UUID], categoryName: String)
+            case createEvent(name: String, startISO: String, endISO: String)
+        }
+        let id = UUID()
+        let kind: Kind
+        /// Human-readable description shown on the confirmation card
+        let summary: String
+    }
+
+    /// The action awaiting user confirmation, if any (rendered by the view)
+    var pendingAction: PendingAction?
+
+    /// Apply the pending action. Only the view's Confirm button calls this.
+    func applyPendingAction() -> String {
+        guard let action = pendingAction, let dataProvider else {
+            return "Nothing to confirm."
+        }
+        pendingAction = nil
+        switch action.kind {
+        case .categorize(let ids, let categoryName):
+            return dataProvider.applyCategory(toTransactionIDs: ids, categoryName: categoryName)
+        case .createEvent(let name, let startISO, let endISO):
+            return dataProvider.applyCreateEvent(name: name, startISO: startISO, endISO: endISO)
+        }
+    }
+
+    func cancelPendingAction() {
+        pendingAction = nil
     }
 
     #if canImport(FoundationModels)
@@ -76,7 +113,7 @@ final class AssistantService {
             return existing
         }
         let session = LanguageModelSession(
-            tools: makeAssistantTools(dataProvider: dataProvider),
+            tools: makeAssistantTools(dataProvider: dataProvider, service: self),
             instructions: systemPrompt
         )
         sessionStorage = session
@@ -115,7 +152,10 @@ final class AssistantService {
         tax snapshot, mileage, account balances, monthly trends, budgets, invoices and \
         debts, and spending events (trips/occasions). ALWAYS call the relevant tool to \
         get real numbers before answering a question about the user's finances — never \
-        estimate or invent figures. Today's date is \(Date().formatted(date: .complete, time: .omitted)).
+        estimate or invent figures. You also have ACTION tools: showInApp navigates the \
+        app for the user, and the propose* tools stage changes (categorizing \
+        transactions, creating events) that the user approves with a Confirm button in \
+        the chat — after staging one, tell the user to review and confirm it. Today's date is \(Date().formatted(date: .complete, time: .omitted)).
         """
     }
 

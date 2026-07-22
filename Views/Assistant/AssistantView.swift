@@ -67,6 +67,9 @@ struct AssistantView: View {
 
             Divider()
 
+            // Staged action awaiting user confirmation (Tier 2 guardrail)
+            actionConfirmationCard
+
             // Input bar
             inputBar
         }
@@ -168,6 +171,65 @@ struct AssistantView: View {
             Spacer()
         }
         .padding(.horizontal)
+    }
+
+    // MARK: - Action Confirmation
+
+    /// Card shown when the model has STAGED a change. Nothing is written
+    /// until the user taps Confirm here.
+    @ViewBuilder
+    private var actionConfirmationCard: some View {
+        if let action = assistantService.pendingAction {
+            VStack(alignment: .leading, spacing: 10) {
+                Label(action.summary, systemImage: "sparkles")
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.8)
+                HStack(spacing: 12) {
+                    Button {
+                        HapticService.play(.medium)
+                        let result = assistantService.applyPendingAction()
+                        let confirmation = AssistantMessage(
+                            content: "✅ \(result)",
+                            isUser: false,
+                            conversationID: currentConversationID
+                        )
+                        modelContext.insert(confirmation)
+                        HapticService.play(.success)
+                        scrollToBottom.toggle()
+                    } label: {
+                        Text("Confirm")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(Color.brandPrimary)
+                            .clipShape(Capsule())
+                    }
+                    .accessibilityHint("Applies the proposed change")
+
+                    Button("Cancel") {
+                        HapticService.play(.light)
+                        assistantService.cancelPendingAction()
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color.brandPrimary.opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(Color.brandPrimary.opacity(0.3), lineWidth: 1)
+                    )
+            )
+            .padding(.horizontal, 16)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Proposed change: \(action.summary). Confirm or cancel.")
+        }
     }
 
     // MARK: - Input Bar

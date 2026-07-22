@@ -649,4 +649,91 @@ final class AssistantDataProvider {
         }
         return json(summaries)
     }
+
+    // MARK: - Action Backends (staged writes applied only after user confirmation)
+
+    struct UncategorizedMatch {
+        let ids: [UUID]
+        let count: Int
+        let totalAmount: Double
+        let examples: [String]
+    }
+
+    /// Find uncategorized transactions in a date range (for a staged
+    /// categorization proposal). Never mutates anything.
+    func findUncategorizedTransactions(startISO: String, endISO: String, searchTerm: String) -> UncategorizedMatch? {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        guard let start = formatter.date(from: startISO),
+              let endDay = formatter.date(from: endISO),
+              let end = Calendar.current.date(byAdding: .day, value: 1, to: endDay) else { return nil }
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= start && $0.date < end },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        var results = ((try? modelContext.fetch(descriptor)) ?? [])
+            .filter { $0.category == nil && !$0.isTransfer }
+        let term = searchTerm.trimmingCharacters(in: .whitespaces).lowercased()
+        if !term.isEmpty {
+            results = results.filter {
+                $0.merchantName.lowercased().contains(term) || $0.note.lowercased().contains(term)
+            }
+        }
+        return UncategorizedMatch(
+            ids: results.map(\.id),
+            count: results.count,
+            totalAmount: results.filter { !$0.isIncome }.reduce(0) { $0 + $1.amount },
+            examples: results.prefix(3).map { $0.merchantName.isEmpty ? $0.note : $0.merchantName }
+        )
+    }
+
+    /// All category names, for validating a proposed category
+    func categoryNames() -> [String] {
+        let descriptor = FetchDescriptor<Category>(sortBy: [SortDescriptor(\.name)])
+        return ((try? modelContext.fetch(descriptor)) ?? []).map(\.name)
+    }
+
+    /// APPLY: assign a category to transactions by id. Called only from the
+    /// user-confirmed action path, never directly by a tool.
+    func applyCategory(toTransactionIDs ids: [UUID], categoryName: String) -> String {
+        let catDescriptor = FetchDescriptor<Category>()
+        guard let category = ((try? modelContext.fetch(catDescriptor)) ?? [])
+            .first(where: { $0.name.lowercased() == categoryName.lowercased() }) else {
+            return "Category \"\(categoryName)\" no longer exists."
+        }
+        let txDescriptor = FetchDescriptor<Transaction>()
+        let all = (try? modelContext.fetch(txDescriptor)) ?? []
+        let idSet = Set(ids)
+        var updated = 0
+        for tx in all where idSet.contains(tx.id) {
+            tx.category = category
+            updated += 1
+        }
+        do {
+            try modelContext.save()
+            return "Assigned \(updated) transaction\(updated == 1 ? "" : "s") to \(category.name)."
+        } catch {
+            return "Failed to save: \(error.localizedDescription)"
+        }
+    }
+
+    /// APPLY: create a spending event. Called only from the user-confirmed
+    /// action path, never directly by a tool.
+    func applyCreateEvent(name: String, startISO: String, endISO: String) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        guard let start = formatter.date(from: startISO), let end = formatter.date(from: endISO) else {
+            return "Invalid dates."
+        }
+        let event = SpendingEvent(name: name, startDate: start, endDate: end)
+        modelContext.insert(event)
+        do {
+            try modelContext.save()
+            return "Created event \"\(name)\" (\(event.dateRangeDisplay))."
+        } catch {
+            return "Failed to save: \(error.localizedDescription)"
+        }
+    }
 }
