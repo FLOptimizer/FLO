@@ -193,12 +193,26 @@ struct WelcomePageView: View {
                     .padding(.horizontal, 30)
             }
             .opacity(textOpacity)
-            
+
             Spacer()
+
+            // Explore tour: lets prospects see a full, living app before
+            // committing to setup. Swaps in sample data; nothing is saved.
+            Button {
+                HapticService.play(.light)
+                NotificationCenter.default.post(name: .enterExploreTour, object: nil)
+            } label: {
+                Text("Just looking? **Preview with sample data**")
+                    .font(.footnote)
+                    .foregroundStyle(Color.brandPrimary)
+            }
+            .opacity(textOpacity)
+            .accessibilityLabel("Preview FLO with sample data")
+            .accessibilityHint("Double tap to explore the app with example finances. Nothing is saved.")
+
             Spacer()
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Welcome to FLO, Finance Ledger Optimizer. Take control of your business finances. Track expenses, estimate taxes, manage invoices, and stay organized.")
+        .accessibilityElement(children: .contain)
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
                 logoScale = 1.0

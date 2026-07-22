@@ -994,14 +994,17 @@ struct MoreView: View {
             }
             .listRowAnimation(delay: 0.9, appeared: viewAppeared)
             
-            // v5.9: CSV Import - LOCKED for Free tier (Premium+)
-            if hasCSVImport {
+            // v5.9: CSV Import — Free tier gets a capped lifetime allowance so
+            // switchers can bring their data in; unlimited is Premium+
+            if hasCSVImport || CSVImportQuota.canImport(tier: currentTier) {
                 NavigationLink(destination: CSVFilePickerView()) {
                     MenuRow(
                         icon: "doc.badge.arrow.up",
                         iconColor: .teal,
                         title: "Import Bank Statement",
-                        subtitle: "Import CSV bank statements",
+                        subtitle: hasCSVImport
+                            ? "Import CSV bank statements"
+                            : "\(CSVImportQuota.remaining(for: currentTier) ?? 0) free imports left",
                         accessibilityLabel: "Import Bank Statement from CSV"
                     )
                 }
@@ -1011,7 +1014,7 @@ struct MoreView: View {
                     icon: "doc.badge.arrow.up",
                     iconColor: .teal,
                     title: "Import Bank Statement",
-                    subtitle: "Import CSV bank statements",
+                    subtitle: "Free imports used — upgrade for unlimited",
                     requiredTier: .premium,
                     isLocked: true
                 ) {

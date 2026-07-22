@@ -41,10 +41,13 @@ struct InvoiceSettingsView: View {
     @AppStorage("enableLatePaymentReminders") private var enableReminders = true
     @AppStorage("reminderDaysBeforeDue") private var reminderDaysBeforeDue = 3
     @AppStorage("reminderDaysAfterDue") private var reminderDaysAfterDue = 7
-    
+    @AppStorage("invoiceShowFLOBranding") private var showFLOBranding = true
+    @EnvironmentObject private var subscriptionManager: SubscriptionManager
+
     @State private var notificationsAuthorized = false
     @State private var showingNotificationDeniedAlert = false
     @State private var viewAppeared = false
+    @State private var showingUpgrade = false
     
     var body: some View {
         List {
@@ -144,8 +147,37 @@ struct InvoiceSettingsView: View {
                 } label: {
                     Text("Business Information")
                 }
+
+                if subscriptionManager.currentTier == .pro {
+                    Toggle("\"Sent with FLO\" footer", isOn: $showFLOBranding)
+                        .accessibilityHint("Shows a small FLO credit line at the bottom of invoice PDFs")
+                } else {
+                    Button {
+                        HapticService.play(.light)
+                        showingUpgrade = true
+                    } label: {
+                        HStack {
+                            Text("\"Sent with FLO\" footer")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Text("On")
+                                .foregroundStyle(.secondary)
+                            Image(systemName: "lock.fill")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .accessibilityLabel("Sent with FLO footer, on. Upgrade to Pro to remove.")
+                }
             } header: {
                 Text("Customization")
+            } footer: {
+                if subscriptionManager.currentTier != .pro {
+                    Text("Invoice PDFs include a small \"Sent with FLO\" credit line. Pro subscribers can turn it off.")
+                }
+            }
+            .sheet(isPresented: $showingUpgrade) {
+                SubscriptionView()
             }
             .opacity(viewAppeared ? 1 : 0.001)
             .offset(y: viewAppeared ? 0 : 10)

@@ -190,10 +190,22 @@ enum SubscriptionTier: Int, Codable, Comparable {
         true
     }
     
-    /// CSV bank statement import (Premium+)
+    /// CSV bank statement import (Premium+ unlimited)
     /// v1.5: Added for CSV import feature
     var hasCSVImport: Bool {
         self >= .premium
+    }
+
+    /// Lifetime CSV import allowance for tiers without unlimited import.
+    /// Free gets a taste — bringing existing data into FLO is the single
+    /// biggest switching cost, so we don't paywall the first imports.
+    var csvImportLimit: Int? {
+        switch self {
+        case .free:
+            return 3
+        case .premium, .pro:
+            return nil // Unlimited
+        }
     }
     
     // MARK: - Debt & Financial Tips Features
@@ -386,6 +398,7 @@ enum SubscriptionTier: Int, Codable, Comparable {
                 "Unlimited receipt storage",
                 "Business/Personal separation",
                 "Smart Receipt Scanning with AI",
+                "3 CSV bank statement imports",
                 "Basic invoicing (3/month)"
             ]
         case .premium:

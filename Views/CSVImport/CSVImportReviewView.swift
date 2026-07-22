@@ -260,7 +260,9 @@ struct CSVImportReviewView: View {
         switch result {
         case .success(let count):
             committedCount = count
+            CSVImportQuota.recordImport(tier: SubscriptionManager.shared.currentTier)
             HapticService.play(.success)
+            ReviewRequestService.shared.recordSuccessMoment()
             AccessibilityAnnouncement.announce("Successfully imported \(count) transactions")
             showingCommitSuccess = true
         case .failure(let error):

@@ -57,7 +57,11 @@
 import Foundation
 import SwiftData
 
-#if DEBUG
+// NOTE: The seeding half of this service is available in ALL builds — it powers
+// the onboarding "Explore with sample data" tour, which seeds an in-memory,
+// CloudKit-free container only. The DESTRUCTIVE reset functions remain
+// compiled out of Release builds (see #if DEBUG below) after a demo-mode
+// incident wiped real CloudKit data on a device.
 
 @MainActor
 class SeedDataService {
@@ -91,8 +95,9 @@ class SeedDataService {
         }
     }
 
-    // MARK: - Reset All Data (Safe Version v1.3)
-    
+    // MARK: - Reset All Data (Safe Version v1.3) — DEBUG ONLY
+    #if DEBUG
+
     /// Safely resets all data with proper UI handling.
     /// Deletes in dependency order and yields between deletions to allow UI updates.
     ///
@@ -173,7 +178,11 @@ class SeedDataService {
         }
     }
     
-    // Legacy synchronous delete (kept for backward compatibility in seeders)
+    #endif
+
+    // Legacy synchronous delete (kept for backward compatibility in seeders).
+    // Available in Release: seeders call it to clear a type before seeding,
+    // which is a no-op on the fresh in-memory tour container.
     private func deleteAll<T: PersistentModel>(_ type: T.Type, context: ModelContext) {
         do {
             let items = try context.fetch(FetchDescriptor<T>())
@@ -1125,5 +1134,3 @@ class SeedDataService {
         getDataCounts(context: context).reduce(0) { $0 + $1.1 }
     }
 }
-
-#endif

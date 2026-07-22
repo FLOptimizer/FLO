@@ -65,6 +65,7 @@ struct CSVFilePickerView: View {
     // Navigation destinations
     @State private var showingColumnMapper = false
     @State private var showingReview = false
+    @State private var showingUpgrade = false
     
     private static let logger = Logger(
         subsystem: "com.finchandpoppy.flo",
@@ -77,10 +78,15 @@ struct CSVFilePickerView: View {
                 VStack(spacing: 32) {
                     // Hero Section
                     heroSection
-                    
+
+                    // Free-tier allowance status (all entry points funnel here)
+                    if let remaining = CSVImportQuota.remaining(for: SubscriptionManager.shared.currentTier) {
+                        allowanceBanner(remaining: remaining)
+                    }
+
                     // Instructions
                     instructionsSection
-                    
+
                     // Import Button
                     importButton
                     
@@ -227,10 +233,48 @@ struct CSVFilePickerView: View {
     
     // MARK: - Import Button
     
+    private var importsExhausted: Bool {
+        !CSVImportQuota.canImport(tier: SubscriptionManager.shared.currentTier)
+    }
+
+    @ViewBuilder
+    private func allowanceBanner(remaining: Int) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: remaining > 0 ? "info.circle.fill" : "lock.fill")
+                .foregroundStyle(remaining > 0 ? Color.brandPrimary : .orange)
+                .accessibilityHidden(true)
+            if remaining > 0 {
+                Text("\(remaining) of \(SubscriptionManager.shared.currentTier.csvImportLimit ?? 0) free imports remaining")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Free imports used")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Try Premium Free") {
+                    HapticService.play(.medium)
+                    showingUpgrade = true
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.brandPrimary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color.floSecondarySystemBackground)
+        .cornerRadius(10)
+        .accessibilityElement(children: .combine)
+    }
+
     private var importButton: some View {
         Button {
             HapticService.play(.medium)
-            showingFilePicker = true
+            if importsExhausted {
+                showingUpgrade = true
+            } else {
+                showingFilePicker = true
+            }
         } label: {
             HStack(spacing: 12) {
                 if isProcessing {
@@ -254,8 +298,11 @@ struct CSVFilePickerView: View {
             .cornerRadius(10)
         }
         .disabled(isProcessing)
-        .accessibilityLabel("Select CSV file to import")
-        .accessibilityHint("Opens file browser to choose a bank statement CSV file")
+        .accessibilityLabel(importsExhausted ? "Free imports used. Upgrade for unlimited imports." : "Select CSV file to import")
+        .accessibilityHint(importsExhausted ? "Double tap to view Premium subscription options" : "Opens file browser to choose a bank statement CSV file")
+        .sheet(isPresented: $showingUpgrade) {
+            SubscriptionView()
+        }
     }
     
     // MARK: - Profile Override Section

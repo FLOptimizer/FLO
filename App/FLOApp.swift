@@ -692,6 +692,14 @@ extension Notification.Name {
 }
 #endif // canImport(UIKit)
 
+// MARK: - Explore Tour Notification
+
+extension Notification.Name {
+    /// Posted by onboarding when the user wants to preview FLO with sample
+    /// data. Handled by FLOApp, which swaps in a seeded in-memory container.
+    static let enterExploreTour = Notification.Name("com.finchandpoppy.flo.enterExploreTour")
+}
+
 // MARK: - FLOApp
 
 @main
@@ -701,11 +709,16 @@ struct FLOApp: App {
     #if canImport(UIKit)
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     #endif
-    
+
     @State private var container: ModelContainer?
+    // Explore tour: a seeded, in-memory, CloudKit-free container shown instead
+    // of the real store so prospects can preview a full app. Never persisted.
+    @State private var exploreContainer: ModelContainer?
     @StateObject private var authService = BiometricAuthService.shared
     @StateObject private var subscriptionManager = SubscriptionManager.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+
+    private var isExploringSampleData: Bool { exploreContainer != nil }
     
     // MARK: - Initialization
     
@@ -744,15 +757,30 @@ struct FLOApp: App {
     var body: some Scene {
         WindowGroup {
             if let container {
-                // Real app content — only shown after ModelContainer is ready
+                // Real app content — only shown after ModelContainer is ready.
+                // During the explore tour, a seeded in-memory container is
+                // swapped in; .id forces a full rebuild so every @Query and
+                // context picks up the swap.
                 ContentView()
-                    .modelContainer(container)
+                    .modelContainer(exploreContainer ?? container)
+                    .id(isExploringSampleData)
                     .environmentObject(authService)
                     .environmentObject(subscriptionManager)
+                    .safeAreaInset(edge: .top) {
+                        if isExploringSampleData {
+                            exploreTourBanner
+                        }
+                    }
                     #if os(iOS)
                     .fullScreenCover(isPresented: Binding(
-                        get: { !hasCompletedOnboarding },
-                        set: { hasCompletedOnboarding = !$0 }
+                        get: { !hasCompletedOnboarding && !isExploringSampleData },
+                        set: { newValue in
+                            // Entering the tour dismisses this cover; that
+                            // programmatic dismissal must NOT mark onboarding
+                            // complete, or it never reappears after the tour
+                            guard !isExploringSampleData else { return }
+                            hasCompletedOnboarding = !newValue
+                        }
                     )) {
                         OnboardingView()
                     }
@@ -760,7 +788,23 @@ struct FLOApp: App {
                     .task {
                         await subscriptionManager.initialize()
                     }
+                    .onReceive(NotificationCenter.default.publisher(for: .enterExploreTour)) { _ in
+                        enterExploreTour()
+                    }
+                    #if DEBUG
+                    // Verification hook: `simctl launch ... EXPLORE_TOUR_TEST`
+                    // drives the tour without UI automation
+                    .task {
+                        if ProcessInfo.processInfo.arguments.contains("EXPLORE_TOUR_TEST") {
+                            enterExploreTour()
+                        }
+                    }
+                    #endif
                     .onAppear {
+                        // Tour rebuilds skip app setup — services stay bound to
+                        // the real store, and the tour container needs none of it
+                        guard !isExploringSampleData else { return }
+
                         PerformanceMonitor.shared.launchCheckpoint("ContentViewAppear")
                         #if DEBUG
                         LaunchTimer.checkpoint("ContentView.onAppear")
@@ -793,7 +837,8 @@ struct FLOApp: App {
                         scheduleDeferredSetup(container: container)
                     }
                     .onChange(of: authService.isAuthenticated) { oldValue, newValue in
-                        if newValue {
+                        // Never let sample tour data reach the shared widget store
+                        if newValue && !isExploringSampleData {
                             updateWidgetData(container: container)
                         }
                     }
@@ -880,6 +925,48 @@ struct FLOApp: App {
 
     /// Creates the ModelContainer on a background thread to avoid blocking the main thread.
     /// CloudKit schema initialization (~2.5s) happens off-screen while the splash view shows.
+    // MARK: - Explore Tour
+
+    /// Banner pinned above the tour so sample data can never be mistaken for
+    /// real finances, with the exit affordance always in reach.
+    private var exploreTourBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "sparkles")
+                .font(.caption)
+            Text("Sample data tour")
+                .font(.caption.weight(.semibold))
+            Spacer()
+            Button("Start Fresh") {
+                HapticService.play(.medium)
+                exitExploreTour()
+            }
+            .font(.caption.weight(.semibold))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .foregroundStyle(.white)
+        .background(Color.brandPrimary)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("You are viewing sample data. Double tap Start Fresh to exit the tour and set up your own finances.")
+    }
+
+    /// Seeds a fresh in-memory container (CloudKit disabled) with the demo
+    /// dataset and swaps it in. The real store is never touched.
+    private func enterExploreTour() {
+        guard exploreContainer == nil else { return }
+        let tourContainer = ModelContainer.preview()
+        Task { @MainActor in
+            await SeedDataService.shared.seedAllData(context: tourContainer.mainContext)
+            exploreContainer = tourContainer
+        }
+    }
+
+    /// Discards the tour container. Onboarding reappears (it was never
+    /// completed) so the user can start their real setup.
+    private func exitExploreTour() {
+        exploreContainer = nil
+    }
+
     private func loadContainerAsync() async {
         // When running under XCTest, the App Group container may not be available
         // and CloudKit schema validation can fail in the test runner environment.
