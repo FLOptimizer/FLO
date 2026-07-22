@@ -1,0 +1,2638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLO - Financial Ledger Optimizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-deep: #07070d;
+            --surface: #0f0f18;
+            --card-glass: rgba(255,255,255,0.04);
+            --card-border: rgba(255,255,255,0.08);
+            --glass-hover: rgba(255,255,255,0.07);
+            --text-primary: #f5f5f7;
+            --text-secondary: rgba(245,245,247,0.55);
+            --text-tertiary: rgba(245,245,247,0.3);
+            --teal: #14b8a6;
+            --income-green: #34d399;
+            --expense-red: #f87171;
+            --warning-yellow: #fbbf24;
+            --blue: #60a5fa;
+            --purple: #a78bfa;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .status-bar {
+            height: 18px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            font-size: 9px;
+            color: var(--text-tertiary);
+            flex-shrink: 0;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 54px;
+            background: var(--surface);
+            border-right: 1px solid var(--card-border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 0;
+            overflow-y: auto;
+            gap: 8px;
+            transition: width 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+            overflow: hidden;
+            border-right: none;
+        }
+
+        .sidebar-item {
+            width: 42px;
+            height: 54px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-tertiary);
+            font-size: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            gap: 2px;
+            border: 1px solid transparent;
+            position: relative;
+        }
+
+        .sidebar-item:hover {
+            background: var(--glass-hover);
+            color: var(--text-secondary);
+        }
+
+        .sidebar-item.active {
+            color: var(--teal);
+            background: rgba(20, 184, 166, 0.1);
+            border: 1px solid rgba(20, 184, 166, 0.3);
+            box-shadow: 0 0 20px rgba(20, 184, 166, 0.15);
+        }
+
+        .sidebar-item-emoji {
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        .sidebar-item-label {
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .zones-wrapper {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .zone-2 {
+            flex: 1;
+            background: var(--bg-deep);
+            border-right: 1px solid var(--card-border);
+            overflow-y: auto;
+            padding: 16px;
+            transition: width 0.3s ease, flex 0.3s ease;
+            width: 100%;
+        }
+
+        .zone-2.narrowed {
+            width: 340px;
+            flex: none;
+        }
+
+        .zone-3 {
+            width: 0;
+            background: var(--bg-deep);
+            border-right: 1px solid var(--card-border);
+            overflow: hidden;
+            transition: width 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .zone-3.expanded {
+            width: calc(100% - 340px - 54px);
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .zone-3-header {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid var(--card-border);
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .zone-3-back {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .zone-3-back:hover {
+            background: var(--glass-hover);
+            color: var(--text-primary);
+        }
+
+        .zone-3-title {
+            font-size: 16px;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .zone-3-content {
+            padding: 16px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .card {
+            background: var(--card-glass);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05), transparent);
+            pointer-events: none;
+        }
+
+        .card:hover {
+            background: var(--glass-hover);
+            transform: translateY(-1px);
+            cursor: pointer;
+        }
+
+        .card-section {
+            padding: 16px;
+            gap: 12px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-header {
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-top: 12px;
+            margin-bottom: 8px;
+        }
+
+        .hero-metric {
+            text-align: center;
+            padding: 24px 16px;
+            gap: 4px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hero-number {
+            font-size: 36px;
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+        }
+
+        .hero-subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            width: fit-content;
+            margin: 0 auto;
+        }
+
+        .badge-green {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--income-green);
+        }
+
+        .badge-teal {
+            background: rgba(20, 184, 166, 0.15);
+            color: var(--teal);
+        }
+
+        .segmented-control {
+            display: flex;
+            gap: 8px;
+            background: var(--card-glass);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 4px;
+            width: fit-content;
+            margin-bottom: 12px;
+        }
+
+        .segmented-button {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .segmented-button.active {
+            background: var(--teal);
+            color: white;
+        }
+
+        .transaction-item {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .transaction-item:last-child {
+            border-bottom: none;
+        }
+
+        .transaction-item:hover {
+            background: var(--glass-hover);
+        }
+
+        .transaction-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .transaction-emoji {
+            font-size: 20px;
+        }
+
+        .transaction-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .transaction-merchant {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .transaction-meta {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .transaction-amount {
+            font-size: 13px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+        }
+
+        .transaction-amount.income {
+            color: var(--income-green);
+        }
+
+        .transaction-amount.expense {
+            color: var(--expense-red);
+        }
+
+        .category-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: white;
+            margin-top: 4px;
+            width: fit-content;
+        }
+
+        .tag-restaurants { background: #dc2626; }
+        .tag-groceries { background: #059669; }
+        .tag-coffee { background: #92400e; color: #fbbf24; }
+        .tag-software { background: #6366f1; }
+        .tag-transportation { background: #d97706; }
+        .tag-entertainment { background: #db2777; }
+        .tag-shops { background: #7c3aed; }
+        .tag-client-payment { background: var(--teal); }
+        .tag-housing { background: #475569; }
+        .tag-utilities { background: #0369a1; }
+        .tag-office { background: #6366f1; }
+        .tag-deductible { background: rgba(52, 211, 153, 0.2); color: var(--income-green); border: 1px solid var(--income-green); }
+        .tag-business { background: rgba(20, 184, 166, 0.2); color: var(--teal); border: 1px solid var(--teal); }
+
+        .button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .button-primary {
+            background: var(--teal);
+            color: white;
+        }
+
+        .button-primary:hover {
+            background: #0d9488;
+            transform: translateY(-1px);
+        }
+
+        .button-secondary {
+            background: var(--card-glass);
+            border: 1px solid var(--card-border);
+            color: var(--text-primary);
+        }
+
+        .button-secondary:hover {
+            background: var(--glass-hover);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .budget-circle {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+        }
+
+        .budget-svg {
+            width: 80px;
+            height: 80px;
+            position: relative;
+        }
+
+        .budget-emoji {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+
+        .budget-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .budget-amount {
+            font-size: 12px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            text-align: center;
+            color: var(--text-primary);
+        }
+
+        .budget-remaining {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            text-align: center;
+        }
+
+        .budget-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-bottom: 1px solid var(--card-border);
+            cursor: pointer;
+        }
+
+        .budget-row:last-child {
+            border-bottom: none;
+        }
+
+        .budget-row:hover {
+            background: var(--glass-hover);
+            border-radius: 8px;
+        }
+
+        .budget-row-emoji {
+            font-size: 20px;
+            width: 24px;
+        }
+
+        .budget-row-name {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .budget-row-progress {
+            flex: 2;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--card-glass);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s ease, background 0.3s ease;
+        }
+
+        .progress-fill.green { background: var(--income-green); }
+        .progress-fill.yellow { background: var(--warning-yellow); }
+        .progress-fill.red { background: var(--expense-red); }
+
+        .budget-row-amounts {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .budget-row-status {
+            font-size: 11px;
+            font-weight: 600;
+            text-align: right;
+            width: 50px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .budget-row-status.under { color: var(--income-green); }
+        .budget-row-status.over { color: var(--expense-red); }
+
+        .chart-container {
+            width: 100%;
+            height: 120px;
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            padding: 8px 0;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: var(--card-glass);
+            border: 1px solid var(--card-border);
+            border-radius: 4px 4px 0 0;
+            position: relative;
+            min-height: 4px;
+            transition: background 0.2s ease;
+        }
+
+        .chart-bar:hover {
+            background: var(--glass-hover);
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--card-glass);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+
+        .search-bar::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .filter-chips {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            scroll-behavior: smooth;
+        }
+
+        .filter-chip {
+            padding: 6px 12px;
+            background: var(--card-glass);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .filter-chip:hover,
+        .filter-chip.active {
+            background: var(--teal);
+            border-color: var(--teal);
+            color: white;
+        }
+
+        .date-group-header {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            padding: 12px 0 8px 0;
+            margin-top: 12px;
+        }
+
+        .date-group-header:first-child {
+            margin-top: 0;
+        }
+
+        .transaction-tags {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .invoice-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid var(--card-border);
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.2s ease;
+        }
+
+        .invoice-item:last-child {
+            border-bottom: none;
+        }
+
+        .invoice-item:hover {
+            background: var(--glass-hover);
+        }
+
+        .invoice-info {
+            flex: 1;
+        }
+
+        .invoice-number {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .invoice-client {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .invoice-due {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+        }
+
+        .invoice-amount {
+            text-align: right;
+            margin-right: 12px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .invoice-amount-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .invoice-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-dot.pending { background: var(--warning-yellow); }
+        .status-dot.paid { background: var(--income-green); }
+        .status-dot.overdue { background: var(--expense-red); }
+
+        .status-text.pending { color: var(--warning-yellow); }
+        .status-text.paid { color: var(--income-green); }
+        .status-text.overdue { color: var(--expense-red); }
+
+        .metric-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .metric-box {
+            text-align: center;
+            padding: 12px;
+            background: var(--card-glass);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+        }
+
+        .metric-label {
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 14px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-primary);
+        }
+
+        .account-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--card-border);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 8px;
+            transition: background 0.2s ease;
+        }
+
+        .account-item:last-child {
+            border-bottom: none;
+        }
+
+        .account-item:hover {
+            background: var(--glass-hover);
+        }
+
+        .account-info {
+            display: flex;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .account-emoji {
+            font-size: 20px;
+        }
+
+        .account-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .account-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .account-last-sync {
+            font-size: 10px;
+            color: var(--text-tertiary);
+        }
+
+        .account-balance {
+            text-align: right;
+            font-size: 13px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-primary);
+        }
+
+        .account-balance.negative {
+            color: var(--expense-red);
+        }
+
+        .client-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--card-border);
+            cursor: pointer;
+            display: flex;
+            gap: 12px;
+            border-radius: 8px;
+            transition: background 0.2s ease;
+        }
+
+        .client-item:last-child {
+            border-bottom: none;
+        }
+
+        .client-item:hover {
+            background: var(--glass-hover);
+        }
+
+        .client-emoji {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .client-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .client-meta {
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.3;
+        }
+
+        .trip-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--card-border);
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.2s ease;
+        }
+
+        .trip-item:last-child {
+            border-bottom: none;
+        }
+
+        .trip-item:hover {
+            background: var(--glass-hover);
+        }
+
+        .trip-date {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            margin-bottom: 4px;
+        }
+
+        .trip-purpose {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .trip-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+        }
+
+        .trip-distance {
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .trip-deduction {
+            color: var(--income-green);
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .report-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .report-card {
+            padding: 16px;
+            background: var(--card-glass);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .report-card:hover {
+            background: var(--glass-hover);
+            transform: translateY(-1px);
+        }
+
+        .report-emoji {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .report-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .report-meta {
+            font-size: 10px;
+            color: var(--text-tertiary);
+        }
+
+        .quarterly-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .quarter-item {
+            padding: 12px;
+            background: var(--card-glass);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .quarter-item:hover {
+            background: var(--glass-hover);
+        }
+
+        .quarter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .quarter-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .quarter-amount {
+            font-size: 13px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-primary);
+        }
+
+        .quarter-status {
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .quarter-countdown {
+            font-size: 10px;
+            color: var(--warning-yellow);
+            font-weight: 600;
+        }
+
+        .deduction-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .deduction-item {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .deduction-item:last-child {
+            border-bottom: none;
+        }
+
+        .deduction-name {
+            font-size: 12px;
+            color: var(--text-primary);
+        }
+
+        .deduction-amount {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--income-green);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .checklist-progress {
+            margin-top: 8px;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .progress-bar-full {
+            width: 100%;
+            height: 4px;
+            background: var(--card-glass);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .progress-bar-full-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--teal), var(--income-green));
+            border-radius: 2px;
+        }
+
+        .receipt-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--card-border);
+            cursor: pointer;
+            display: flex;
+            gap: 12px;
+            border-radius: 8px;
+            transition: background 0.2s ease;
+        }
+
+        .receipt-item:last-child {
+            border-bottom: none;
+        }
+
+        .receipt-item:hover {
+            background: var(--glass-hover);
+        }
+
+        .receipt-emoji {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .receipt-info {
+            flex: 1;
+        }
+
+        .receipt-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .receipt-meta {
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .receipt-status {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .receipt-status.matched {
+            color: var(--income-green);
+        }
+
+        .receipt-status.unmatched {
+            color: var(--warning-yellow);
+        }
+
+        .receipt-amount {
+            font-size: 12px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-primary);
+        }
+
+        .settings-section {
+            margin-bottom: 16px;
+        }
+
+        .settings-item {
+            padding: 12px;
+            background: var(--card-glass);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            margin-bottom: 8px;
+        }
+
+        .settings-item:hover {
+            background: var(--glass-hover);
+        }
+
+        .settings-label {
+            font-size: 12px;
+            color: var(--text-primary);
+        }
+
+        .settings-value {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .toggle-switch {
+            width: 32px;
+            height: 18px;
+            background: var(--card-glass);
+            border-radius: 9px;
+            position: relative;
+            cursor: pointer;
+            border: 1px solid var(--card-border);
+        }
+
+        .toggle-switch.on {
+            background: var(--teal);
+            border-color: var(--teal);
+        }
+
+        .toggle-knob {
+            width: 14px;
+            height: 14px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: left 0.2s ease;
+        }
+
+        .toggle-switch.on .toggle-knob {
+            left: 16px;
+        }
+
+        .month-nav {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 12px;
+            background: var(--card-glass);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .month-nav-button {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            transition: color 0.2s ease;
+        }
+
+        .month-nav-button:hover {
+            color: var(--text-primary);
+        }
+
+        .month-nav-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .detail-section {
+            margin-bottom: 16px;
+        }
+
+        .detail-header {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--card-border);
+            font-size: 12px;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: var(--text-secondary);
+        }
+
+        .detail-value {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .button-group .button {
+            flex: 1;
+        }
+
+        .zone-2-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 12px;
+        }
+
+        .zone-2-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .zone-2-header-right {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chip {
+            padding: 4px 8px;
+            background: var(--card-glass);
+            border: 1px solid var(--card-border);
+            border-radius: 6px;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .chip-success {
+            background: rgba(52, 211, 153, 0.1);
+            border-color: var(--income-green);
+            color: var(--income-green);
+        }
+
+        .sparkline-container {
+            width: 100%;
+            height: 60px;
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            margin: 8px 0;
+        }
+
+        .sparkline-bar {
+            flex: 1;
+            background: rgba(20, 184, 166, 0.3);
+            border-radius: 2px;
+        }
+
+        .chart-label {
+            font-size: 9px;
+            color: var(--text-tertiary);
+            text-align: center;
+            margin-top: 4px;
+        }
+
+        .hint-box {
+            padding: 12px;
+            background: rgba(20, 184, 166, 0.1);
+            border: 1px solid rgba(20, 184, 166, 0.3);
+            border-radius: 8px;
+            font-size: 11px;
+            color: var(--teal);
+            margin: 12px 0;
+        }
+
+        .nav-method {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .chart-container-large {
+            width: 100%;
+            height: 150px;
+            position: relative;
+            margin: 12px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="status-bar">
+        <div>FLO Financial Ledger Optimizer</div>
+        <div id="current-time">9:41</div>
+    </div>
+
+    <div class="main-container">
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-item" data-screen="accounts">
+                <div class="sidebar-item-emoji">🏦</div>
+                <div class="sidebar-item-label">Accounts</div>
+            </div>
+            <div class="sidebar-item" data-screen="budgets">
+                <div class="sidebar-item-emoji">📈</div>
+                <div class="sidebar-item-label">Budgets</div>
+            </div>
+            <div class="sidebar-item" data-screen="clients">
+                <div class="sidebar-item-emoji">👥</div>
+                <div class="sidebar-item-label">Clients</div>
+            </div>
+            <div class="sidebar-item active" data-screen="dashboard">
+                <div class="sidebar-item-emoji">📊</div>
+                <div class="sidebar-item-label">Dashboard</div>
+            </div>
+            <div class="sidebar-item" data-screen="invoices">
+                <div class="sidebar-item-emoji">📋</div>
+                <div class="sidebar-item-label">Invoices</div>
+            </div>
+            <div class="sidebar-item" data-screen="mileage">
+                <div class="sidebar-item-emoji">🚗</div>
+                <div class="sidebar-item-label">Mileage</div>
+            </div>
+            <div class="sidebar-item" data-screen="receipts">
+                <div class="sidebar-item-emoji">🧾</div>
+                <div class="sidebar-item-label">Receipts</div>
+            </div>
+            <div class="sidebar-item" data-screen="reports">
+                <div class="sidebar-item-emoji">📑</div>
+                <div class="sidebar-item-label">Reports</div>
+            </div>
+            <div class="sidebar-item" data-screen="settings">
+                <div class="sidebar-item-emoji">⚙️</div>
+                <div class="sidebar-item-label">Settings</div>
+            </div>
+            <div class="sidebar-item" data-screen="tax">
+                <div class="sidebar-item-emoji">🏛️</div>
+                <div class="sidebar-item-label">Tax</div>
+            </div>
+            <div class="sidebar-item" data-screen="transactions">
+                <div class="sidebar-item-emoji">💳</div>
+                <div class="sidebar-item-label">Transactions</div>
+            </div>
+        </nav>
+
+        <div class="zones-wrapper">
+            <div class="zone-2" id="zone-2">
+                <!-- Screen content injected here -->
+            </div>
+            <div class="zone-3" id="zone-3">
+                <div class="zone-3-header">
+                    <button class="zone-3-back" id="back-button">← Back</button>
+                    <div class="zone-3-title" id="zone-3-title">Details</div>
+                </div>
+                <div class="zone-3-content" id="zone-3-content">
+                    <!-- Detail content injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Financial data store
+        const appState = {
+            currentScreen: 'dashboard',
+            selectedItem: null,
+            selectedItemType: null
+        };
+
+        // Sample data
+        const transactions = [
+            { id: 1, date: 'TODAY — MAR 17', dateShort: 'Mar 17', merchant: 'Starbucks', emoji: '☕', amount: -6.45, category: 'Coffee', tags: [] },
+            { id: 2, date: 'TODAY — MAR 17', dateShort: 'Mar 17', merchant: 'Uber Trip', emoji: '🚕', amount: -24.80, category: 'Transportation', tags: ['business'] },
+            { id: 3, date: 'YESTERDAY — MAR 16', dateShort: 'Mar 16', merchant: 'Acme Corp Invoice #1042', emoji: '💰', amount: 3500, category: 'Client Payment', tags: ['income'] },
+            { id: 4, date: 'YESTERDAY — MAR 16', dateShort: 'Mar 16', merchant: 'Whole Foods', emoji: '🥬', amount: -87.32, category: 'Groceries', tags: [] },
+            { id: 5, date: 'MAR 15', dateShort: 'Mar 15', merchant: 'Office Depot', emoji: '📦', amount: -42.99, category: 'Office Supplies', tags: ['business', 'deductible'] },
+            { id: 6, date: 'MAR 15', dateShort: 'Mar 15', merchant: 'Client Meeting Lunch', emoji: '🍽️', amount: -34.50, category: 'Dining Out', tags: ['business', 'deductible'] },
+            { id: 7, date: 'MAR 14', dateShort: 'Mar 14', merchant: 'Adobe Creative Cloud', emoji: '💻', amount: -54.99, category: 'Software & Tools', tags: ['business', 'deductible'] },
+            { id: 8, date: 'MAR 14', dateShort: 'Mar 14', merchant: 'Globex Retainer', emoji: '💰', amount: 2000, category: 'Client Payment', tags: ['income'] },
+            { id: 9, date: 'MAR 14', dateShort: 'Mar 14', merchant: 'Transfer to Savings', emoji: '↔️', amount: -500, category: 'Transfer', tags: [] },
+            { id: 10, date: 'MAR 13', dateShort: 'Mar 13', merchant: "Trader Joe's", emoji: '🥬', amount: -62.15, category: 'Groceries', tags: [] },
+            { id: 11, date: 'MAR 13', dateShort: 'Mar 13', merchant: 'Gas Station', emoji: '⛽', amount: -48.30, category: 'Transportation', tags: [] },
+            { id: 12, date: 'MAR 12', dateShort: 'Mar 12', merchant: 'AT&T Wireless', emoji: '📱', amount: -85.00, category: 'Utilities', tags: [] },
+            { id: 13, date: 'MAR 12', dateShort: 'Mar 12', merchant: 'Best Buy Monitor Stand', emoji: '🖥️', amount: -89.99, category: 'Shops', tags: ['business'] }
+        ];
+
+        const budgets = [
+            { emoji: '🍽️', name: 'Dining Out', spent: 312, budget: 300, status: 'red' },
+            { emoji: '🎬', name: 'Entertainment', spent: 45, budget: 200, status: 'green' },
+            { emoji: '🥬', name: 'Groceries', spent: 487, budget: 600, status: 'yellow' },
+            { emoji: '❤️', name: 'Health', spent: 150, budget: 350, status: 'green' },
+            { emoji: '🏠', name: 'Housing', spent: 1850, budget: 1850, status: 'full' },
+            { emoji: '📦', name: 'Office Supplies', spent: 95, budget: 150, status: 'green' },
+            { emoji: '💻', name: 'Software & Tools', spent: 198, budget: 350, status: 'green' },
+            { emoji: '🚗', name: 'Transportation', spent: 210, budget: 400, status: 'green' },
+            { emoji: '⚡', name: 'Utilities', spent: 300, budget: 350, status: 'yellow' }
+        ];
+
+        const invoices = [
+            { id: 'INV-1045', client: 'Acme Corp', amount: 4500, dueDate: 'Mar 25', status: 'pending' },
+            { id: 'INV-1044', client: 'Globex Inc', amount: 2750, dueDate: 'Mar 30', status: 'pending' },
+            { id: 'INV-1040', client: 'Initech', amount: 1200, dueDate: 'Mar 10', status: 'overdue', overdueDays: 7 },
+            { id: 'INV-1042', client: 'Acme Corp', amount: 3500, dueDate: 'Mar 16', status: 'paid', paidDate: 'Mar 16' },
+            { id: 'INV-1041', client: 'Wayne Enterprises', amount: 8000, dueDate: 'Mar 12', status: 'paid', paidDate: 'Mar 12' },
+            { id: 'INV-1039', client: 'Sarah Miller', amount: 800, dueDate: 'Mar 5', status: 'paid', paidDate: 'Mar 5' }
+        ];
+
+        const accounts = [
+            { id: 1, type: 'CHECKING', emoji: '💳', name: 'Chase Business Checking', last4: '8832', balance: 12450.22 },
+            { id: 2, type: 'CHECKING', emoji: '💳', name: 'Chase Personal', last4: '4521', balance: 4832.10 },
+            { id: 3, type: 'SAVINGS', emoji: '💰', name: 'Marcus Savings', last4: '7744', balance: 28500.00 },
+            { id: 4, type: 'CREDIT CARDS', emoji: '💳', name: 'Amex Business', last4: '9901', balance: -1247.66 }
+        ];
+
+        const clients = [
+            { id: 1, emoji: '🏢', name: 'Acme Corp', invoices: 4, ytdRevenue: 14000, status: 'Active' },
+            { id: 2, emoji: '🏢', name: 'Globex Inc', invoices: 3, ytdRevenue: 6000, status: 'Active' },
+            { id: 4, emoji: '🏢', name: 'Initech', invoices: 1, ytdRevenue: 1200, status: 'Overdue' },
+            { id: 5, emoji: '👤', name: 'Sarah Miller', invoices: 1, ytdRevenue: 800, status: 'Active' },
+            { id: 3, emoji: '🏢', name: 'Wayne Enterprises', invoices: 2, ytdRevenue: 16000, status: 'Active' }
+        ];
+
+        const trips = [
+            { id: 1, date: 'Mar 15', purpose: 'Client Meeting', client: 'Acme Corp', miles: 34.2, deduction: 22.59 },
+            { id: 2, date: 'Mar 12', purpose: 'Office Supply Run', miles: 12.8, deduction: 8.45 },
+            { id: 3, date: 'Mar 10', purpose: 'Client Meeting', client: 'Globex', miles: 48.6, deduction: 32.12 },
+            { id: 4, date: 'Mar 7', purpose: 'Networking Event', miles: 22.1, deduction: 14.59 },
+            { id: 5, date: 'Mar 3', purpose: 'Client Site Visit', client: 'Wayne Ent', miles: 65.4, deduction: 43.17 },
+            { id: 6, date: 'Mar 1', purpose: 'Post Office / Shipping', miles: 8.2, deduction: 5.41 }
+        ];
+
+        const receipts = [
+            { id: 1, emoji: '🧾', name: 'Office Depot', item: 'Printer Ink', date: 'Mar 15', amount: 42.99, status: 'matched' },
+            { id: 2, emoji: '🧾', name: 'Best Buy', item: 'Monitor Stand', date: 'Mar 11', amount: 89.99, status: 'matched' },
+            { id: 3, emoji: '⚠️', name: 'Unknown Receipt', item: '', date: 'Mar 8', amount: 67.50, status: 'unmatched' },
+            { id: 4, emoji: '🧾', name: 'Staples', item: 'Paper & Supplies', date: 'Mar 6', amount: 31.25, status: 'matched' },
+            { id: 5, emoji: '⚠️', name: 'Gas Station Receipt', item: '', date: 'Mar 5', amount: 48.30, status: 'unmatched' },
+            { id: 6, emoji: '🧾', name: 'Adobe', item: 'Annual License', date: 'Mar 3', amount: 659.88, status: 'matched' }
+        ];
+
+        // Utility functions
+        function getCategoryTagClass(category) {
+            const mapping = {
+                'Restaurants': 'tag-restaurants',
+                'Dining Out': 'tag-restaurants',
+                'Groceries': 'tag-groceries',
+                'Coffee': 'tag-coffee',
+                'Software': 'tag-software',
+                'Software & Tools': 'tag-software',
+                'Transportation': 'tag-transportation',
+                'Entertainment': 'tag-entertainment',
+                'Shops': 'tag-shops',
+                'Office Supplies': 'tag-office',
+                'Client Payment': 'tag-client-payment',
+                'Housing': 'tag-housing',
+                'Utilities': 'tag-utilities'
+            };
+            return mapping[category] || 'tag-software';
+        }
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2
+            }).format(value);
+        }
+
+        function getProgressPercentage(spent, budget) {
+            return Math.min((spent / budget) * 100, 100);
+        }
+
+        function getProgressStatus(spent, budget) {
+            const percent = (spent / budget) * 100;
+            if (percent >= 90) return 'red';
+            if (percent >= 70) return 'yellow';
+            return 'green';
+        }
+
+        // Screen renderers
+        function renderDashboard() {
+            const html = `
+                <div class="card-section">
+                    <div class="segmented-control">
+                        <button class="segmented-button active">All</button>
+                        <button class="segmented-button">Business</button>
+                        <button class="segmented-button">Personal</button>
+                    </div>
+
+                    <div class="card">
+                        <div class="hero-metric">
+                            <div class="hero-number">$2,618</div>
+                            <div class="hero-subtitle">of $5,200 budget</div>
+                            <div class="badge badge-green">↓ $125 under pace</div>
+                        </div>
+                    </div>
+
+                    <div class="section-header">Spending Trend</div>
+                    <div class="card" style="padding: 16px;">
+                        <svg viewBox="0 0 300 120" style="width: 100%; height: 120px;">
+                            <defs>
+                                <linearGradient id="trendGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#f87171;stop-opacity:0.3" />
+                                    <stop offset="50%" style="stop-color:#fbbf24;stop-opacity:0.3" />
+                                    <stop offset="100%" style="stop-color:#34d399;stop-opacity:0.3" />
+                                </linearGradient>
+                                <linearGradient id="trendLine" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#f87171" />
+                                    <stop offset="50%" style="stop-color:#fbbf24" />
+                                    <stop offset="100%" style="stop-color:#34d399" />
+                                </linearGradient>
+                            </defs>
+                            <polyline points="10,100 50,85 90,70 130,65 170,60 210,55 250,50 290,45" fill="url(#trendGradient)" style="fill-opacity:0.3" />
+                            <polyline points="10,100 50,85 90,70 130,65 170,60 210,55 250,50 290,45" stroke="url(#trendLine)" stroke-width="2" fill="none" stroke-linecap="round" />
+                            <line x1="10" y1="30" x2="290" y2="30" stroke="rgba(245,245,247,0.2)" stroke-width="1" stroke-dasharray="3,3" />
+                            <text x="295" y="35" font-size="10" fill="rgba(245,245,247,0.3)">Budget</text>
+                        </svg>
+                    </div>
+
+                    <div class="section-header">To Review</div>
+                    <div class="card">
+                        <div class="transaction-item" data-item-id="1" data-item-type="transaction">
+                            <div class="transaction-info">
+                                <div class="transaction-emoji">☕</div>
+                                <div class="transaction-details">
+                                    <div class="transaction-merchant">Starbucks</div>
+                                    <div class="transaction-meta">Today</div>
+                                </div>
+                            </div>
+                            <div class="transaction-amount expense">-$6.45</div>
+                        </div>
+                        <span class="category-tag tag-coffee">COFFEE</span>
+                        <div class="transaction-item" data-item-id="4" data-item-type="transaction">
+                            <div class="transaction-info">
+                                <div class="transaction-emoji">🥬</div>
+                                <div class="transaction-details">
+                                    <div class="transaction-merchant">Whole Foods</div>
+                                    <div class="transaction-meta">Yesterday</div>
+                                </div>
+                            </div>
+                            <div class="transaction-amount expense">-$87.32</div>
+                        </div>
+                        <span class="category-tag tag-groceries">GROCERIES</span>
+                        <div class="transaction-item" data-item-id="6" data-item-type="transaction">
+                            <div class="transaction-info">
+                                <div class="transaction-emoji">🍽️</div>
+                                <div class="transaction-details">
+                                    <div class="transaction-merchant">Client Meeting Lunch</div>
+                                    <div class="transaction-meta">Mar 15</div>
+                                </div>
+                            </div>
+                            <div class="transaction-amount expense">-$34.50</div>
+                        </div>
+                        <div class="transaction-tags">
+                            <span class="category-tag tag-restaurants">DINING OUT</span>
+                            <span class="category-tag tag-business">BUSINESS</span>
+                            <span class="category-tag tag-deductible">DEDUCTIBLE</span>
+                        </div>
+                        <div style="padding: 12px 0; text-align: center;">
+                            <button class="button button-primary">Mark 3 as reviewed</button>
+                        </div>
+                    </div>
+
+                    <div class="section-header">Budget Overview</div>
+                    <div class="card" style="padding: 12px;">
+                        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                            ${budgets.slice(0, 5).map((b, i) => renderBudgetCircle(b, i)).join('')}
+                        </div>
+                    </div>
+
+                    <div class="card" style="padding: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="font-size: 20px;">🏛️</div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--text-primary); margin-bottom: 2px;"><strong>Estimated Q1 Tax: $3,240</strong></div>
+                                <div style="font-size: 10px; color: var(--text-secondary);">Due Apr 15</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="hint-box">
+                        💡 <strong>$2,340 in potential deductions</strong> · <a href="#" style="color: var(--teal); text-decoration: none;">Review →</a>
+                    </div>
+                </div>
+            `;
+            return html;
+        }
+
+        function renderBudgetCircle(budget, index) {
+            const percentage = getProgressPercentage(budget.spent, budget.budget);
+            const circumference = 2 * Math.PI * 30;
+            const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+            const status = getProgressStatus(budget.spent, budget.budget);
+            let circleColor = '#34d399';
+            if (status === 'yellow') circleColor = '#fbbf24';
+            if (status === 'red') circleColor = '#f87171';
+
+            return `
+                <div class="budget-circle" data-item-id="${index}" data-item-type="budget">
+                    <div class="budget-svg">
+                        <svg viewBox="0 0 80 80" style="width: 100%; height: 100%; transform: rotate(-90deg);">
+                            <circle cx="40" cy="40" r="30" stroke="rgba(255,255,255,0.1)" stroke-width="3" fill="none" />
+                            <circle cx="40" cy="40" r="30" stroke="${circleColor}" stroke-width="3" fill="none"
+                                style="stroke-dasharray: ${circumference}; stroke-dashoffset: ${strokeDashoffset}; transition: stroke-dashoffset 0.3s ease;" />
+                        </svg>
+                        <div class="budget-emoji">${budget.emoji}</div>
+                    </div>
+                    <div class="budget-label">${budget.name}</div>
+                    <div class="budget-amount">${formatCurrency(budget.spent)}</div>
+                    <div class="budget-remaining">${formatCurrency(budget.budget - budget.spent)} left</div>
+                </div>
+            `;
+        }
+
+        function renderTransactions() {
+            const grouped = {};
+            transactions.forEach(t => {
+                if (!grouped[t.date]) grouped[t.date] = [];
+                grouped[t.date].push(t);
+            });
+
+            let html = `
+                <input type="text" class="search-bar" placeholder="Search transactions...">
+                <div class="filter-chips">
+                    <div class="filter-chip active">All</div>
+                    <div class="filter-chip">Income</div>
+                    <div class="filter-chip">Expense</div>
+                    <div class="filter-chip">Business</div>
+                    <div class="filter-chip">Personal</div>
+                    <div class="filter-chip">Uncategorized</div>
+                </div>
+            `;
+
+            Object.entries(grouped).forEach(([date, items]) => {
+                html += `<div class="date-group-header">${date}</div>`;
+                items.forEach(t => {
+                    html += `
+                        <div class="card transaction-item" data-item-id="${t.id}" data-item-type="transaction">
+                            <div class="transaction-info">
+                                <div class="transaction-emoji">${t.emoji}</div>
+                                <div class="transaction-details">
+                                    <div class="transaction-merchant">${t.merchant}</div>
+                                    <div class="transaction-meta">${t.dateShort}</div>
+                                </div>
+                            </div>
+                            <div class="transaction-amount ${t.amount > 0 ? 'income' : 'expense'}">${t.amount > 0 ? '+' : ''}${formatCurrency(t.amount)}</div>
+                        </div>
+                        <div style="padding: 0 12px 12px 12px;">
+                            <span class="category-tag ${getCategoryTagClass(t.category)}">${t.category.toUpperCase()}</span>
+                            ${t.tags.map(tag => `<span class="category-tag tag-${tag}">${tag.toUpperCase()}</span>`).join('')}
+                        </div>
+                    `;
+                });
+            });
+
+            return html;
+        }
+
+        function renderBudgets() {
+            const html = `
+                <div class="month-nav">
+                    <button class="month-nav-button">←</button>
+                    <div class="month-nav-label">MARCH 2026</div>
+                    <button class="month-nav-button">→</button>
+                </div>
+
+                <div class="metric-row">
+                    <div class="metric-box">
+                        <div class="metric-label">Total Budget</div>
+                        <div class="metric-value">$5,200</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Spent</div>
+                        <div class="metric-value">$3,847</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Remaining</div>
+                        <div class="metric-value">$1,353</div>
+                    </div>
+                </div>
+
+                <div class="section-header">Categories</div>
+                ${budgets.map((b, i) => {
+                    const spent = b.spent;
+                    const budget = b.budget;
+                    const percent = getProgressPercentage(spent, budget);
+                    const status = getProgressStatus(spent, budget);
+                    const remaining = budget - spent;
+
+                    return `
+                        <div class="card budget-row" data-item-id="${i}" data-item-type="budget">
+                            <div class="budget-row-emoji">${b.emoji}</div>
+                            <div class="budget-row-name">${b.name}</div>
+                            <div class="budget-row-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill ${status}" style="width: ${percent}%"></div>
+                                </div>
+                                <div class="budget-row-amounts">
+                                    <span>${formatCurrency(spent)}</span>
+                                    <span>${formatCurrency(budget)}</span>
+                                </div>
+                            </div>
+                            <div class="budget-row-status ${remaining > 0 ? 'under' : 'over'}">
+                                ${remaining > 0 ? `$${Math.abs(remaining).toFixed(2)} left` : `$${Math.abs(remaining).toFixed(2)} over`}
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            `;
+            return html;
+        }
+
+        function renderInvoices() {
+            const outstanding = invoices.filter(i => i.status === 'pending').reduce((sum, i) => sum + i.amount, 0);
+            const paid = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.amount, 0);
+            const overdue = invoices.filter(i => i.status === 'overdue').reduce((sum, i) => sum + i.amount, 0);
+
+            let html = `
+                <div class="metric-row">
+                    <div class="metric-box">
+                        <div class="metric-label">Outstanding</div>
+                        <div class="metric-value">${formatCurrency(outstanding)}</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Paid (Mar)</div>
+                        <div class="metric-value">${formatCurrency(paid)}</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Overdue</div>
+                        <div class="metric-value" style="color: var(--expense-red);">${formatCurrency(overdue)}</div>
+                    </div>
+                </div>
+
+                <div class="filter-chips" style="margin-bottom: 12px;">
+                    <div class="filter-chip active">All</div>
+                    <div class="filter-chip">Pending</div>
+                    <div class="filter-chip">Paid</div>
+                    <div class="filter-chip">Overdue</div>
+                </div>
+
+                <div class="section-header">Invoices</div>
+                <div class="card">
+                    ${invoices.map((inv, i) => `
+                        <div class="invoice-item" data-item-id="${i}" data-item-type="invoice">
+                            <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                <div class="status-dot ${inv.status}"></div>
+                                <div class="invoice-info">
+                                    <div class="invoice-number">${inv.id}</div>
+                                    <div class="invoice-client">${inv.client}</div>
+                                    <div class="invoice-due">${inv.status === 'overdue' ? '⚠️ Overdue ' + inv.overdueDays + ' days' : 'Due ' + inv.dueDate}</div>
+                                </div>
+                            </div>
+                            <div class="invoice-amount">
+                                <div class="invoice-amount-value">${formatCurrency(inv.amount)}</div>
+                            </div>
+                            <div class="invoice-status">
+                                <span class="status-text ${inv.status}">${inv.status.toUpperCase()}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            return html;
+        }
+
+        function renderAccounts() {
+            const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
+
+            let html = `
+                <div class="card hero-metric">
+                    <div class="hero-number">${formatCurrency(totalBalance)}</div>
+                    <div class="hero-subtitle">Total Net Worth</div>
+                    <div class="badge badge-green">↑ 2.1% this month</div>
+                </div>
+            `;
+
+            const grouped = {};
+            accounts.forEach(a => {
+                if (!grouped[a.type]) grouped[a.type] = [];
+                grouped[a.type].push(a);
+            });
+
+            Object.entries(grouped).forEach(([type, items]) => {
+                html += `<div class="section-header">${type}</div>`;
+                items.forEach((acc, i) => {
+                    html += `
+                        <div class="card account-item" data-item-id="${i}" data-item-type="account">
+                            <div class="account-info">
+                                <div class="account-emoji">${acc.emoji}</div>
+                                <div class="account-details">
+                                    <div class="account-name">${acc.name} ···${acc.last4}</div>
+                                    <div class="account-last-sync">Last synced 2 min ago</div>
+                                </div>
+                            </div>
+                            <div class="account-balance ${acc.balance < 0 ? 'negative' : ''}">${formatCurrency(acc.balance)}</div>
+                        </div>
+                    `;
+                });
+            });
+
+            return html;
+        }
+
+        function renderClients() {
+            let html = `
+                <input type="text" class="search-bar" placeholder="Search clients...">
+                <div class="section-header">Clients</div>
+                <div class="card">
+                    ${clients.map((client, i) => `
+                        <div class="client-item" data-item-id="${i}" data-item-type="client">
+                            <div class="client-emoji">${client.emoji}</div>
+                            <div>
+                                <div class="client-name">${client.name}</div>
+                                <div class="client-meta">
+                                    ${client.invoices} invoice${client.invoices !== 1 ? 's' : ''} · ${formatCurrency(client.ytdRevenue)} YTD · ${client.status}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            return html;
+        }
+
+        function renderMileage() {
+            const totalMiles = trips.reduce((sum, t) => sum + t.miles, 0);
+            const totalDeduction = trips.reduce((sum, t) => sum + t.deduction, 0);
+
+            let html = `
+                <div class="card hero-metric">
+                    <div class="hero-number">${totalMiles.toFixed(1)}</div>
+                    <div class="hero-subtitle">Miles This Month</div>
+                    <div class="badge badge-green">💰 ${formatCurrency(totalDeduction)} deduction</div>
+                </div>
+
+                <div class="hint-box" style="text-align: center;">
+                    ▶ Start Trip (Live Tracking)
+                </div>
+
+                <div class="section-header">Trip Log</div>
+                <div class="card">
+                    ${trips.map((trip, i) => `
+                        <div class="trip-item" data-item-id="${i}" data-item-type="trip">
+                            <div class="trip-date">${trip.date}</div>
+                            <div class="trip-purpose">${trip.purpose}${trip.client ? ' · ' + trip.client : ''}</div>
+                            <div class="trip-stats">
+                                <div class="trip-distance">${trip.miles} mi</div>
+                                <div class="trip-deduction">${formatCurrency(trip.deduction)} deduction</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            return html;
+        }
+
+        function renderReceipts() {
+            const matched = receipts.filter(r => r.status === 'matched').length;
+            const unmatched = receipts.filter(r => r.status === 'unmatched').length;
+
+            let html = `
+                <div style="padding: 12px; margin-bottom: 12px; background: var(--card-glass); border: 1px solid var(--card-border); border-radius: 8px;">
+                    <div style="font-size: 12px; color: var(--text-primary);"><strong>${receipts.length} receipts this month</strong></div>
+                    <div style="font-size: 11px; color: var(--text-secondary);">${unmatched} unmatched</div>
+                </div>
+
+                <div class="filter-chips">
+                    <div class="filter-chip active">All</div>
+                    <div class="filter-chip">Matched</div>
+                    <div class="filter-chip">Unmatched</div>
+                    <div class="filter-chip">This Month</div>
+                </div>
+
+                <div class="section-header">Receipts</div>
+                <div class="card">
+                    ${receipts.map((receipt, i) => `
+                        <div class="receipt-item" data-item-id="${i}" data-item-type="receipt">
+                            <div class="receipt-emoji">${receipt.emoji}</div>
+                            <div class="receipt-info">
+                                <div class="receipt-name">${receipt.name}</div>
+                                <div class="receipt-meta">${receipt.item} · ${receipt.date}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div class="receipt-amount">${formatCurrency(receipt.amount)}</div>
+                                <div class="receipt-status ${receipt.status}">
+                                    ${receipt.status === 'matched' ? '✅ MATCHED' : '❌ UNMATCHED'}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            return html;
+        }
+
+        function renderReports() {
+            const reports = [
+                { emoji: '📊', title: 'Profit & Loss Statement', meta: 'Last generated Mar 1' },
+                { emoji: '💰', title: 'Cash Flow Report', meta: 'Last generated Feb 28' },
+                { emoji: '🏛️', title: 'Tax Summary (Q1 2026)', meta: 'Not yet generated' },
+                { emoji: '📋', title: 'Expense Report', meta: 'Last generated Mar 10' },
+                { emoji: '📈', title: 'Income Report', meta: 'Auto-generated monthly' },
+                { emoji: '🧾', title: 'Receipt Bundle', meta: 'Export all receipts as PDF' },
+                { emoji: '📊', title: 'Budget vs Actual', meta: 'Month-over-month analysis' }
+            ];
+
+            let html = `
+                <div class="report-grid">
+                    ${reports.map((report, i) => `
+                        <div class="report-card" data-item-id="${i}" data-item-type="report">
+                            <div class="report-emoji">${report.emoji}</div>
+                            <div class="report-title">${report.title}</div>
+                            <div class="report-meta">${report.meta}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            return html;
+        }
+
+        function renderTax() {
+            let html = `
+                <div class="month-nav" style="justify-content: center; margin-bottom: 12px;">
+                    <div class="month-nav-label" style="min-width: auto;">2026</div>
+                </div>
+
+                <div class="card hero-metric">
+                    <div class="hero-number">$12,960</div>
+                    <div class="hero-subtitle">Estimated Annual Tax</div>
+                    <div class="badge badge-teal">24.3% effective rate</div>
+                </div>
+
+                <div class="section-header">Quarterly Payments</div>
+                <div class="quarterly-breakdown">
+                    <div class="quarter-item" data-item-id="0" data-item-type="quarter">
+                        <div class="quarter-header">
+                            <div class="quarter-label">Q4 2025</div>
+                            <div class="quarter-amount">${formatCurrency(2890)}</div>
+                        </div>
+                        <div class="quarter-status">✅ Paid Jan 15</div>
+                    </div>
+                    <div class="quarter-item" data-item-id="1" data-item-type="quarter">
+                        <div class="quarter-header">
+                            <div class="quarter-label">Q1 2026</div>
+                            <div class="quarter-amount">${formatCurrency(3240)}</div>
+                        </div>
+                        <div class="quarter-status">⏳ Due Apr 15 · <span class="quarter-countdown">29 days</span></div>
+                    </div>
+                    <div class="quarter-item" data-item-id="2" data-item-type="quarter">
+                        <div class="quarter-header">
+                            <div class="quarter-label">Q2 2026</div>
+                            <div class="quarter-amount">${formatCurrency(3340)}</div>
+                        </div>
+                        <div class="quarter-status">📅 Estimated</div>
+                    </div>
+                    <div class="quarter-item" data-item-id="3" data-item-type="quarter">
+                        <div class="quarter-header">
+                            <div class="quarter-label">Q3 2026</div>
+                            <div class="quarter-amount">${formatCurrency(3490)}</div>
+                        </div>
+                        <div class="quarter-status">📅 Estimated</div>
+                    </div>
+                </div>
+
+                <div class="section-header">Deductions Found</div>
+                <div class="card" style="padding: 16px;">
+                    <div style="font-size: 12px; color: var(--text-primary); margin-bottom: 12px;"><strong>${formatCurrency(8450)} total deductions</strong></div>
+                    <div class="deduction-list">
+                        <div class="deduction-item">
+                            <div class="deduction-name">Home Office</div>
+                            <div class="deduction-amount">${formatCurrency(3200)}</div>
+                        </div>
+                        <div class="deduction-item">
+                            <div class="deduction-name">Vehicle / Mileage</div>
+                            <div class="deduction-amount">${formatCurrency(1960)}</div>
+                        </div>
+                        <div class="deduction-item">
+                            <div class="deduction-name">Software & Equipment</div>
+                            <div class="deduction-amount">${formatCurrency(1890)}</div>
+                        </div>
+                        <div class="deduction-item">
+                            <div class="deduction-name">Professional Development</div>
+                            <div class="deduction-amount">${formatCurrency(1400)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-header">Year-End Checklist</div>
+                <div class="card" style="padding: 16px;">
+                    <div class="checklist-progress">4 of 12 complete</div>
+                    <div class="progress-bar-full">
+                        <div class="progress-bar-full-fill" style="width: 33.3%;"></div>
+                    </div>
+                </div>
+            `;
+            return html;
+        }
+
+        function renderSettings() {
+            let html = `
+                <div class="settings-section">
+                    <div class="section-header">About</div>
+                    <div class="settings-item">
+                        <div class="settings-label">📱 FLO Version</div>
+                        <div class="settings-value">2.1 (Build 9)</div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="section-header">Account</div>
+                    <div class="settings-item">
+                        <div class="settings-label">👨‍👩‍👧 Household</div>
+                        <div class="settings-value">1 member</div>
+                    </div>
+                    <div class="settings-item">
+                        <div class="settings-label">💳 Subscription</div>
+                        <div class="settings-value">FLO Pro · Renews Apr</div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="section-header">Appearance</div>
+                    <div class="settings-item">
+                        <div class="settings-label">Accent Color</div>
+                        <div class="settings-value">Teal</div>
+                    </div>
+                    <div class="settings-item">
+                        <div class="settings-label">🎨 Dark Mode</div>
+                        <div class="toggle-switch on">
+                            <div class="toggle-knob"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="section-header">Business Profile</div>
+                    <div class="settings-item">
+                        <div class="settings-label">🏢 Business Name</div>
+                        <div class="settings-value">Finch & Poppy Co LLC</div>
+                    </div>
+                    <div class="settings-item">
+                        <div class="settings-label">Title</div>
+                        <div class="settings-value">Freelance Developer</div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="section-header">Cloud & Sync</div>
+                    <div class="settings-item">
+                        <div class="settings-label">☁️ iCloud Sync</div>
+                        <div class="toggle-switch on">
+                            <div class="toggle-knob"></div>
+                        </div>
+                    </div>
+                    <div class="settings-item">
+                        <div class="settings-label">Last Synced</div>
+                        <div class="settings-value">2 min ago</div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="section-header">Notifications</div>
+                    <div class="settings-item">
+                        <div class="settings-label">🔔 Budget Alerts</div>
+                        <div class="toggle-switch on">
+                            <div class="toggle-knob"></div>
+                        </div>
+                    </div>
+                    <div class="settings-item">
+                        <div class="settings-label">Tax Reminders</div>
+                        <div class="toggle-switch on">
+                            <div class="toggle-knob"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="section-header">Security</div>
+                    <div class="settings-item">
+                        <div class="settings-label">Auto-Lock</div>
+                        <div class="toggle-switch on">
+                            <div class="toggle-knob"></div>
+                        </div>
+                    </div>
+                    <div class="settings-item">
+                        <div class="settings-label">🔒 Face ID</div>
+                        <div class="toggle-switch on">
+                            <div class="toggle-knob"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return html;
+        }
+
+        // Detail renderers
+        function renderTransactionDetail(transactionId) {
+            const tx = transactions.find(t => t.id === transactionId);
+            if (!tx) return '';
+
+            const html = `
+                <div class="detail-section">
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 0 0 16px 0; border-bottom: 1px solid var(--card-border);">
+                        <div style="font-size: 32px;">${tx.emoji}</div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 13px; color: var(--text-secondary);">${tx.category}</div>
+                            <div style="font-size: 24px; font-weight: 800; color: ${tx.amount > 0 ? 'var(--income-green)' : 'var(--expense-red)'};">${tx.amount > 0 ? '+' : ''}${formatCurrency(tx.amount)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-row">
+                        <div class="detail-label">Merchant</div>
+                        <div class="detail-value">${tx.merchant}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Date</div>
+                        <div class="detail-value">${tx.dateShort}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Category</div>
+                        <div class="detail-value"><span class="category-tag ${getCategoryTagClass(tx.category)}">${tx.category.toUpperCase()}</span></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Account</div>
+                        <div class="detail-value">Chase Business Checking</div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-header">Receipt</div>
+                    <div style="width: 100%; height: 150px; background: var(--card-glass); border: 1px dashed var(--card-border); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); font-size: 12px;">
+                        📷 No receipt attached
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="button button-secondary">Edit</button>
+                    <button class="button button-secondary">Delete</button>
+                </div>
+            `;
+            return html;
+        }
+
+        function renderBudgetDetail(budgetId) {
+            const budget = budgets[budgetId];
+            const status = getProgressStatus(budget.spent, budget.budget);
+            const dailySpend = budget.spent / 15;
+            const dailyTarget = budget.budget / 31;
+
+            const html = `
+                <div class="detail-section">
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 0 0 16px 0; border-bottom: 1px solid var(--card-border);">
+                        <div style="font-size: 32px;">${budget.emoji}</div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 14px; color: var(--text-secondary);">${budget.name}</div>
+                            <div style="font-size: 20px; font-weight: 700; color: var(--text-primary);">${formatCurrency(budget.spent)} of ${formatCurrency(budget.budget)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-header">Spending Pace</div>
+                    <div style="padding: 12px; background: var(--card-glass); border: 1px solid var(--card-border); border-radius: 8px; font-size: 12px; color: var(--text-secondary);">
+                        You're spending <strong style="color: var(--text-primary);">${formatCurrency(dailySpend)}/day</strong>, aim for <strong style="color: var(--text-primary);">${formatCurrency(dailyTarget)}/day</strong>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-header">Daily Spending</div>
+                    <div class="sparkline-container">
+                        ${Array(15).fill(0).map((_, i) => {
+                            const height = Math.random() * 100;
+                            return `<div class="sparkline-bar" style="height: ${height}%; opacity: ${0.5 + (i / 15) * 0.5};"></div>`;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-header">Month-over-Month</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Feb 2026</div>
+                        <div class="detail-value">${formatCurrency(budget.spent * 0.95)}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Jan 2026</div>
+                        <div class="detail-value">${formatCurrency(budget.spent * 1.1)}</div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="button button-primary">Adjust Budget</button>
+                </div>
+            `;
+            return html;
+        }
+
+        function renderInvoiceDetail(invoiceId) {
+            const inv = invoices[invoiceId];
+
+            const html = `
+                <div class="detail-section">
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 0 16px 0; border-bottom: 1px solid var(--card-border);">
+                        <div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">${inv.id}</div>
+                            <div style="font-size: 20px; font-weight: 700; color: var(--text-primary);">${inv.client}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="status-dot ${inv.status}" style="width: 10px; height: 10px; margin: 0 auto 4px;"></div>
+                            <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">${inv.status}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-header">Invoice Details</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Amount</div>
+                        <div class="detail-value">${formatCurrency(inv.amount)}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Due Date</div>
+                        <div class="detail-value">${inv.dueDate}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-value">
+                            ${inv.status === 'pending' ? '⏳ Pending' : inv.status === 'paid' ? '✅ Paid ' + inv.paidDate : '❌ Overdue'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-header">Line Items</div>
+                    <div style="padding: 12px; background: var(--card-glass); border: 1px solid var(--card-border); border-radius: 8px;">
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;">Professional Services</div>
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-primary);">
+                            <span>Consulting Hours (40h @ $125/h)</span>
+                            <span>${formatCurrency(inv.amount * 0.8)}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="button button-primary">Send Reminder</button>
+                    <button class="button button-secondary">Mark as Paid</button>
+                </div>
+            `;
+            return html;
+        }
+
+        function renderAccountDetail(accountId) {
+            const account = accounts[accountId];
+
+            const html = `
+                <div class="detail-section">
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 0 0 16px 0; border-bottom: 1px solid var(--card-border);">
+                        <div style="font-size: 32px;">${account.emoji}</div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 12px; color: var(--text-secondary);">${account.name}</div>
+                            <div style="font-size: 20px; font-weight: 700; color: var(--text-primary);">${formatCurrency(account.balance)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-header">Balance History</div>
+                    <div class="sparkline-container">
+                        ${Array(12).fill(0).map((_, i) => {
+                            const height = 30 + Math.random() * 70;
+                            return `<div class="sparkline-bar" style="height: ${height}%;"></div>`;
+                        }).join('')}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 9px; color: var(--text-tertiary); margin-top: 4px;">
+                        <span>Dec 2025</span>
+                        <span>Mar 2026</span>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-header">Monthly Summary</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Inflow</div>
+                        <div class="detail-value" style="color: var(--income-green);">+${formatCurrency(Math.abs(account.balance) * 0.3)}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Outflow</div>
+                        <div class="detail-value" style="color: var(--expense-red);">-${formatCurrency(Math.abs(account.balance) * 0.25)}</div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="button button-primary">Sync Now</button>
+                </div>
+            `;
+            return html;
+        }
+
+        function renderClientDetail(clientId) {
+            const client = clients[clientId];
+
+            const html = `
+                <div class="detail-section">
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 0 0 16px 0; border-bottom: 1px solid var(--card-border);">
+                        <div style="font-size: 32px;">${client.emoji}</div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">${client.name}</div>
+                            <div style="font-size: 11px; color: var(--text-secondary);">${client.status}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-header">Revenue</div>
+                    <div style="font-size: 20px; font-weight: 700; color: var(--income-green);">${formatCurrency(client.ytdRevenue)}</div>
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">Year to date</div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-header">Monthly Revenue</div>
+                    <div class="sparkline-container">
+                        ${Array(12).fill(0).map((_, i) => {
+                            const height = 20 + Math.random() * 80;
+                            return `<div class="sparkline-bar" style="height: ${height}%;"></div>`;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-header">Invoice History</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Total Invoices</div>
+                        <div class="detail-value">${client.invoices}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Avg Payment Days</div>
+                        <div class="detail-value">12.5</div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="button button-primary">New Invoice</button>
+                </div>
+            `;
+            return html;
+        }
+
+        function renderTripDetail(tripId) {
+            const trip = trips[tripId];
+
+            const html = `
+                <div class="detail-section">
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 0 16px 0; border-bottom: 1px solid var(--card-border);">
+                        <div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">${trip.date}</div>
+                            <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">${trip.purpose}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 14px; font-weight: 700; color: var(--income-green);">${formatCurrency(trip.deduction)}</div>
+                            <div style="font-size: 10px; color: var(--text-secondary);">deduction</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div style="width: 100%; height: 150px; background: var(--card-glass); border: 1px dashed var(--card-border); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); font-size: 12px;">
+                        🗺️ Route map
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-header">Trip Details</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Distance</div>
+                        <div class="detail-value">${trip.miles} mi</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Rate</div>
+                        <div class="detail-value">$0.66/mi (IRS Standard)</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Deduction</div>
+                        <div class="detail-value" style="color: var(--income-green);">${formatCurrency(trip.deduction)}</div>
+                    </div>
+                    ${trip.client ? `<div class="detail-row">
+                        <div class="detail-label">Client</div>
+                        <div class="detail-value">${trip.client}</div>
+                    </div>` : ''}
+                </div>
+
+                <div class="button-group">
+                    <button class="button button-secondary">Edit Trip</button>
+                    <button class="button button-secondary">Delete</button>
+                </div>
+            `;
+            return html;
+        }
+
+        function renderReceiptDetail(receiptId) {
+            const receipt = receipts[receiptId];
+
+            const html = `
+                <div class="detail-section">
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 0 0 16px 0; border-bottom: 1px solid var(--card-border);">
+                        <div style="font-size: 32px;">${receipt.emoji}</div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 12px; color: var(--text-secondary);">${receipt.name}</div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--text-primary);">${formatCurrency(receipt.amount)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div style="width: 100%; height: 200px; background: var(--card-glass); border: 1px dashed var(--card-border); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); font-size: 12px;">
+                        📷 Receipt image
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-header">Receipt Data</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Merchant</div>
+                        <div class="detail-value">${receipt.name}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Date</div>
+                        <div class="detail-value">${receipt.date}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Amount</div>
+                        <div class="detail-value">${formatCurrency(receipt.amount)}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-value">${receipt.status === 'matched' ? '✅ Matched' : '❌ Unmatched'}</div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="button button-primary">${receipt.status === 'matched' ? 'Rematch' : 'Match to Transaction'}</button>
+                </div>
+            `;
+            return html;
+        }
+
+        // Screen routing
+        function renderScreen(screenName) {
+            const zone2 = document.getElementById('zone-2');
+
+            let html = '';
+            switch(screenName) {
+                case 'dashboard':
+                    html = renderDashboard();
+                    break;
+                case 'transactions':
+                    html = renderTransactions();
+                    break;
+                case 'budgets':
+                    html = renderBudgets();
+                    break;
+                case 'invoices':
+                    html = renderInvoices();
+                    break;
+                case 'accounts':
+                    html = renderAccounts();
+                    break;
+                case 'clients':
+                    html = renderClients();
+                    break;
+                case 'mileage':
+                    html = renderMileage();
+                    break;
+                case 'receipts':
+                    html = renderReceipts();
+                    break;
+                case 'reports':
+                    html = renderReports();
+                    break;
+                case 'tax':
+                    html = renderTax();
+                    break;
+                case 'settings':
+                    html = renderSettings();
+                    break;
+            }
+
+            zone2.innerHTML = html;
+            attachItemClickHandlers();
+        }
+
+        function attachItemClickHandlers() {
+            document.querySelectorAll('[data-item-id][data-item-type]').forEach(el => {
+                el.addEventListener('click', function(e) {
+                    if (e.target.closest('.category-tag') || e.target.closest('button')) return;
+
+                    const itemId = parseInt(this.getAttribute('data-item-id'));
+                    const itemType = this.getAttribute('data-item-type');
+
+                    openDetail(itemId, itemType);
+                });
+            });
+        }
+
+        function openDetail(itemId, itemType) {
+            appState.selectedItem = itemId;
+            appState.selectedItemType = itemType;
+
+            const zone3 = document.getElementById('zone-3');
+            const zone3Content = document.getElementById('zone-3-content');
+            const zone3Title = document.getElementById('zone-3-title');
+            const zone2 = document.getElementById('zone-2');
+            const sidebar = document.getElementById('sidebar');
+
+            let detailHtml = '';
+            let title = '';
+
+            switch(itemType) {
+                case 'transaction':
+                    detailHtml = renderTransactionDetail(itemId + 1);
+                    title = 'Transaction';
+                    break;
+                case 'budget':
+                    detailHtml = renderBudgetDetail(itemId);
+                    title = budgets[itemId].name;
+                    break;
+                case 'invoice':
+                    detailHtml = renderInvoiceDetail(itemId);
+                    title = invoices[itemId].id;
+                    break;
+                case 'account':
+                    detailHtml = renderAccountDetail(itemId);
+                    title = accounts[itemId].name;
+                    break;
+                case 'client':
+                    detailHtml = renderClientDetail(itemId);
+                    title = clients[itemId].name;
+                    break;
+                case 'trip':
+                    detailHtml = renderTripDetail(itemId);
+                    title = trips[itemId].purpose;
+                    break;
+                case 'receipt':
+                    detailHtml = renderReceiptDetail(itemId);
+                    title = receipts[itemId].name;
+                    break;
+                case 'report':
+                    title = 'Report Details';
+                    detailHtml = '<div style="padding: 16px;"><div style="font-size: 12px; color: var(--text-secondary);">Report preview placeholder</div></div>';
+                    break;
+                case 'quarter':
+                    title = 'Quarterly Details';
+                    detailHtml = '<div style="padding: 16px;"><div style="font-size: 12px; color: var(--text-secondary);">Quarterly tax details</div></div>';
+                    break;
+            }
+
+            zone3Title.textContent = title;
+            zone3Content.innerHTML = detailHtml;
+
+            sidebar.classList.add('collapsed');
+            zone2.classList.add('narrowed');
+            zone3.classList.add('expanded');
+        }
+
+        function closeDetail() {
+            const zone3 = document.getElementById('zone-3');
+            const zone2 = document.getElementById('zone-2');
+            const sidebar = document.getElementById('sidebar');
+
+            sidebar.classList.remove('collapsed');
+            zone2.classList.remove('narrowed');
+            zone3.classList.remove('expanded');
+
+            appState.selectedItem = null;
+            appState.selectedItemType = null;
+        }
+
+        // Event listeners
+        document.querySelectorAll('[data-screen]').forEach(item => {
+            item.addEventListener('click', function() {
+                const screen = this.getAttribute('data-screen');
+
+                // Update active state
+                document.querySelectorAll('[data-screen]').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+
+                // Close detail if open
+                if (appState.selectedItem !== null) {
+                    closeDetail();
+                }
+
+                appState.currentScreen = screen;
+                renderScreen(screen);
+            });
+        });
+
+        document.getElementById('back-button').addEventListener('click', closeDetail);
+
+        // Update time
+        function updateTime() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('current-time').textContent = `${hours}:${minutes}`;
+        }
+
+        updateTime();
+        setInterval(updateTime, 60000);
+
+        // Initial render
+        renderScreen('dashboard');
+    </script>
+</body>
+</html>
