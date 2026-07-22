@@ -43,16 +43,46 @@ final class AssistantService {
     // MARK: - State
 
     var isGenerating = false
+
+    /// Whether the on-device language model can actually run here (runtime
+    /// check — device eligibility, Apple Intelligence enabled, model ready).
+    /// When false the template fallback still answers common questions.
     var isAvailable: Bool {
         #if canImport(FoundationModels)
-        return true
-        #else
-        return false
+        if #available(iOS 26.0, macOS 26.0, *) {
+            return SystemLanguageModel.default.availability == .available
+        }
         #endif
+        return false
     }
 
     private var dataProvider: AssistantDataProvider?
     var context: AssistantContext?
+
+    /// Persistent multi-turn session (type-erased; concretely a
+    /// LanguageModelSession on OS 26+). The framework keeps the transcript,
+    /// so each turn only sends the new message.
+    private var sessionStorage: Any?
+
+    /// Reset the model conversation (call when the user starts a new chat)
+    func startNewConversation() {
+        sessionStorage = nil
+    }
+
+    #if canImport(FoundationModels)
+    @available(iOS 26.0, macOS 26.0, *)
+    private func activeSession(dataProvider: AssistantDataProvider) -> LanguageModelSession {
+        if let existing = sessionStorage as? LanguageModelSession {
+            return existing
+        }
+        let session = LanguageModelSession(
+            tools: makeAssistantTools(dataProvider: dataProvider),
+            instructions: systemPrompt
+        )
+        sessionStorage = session
+        return session
+    }
+    #endif
 
     // MARK: - Setup
 
@@ -80,8 +110,12 @@ final class AssistantService {
         - The IRS business mileage rate is $0.70/mile for 2025 and $0.725/mile for 2026.
         - Self-employment tax rate is 15.3% on 92.35% of net self-employment income.
 
-        You have access to the user's financial data through FLO. Use it to answer questions \
-        about their income, expenses, tax position, mileage, budgets, and account balances.
+        You have TOOLS that query the user's live financial data in FLO: overview, \
+        category breakdowns, transaction search by date range and text, top merchants, \
+        tax snapshot, mileage, account balances, monthly trends, budgets, invoices and \
+        debts, and spending events (trips/occasions). ALWAYS call the relevant tool to \
+        get real numbers before answering a question about the user's finances — never \
+        estimate or invent figures. Today's date is \(Date().formatted(date: .complete, time: .omitted)).
         """
     }
 
@@ -802,6 +836,16 @@ final class AssistantService {
         for userMessage: String,
         conversationHistory: [AssistantMessage]
     ) async -> String {
+        await generateResponse(for: userMessage, conversationHistory: conversationHistory, onPartial: nil)
+    }
+
+    /// Generates a response, optionally streaming partial text as the model
+    /// produces it. `onPartial` receives the cumulative response so far.
+    func generateResponse(
+        for userMessage: String,
+        conversationHistory: [AssistantMessage],
+        onPartial: ((String) -> Void)?
+    ) async -> String {
         guard let dataProvider else {
             return "Assistant is not configured. Please try again."
         }
@@ -809,30 +853,35 @@ final class AssistantService {
         isGenerating = true
         defer { isGenerating = false }
 
-        let financialContext = dataProvider.getFinancialContext(year: Calendar.current.component(.year, from: Date()))
-
         #if canImport(FoundationModels)
-        if #available(macOS 26.0, iOS 26.0, *) {
+        if #available(macOS 26.0, iOS 26.0, *), isAvailable {
             do {
-                let session = LanguageModelSession(
-                    instructions: systemPrompt + "\n\nUSER'S FINANCIAL DATA:\n" + financialContext
-                )
-                let recentHistory = conversationHistory.suffix(10)
-                var prompt = ""
-                for message in recentHistory {
-                    prompt += message.isUser ? "User: \(message.content)\n" : "Assistant: \(message.content)\n"
+                // Persistent session: the framework keeps the transcript and
+                // calls our data tools as the model needs them
+                let session = activeSession(dataProvider: dataProvider)
+
+                var finalText = ""
+                if let onPartial {
+                    let stream = session.streamResponse(to: userMessage)
+                    for try await partial in stream {
+                        finalText = partial.content
+                        onPartial(finalText)
+                    }
+                } else {
+                    finalText = try await session.respond(to: userMessage).content
                 }
-                prompt += "User: \(userMessage)\nAssistant:"
-                let response = try await session.respond(to: prompt)
 
                 // Update Zone 3 context based on best template match
                 updateContext(for: userMessage, previousMessages: conversationHistory, dataProvider: dataProvider)
 
-                return response.content
+                return finalText
             } catch {
                 #if DEBUG
                 print("❌ [Assistant] Foundation Models error: \(error.localizedDescription)")
                 #endif
+                // A failed session (guardrail, context overflow) shouldn't
+                // poison subsequent turns — start fresh next time
+                sessionStorage = nil
             }
         }
         #endif

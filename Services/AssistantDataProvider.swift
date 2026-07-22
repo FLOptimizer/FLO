@@ -539,4 +539,114 @@ final class AssistantDataProvider {
 
         return context
     }
+
+    // MARK: - Tool Backends (JSON-formatted, consumed by AssistantTools)
+
+    private func json<T: Encodable>(_ value: T) -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        guard let data = try? encoder.encode(value),
+              let string = String(data: data, encoding: .utf8) else { return "{}" }
+        return string
+    }
+
+    func toolCategoryBreakdown(year: Int, income: Bool) -> String {
+        json(income ? getIncomeByCategory(year: year) : getCategoryBreakdown(year: year))
+    }
+
+    func toolTaxSnapshot(year: Int) -> String { json(getTaxSnapshot(year: year)) }
+
+    func toolMileage(year: Int) -> String { json(getMileageSummary(year: year)) }
+
+    func toolAccounts() -> String { json(getAccountBalances()) }
+
+    func toolMonthlyTrend(year: Int) -> String { json(getMonthlySummaries(year: year)) }
+
+    func toolBudgets() -> String { json(getBudgetStatus()) }
+
+    func toolInvoicesAndDebts() -> String {
+        "{\"unpaidInvoices\":\(json(getUnpaidInvoices())),\"debtAccounts\":\(json(getDebtAccounts()))}"
+    }
+
+    private struct MerchantTotal: Codable {
+        let merchant: String
+        let total: Double
+        let transactionCount: Int
+    }
+
+    func toolTopMerchants(year: Int, limit: Int = 15) -> String {
+        let merchants = getMerchantSpending(year: year).prefix(limit).map {
+            MerchantTotal(merchant: $0.merchant, total: $0.total, transactionCount: $0.count)
+        }
+        return json(Array(merchants))
+    }
+
+    /// Search transactions in an arbitrary date range, optionally filtered by
+    /// a term matched against merchant, note, and category.
+    func toolSearchTransactions(startISO: String, endISO: String, searchTerm: String, limit: Int = 40) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        guard let start = formatter.date(from: startISO),
+              let endDay = formatter.date(from: endISO),
+              let end = Calendar.current.date(byAdding: .day, value: 1, to: endDay) else {
+            return "{\"error\":\"Dates must be in YYYY-MM-DD format\"}"
+        }
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= start && $0.date < end },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        var results = (try? modelContext.fetch(descriptor)) ?? []
+        let term = searchTerm.trimmingCharacters(in: .whitespaces).lowercased()
+        if !term.isEmpty {
+            results = results.filter {
+                $0.merchantName.lowercased().contains(term) ||
+                $0.note.lowercased().contains(term) ||
+                ($0.category?.name.lowercased().contains(term) ?? false)
+            }
+        }
+        let dateFmt = DateFormatter()
+        dateFmt.dateFormat = "yyyy-MM-dd"
+        let infos = results.prefix(limit).map {
+            TransactionInfo(
+                merchant: $0.merchantName.isEmpty ? $0.note : $0.merchantName,
+                amount: $0.amount,
+                date: dateFmt.string(from: $0.date),
+                category: $0.category?.name ?? "Uncategorized",
+                isIncome: $0.isIncome
+            )
+        }
+        let total = results.filter { !$0.isIncome }.reduce(0) { $0 + $1.amount }
+        return "{\"matchCount\":\(results.count),\"totalExpenses\":\(total),\"transactions\":\(json(Array(infos)))}"
+    }
+
+    private struct EventSummary: Codable {
+        let name: String
+        let startDate: String
+        let endDate: String
+        let totalSpent: Double
+        let transactionCount: Int
+        let byCategory: [String: Double]
+    }
+
+    /// Spending events (trips/occasions) with totals and category breakdowns
+    func toolEvents() -> String {
+        let descriptor = FetchDescriptor<SpendingEvent>(
+            sortBy: [SortDescriptor(\.startDate, order: .reverse)]
+        )
+        let events = (try? modelContext.fetch(descriptor)) ?? []
+        let dateFmt = DateFormatter()
+        dateFmt.dateFormat = "yyyy-MM-dd"
+        let summaries = events.map { event in
+            EventSummary(
+                name: event.name,
+                startDate: dateFmt.string(from: event.startDate),
+                endDate: dateFmt.string(from: event.endDate),
+                totalSpent: event.totalSpent,
+                transactionCount: event.transactionCount,
+                byCategory: Dictionary(uniqueKeysWithValues: event.categoryBreakdown.map { ($0.name, $0.total) })
+            )
+        }
+        return json(summaries)
+    }
 }

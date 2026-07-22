@@ -226,22 +226,30 @@ struct AssistantView: View {
 
         // Generate response
         Task {
-            let response = await assistantService.generateResponse(
-                for: trimmed,
-                conversationHistory: messages
-            )
-
+            // Insert the assistant message immediately and stream tokens into
+            // it — answers appear as they're generated instead of after a wait
             let assistantMessage = AssistantMessage(
-                content: response,
+                content: "",
                 isUser: false,
                 conversationID: currentConversationID
             )
             modelContext.insert(assistantMessage)
+            scrollToBottom.toggle()
+
+            let response = await assistantService.generateResponse(
+                for: trimmed,
+                conversationHistory: messages,
+                onPartial: { partial in
+                    assistantMessage.content = partial
+                }
+            )
+            assistantMessage.content = response
             scrollToBottom.toggle()
         }
     }
 
     private func startNewConversation() {
         currentConversationID = UUID()
+        assistantService.startNewConversation()
     }
 }

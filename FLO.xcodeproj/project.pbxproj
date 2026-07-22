@@ -180,6 +180,7 @@
 		43E4764D2F3785EC00769F6C /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43E60182300C16FA0088E628 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43E6057A301071550088E628 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43E609AE301145550088E628 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43EBF35A2EF642B600B5C1DE /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43EBF4392EF6435800B5C1DE /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43EBF5212EF64C2600B5C1DE /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
@@ -291,8 +292,8 @@
 				Models/PartnerAllocation.swift,
 				Models/RecurringPaymentLog.swift,
 				Models/RecurringTransaction.swift,
-				Models/SpendingEvent.swift,
 				Models/RecurringTransfer.swift,
+				Models/SpendingEvent.swift,
 				Models/SubscriptionTier.swift,
 				Models/TaxCarryforward.swift,
 				Models/TaxFormLine.swift,
@@ -338,8 +339,8 @@
 				Models/PartnerAllocation.swift,
 				Models/RecurringPaymentLog.swift,
 				Models/RecurringTransaction.swift,
-				Models/SpendingEvent.swift,
 				Models/RecurringTransfer.swift,
+				Models/SpendingEvent.swift,
 				Models/TaxCarryforward.swift,
 				Models/TaxFormLine.swift,
 				Models/TaxSettings.swift,
@@ -775,6 +776,11 @@
 			sourceTree = "<group>";
 		};
 		43E60582301071550088E628 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		43E609B6301145550088E628 /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
@@ -1272,6 +1278,10 @@
 				{
 					ProductGroup = 43FAC8AD2F1298AF006A54B9 /* Products */;
 					ProjectRef = 43FAC8A52F1298AF006A54B9 /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 43E609B6301145550088E628 /* Products */;
+					ProjectRef = 43E609AE301145550088E628 /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 4364D5042F4CA34000AD1C84 /* Products */;
