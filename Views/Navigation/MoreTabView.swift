@@ -66,6 +66,12 @@ struct MoreTabView: View {
                     }
 
                     NavigationLink {
+                        EventsListView()
+                    } label: {
+                        Label("Events", systemImage: "airplane")
+                    }
+
+                    NavigationLink {
                         TaxSettingsView()
                             .navigationTitle(AppTab.tax.title)
                     } label: {
