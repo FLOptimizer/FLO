@@ -302,6 +302,20 @@ enum PlaidError: LocalizedError, Sendable {
             return false
         }
     }
+
+    /// True when the failure is on FLO's side — network down, backend
+    /// unreachable (e.g. paused Supabase project), rate limits — rather than
+    /// a problem with the user's bank link. The bank connection itself is
+    /// fine, so its status should NOT be flipped to error for these.
+    var isTransientInfrastructureError: Bool {
+        switch self {
+        case .networkError, .serverError, .backendUnavailable, .backendError,
+             .rateLimitExceeded, .invalidResponse, .decodingError:
+            return true
+        default:
+            return false
+        }
+    }
     
     /// Whether this error should trigger a sync retry
     var isRetryable: Bool {

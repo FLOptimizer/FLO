@@ -1,0 +1,41 @@
+# Keeps both Supabase projects (Plaid backend) from being auto-paused on the
+# free tier, which otherwise requires manual unpausing a few times a month and
+# breaks bank sync while paused. Invokes an edge function on each project twice
+# a week — any invocation counts as project activity.
+#
+# The anon keys below are the same public client keys shipped inside the app
+# binary; they grant nothing beyond what any app user already has.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: "0 14 * * 1,4"   # Mondays and Thursdays, 14:00 UTC
+  workflow_dispatch: {}       # allow manual runs to test
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping production project
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" -m 30 \
+            -H "Authorization: Bearer $PROD_ANON_KEY" \
+            -H "apikey: $PROD_ANON_KEY" \
+            https://bhpdiujgnqxsfwnorufa.supabase.co/functions/v1/plaid-accounts)
+          echo "production responded: $code"
+          # Any HTTP response means the project is awake; only network-level
+          # failure (000) or explicit paused responses should fail the job
+          [ "$code" != "000" ]
+        env:
+          PROD_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJocGRpdWpnbnF4c2Z3bm9ydWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMTI2MjAsImV4cCI6MjA4NDY4ODYyMH0.WymXYIwTEuuz9lMwyckFpHhB-5tYbMj1OyPp69_IqzU
+
+      - name: Ping sandbox project
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" -m 30 \
+            -H "Authorization: Bearer $SANDBOX_ANON_KEY" \
+            -H "apikey: $SANDBOX_ANON_KEY" \
+            https://fdlttnbwswnlrmnfdulz.supabase.co/functions/v1/plaid-accounts)
+          echo "sandbox responded: $code"
+          [ "$code" != "000" ]
+        env:
+          SANDBOX_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbHR0bmJ3c3dubHJtbmZkdWx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMTAzODUsImV4cCI6MjA4NDY4NjM4NX0.QlKLqi1KpzqwvV3WMlEb7INgi58PE44MjZNVDaEWEMA

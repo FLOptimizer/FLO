@@ -276,9 +276,11 @@ final class PlaidService: ObservableObject {
                 // Handle specific errors
                 if error.requiresReconnection {
                     account.plaidStatus = .needsReauth
-                } else {
+                } else if !error.isTransientInfrastructureError {
                     account.plaidStatus = .error
                 }
+                // Transient infra failures (backend paused/unreachable, no
+                // network) leave the bank's status untouched — the link is fine
                 // Continue with other accounts
                 print("⚠️ Sync error for account \(account.name): \(error.localizedDescription)")
             }
