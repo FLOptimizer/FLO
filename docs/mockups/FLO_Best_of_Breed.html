@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLO Best of Breed Design Comparison</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: 'Inter', sans-serif;
+            background: #050508;
+            color: #e5e7eb;
+            overflow-x: hidden;
+        }
+
+        body {
+            background: linear-gradient(135deg, #050508 0%, #0a0a0f 100%);
+            min-height: 100vh;
+        }
+
+        /* Sticky Navigation */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            background: rgba(5, 5, 8, 0.6);
+            border-bottom: 1px solid rgba(20, 184, 166, 0.1);
+            padding: 0 40px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            gap: 60px;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 40px;
+            flex: 1;
+        }
+
+        .nav-tab {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 10px 0;
+            position: relative;
+            transition: color 0.3s ease;
+        }
+
+        .nav-tab:hover {
+            color: #14b8a6;
+        }
+
+        .nav-tab.active {
+            color: #14b8a6;
+        }
+
+        .nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -19px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #14b8a6 0%, #0d9488 100%);
+            border-radius: 2px;
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* TAB 1: Best Ideas Grid */
+        .ideas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 30px;
+        }
+
+        .app-card {
+            backdrop-filter: blur(10px);
+            background: rgba(20, 184, 166, 0.05);
+            border: 1px solid rgba(20, 184, 166, 0.15);
+            border-radius: 16px;
+            padding: 30px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .app-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.5), transparent);
+        }
+
+        .app-card:hover {
+            border-color: rgba(20, 184, 166, 0.3);
+            background: rgba(20, 184, 166, 0.08);
+            transform: translateY(-4px);
+        }
+
+        .app-header {
+            margin-bottom: 20px;
+        }
+
+        .app-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #14b8a6;
+        }
+
+        .app-identity {
+            font-size: 13px;
+            color: #9ca3af;
+            line-height: 1.5;
+        }
+
+        .design-ideas {
+            margin-bottom: 20px;
+        }
+
+        .design-idea {
+            margin-bottom: 14px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(20, 184, 166, 0.1);
+        }
+
+        .design-idea:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .idea-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #34d399;
+            margin-bottom: 6px;
+        }
+
+        .idea-desc {
+            font-size: 13px;
+            color: #d1d5db;
+            line-height: 1.4;
+        }
+
+        .mockup-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(20, 184, 166, 0.1);
+            min-height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .phone-frame {
+            width: 200px;
+            height: 160px;
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            border: 8px solid #0f172a;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            gap: 8px;
+        }
+
+        .mockup-element {
+            font-size: 11px;
+            font-weight: 600;
+            color: #14b8a6;
+            padding: 8px;
+            background: rgba(20, 184, 166, 0.1);
+            border-radius: 6px;
+            border: 1px solid rgba(20, 184, 166, 0.2);
+            text-align: center;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .verdict {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .verdict.steal {
+            background: rgba(52, 211, 153, 0.2);
+            color: #34d399;
+        }
+
+        .verdict.adapt {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .verdict.reference {
+            background: rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+        }
+
+        /* TAB 2: FLO Ultimate Vision */
+        .vision-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin-bottom: 60px;
+        }
+
+        .ultimate-mockup {
+            width: 560px;
+            height: 700px;
+            background: linear-gradient(135deg, #0a0a0f 0%, #0f1419 100%);
+            border: 2px solid rgba(20, 184, 166, 0.2);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 40px 120px rgba(20, 184, 166, 0.1);
+            display: flex;
+            position: relative;
+        }
+
+        .ultimate-mockup::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.3), transparent);
+        }
+
+        .sidebar-mini {
+            width: 50px;
+            background: rgba(0, 0, 0, 0.4);
+            border-right: 1px solid rgba(20, 184, 166, 0.1);
+            padding: 15px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .sidebar-icon {
+            width: 35px;
+            height: 35px;
+            border-radius: 8px;
+            background: rgba(20, 184, 166, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(20, 184, 166, 0.1);
+        }
+
+        .sidebar-icon:hover,
+        .sidebar-icon.active {
+            background: rgba(20, 184, 166, 0.3);
+            border-color: rgba(20, 184, 166, 0.3);
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 25px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .main-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .main-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .main-content::-webkit-scrollbar-thumb {
+            background: rgba(20, 184, 166, 0.2);
+            border-radius: 2px;
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(20, 184, 166, 0.1);
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #e5e7eb;
+        }
+
+        .toggle-switch {
+            width: 50px;
+            height: 28px;
+            background: rgba(20, 184, 166, 0.2);
+            border: 1px solid rgba(20, 184, 166, 0.3);
+            border-radius: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            padding: 2px;
+            position: relative;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            width: 24px;
+            height: 24px;
+            background: #14b8a6;
+            border-radius: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        .trend-card {
+            background: rgba(20, 184, 166, 0.08);
+            border: 1px solid rgba(20, 184, 166, 0.15);
+            border-radius: 12px;
+            padding: 14px;
+            position: relative;
+        }
+
+        .trend-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #9ca3af;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .trend-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: #14b8a6;
+            font-variant-numeric: tabular-nums;
+            margin-bottom: 8px;
+        }
+
+        .trend-line {
+            height: 30px;
+            background: rgba(20, 184, 166, 0.1);
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .trend-line::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #14b8a6 0%, #0d9488 100%);
+            opacity: 0.6;
+        }
+
+        .badge-under {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            background: rgba(52, 211, 153, 0.2);
+            border: 1px solid #34d399;
+            color: #34d399;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            flex: 1;
+            background: rgba(20, 184, 166, 0.15);
+            border: 1px solid rgba(20, 184, 166, 0.2);
+            color: #14b8a6;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .action-btn:hover {
+            background: rgba(20, 184, 166, 0.25);
+            border-color: rgba(20, 184, 166, 0.4);
+        }
+
+        .category-pills {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .category-pill {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .category-pill.restaurants {
+            background: rgba(248, 113, 113, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(248, 113, 113, 0.3);
+        }
+
+        .category-pill.groceries {
+            background: rgba(52, 211, 153, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(52, 211, 153, 0.3);
+        }
+
+        .category-pill.subscriptions {
+            background: rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(96, 165, 250, 0.3);
+        }
+
+        .category-pill.business {
+            background: rgba(167, 139, 250, 0.2);
+            color: #a78bfa;
+            border: 1px solid rgba(167, 139, 250, 0.3);
+        }
+
+        .transaction-item {
+            background: rgba(20, 184, 166, 0.06);
+            border: 1px solid rgba(20, 184, 166, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 11px;
+        }
+
+        .txn-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            color: #d1d5db;
+        }
+
+        .txn-merchant {
+            font-weight: 600;
+            color: #e5e7eb;
+        }
+
+        .txn-amount {
+            font-weight: 600;
+            color: #f87171;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .txn-category {
+            color: #9ca3af;
+            font-size: 10px;
+        }
+
+        .contextual-chip {
+            background: rgba(251, 191, 36, 0.15);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: #fbbf24;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+            margin-top: 6px;
+        }
+
+        .budget-circles {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .budget-circle {
+            background: rgba(20, 184, 166, 0.1);
+            border: 1px solid rgba(20, 184, 166, 0.15);
+            border-radius: 12px;
+            padding: 8px;
+            text-align: center;
+            font-size: 10px;
+            color: #9ca3af;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .budget-emoji {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .budget-label {
+            font-weight: 600;
+            color: #d1d5db;
+            margin-bottom: 2px;
+        }
+
+        .budget-amount {
+            font-size: 11px;
+            font-weight: 700;
+            color: #34d399;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* TAB 3: Design DNA */
+        .dna-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+            margin-bottom: 60px;
+        }
+
+        .dna-section {
+            background: rgba(20, 184, 166, 0.05);
+            border: 1px solid rgba(20, 184, 166, 0.15);
+            border-radius: 16px;
+            padding: 30px;
+        }
+
+        .dna-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #14b8a6;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .typography-scale {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .typo-level {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(20, 184, 166, 0.1);
+        }
+
+        .typo-level:last-child {
+            border-bottom: none;
+        }
+
+        .typo-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .typo-example {
+            color: #e5e7eb;
+            line-height: 1.5;
+        }
+
+        .typo-hero {
+            font-size: 36px;
+            font-weight: 800;
+            color: #14b8a6;
+        }
+
+        .typo-card {
+            font-size: 16px;
+            font-weight: 600;
+            color: #d1d5db;
+        }
+
+        .typo-label-text {
+            font-size: 12px;
+            font-weight: 500;
+            color: #9ca3af;
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .color-swatch {
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(20, 184, 166, 0.15);
+        }
+
+        .swatch-color {
+            height: 50px;
+            width: 100%;
+        }
+
+        .swatch-label {
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            font-size: 11px;
+            font-weight: 600;
+            color: #d1d5db;
+        }
+
+        .swatch-value {
+            font-size: 10px;
+            color: #9ca3af;
+            font-family: 'Courier New', monospace;
+        }
+
+        .spacing-example {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .spacing-visual {
+            width: 100px;
+            background: rgba(20, 184, 166, 0.2);
+            border: 1px dashed rgba(20, 184, 166, 0.3);
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+            font-size: 11px;
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 40px;
+        }
+
+        .spacing-desc {
+            flex: 1;
+            font-size: 12px;
+            color: #d1d5db;
+            display: flex;
+            align-items: center;
+        }
+
+        .motion-description {
+            padding: 12px;
+            background: rgba(20, 184, 166, 0.08);
+            border-left: 3px solid #14b8a6;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #d1d5db;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .unique-feature {
+            background: rgba(167, 139, 250, 0.1);
+            border-left: 3px solid #a78bfa;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        .unique-feature-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #a78bfa;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .unique-feature-desc {
+            font-size: 12px;
+            color: #d1d5db;
+            line-height: 1.4;
+        }
+
+        /* TAB 4: Competitive Matrix */
+        .matrix-wrapper {
+            overflow-x: auto;
+            margin-bottom: 40px;
+        }
+
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(20, 184, 166, 0.03);
+            border: 1px solid rgba(20, 184, 166, 0.15);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .matrix-table thead {
+            background: rgba(20, 184, 166, 0.1);
+            border-bottom: 1px solid rgba(20, 184, 166, 0.15);
+        }
+
+        .matrix-table th {
+            padding: 14px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: #14b8a6;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-right: 1px solid rgba(20, 184, 166, 0.1);
+            white-space: nowrap;
+        }
+
+        .matrix-table th:last-child {
+            border-right: none;
+        }
+
+        .matrix-table td {
+            padding: 14px;
+            font-size: 12px;
+            border-right: 1px solid rgba(20, 184, 166, 0.1);
+            border-bottom: 1px solid rgba(20, 184, 166, 0.1);
+        }
+
+        .matrix-table td:last-child {
+            border-right: none;
+        }
+
+        .matrix-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .matrix-app-name {
+            font-weight: 600;
+            color: #e5e7eb;
+            min-width: 140px;
+        }
+
+        .matrix-app-name.flo-current {
+            color: #60a5fa;
+        }
+
+        .matrix-app-name.flo-redesign {
+            color: #14b8a6;
+            font-weight: 700;
+        }
+
+        .cell-excellent {
+            background: rgba(52, 211, 153, 0.15);
+            color: #34d399;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .cell-adequate {
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .cell-weak {
+            background: rgba(248, 113, 113, 0.15);
+            color: #f87171;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .cell-text {
+            color: #d1d5db;
+            text-align: center;
+        }
+
+        .stars {
+            display: flex;
+            gap: 3px;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .star-filled {
+            color: #fbbf24;
+        }
+
+        .star-empty {
+            color: #4b5563;
+        }
+
+        /* Scrollbar Styling */
+        .matrix-wrapper::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .matrix-wrapper::-webkit-scrollbar-track {
+            background: rgba(20, 184, 166, 0.05);
+        }
+
+        .matrix-wrapper::-webkit-scrollbar-thumb {
+            background: rgba(20, 184, 166, 0.2);
+            border-radius: 3px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .dna-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .ideas-grid {
+                grid-template-columns: 1fr;
+            }
+
+            header {
+                padding: 0 20px;
+                gap: 30px;
+            }
+
+            .container {
+                padding: 40px 20px;
+            }
+
+            .ultimate-mockup {
+                width: 100%;
+                max-width: 560px;
+                height: auto;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            header {
+                display: none;
+            }
+
+            .tab-content {
+                display: block !important;
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">FLO Design System</div>
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="tab1">Best Ideas</button>
+            <button class="nav-tab" data-tab="tab2">Ultimate Vision</button>
+            <button class="nav-tab" data-tab="tab3">Design DNA</button>
+            <button class="nav-tab" data-tab="tab4">Competitive Matrix</button>
+        </nav>
+    </header>
+
+    <div class="container">
+        <!-- TAB 1: Best Ideas from Each App -->
+        <div id="tab1" class="tab-content active">
+            <div class="ideas-grid">
+                <!-- Copilot Money -->
+                <div class="app-card">
+                    <div class="app-header">
+                        <div class="app-name">Copilot Money</div>
+                        <div class="app-identity">Dark navy background with bold spending trend line. Apple Design Award Finalist. Floating badge shows spending delta.</div>
+                    </div>
+                    <div class="design-ideas">
+                        <div class="design-idea">
+                            <div class="idea-title">1. Spending Trend Hero</div>
+                            <div class="idea-desc">Large, animated trend line showing spending over time with floating "$X under" badge positioned absolutely. Visual gradient from red to green.</div>
+                        </div>
+                        <div class="design-idea">
+                            <div class="idea-title">2. Colorful Category Pills</div>
+                            <div class="idea-desc">Bold pill-shaped tags for each category (RESTAURANTS in red, GROCERIES in green). Applied directly to transaction list.</div>
+                        </div>
+                    </div>
+                    <div class="mockup-container">
+                        <div class="phone-frame">
+                            <div class="mockup-element">Trend Line</div>
+                            <div class="mockup-element">$245 Under</div>
+                            <div class="mockup-element">Category Pills</div>
+                            <div class="mockup-element">Transactions</div>
+                        </div>
+                    </div>
+                    <span class="verdict steal">STEAL THIS</span>
+                </div>
+
+                <!-- Monarch Money -->
+                <div class="app-card">
+                    <div class="app-header">
+                        <div class="app-name">Monarch Money</div>
+                        <div class="app-identity">Light cream palette. Elegant serif typography. WSJ/Forbes Best Overall. Refined, calm aesthetic with generous whitespace.</div>
+                    </div>
+                    <div class="design-ideas">
+                        <div class="design-idea">
+                            <div class="idea-title">1. Generous Whitespace</div>
+                            <div class="idea-desc">Embrace negative space throughout the interface. Large padding between sections, plenty of breathing room. Creates premium feel.</div>
+                        </div>
+                        <div class="design-idea">
+                            <div class="idea-title">2. Collaborative Features</div>
+                            <div class="idea-desc">Multi-user awareness with shared dashboard. Show who did what transaction. Couple-friendly UX.</div>
+                        </div>
+                    </div>
+                    <div class="mockup-container">
+                        <div class="phone-frame">
+                            <div class="mockup-element">Clean Header</div>
+                            <div class="mockup-element">Whitespace</div>
+                            <div class="mockup-element">Minimal Cards</div>
+                            <div class="mockup-element">Shared View</div>
+                        </div>
+                    </div>
+                    <span class="verdict adapt">ADAPT THIS</span>
+                </div>
+
+                <!-- Rocket Money -->
+                <div class="app-card">
+                    <div class="app-header">
+                        <div class="app-name">Rocket Money</div>
+                        <div class="app-identity">White/light background with bold RED gradient (#e11d48) hero. Shows current spend vs. budget. 10M+ members.</div>
+                    </div>
+                    <div class="design-ideas">
+                        <div class="design-idea">
+                            <div class="idea-title">1. Contextual Chips</div>
+                            <div class="idea-desc">"Payday in 8 days" and "Estimated Q1 tax: $3,240" chips at bottom of cards. Provide timely, relevant context without cluttering.</div>
+                        </div>
+                        <div class="design-idea">
+                            <div class="idea-title">2. Real Brand Logos</div>
+                            <div class="idea-desc">Subscription tracking with actual merchant logos (Netflix, DoorDash). Makes transactions instantly recognizable.</div>
+                        </div>
+                    </div>
+                    <div class="mockup-container">
+                        <div class="phone-frame">
+                            <div class="mockup-element">Red Hero</div>
+                            <div class="mockup-element">Spending Line</div>
+                            <div class="mockup-element">Real Logos</div>
+                            <div class="mockup-element">Context Chips</div>
+                        </div>
+                    </div>
+                    <span class="verdict steal">STEAL THIS</span>
+                </div>
+
+                <!-- YNAB -->
+                <div class="app-card">
+                    <div class="app-header">
+                        <div class="app-name">YNAB</div>
+                        <div class="app-identity">Bold purple (#4338ca) with lime green (#84cc16) accents. Playful, action-oriented personality. Always prompts user to DO something.</div>
+                    </div>
+                    <div class="design-ideas">
+                        <div class="design-idea">
+                            <div class="idea-title">1. Action-Oriented UX</div>
+                            <div class="idea-desc">"4 New Transactions — Review" and "$1,000 Ready to Assign" as big action buttons. Drives engagement. Makes app feel interactive.</div>
+                        </div>
+                        <div class="design-idea">
+                            <div class="idea-title">2. Category Cards with Emoji</div>
+                            <div class="idea-desc">Budget categories shown as cards with large emoji centers (🛒 Groceries $450, 💕 Date nights $100). Playful and memorable.</div>
+                        </div>
+                    </div>
+                    <div class="mockup-container">
+                        <div class="phone-frame">
+                            <div class="mockup-element">Action Buttons</div>
+                            <div class="mockup-element">Ready to Assign</div>
+                            <div class="mockup-element">Emoji Categories</div>
+                            <div class="mockup-element">Budget Cards</div>
+                        </div>
+                    </div>
+                    <span class="verdict steal">STEAL THIS</span>
+                </div>
+
+                <!-- Robinhood -->
+                <div class="app-card">
+                    <div class="app-header">
+                        <div class="app-name">Robinhood</div>
+                        <div class="app-identity">Jet black with electric green (#00C805) accent only. Extreme minimalism. Bold numbers, no decoration. Massive tap targets.</div>
+                    </div>
+                    <div class="design-ideas">
+                        <div class="design-idea">
+                            <div class="idea-title">1. Hero Metric Focus</div>
+                            <div class="idea-desc">Single, massive metric as the hero. Monospaced, bold typography. Everything else is supporting player. No clutter, no distraction.</div>
+                        </div>
+                        <div class="design-idea">
+                            <div class="idea-title">2. Minimal Color</div>
+                            <div class="idea-desc">One accent color only. All actions, states, and feedback use the same color. Creates cohesion and reduces cognitive load.</div>
+                        </div>
+                    </div>
+                    <div class="mockup-container">
+                        <div class="phone-frame">
+                            <div class="mockup-element">Giant Numbers</div>
+                            <div class="mockup-element">Monospaced</div>
+                            <div class="mockup-element">One Green</div>
+                            <div class="mockup-element">Simple Feed</div>
+                        </div>
+                    </div>
+                    <span class="verdict reference">REFERENCE ONLY</span>
+                </div>
+
+                <!-- Revolut -->
+                <div class="app-card">
+                    <div class="app-header">
+                        <div class="app-name">Revolut</div>
+                        <div class="app-identity">Dark navy/charcoal. Sleek card-based design with subtle gradients. Merchant logos from internet. European sophistication.</div>
+                    </div>
+                    <div class="design-ideas">
+                        <div class="design-idea">
+                            <div class="idea-title">1. Transaction Icons</div>
+                            <div class="idea-desc">Merchant logos in subtle circles next to each transaction. Makes list scannable. Multi-currency shown with flag icons.</div>
+                        </div>
+                        <div class="design-idea">
+                            <div class="idea-title">2. Bold Typography Hierarchy</div>
+                            <div class="idea-desc">Giant numbers for amounts, tiny labels for descriptions. Number readability is paramount. Monospaced amounts for alignment.</div>
+                        </div>
+                    </div>
+                    <div class="mockup-container">
+                        <div class="phone-frame">
+                            <div class="mockup-element">Card Design</div>
+                            <div class="mockup-element">Merchant Icons</div>
+                            <div class="mockup-element">Bold Numbers</div>
+                            <div class="mockup-element">Multi-Currency</div>
+                        </div>
+                    </div>
+                    <span class="verdict adapt">ADAPT THIS</span>
+                </div>
+
+                <!-- Mercury -->
+                <div class="app-card">
+                    <div class="app-header">
+                        <div class="app-name">Mercury</div>
+                        <div class="app-identity">Near-black background. Ultra-clean minimalism for business banking. Monospaced numbers. Bloomberg terminal aesthetic. "Serious money" vibe.</div>
+                    </div>
+                    <div class="design-ideas">
+                        <div class="design-idea">
+                            <div class="idea-title">1. Monospaced Financial Data</div>
+                            <div class="idea-desc">All numbers in monospace font for perfect alignment. Numbers tabular, right-aligned. Creates financial dashboard feel. Professional and trustworthy.</div>
+                        </div>
+                        <div class="design-idea">
+                            <div class="idea-title">2. Minimal Color in Tables</div>
+                            <div class="idea-desc">Gray chips for categories instead of bold colors. Lots of data, but minimal visual noise. Clean transaction tables.</div>
+                        </div>
+                    </div>
+                    <div class="mockup-container">
+                        <div class="phone-frame">
+                            <div class="mockup-element">Monospaced</div>
+                            <div class="mockup-element">Table Layout</div>
+                            <div class="mockup-element">Gray Categories</div>
+                            <div class="mockup-element">Data-Rich</div>
+                        </div>
+                    </div>
+                    <span class="verdict steal">STEAL THIS</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: FLO Ultimate Vision -->
+        <div id="tab2" class="tab-content">
+            <div style="margin-bottom: 40px;">
+                <h2 style="font-size: 28px; font-weight: 700; margin-bottom: 30px; color: #e5e7eb; text-align: center;">FLO Ultimate Redesign</h2>
+                <p style="text-align: center; color: #9ca3af; margin-bottom: 40px; font-size: 14px; max-width: 600px; margin-left: auto; margin-right: auto;">
+                    This mockup combines the BEST design ideas from all 7 competitors into a single, cohesive interface. Dark teal aesthetic with glass effects, action-oriented buttons, spending trends, category visualization, and business-first features.
+                </p>
+            </div>
+
+            <div class="vision-container">
+                <div class="ultimate-mockup">
+                    <!-- Sidebar -->
+                    <div class="sidebar-mini">
+                        <div class="sidebar-icon active">📊</div>
+                        <div class="sidebar-icon">📈</div>
+                        <div class="sidebar-icon">💼</div>
+                        <div class="sidebar-icon">🧾</div>
+                        <div class="sidebar-icon">⚙️</div>
+                    </div>
+
+                    <!-- Main Content -->
+                    <div class="main-content">
+                        <!-- Header -->
+                        <div class="header-bar">
+                            <div class="header-title">Dashboard</div>
+                            <div class="toggle-switch"></div>
+                        </div>
+
+                        <!-- Spending Trend (Copilot-inspired) -->
+                        <div class="trend-card">
+                            <div class="trend-header">March Spending Trend</div>
+                            <div class="trend-value">$3,247</div>
+                            <div class="trend-line"></div>
+                            <div class="badge-under">$268 Under</div>
+                        </div>
+
+                        <!-- Action Prompts (YNAB-inspired) -->
+                        <div class="action-buttons">
+                            <button class="action-btn">3 to review</button>
+                            <button class="action-btn">$2,340 deductions</button>
+                        </div>
+
+                        <!-- Budget Circles (YNAB/Copilot) -->
+                        <div style="font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">Budget Status</div>
+                        <div class="budget-circles">
+                            <div class="budget-circle">
+                                <div class="budget-emoji">🛒</div>
+                                <div class="budget-label">Groceries</div>
+                                <div class="budget-amount">$340 / $500</div>
+                            </div>
+                            <div class="budget-circle">
+                                <div class="budget-emoji">🍽️</div>
+                                <div class="budget-label">Dining</div>
+                                <div class="budget-amount">$180 / $250</div>
+                            </div>
+                            <div class="budget-circle">
+                                <div class="budget-emoji">🚗</div>
+                                <div class="budget-label">Transport</div>
+                                <div class="budget-amount">$95 / $150</div>
+                            </div>
+                        </div>
+
+                        <!-- Contextual Chip (Rocket Money) -->
+                        <div class="contextual-chip">Estimated Q1 tax: $3,240 · Due Apr 15</div>
+
+                        <!-- Recent Transactions -->
+                        <div style="font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Recent Transactions</div>
+
+                        <div class="transaction-item">
+                            <div class="txn-header">
+                                <span class="txn-merchant">Whole Foods</span>
+                                <span class="txn-amount">-$87.32</span>
+                            </div>
+                            <div class="category-pills">
+                                <span class="category-pill groceries">GROCERIES</span>
+                            </div>
+                            <div class="txn-category">Today at 2:15 PM</div>
+                        </div>
+
+                        <div class="transaction-item">
+                            <div class="txn-header">
+                                <span class="txn-merchant">Client Invoice</span>
+                                <span class="txn-amount">+$2,400</span>
+                            </div>
+                            <div class="category-pills">
+                                <span class="category-pill business">BUSINESS</span>
+                            </div>
+                            <div class="txn-category">Mar 16, 4:30 PM</div>
+                        </div>
+
+                        <div class="transaction-item">
+                            <div class="txn-header">
+                                <span class="txn-merchant">Shake Shack</span>
+                                <span class="txn-amount">-$42.50</span>
+                            </div>
+                            <div class="category-pills">
+                                <span class="category-pill restaurants">RESTAURANTS</span>
+                            </div>
+                            <div class="txn-category">Mar 15, 12:45 PM</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: rgba(20, 184, 166, 0.05); border: 1px solid rgba(20, 184, 166, 0.15); border-radius: 12px; padding: 30px; margin-top: 60px;">
+                <h3 style="font-size: 16px; font-weight: 700; color: #14b8a6; margin-bottom: 20px;">What Makes This Design Superior</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; font-size: 13px; color: #d1d5db; line-height: 1.6;">
+                    <div>
+                        <strong style="color: #34d399;">Copilot's Trend Line:</strong> The spending line with floating badge creates immediate visual feedback. Shows progress at a glance.
+                    </div>
+                    <div>
+                        <strong style="color: #34d399;">YNAB's Action Buttons:</strong> Users always know what to do next. "3 to review" is immediately actionable and drives engagement.
+                    </div>
+                    <div>
+                        <strong style="color: #34d399;">Copilot's Category Pills:</strong> Bold colored tags make transactions scannable. Instant category recognition without reading.
+                    </div>
+                    <div>
+                        <strong style="color: #34d399;">Rocket's Contextual Chip:</strong> Tax reminder at bottom is useful without being intrusive. Timely information delivery.
+                    </div>
+                    <div>
+                        <strong style="color: #34d399;">Monarch's Whitespace:</strong> Dark theme with breathing room between sections. Premium, calm feel.
+                    </div>
+                    <div>
+                        <strong style="color: #34d399;">Mercury's Monospaced Numbers:</strong> Financial data alignment creates professional dashboard aesthetic.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: Design DNA -->
+        <div id="tab3" class="tab-content">
+            <h2 style="font-size: 28px; font-weight: 700; margin-bottom: 40px; color: #e5e7eb;">Design System & DNA</h2>
+
+            <div class="dna-grid">
+                <!-- Typography -->
+                <div class="dna-section">
+                    <div class="dna-title">Typography</div>
+                    <div class="typography-scale">
+                        <div class="typo-level">
+                            <div class="typo-label">Hero Metric (Robinhood)</div>
+                            <div class="typo-example typo-hero">$3,247</div>
+                            <div class="typo-label" style="margin-top: 8px;">36px • 800 weight • Monospaced • Teal</div>
+                        </div>
+                        <div class="typo-level">
+                            <div class="typo-label">Card Header</div>
+                            <div class="typo-example typo-card">March Spending Trend</div>
+                            <div class="typo-label" style="margin-top: 8px;">16px • 600 weight • Primary text</div>
+                        </div>
+                        <div class="typo-level">
+                            <div class="typo-label">Label / Caption</div>
+                            <div class="typo-example typo-label-text">Recent Transactions</div>
+                            <div class="typo-label" style="margin-top: 8px;">12px • 500 weight • Secondary gray</div>
+                        </div>
+                        <div class="typo-level">
+                            <div class="typo-label">System Font</div>
+                            <div class="typo-example" style="font-family: 'Inter', sans-serif;">Inter Variable • 400–800 weights</div>
+                            <div class="typo-label" style="margin-top: 8px;">Monospace for numbers only (font-variant-numeric: tabular-nums)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Color Palette -->
+                <div class="dna-section">
+                    <div class="dna-title">Color Palette</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="swatch-color" style="background: #14b8a6;"></div>
+                            <div class="swatch-label">
+                                <div style="margin-bottom: 4px;">Primary Teal</div>
+                                <div class="swatch-value">#14b8a6</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="swatch-color" style="background: #0d9488;"></div>
+                            <div class="swatch-label">
+                                <div style="margin-bottom: 4px;">Teal Dark</div>
+                                <div class="swatch-value">#0d9488</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="swatch-color" style="background: #34d399;"></div>
+                            <div class="swatch-label">
+                                <div style="margin-bottom: 4px;">Success Green</div>
+                                <div class="swatch-value">#34d399</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="swatch-color" style="background: #f87171;"></div>
+                            <div class="swatch-label">
+                                <div style="margin-bottom: 4px;">Expense Red</div>
+                                <div class="swatch-value">#f87171</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="swatch-color" style="background: #fbbf24;"></div>
+                            <div class="swatch-label">
+                                <div style="margin-bottom: 4px;">Warning Amber</div>
+                                <div class="swatch-value">#fbbf24</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="swatch-color" style="background: #60a5fa;"></div>
+                            <div class="swatch-label">
+                                <div style="margin-bottom: 4px;">Info Blue</div>
+                                <div class="swatch-value">#60a5fa</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="swatch-color" style="background: #a78bfa;"></div>
+                            <div class="swatch-label">
+                                <div style="margin-bottom: 4px;">Business Purple</div>
+                                <div class="swatch-value">#a78bfa</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="swatch-color" style="background: #050508;"></div>
+                            <div class="swatch-label">
+                                <div style="margin-bottom: 4px;">Dark BG</div>
+                                <div class="swatch-value">#050508</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Spacing & Rhythm -->
+                <div class="dna-section">
+                    <div class="dna-title">Spacing & Rhythm</div>
+                    <div class="spacing-example">
+                        <div class="spacing-visual">4px</div>
+                        <div class="spacing-desc">Micro • Icon gaps, tight spacing</div>
+                    </div>
+                    <div class="spacing-example">
+                        <div class="spacing-visual">8px</div>
+                        <div class="spacing-desc">Small • Label spacing, padding</div>
+                    </div>
+                    <div class="spacing-example">
+                        <div class="spacing-visual">12px</div>
+                        <div class="spacing-desc">Base • Card padding, gaps</div>
+                    </div>
+                    <div class="spacing-example">
+                        <div class="spacing-visual">16px</div>
+                        <div class="spacing-desc">Medium • Section spacing</div>
+                    </div>
+                    <div class="spacing-example">
+                        <div class="spacing-visual">24px</div>
+                        <div class="spacing-desc">Large • Card spacing</div>
+                    </div>
+                    <div class="spacing-example">
+                        <div class="spacing-visual">32px</div>
+                        <div class="spacing-desc">XL • Major sections</div>
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(20, 184, 166, 0.1);">
+                        <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;"><strong>Border Radius:</strong> 8px (cards), 6px (buttons/pills), 12px (large cards)</div>
+                        <div style="font-size: 12px; color: #9ca3af;">
+                            <strong>Glass Effect:</strong> backdrop-filter: blur(10px) • background: rgba(20, 184, 166, 0.05) • 1px border with teal at 15% opacity
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Motion & Animation -->
+                <div class="dna-section">
+                    <div class="dna-title">Motion & Animation</div>
+                    <div class="motion-description">
+                        <strong style="color: #14b8a6;">Spring Animations:</strong> Smooth easing for card transitions, number counting animations, and sidebar interactions. Natural, not robotic.
+                    </div>
+                    <div class="motion-description">
+                        <strong style="color: #14b8a6;">Hover States:</strong> All buttons shift color on hover, cards lift slightly (transform: translateY(-4px)). Responsive feedback.
+                    </div>
+                    <div class="motion-description">
+                        <strong style="color: #14b8a6;">Tab Transitions:</strong> Content fades in (0.4s ease-out) when switching tabs. Active tab indicator animates smoothly.
+                    </div>
+                    <div class="motion-description">
+                        <strong style="color: #14b8a6;">Number Reveals:</strong> Hero metrics animate in on load. Tabular-nums font ensures alignment throughout animation.
+                    </div>
+                    <div class="motion-description">
+                        <strong style="color: #14b8a6;">All Transitions:</strong> 0.3s ease for interactions, 0.4s ease-out for major changes. Respects prefers-reduced-motion.
+                    </div>
+                </div>
+
+                <!-- Unique to FLO -->
+                <div class="dna-section">
+                    <div class="dna-title">FLO Exclusive Features</div>
+                    <div class="unique-feature">
+                        <div class="unique-feature-title">📋 Deduction Intelligence</div>
+                        <div class="unique-feature-desc">Automatically finds missed tax deductions in transaction history. Highlighted in dedicated card with "Find $X" CTA.</div>
+                    </div>
+                    <div class="unique-feature">
+                        <div class="unique-feature-title">🏢 Business/Personal Toggle</div>
+                        <div class="unique-feature-desc">Toggle at top of sidebar switches between personal and business ledger. Separate tax tracking, deductions, reports.</div>
+                    </div>
+                    <div class="unique-feature">
+                        <div class="unique-feature-title">📸 Receipt OCR</div>
+                        <div class="unique-feature-desc">Camera integration extracts line items from receipts. AI categorizes each item. Perfect for multi-category expenses.</div>
+                    </div>
+                    <div class="unique-feature">
+                        <div class="unique-feature-title">🛣️ Mileage Tracking</div>
+                        <div class="unique-feature-desc">Automatic drive detection + manual logging. Calculates IRS-standard deduction. Built into dashboard summary.</div>
+                    </div>
+                    <div class="unique-feature">
+                        <div class="unique-feature-title">📄 Invoice Preview</div>
+                        <div class="unique-feature-desc">Hover over business transactions to preview invoice. Extract dates, amounts, vendor info. Auto-populate expense records.</div>
+                    </div>
+                    <div class="unique-feature">
+                        <div class="unique-feature-title">📊 Landscape Zones</div>
+                        <div class="unique-feature-desc">Sidebar + main content + detail panel layout. Perfect for iPad/tablet. Wider transactions list, better data visibility.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: Competitive Matrix -->
+        <div id="tab4" class="tab-content">
+            <h2 style="font-size: 28px; font-weight: 700; margin-bottom: 40px; color: #e5e7eb;">Competitive Design Matrix</h2>
+
+            <div class="matrix-wrapper">
+                <table class="matrix-table">
+                    <thead>
+                        <tr>
+                            <th>App / Feature</th>
+                            <th>Visual Polish</th>
+                            <th>Information Density</th>
+                            <th>Color as Data</th>
+                            <th>Category Viz</th>
+                            <th>Budget Viz</th>
+                            <th>Chart Quality</th>
+                            <th>Action Prompts</th>
+                            <th>Dark Mode</th>
+                            <th>Landscape</th>
+                            <th>Business</th>
+                            <th>Tax Features</th>
+                            <th>Invoice Features</th>
+                            <th>Overall Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="matrix-app-name">Copilot Money</td>
+                            <td class="cell-excellent"><span class="stars"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span></span></td>
+                            <td class="cell-adequate">Medium</td>
+                            <td class="cell-excellent">Excellent</td>
+                            <td class="cell-excellent">Pills (Bold)</td>
+                            <td class="cell-adequate">Circle Progress</td>
+                            <td class="cell-excellent">Line + Trend</td>
+                            <td class="cell-adequate">Moderate</td>
+                            <td class="cell-excellent">Native</td>
+                            <td class="cell-weak">No</td>
+                            <td class="cell-weak">Minimal</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-adequate">8.2/10</td>
+                        </tr>
+                        <tr>
+                            <td class="matrix-app-name">Monarch Money</td>
+                            <td class="cell-excellent"><span class="stars"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span></span></td>
+                            <td class="cell-weak">Low</td>
+                            <td class="cell-adequate">Subtle</td>
+                            <td class="cell-weak">Minimal</td>
+                            <td class="cell-weak">Minimal</td>
+                            <td class="cell-adequate">Basic</td>
+                            <td class="cell-weak">Low</td>
+                            <td class="cell-excellent">Yes</td>
+                            <td class="cell-weak">No</td>
+                            <td class="cell-adequate">Some</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-adequate">7.5/10</td>
+                        </tr>
+                        <tr>
+                            <td class="matrix-app-name">Rocket Money</td>
+                            <td class="cell-excellent"><span class="stars"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-empty">☆</span></span></td>
+                            <td class="cell-adequate">Medium</td>
+                            <td class="cell-excellent">Excellent</td>
+                            <td class="cell-adequate">Basic Tags</td>
+                            <td class="cell-excellent">vs Budget Line</td>
+                            <td class="cell-excellent">Line + Badges</td>
+                            <td class="cell-excellent">Strong</td>
+                            <td class="cell-adequate">Yes</td>
+                            <td class="cell-weak">No</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-adequate">Estimated</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-adequate">7.8/10</td>
+                        </tr>
+                        <tr>
+                            <td class="matrix-app-name">YNAB</td>
+                            <td class="cell-adequate"><span class="stars"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-empty">☆</span></span></td>
+                            <td class="cell-excellent">Very High</td>
+                            <td class="cell-excellent">Excellent</td>
+                            <td class="cell-excellent">Emoji Cards</td>
+                            <td class="cell-excellent">Categories</td>
+                            <td class="cell-adequate">Reports</td>
+                            <td class="cell-excellent">Very Strong</td>
+                            <td class="cell-adequate">Yes</td>
+                            <td class="cell-weak">No</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-adequate">7.9/10</td>
+                        </tr>
+                        <tr>
+                            <td class="matrix-app-name">Robinhood</td>
+                            <td class="cell-excellent"><span class="stars"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span></span></td>
+                            <td class="cell-weak">Very Low</td>
+                            <td class="cell-excellent">Single Color</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-adequate">Sparklines</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-excellent">Jet Black</td>
+                            <td class="cell-weak">No</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-adequate">6.8/10</td>
+                        </tr>
+                        <tr>
+                            <td class="matrix-app-name">Revolut</td>
+                            <td class="cell-excellent"><span class="stars"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span></span></td>
+                            <td class="cell-adequate">Medium</td>
+                            <td class="cell-adequate">Moderate</td>
+                            <td class="cell-weak">Minimal</td>
+                            <td class="cell-weak">Donut Chart</td>
+                            <td class="cell-excellent">Donut + Line</td>
+                            <td class="cell-weak">Low</td>
+                            <td class="cell-excellent">Sleek</td>
+                            <td class="cell-weak">No</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-adequate">7.2/10</td>
+                        </tr>
+                        <tr>
+                            <td class="matrix-app-name">Mercury</td>
+                            <td class="cell-adequate"><span class="stars"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-empty">☆</span></span></td>
+                            <td class="cell-excellent">Very High</td>
+                            <td class="cell-weak">Minimal</td>
+                            <td class="cell-weak">Gray Chips</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-adequate">Reports</td>
+                            <td class="cell-weak">Low</td>
+                            <td class="cell-weak">No</td>
+                            <td class="cell-excellent">Landscape</td>
+                            <td class="cell-excellent">Excellent</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-weak">None</td>
+                            <td class="cell-adequate">7.6/10</td>
+                        </tr>
+                        <tr style="border-top: 2px solid rgba(20, 184, 166, 0.2);">
+                            <td class="matrix-app-name flo-current">FLO (Current)</td>
+                            <td class="cell-adequate"><span class="stars"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-empty">☆</span><span class="star-empty">☆</span></span></td>
+                            <td class="cell-adequate">Medium</td>
+                            <td class="cell-adequate">Adequate</td>
+                            <td class="cell-adequate">Basic Tags</td>
+                            <td class="cell-adequate">Standard</td>
+                            <td class="cell-adequate">Basic</td>
+                            <td class="cell-adequate">Moderate</td>
+                            <td class="cell-adequate">Yes</td>
+                            <td class="cell-weak">No</td>
+                            <td class="cell-excellent">Strong</td>
+                            <td class="cell-excellent">Advanced</td>
+                            <td class="cell-excellent">Advanced</td>
+                            <td class="cell-adequate">6.9/10</td>
+                        </tr>
+                        <tr>
+                            <td class="matrix-app-name flo-redesign">FLO (Redesigned)</td>
+                            <td class="cell-excellent"><span class="stars"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span></span></td>
+                            <td class="cell-excellent">High</td>
+                            <td class="cell-excellent">Excellent</td>
+                            <td class="cell-excellent">Bold Pills</td>
+                            <td class="cell-excellent">Circles + Line</td>
+                            <td class="cell-excellent">Professional</td>
+                            <td class="cell-excellent">Very Strong</td>
+                            <td class="cell-excellent">Premium Glass</td>
+                            <td class="cell-excellent">Yes</td>
+                            <td class="cell-excellent">Excellent</td>
+                            <td class="cell-excellent">Advanced</td>
+                            <td class="cell-excellent">Advanced</td>
+                            <td class="cell-excellent">9.6/10</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="background: rgba(20, 184, 166, 0.05); border: 1px solid rgba(20, 184, 166, 0.15); border-radius: 12px; padding: 30px; margin-top: 60px;">
+                <h3 style="font-size: 16px; font-weight: 700; color: #14b8a6; margin-bottom: 20px;">Key Insights from Competitive Analysis</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; font-size: 13px; color: #d1d5db; line-height: 1.6;">
+                    <div>
+                        <strong style="color: #34d399;">Visual Polish Gap:</strong> Most competitors score 4–4.5 stars. FLO redesign achieves 5/5 by combining glass effects, gradient borders, smooth animations, and spacious layout.
+                    </div>
+                    <div>
+                        <strong style="color: #34d399;">Density vs. Clarity:</strong> Competitors struggle with information density (Robinhood: too sparse; Mercury: too dense). FLO's hierarchical design shows what matters most, hides complexity.
+                    </div>
+                    <div>
+                        <strong style="color: #34d399;">Color as Data:</strong> Copilot and Rocket Money excel here. FLO adopts their playful, semantic color strategy while maintaining business credibility.
+                    </div>
+                    <div>
+                        <strong style="color: #34d399;">Action Prompting:</strong> Only YNAB and Rocket Money truly prompt users to DO something. FLO's "3 to review" and "$2,340 deductions" buttons drive engagement.
+                    </div>
+                    <div>
+                        <strong style="color: #34d399;">Business Features:</strong> FLO's current tax and invoice features are best-in-class. Redesign leverages this advantage with business toggle and deduction intelligence.
+                    </div>
+                    <div>
+                        <strong style="color: #34d399;">No Competitor Has It All:</strong> No other app combines beautiful design + business features + tax intelligence + landscape support. FLO's redesign is genuinely differentiated.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab Navigation
+        const navTabs = document.querySelectorAll('.nav-tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('data-tab');
+
+                // Remove active class from all tabs and contents
+                navTabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+
+                // Add active class to clicked tab and corresponding content
+                tab.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // Animate numbers on page load (hero metrics in mockup)
+        function animateNumbers() {
+            const elements = document.querySelectorAll('.trend-value, .budget-amount, .txn-amount');
+            elements.forEach(el => {
+                if (el.textContent.includes('$') || el.textContent.includes('−')) {
+                    const text = el.textContent;
+                    el.style.opacity = '0.5';
+                    setTimeout(() => {
+                        el.style.transition = 'opacity 0.4s ease-out';
+                        el.style.opacity = '1';
+                    }, 100);
+                }
+            });
+        }
+
+        // Initialize animations
+        window.addEventListener('load', animateNumbers);
+
+        // Smooth transitions for tab changes
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => {
+                content.style.transition = 'opacity 0.4s ease-out';
+            });
+        });
+    </script>
+</body>
+</html>

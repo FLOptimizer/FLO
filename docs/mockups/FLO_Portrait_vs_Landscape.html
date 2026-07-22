@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLO — Portrait vs Landscape Comparison</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-deep: #0a0a0f;
+    --bg-surface: #111118;
+    --bg-card: rgba(255,255,255,0.04);
+    --bg-glass: rgba(255,255,255,0.06);
+    --bg-glass-strong: rgba(255,255,255,0.10);
+    --border-subtle: rgba(255,255,255,0.06);
+    --border-glass: rgba(255,255,255,0.12);
+    --text-primary: #f5f5f7;
+    --text-secondary: rgba(245,245,247,0.6);
+    --text-tertiary: rgba(245,245,247,0.35);
+    --accent: #14b8a6;
+    --accent-glow: rgba(20,184,166,0.15);
+    --income: #34d399;
+    --expense: #f87171;
+    --warning: #fbbf24;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #050508;
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+
+  .page-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .page-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--accent), #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .page-header p {
+    font-size: 15px;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  .comparison-section {
+    max-width: 1200px;
+    margin: 0 auto 60px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .section-title {
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+  }
+
+  .section-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-bottom: 32px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Device frames */
+  .devices-row {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 48px;
+    flex-wrap: wrap;
+  }
+
+  .device-wrap {
+    text-align: center;
+  }
+
+  .device-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .device-label .rotate-icon {
+    display: inline-block;
+    font-size: 16px;
+  }
+
+  /* Portrait phone */
+  .phone-portrait {
+    width: 280px;
+    height: 560px;
+    background: var(--bg-deep);
+    border-radius: 32px;
+    border: 3px solid #222;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  /* Landscape phone */
+  .phone-landscape {
+    width: 560px;
+    height: 280px;
+    background: var(--bg-deep);
+    border-radius: 32px;
+    border: 3px solid #222;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  .phone-status {
+    height: 18px;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 14px;
+    font-size: 9px;
+    color: var(--text-secondary);
+  }
+
+  /* Portrait content */
+  .portrait-content {
+    height: calc(100% - 18px - 52px);
+    overflow-y: auto;
+    padding: 12px;
+    scrollbar-width: none;
+  }
+  .portrait-content::-webkit-scrollbar { display: none; }
+
+  .portrait-hero {
+    text-align: center;
+    padding: 16px 0 12px;
+  }
+
+  .portrait-hero-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-tertiary);
+  }
+
+  .portrait-hero-amount {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    margin: 2px 0;
+  }
+
+  .portrait-hero-change {
+    font-size: 10px;
+    color: var(--income);
+  }
+
+  .p-metric-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .p-metric {
+    flex: 1;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 8px;
+    text-align: center;
+  }
+
+  .p-metric-label {
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    margin-bottom: 2px;
+  }
+
+  .p-metric-value {
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .p-card {
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+
+  .p-card-title {
+    font-size: 9px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  .p-txn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 0;
+    font-size: 11px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .p-txn:last-child { border-bottom: none; }
+
+  .p-txn-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    background: rgba(255,255,255,0.05);
+    flex-shrink: 0;
+  }
+
+  .p-txn-info { flex: 1; min-width: 0; }
+  .p-txn-name { font-weight: 500; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .p-txn-meta { font-size: 9px; color: var(--text-tertiary); }
+  .p-txn-amt { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+  /* Portrait tab bar */
+  .portrait-tabs {
+    height: 52px;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 4px;
+  }
+
+  .p-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 8px;
+    color: var(--text-tertiary);
+    padding: 4px;
+  }
+
+  .p-tab.active { color: var(--accent); }
+  .p-tab-icon { font-size: 16px; }
+
+  /* Landscape content */
+  .landscape-inner {
+    display: flex;
+    height: calc(100% - 18px);
+  }
+
+  .l-sidebar {
+    width: 140px;
+    min-width: 140px;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border-subtle);
+    padding: 8px 6px;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .l-sidebar::-webkit-scrollbar { display: none; }
+
+  .l-logo {
+    font-size: 14px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+    padding: 2px 6px;
+  }
+
+  .l-search {
+    width: 100%;
+    padding: 4px 8px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 9px;
+    outline: none;
+    margin-bottom: 6px;
+  }
+
+  .l-section-label {
+    font-size: 7px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-tertiary);
+    padding: 6px 6px 2px;
+  }
+
+  .l-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  .l-nav-item.active {
+    background: var(--accent-glow);
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .l-nav-icon { font-size: 11px; }
+
+  .l-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    scrollbar-width: none;
+  }
+  .l-content::-webkit-scrollbar { display: none; }
+
+  .l-hero {
+    text-align: center;
+    padding: 8px 0;
+  }
+
+  .l-hero-label {
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-tertiary);
+  }
+
+  .l-hero-amount {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .l-hero-change {
+    font-size: 9px;
+    color: var(--income);
+  }
+
+  .l-metrics {
+    display: flex;
+    gap: 6px;
+    margin: 6px 0;
+  }
+
+  .l-metric {
+    flex: 1;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 6px 8px;
+  }
+
+  .l-metric-label {
+    font-size: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+  }
+
+  .l-metric-value {
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Chart in landscape */
+  .l-chart {
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 10px;
+    padding: 8px;
+    margin-top: 6px;
+  }
+
+  .l-chart-label {
+    font-size: 8px;
+    color: var(--text-tertiary);
+    margin-bottom: 4px;
+  }
+
+  /* Transition arrow */
+  .transition-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    align-self: center;
+  }
+
+  .arrow-icon {
+    font-size: 32px;
+    color: var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  .arrow-label {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    text-align: center;
+    max-width: 80px;
+    line-height: 1.3;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+  }
+
+  /* Annotation callouts */
+  .callout-row {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+
+  .callout {
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    padding: 14px 18px;
+    max-width: 260px;
+    text-align: center;
+  }
+
+  .callout-emoji {
+    font-size: 24px;
+    margin-bottom: 6px;
+  }
+
+  .callout-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .callout-text {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* Three-zone illustration */
+  .zone-diagram {
+    display: flex;
+    gap: 2px;
+    max-width: 700px;
+    margin: 0 auto;
+    height: 200px;
+  }
+
+  .zone-block {
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s;
+  }
+
+  .zone-block.z1 {
+    width: 160px;
+    min-width: 160px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-glass);
+  }
+
+  .zone-block.z2 {
+    width: 240px;
+    min-width: 240px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+  }
+
+  .zone-block.z3 {
+    flex: 1;
+    background: rgba(20,184,166,0.05);
+    border: 1px solid rgba(20,184,166,0.2);
+  }
+
+  .zone-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .zone-label.accent { color: var(--accent); }
+
+  .zone-desc {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .zone-items {
+    margin-top: auto;
+  }
+
+  .zone-item {
+    font-size: 9px;
+    padding: 3px 0;
+    color: var(--text-tertiary);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  /* Comparison table */
+  .compare-table {
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+    border-collapse: collapse;
+  }
+
+  .compare-table th {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .compare-table td {
+    padding: 10px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+  }
+
+  .compare-table td:first-child {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .check { color: var(--income); }
+  .cross { color: var(--expense); opacity: 0.5; }
+  .upgrade { color: var(--accent); font-weight: 500; }
+
+  ::-webkit-scrollbar { width: 0; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>FLO Redesign — Orientation Concept</h1>
+  <p>Portrait for quick check-ins. Landscape for deep analysis. The physical rotation becomes the mode switch.</p>
+</div>
+
+<!-- Section 1: Side by Side -->
+<div class="comparison-section">
+  <div class="section-label">Concept 1</div>
+  <div class="section-title">Portrait vs. Landscape Dashboard</div>
+  <div class="section-desc">Same data, optimized for each orientation. Landscape unlocks the sidebar and wider data visualization.</div>
+
+  <div class="devices-row">
+    <!-- Portrait -->
+    <div class="device-wrap">
+      <div class="device-label">📱 Portrait — Quick Glance</div>
+      <div class="phone-portrait">
+        <div class="phone-status"><span>9:41</span><span>100%</span></div>
+        <div class="portrait-content">
+          <div class="portrait-hero">
+            <div class="portrait-hero-label">Net Cash Flow — March</div>
+            <div class="portrait-hero-amount">$8,247.63</div>
+            <div class="portrait-hero-change">↑ 12.3% vs February</div>
+          </div>
+
+          <div class="p-metric-row">
+            <div class="p-metric"><div class="p-metric-label">Income</div><div class="p-metric-value" style="color:#34d399;">$14,830</div></div>
+            <div class="p-metric"><div class="p-metric-label">Expenses</div><div class="p-metric-value" style="color:#f87171;">$6,582</div></div>
+            <div class="p-metric"><div class="p-metric-label">Savings</div><div class="p-metric-value" style="color:#14b8a6;">55.6%</div></div>
+          </div>
+
+          <div class="p-card">
+            <div class="p-card-title">Cash Flow Trend</div>
+            <svg viewBox="0 0 240 60" style="width:100%;height:50px;">
+              <defs>
+                <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#34d399" stop-opacity="0.2"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/></linearGradient>
+              </defs>
+              <path d="M10,35 L50,30 L90,38 L130,22 L170,18 L220,10 L220,55 L10,55Z" fill="url(#pg)" />
+              <polyline points="10,35 50,30 90,38 130,22 170,18 220,10" fill="none" stroke="#34d399" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+
+          <div class="p-card">
+            <div class="p-card-title">Recent Transactions</div>
+            <div class="p-txn">
+              <div class="p-txn-icon">☕</div>
+              <div class="p-txn-info"><div class="p-txn-name">Starbucks Coffee</div><div class="p-txn-meta">Today</div></div>
+              <div class="p-txn-amt" style="color:#f87171;">-$6.45</div>
+            </div>
+            <div class="p-txn">
+              <div class="p-txn-icon">💰</div>
+              <div class="p-txn-info"><div class="p-txn-name">Acme Corp — INV #1042</div><div class="p-txn-meta">Yesterday</div></div>
+              <div class="p-txn-amt" style="color:#34d399;">+$3,500</div>
+            </div>
+            <div class="p-txn">
+              <div class="p-txn-icon">🎨</div>
+              <div class="p-txn-info"><div class="p-txn-name">Adobe Creative Cloud</div><div class="p-txn-meta">Mar 14</div></div>
+              <div class="p-txn-amt" style="color:#f87171;">-$54.99</div>
+            </div>
+            <div class="p-txn">
+              <div class="p-txn-icon">🛒</div>
+              <div class="p-txn-info"><div class="p-txn-name">Whole Foods Market</div><div class="p-txn-meta">Mar 16</div></div>
+              <div class="p-txn-amt" style="color:#f87171;">-$87.32</div>
+            </div>
+          </div>
+
+          <div class="p-card">
+            <div class="p-card-title">Budget Alert</div>
+            <div style="font-size:10px;color:var(--text-secondary);">🍽️ Dining Out is <span style="color:#f87171;font-weight:600;">$12 over budget</span></div>
+          </div>
+
+          <div class="p-card">
+            <div class="p-card-title">💡 Deduction Tip</div>
+            <div style="font-size:10px;color:var(--text-secondary);"><span style="color:#34d399;font-weight:600;">$2,340</span> in potential deductions found</div>
+          </div>
+        </div>
+
+        <div class="portrait-tabs">
+          <div class="p-tab active"><span class="p-tab-icon">📊</span>Dashboard</div>
+          <div class="p-tab"><span class="p-tab-icon">💳</span>Transactions</div>
+          <div class="p-tab"><span class="p-tab-icon">📋</span>Budgets</div>
+          <div class="p-tab"><span class="p-tab-icon">📄</span>Invoices</div>
+          <div class="p-tab"><span class="p-tab-icon">•••</span>More</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transition arrow -->
+    <div class="transition-arrow">
+      <div class="arrow-icon">↻</div>
+      <div class="arrow-label">Rotate device to switch mode</div>
+    </div>
+
+    <!-- Landscape -->
+    <div class="device-wrap">
+      <div class="device-label"><span class="rotate-icon">📱</span> Landscape — Analysis Mode</div>
+      <div class="phone-landscape">
+        <div class="phone-status"><span>9:41</span><span>FLO</span><span>100%</span></div>
+        <div class="landscape-inner">
+          <div class="l-sidebar">
+            <div class="l-logo">FLO</div>
+            <input type="text" class="l-search" placeholder="Search..." readonly>
+            <div class="l-section-label">Overview</div>
+            <div class="l-nav-item active"><span class="l-nav-icon">📊</span> Dashboard</div>
+            <div class="l-section-label">Money</div>
+            <div class="l-nav-item"><span class="l-nav-icon">💳</span> Transactions</div>
+            <div class="l-nav-item"><span class="l-nav-icon">📋</span> Budgets</div>
+            <div class="l-nav-item"><span class="l-nav-icon">📄</span> Invoices</div>
+            <div class="l-section-label">Tracking</div>
+            <div class="l-nav-item"><span class="l-nav-icon">🏦</span> Accounts</div>
+            <div class="l-nav-item"><span class="l-nav-icon">👥</span> Clients</div>
+            <div class="l-nav-item"><span class="l-nav-icon">🚗</span> Mileage</div>
+            <div class="l-nav-item"><span class="l-nav-icon">🧾</span> Receipts</div>
+            <div class="l-section-label">Planning</div>
+            <div class="l-nav-item"><span class="l-nav-icon">📈</span> Reports</div>
+            <div class="l-nav-item"><span class="l-nav-icon">🏛️</span> Tax</div>
+            <div class="l-section-label">App</div>
+            <div class="l-nav-item"><span class="l-nav-icon">⚙️</span> Settings</div>
+          </div>
+          <div class="l-content">
+            <div class="l-hero">
+              <div class="l-hero-label">Net Cash Flow — March</div>
+              <div class="l-hero-amount">$8,247.63</div>
+              <div class="l-hero-change">↑ 12.3% vs February</div>
+            </div>
+            <div class="l-metrics">
+              <div class="l-metric"><div class="l-metric-label">Income</div><div class="l-metric-value" style="color:#34d399;">$14,830</div></div>
+              <div class="l-metric"><div class="l-metric-label">Expenses</div><div class="l-metric-value" style="color:#f87171;">$6,582</div></div>
+              <div class="l-metric"><div class="l-metric-label">Savings Rate</div><div class="l-metric-value" style="color:#14b8a6;">55.6%</div></div>
+            </div>
+            <div class="l-chart">
+              <div class="l-chart-label">6-Month Cash Flow Trend</div>
+              <svg viewBox="0 0 380 70" style="width:100%;height:55px;">
+                <defs>
+                  <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#34d399" stop-opacity="0.2"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/></linearGradient>
+                </defs>
+                <text x="15" y="65" fill="rgba(255,255,255,0.2)" font-size="7">Oct</text>
+                <text x="85" y="65" fill="rgba(255,255,255,0.2)" font-size="7">Nov</text>
+                <text x="155" y="65" fill="rgba(255,255,255,0.2)" font-size="7">Dec</text>
+                <text x="225" y="65" fill="rgba(255,255,255,0.2)" font-size="7">Jan</text>
+                <text x="295" y="65" fill="rgba(255,255,255,0.2)" font-size="7">Feb</text>
+                <text x="355" y="65" fill="rgba(255,255,255,0.25)" font-size="7" font-weight="600">Mar</text>
+                <path d="M20,35 L90,28 L160,40 L230,18 L300,14 L360,5 L360,55 L20,55Z" fill="url(#lg)" />
+                <polyline points="20,35 90,28 160,40 230,18 300,14 360,5" fill="none" stroke="#34d399" stroke-width="1.5" stroke-linecap="round"/>
+                <polyline points="20,42 90,45 160,40 230,38 300,39 360,35" fill="none" stroke="#f87171" stroke-width="1" stroke-linecap="round" stroke-dasharray="3,2"/>
+                <circle cx="360" cy="5" r="2.5" fill="#34d399"/>
+                <circle cx="360" cy="35" r="2" fill="#f87171"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout-row">
+    <div class="callout">
+      <div class="callout-emoji">📱</div>
+      <div class="callout-title">Portrait: Daily Driver</div>
+      <div class="callout-text">Quick balance check, add a transaction, snap a receipt. 5-tab bar stays familiar.</div>
+    </div>
+    <div class="callout">
+      <div class="callout-emoji">↻</div>
+      <div class="callout-title">Rotation = Mode Switch</div>
+      <div class="callout-text">The physical act of rotating becomes the UI interaction. Zero learning curve, instant upgrade.</div>
+    </div>
+    <div class="callout">
+      <div class="callout-emoji">🖥️</div>
+      <div class="callout-title">Landscape: Power Mode</div>
+      <div class="callout-text">Full sidebar navigation reveals every feature. Charts expand. Data breathes. Settings returns as first-class.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 2: Zone System -->
+<div class="comparison-section">
+  <div class="section-label">Concept 2</div>
+  <div class="section-title">Three-Zone Navigation System</div>
+  <div class="section-desc">Tap a section → content loads. Tap an item → detail expands, sidebar slides away.</div>
+
+  <div class="zone-diagram">
+    <div class="zone-block z1">
+      <div class="zone-label">Zone 1 — Sidebar</div>
+      <div class="zone-desc">Scrollable nav with all sections. Search bar at top. Grouped by function.</div>
+      <div class="zone-items">
+        <div class="zone-item">Dashboard</div>
+        <div class="zone-item">Transactions</div>
+        <div class="zone-item">Budgets</div>
+        <div class="zone-item" style="color:var(--accent);">Invoices ←</div>
+        <div class="zone-item">Settings</div>
+      </div>
+    </div>
+    <div class="zone-block z2">
+      <div class="zone-label">Zone 2 — Content List</div>
+      <div class="zone-desc">Shows items for the selected section. Summary metrics at top.</div>
+      <div class="zone-items">
+        <div class="zone-item">INV-1045 — Acme Corp — $4,500</div>
+        <div class="zone-item" style="color:var(--accent);">INV-1044 — Globex — $2,750 ←</div>
+        <div class="zone-item">INV-1040 — Initech — $1,200</div>
+        <div class="zone-item">INV-1042 — Acme — $3,500 ✓</div>
+      </div>
+    </div>
+    <div class="zone-block z3">
+      <div class="zone-label accent">Zone 3 — Detail View</div>
+      <div class="zone-desc">Full detail for the selected item. Sidebar collapses to give this zone maximum space. Back button restores sidebar.</div>
+      <div class="zone-items">
+        <div class="zone-item" style="color:var(--accent);">INV-1044 · Globex Inc</div>
+        <div class="zone-item">Amount: $2,750.00</div>
+        <div class="zone-item">Due: Mar 30, 2026</div>
+        <div class="zone-item">Line items, notes, PDF preview...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout-row" style="margin-top:32px;">
+    <div class="callout">
+      <div class="callout-emoji">2️⃣</div>
+      <div class="callout-title">Two-Zone Default</div>
+      <div class="callout-text">Sidebar + content visible together. Full navigation always accessible. This is the resting state.</div>
+    </div>
+    <div class="callout">
+      <div class="callout-emoji">3️⃣</div>
+      <div class="callout-title">Three-Zone on Drill-Down</div>
+      <div class="callout-text">Tapping an item triggers the sidebar to slide away. Content list narrows. Detail zone expands.</div>
+    </div>
+    <div class="callout">
+      <div class="callout-emoji">←</div>
+      <div class="callout-title">Back Restores Sidebar</div>
+      <div class="callout-text">Back button or left-edge swipe brings the sidebar back. The "Xcode feel" — drill in, pop out.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 3: Screen-by-screen mapping -->
+<div class="comparison-section">
+  <div class="section-label">Screen Mapping</div>
+  <div class="section-title">How Each Tab Uses the Zones</div>
+  <div class="section-desc">Every FLO screen mapped to the two-zone and three-zone layout.</div>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Tab</th>
+        <th>Zone 2 (Content)</th>
+        <th>Zone 3 (Detail)</th>
+        <th>Benefit</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>📊 Dashboard</td>
+        <td>Hero metric + cards + chart</td>
+        <td>Tap card → expanded view</td>
+        <td class="upgrade">Full-width charts</td>
+      </tr>
+      <tr>
+        <td>💳 Transactions</td>
+        <td>Scrollable transaction list</td>
+        <td>Transaction detail + receipt</td>
+        <td class="upgrade">See list + detail together</td>
+      </tr>
+      <tr>
+        <td>📋 Budgets</td>
+        <td>All budget categories + bars</td>
+        <td>Category breakdown + history</td>
+        <td class="upgrade">All budgets visible at once</td>
+      </tr>
+      <tr>
+        <td>📄 Invoices</td>
+        <td>Invoice list by status</td>
+        <td>Full invoice preview</td>
+        <td class="upgrade">Natural landscape document</td>
+      </tr>
+      <tr>
+        <td>🏦 Accounts</td>
+        <td>Account list + balances</td>
+        <td>Account detail + recent txns</td>
+        <td class="upgrade">Multi-account comparison</td>
+      </tr>
+      <tr>
+        <td>👥 Clients</td>
+        <td>Client directory</td>
+        <td>Client profile + invoices</td>
+        <td class="upgrade">CRM-like experience</td>
+      </tr>
+      <tr>
+        <td>🚗 Mileage</td>
+        <td>Trip log + monthly summary</td>
+        <td>Trip detail + map</td>
+        <td class="upgrade">Trip + map side-by-side</td>
+      </tr>
+      <tr>
+        <td>🧾 Receipts</td>
+        <td>Receipt gallery / list</td>
+        <td>Receipt image + OCR data</td>
+        <td class="upgrade">Image + data together</td>
+      </tr>
+      <tr>
+        <td>📈 Reports</td>
+        <td>Report types + history</td>
+        <td>Report preview / PDF view</td>
+        <td class="upgrade">Landscape PDF viewing</td>
+      </tr>
+      <tr>
+        <td>🏛️ Tax</td>
+        <td>Tax overview + deadlines</td>
+        <td>Deduction detail + checklist</td>
+        <td class="upgrade">Tax planning workspace</td>
+      </tr>
+      <tr>
+        <td>⚙️ Settings</td>
+        <td>Settings categories</td>
+        <td>Setting detail / toggles</td>
+        <td class="upgrade">First-class tab again</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Section 4: Liquid Glass callout -->
+<div class="comparison-section">
+  <div class="section-label">Visual Direction</div>
+  <div class="section-title">Dark Canvas + Liquid Glass Accents</div>
+  <div class="section-desc">Dark-first design where financial data glows. Glass effects on cards, overlays, and the sidebar create depth without distraction.</div>
+
+  <div class="callout-row">
+    <div class="callout" style="border-color:rgba(20,184,166,0.2);background:rgba(20,184,166,0.03);">
+      <div class="callout-emoji">🌑</div>
+      <div class="callout-title">Dark Canvas Base</div>
+      <div class="callout-text">Rich dark background (#0a0a0f). Data and charts pop. Numbers are the stars, not the UI chrome.</div>
+    </div>
+    <div class="callout" style="border-color:rgba(20,184,166,0.2);background:rgba(20,184,166,0.03);">
+      <div class="callout-emoji">🪟</div>
+      <div class="callout-title">Intentional Glass</div>
+      <div class="callout-text">Sidebar has glass material. Cards refract subtly. The effect intensifies as you drill deeper into data — glass = depth.</div>
+    </div>
+    <div class="callout" style="border-color:rgba(20,184,166,0.2);background:rgba(20,184,166,0.03);">
+      <div class="callout-emoji">✨</div>
+      <div class="callout-title">Semantic Color Glow</div>
+      <div class="callout-text">Income glows green. Overbudget items pulse soft red. The ambient color tells the financial story before you read a number.</div>
+    </div>
+    <div class="callout" style="border-color:rgba(20,184,166,0.2);background:rgba(20,184,166,0.03);">
+      <div class="callout-emoji">🎯</div>
+      <div class="callout-title">Hero Metric Focus</div>
+      <div class="callout-text">One bold number dominates each view. Customizable per user. The first thing you see when you open any tab.</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

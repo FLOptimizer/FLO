@@ -1,0 +1,1795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLO macOS Cross-Platform Design Strategy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #07070d;
+            color: #f5f5f5;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            padding: 40px 60px;
+            background: linear-gradient(180deg, rgba(20, 184, 166, 0.08) 0%, transparent 100%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #14b8a6 0%, #34d399 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.6;
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            gap: 0;
+            padding: 0 60px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(15, 15, 24, 0.8);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 20px 30px;
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button:hover {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .tab-button.active {
+            color: #14b8a6;
+            border-bottom-color: #14b8a6;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Section Styling */
+        .section {
+            margin-bottom: 80px;
+        }
+
+        .section-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #14b8a6;
+        }
+
+        .section-subtitle {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        /* Device Mockups */
+        .device-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 40px;
+            margin-bottom: 60px;
+        }
+
+        .device-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .device-frame {
+            border-radius: 40px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            background: #0f0f18;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .device-label {
+            margin-top: 24px;
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .device-specs {
+            margin-top: 8px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* iPhone Portrait */
+        .iphone-portrait {
+            width: 280px;
+            height: 560px;
+        }
+
+        .iphone-portrait .device-frame {
+            border-radius: 50px;
+        }
+
+        /* iPhone Landscape */
+        .iphone-landscape {
+            width: 520px;
+            height: 280px;
+        }
+
+        .iphone-landscape .device-frame {
+            border-radius: 45px;
+        }
+
+        /* macOS Window */
+        .macos-window {
+            width: 780px;
+            height: 480px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .macos-header {
+            height: 32px;
+            background: rgba(20, 184, 166, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 8px;
+        }
+
+        .traffic-light {
+            display: flex;
+            gap: 8px;
+        }
+
+        .traffic-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .traffic-red { background: #f87171; }
+        .traffic-yellow { background: #fbbf24; }
+        .traffic-green { background: #34d399; }
+
+        .macos-content {
+            display: flex;
+            height: calc(100% - 32px);
+        }
+
+        .macos-sidebar {
+            width: 180px;
+            background: rgba(255, 255, 255, 0.04);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 20px 16px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .macos-main {
+            flex: 1;
+            display: flex;
+            background: #0f0f18;
+        }
+
+        .macos-list {
+            width: 200px;
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 16px;
+            font-size: 11px;
+            overflow-y: auto;
+        }
+
+        .macos-detail {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        /* Grid of Cards */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 60px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 32px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(20, 184, 166, 0.3);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #14b8a6;
+        }
+
+        .card-content {
+            font-size: 13px;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Keyboard Shortcuts */
+        .shortcut-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 8px;
+            font-size: 12px;
+        }
+
+        .shortcut-key {
+            background: rgba(20, 184, 166, 0.1);
+            border: 1px solid rgba(20, 184, 166, 0.3);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #14b8a6;
+            font-size: 11px;
+        }
+
+        /* Layout Diagram */
+        .diagram {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 60px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.8;
+            color: #34d399;
+            white-space: pre;
+        }
+
+        /* Table */
+        .table-mockup {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 24px;
+        }
+
+        .table-header {
+            display: grid;
+            grid-template-columns: 80px 120px 100px 80px 100px 60px;
+            gap: 0;
+            background: rgba(20, 184, 166, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 12px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #14b8a6;
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 80px 120px 100px 80px 100px 60px;
+            gap: 0;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 12px;
+            align-items: center;
+        }
+
+        .table-row:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .table-row:last-child {
+            border-bottom: none;
+        }
+
+        .tag-pill {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .tag-dining { background: rgba(248, 113, 113, 0.2); color: #f87171; }
+        .tag-groceries { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+        .tag-utilities { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+
+        /* Annotation Callout */
+        .callout {
+            position: relative;
+            background: rgba(20, 184, 166, 0.1);
+            border: 1px solid rgba(20, 184, 166, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 16px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .callout::before {
+            content: '→ ';
+            color: #14b8a6;
+            font-weight: 700;
+            margin-right: 6px;
+        }
+
+        /* Rules Grid */
+        .rules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .rule-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+        }
+
+        .rule-number {
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            background: rgba(20, 184, 166, 0.2);
+            border: 1px solid rgba(20, 184, 166, 0.4);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #14b8a6;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .rule-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #f5f5f5;
+            margin-bottom: 8px;
+        }
+
+        .rule-description {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.5;
+        }
+
+        /* Color Swatch */
+        .color-swatch {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin: 8px 0;
+        }
+
+        .swatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .swatch-teal { background: #14b8a6; }
+        .swatch-green { background: #34d399; }
+        .swatch-red { background: #f87171; }
+        .swatch-yellow { background: #fbbf24; }
+
+        .swatch-label {
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Content Examples */
+        .content-example {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            font-size: 12px;
+        }
+
+        .content-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 8px;
+        }
+
+        .content-text {
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+        }
+
+        /* Comparative Section */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .comparison-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .comparison-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #f5f5f5;
+        }
+
+        .comparison-list {
+            list-style: none;
+        }
+
+        .comparison-list li {
+            padding: 8px 0;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .comparison-list li::before {
+            content: '◆';
+            position: absolute;
+            left: 0;
+            color: #14b8a6;
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 60px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+        }
+
+        /* UI Element Previews */
+        .ui-preview {
+            display: flex;
+            gap: 12px;
+            margin: 16px 0;
+            flex-wrap: wrap;
+        }
+
+        .button-preview {
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .button-primary {
+            background: #14b8a6;
+            color: #07070d;
+        }
+
+        .button-primary:hover {
+            background: #34d399;
+            transform: translateY(-2px);
+        }
+
+        .button-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #f5f5f5;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .button-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .container {
+                padding: 40px;
+            }
+
+            header {
+                padding: 30px 40px;
+            }
+
+            h1 {
+                font-size: 36px;
+            }
+
+            .device-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .device-container {
+                justify-content: center;
+            }
+
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tab-nav {
+                padding: 0 40px;
+                overflow-x: auto;
+            }
+
+            .tab-button {
+                flex: 0 0 auto;
+                padding: 16px 20px;
+            }
+        }
+
+        .highlight {
+            color: #14b8a6;
+            font-weight: 600;
+        }
+
+        .accent-green {
+            color: #34d399;
+        }
+
+        .accent-red {
+            color: #f87171;
+        }
+
+        .accent-yellow {
+            color: #fbbf24;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>FLO Cross-Platform Design Strategy</h1>
+        <p class="subtitle">How Financial Ledger Optimizer scales from iPhone portrait → landscape → macOS, and what makes macOS the command center the entire system was designed for.</p>
+    </header>
+
+    <div class="tab-nav">
+        <button class="tab-button active" data-tab="platform-scale">Platform Scale</button>
+        <button class="tab-button" data-tab="macos-unlocks">What macOS Unlocks</button>
+        <button class="tab-button" data-tab="layout-system">Adaptive Layout</button>
+        <button class="tab-button" data-tab="design-rules">Design Cohesion</button>
+    </div>
+
+    <!-- TAB 1: Platform Scale -->
+    <div id="platform-scale" class="tab-content active">
+        <div class="container">
+            <div class="section">
+                <h2 class="section-title">Platform Scale</h2>
+                <p class="section-subtitle">The same dashboard at three different scales. Notice how the layout adapts systematically while maintaining the same visual identity and information hierarchy.</p>
+
+                <div class="device-grid">
+                    <!-- iPhone Portrait -->
+                    <div class="device-container">
+                        <div class="device-frame iphone-portrait">
+                            <div style="height: 100%; display: flex; flex-direction: column; background: #0f0f18;">
+                                <!-- Portrait Status Bar -->
+                                <div style="height: 32px; background: rgba(20, 184, 166, 0.05); border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; padding: 0 16px; font-size: 11px; color: rgba(255, 255, 255, 0.6);">
+                                    9:41 • •••
+                                </div>
+                                <!-- Hero Metric -->
+                                <div style="padding: 20px 16px; background: linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, transparent 100%); border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+                                    <div style="font-size: 11px; color: rgba(255, 255, 255, 0.6); margin-bottom: 4px;">TOTAL BALANCE</div>
+                                    <div style="font-size: 28px; font-weight: 700; color: #34d399;">$12,481</div>
+                                </div>
+                                <!-- Trend -->
+                                <div style="padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-size: 11px;">
+                                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                                        <span style="color: #f87171;">↓</span>
+                                        <span style="color: rgba(255, 255, 255, 0.7);">-$245 this week</span>
+                                    </div>
+                                    <div style="height: 30px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; display: flex; align-items: center; padding: 0 8px; color: rgba(255, 255, 255, 0.4);">
+                                        [chart area]
+                                    </div>
+                                </div>
+                                <!-- Transaction Cards -->
+                                <div style="flex: 1; overflow-y: auto; padding: 12px; gap: 8px; display: flex; flex-direction: column;">
+                                    <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 10px; font-size: 11px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                            <span style="color: rgba(255, 255, 255, 0.8); font-weight: 600;">Whole Foods</span>
+                                            <span style="color: #f87171; font-weight: 600;">-$67.23</span>
+                                        </div>
+                                        <div style="display: flex; gap: 4px;">
+                                            <span style="background: rgba(52, 211, 153, 0.2); color: #34d399; padding: 2px 6px; border-radius: 3px; font-size: 9px;">GROCERIES</span>
+                                        </div>
+                                    </div>
+                                    <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 10px; font-size: 11px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                            <span style="color: rgba(255, 255, 255, 0.8); font-weight: 600;">Starbucks</span>
+                                            <span style="color: #f87171; font-weight: 600;">-$5.40</span>
+                                        </div>
+                                        <div style="display: flex; gap: 4px;">
+                                            <span style="background: rgba(248, 113, 113, 0.2); color: #f87171; padding: 2px 6px; border-radius: 3px; font-size: 9px;">DINING</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Tab Bar -->
+                                <div style="height: 50px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: space-around; font-size: 10px; color: rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.02);">
+                                    <span style="color: #14b8a6;">□</span>
+                                    <span>⚖</span>
+                                    <span>+</span>
+                                    <span>📊</span>
+                                    <span>⚙</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="device-label">iPhone Portrait</div>
+                        <div class="device-specs">280 × 560px</div>
+                        <div class="callout">Single-column layout. Tab bar navigation at bottom. Detail opens as full-screen modal.</div>
+                    </div>
+
+                    <!-- iPhone Landscape -->
+                    <div class="device-container">
+                        <div class="device-frame iphone-landscape">
+                            <div style="height: 100%; display: flex; background: #0f0f18;">
+                                <!-- Status Bar -->
+                                <div style="width: 100%; height: 28px; position: absolute; top: 0; left: 0; background: rgba(20, 184, 166, 0.05); border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; padding: 0 16px; font-size: 10px; color: rgba(255, 255, 255, 0.6);">
+                                    9:41
+                                </div>
+                                <!-- Sidebar Icon Bar -->
+                                <div style="width: 50px; background: rgba(255, 255, 255, 0.02); border-right: 1px solid rgba(255, 255, 255, 0.08); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; margin-top: 28px;">
+                                    <span style="font-size: 14px; color: #14b8a6;">□</span>
+                                    <span style="font-size: 14px; color: rgba(255, 255, 255, 0.4);">⚖</span>
+                                    <span style="font-size: 14px; color: rgba(255, 255, 255, 0.4);">📊</span>
+                                    <span style="font-size: 14px; color: rgba(255, 255, 255, 0.4);">⚙</span>
+                                </div>
+                                <!-- Main Content -->
+                                <div style="flex: 1; display: flex; flex-direction: column; margin-top: 28px; padding: 16px;">
+                                    <div style="font-size: 10px; color: rgba(255, 255, 255, 0.6); margin-bottom: 2px;">BALANCE</div>
+                                    <div style="font-size: 20px; font-weight: 700; color: #34d399; margin-bottom: 12px;">$12,481</div>
+                                    <div style="height: 25px; background: rgba(255, 255, 255, 0.02); border-radius: 3px; font-size: 9px; color: rgba(255, 255, 255, 0.4); display: flex; align-items: center; padding: 0 6px; margin-bottom: 12px;">
+                                        [chart]
+                                    </div>
+                                    <div style="font-size: 9px; color: rgba(255, 255, 255, 0.6); margin-bottom: 8px; text-transform: uppercase;">Recent</div>
+                                    <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 8px; margin-bottom: 6px; font-size: 10px;">
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                                            <span style="color: rgba(255, 255, 255, 0.8); font-weight: 600;">Whole Foods</span>
+                                            <span style="color: #f87171;">-$67</span>
+                                        </div>
+                                        <span style="background: rgba(52, 211, 153, 0.2); color: #34d399; padding: 1px 4px; border-radius: 2px; font-size: 8px;">GROCERIES</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="device-label">iPhone Landscape</div>
+                        <div class="device-specs">520 × 280px</div>
+                        <div class="callout">Three-zone layout emerges: icon sidebar collapses when detail panel opens to save space.</div>
+                    </div>
+
+                    <!-- macOS Window -->
+                    <div class="device-container">
+                        <div class="device-frame macos-window">
+                            <!-- macOS Header -->
+                            <div class="macos-header">
+                                <div class="traffic-light">
+                                    <span class="traffic-dot traffic-red"></span>
+                                    <span class="traffic-dot traffic-yellow"></span>
+                                    <span class="traffic-dot traffic-green"></span>
+                                </div>
+                                <div style="flex: 1; text-align: center; font-size: 11px; color: rgba(255, 255, 255, 0.6);">Financial Ledger Optimizer</div>
+                            </div>
+
+                            <!-- macOS Content -->
+                            <div class="macos-content">
+                                <!-- Sidebar (ALWAYS visible) -->
+                                <div class="macos-sidebar">
+                                    <div style="margin-bottom: 20px; color: #14b8a6; font-size: 10px; font-weight: 700;">Navigation</div>
+                                    <div style="font-size: 10px; color: #14b8a6; margin-bottom: 8px; padding: 4px 8px; background: rgba(20, 184, 166, 0.1); border-radius: 4px;">Dashboard</div>
+                                    <div style="font-size: 10px; color: rgba(255, 255, 255, 0.5); margin-bottom: 8px; padding: 4px 8px;">Transactions</div>
+                                    <div style="font-size: 10px; color: rgba(255, 255, 255, 0.5); margin-bottom: 8px; padding: 4px 8px;">Budgets</div>
+                                    <div style="font-size: 10px; color: rgba(255, 255, 255, 0.5); margin-bottom: 8px; padding: 4px 8px;">Invoices</div>
+                                    <div style="font-size: 10px; color: rgba(255, 255, 255, 0.5); padding: 4px 8px;">Reports</div>
+                                </div>
+
+                                <!-- Main Content Area -->
+                                <div class="macos-main">
+                                    <!-- List/Content Column -->
+                                    <div class="macos-list">
+                                        <div style="margin-bottom: 12px; font-size: 9px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase;">Recent</div>
+                                        <div style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 4px; padding: 6px; margin-bottom: 6px; font-size: 9px; color: rgba(255, 255, 255, 0.8); cursor: pointer;">Whole Foods</div>
+                                        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 4px; padding: 6px; font-size: 9px; color: rgba(255, 255, 255, 0.6);">Starbucks</div>
+                                    </div>
+
+                                    <!-- Detail Panel -->
+                                    <div class="macos-detail">
+                                        <div style="font-size: 10px; color: rgba(255, 255, 255, 0.6); margin-bottom: 4px;">TRANSACTION</div>
+                                        <div style="font-size: 14px; font-weight: 700; color: #f5f5f5; margin-bottom: 12px;">Whole Foods Market</div>
+                                        <div style="font-size: 12px; color: rgba(255, 255, 255, 0.8); margin-bottom: 4px;">Amount: <span style="color: #f87171; font-weight: 600;">-$67.23</span></div>
+                                        <div style="font-size: 12px; color: rgba(255, 255, 255, 0.8); margin-bottom: 4px;">Date: Mar 21, 2026</div>
+                                        <div style="font-size: 12px; color: rgba(255, 255, 255, 0.8); margin-bottom: 12px;">Category: <span style="background: rgba(52, 211, 153, 0.2); color: #34d399; padding: 2px 6px; border-radius: 3px;">GROCERIES</span></div>
+                                        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 4px; padding: 8px; font-size: 10px; color: rgba(255, 255, 255, 0.6);">
+                                            All three zones visible simultaneously. Browse + detail + navigate all at once.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="device-label">macOS Window</div>
+                        <div class="device-specs">780 × 480px</div>
+                        <div class="callout">Sidebar ALWAYS visible. All three zones show simultaneously. Enough room for true multi-pane navigation.</div>
+                    </div>
+                </div>
+
+                <div class="comparison-grid">
+                    <div class="comparison-card">
+                        <div class="comparison-title">iPhone Portrait: Quick Glance</div>
+                        <ul class="comparison-list">
+                            <li>Single column for focused viewing</li>
+                            <li>Tab bar for top-level navigation</li>
+                            <li>Transactions as compact cards</li>
+                            <li>Detail opens full-screen (push/pop)</li>
+                            <li>Best for: one-handed quick checks</li>
+                        </ul>
+                    </div>
+                    <div class="comparison-card">
+                        <div class="comparison-title">iPhone Landscape: Analysis Mode</div>
+                        <ul class="comparison-list">
+                            <li>Three-zone system appears</li>
+                            <li>Icon sidebar (50px) + content + detail</li>
+                            <li>Sidebar collapses when detail opens</li>
+                            <li>More data visible horizontally</li>
+                            <li>Best for: deeper analysis during sessions</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="comparison-grid">
+                    <div class="comparison-card">
+                        <div class="comparison-title">macOS: Command Center</div>
+                        <ul class="comparison-list">
+                            <li>Three zones ALWAYS visible (no collapse)</li>
+                            <li>Sidebar 180px with full text labels</li>
+                            <li>Content list in middle with more details</li>
+                            <li>Detail panel on right (no modal)</li>
+                            <li>Keyboard shortcuts for everything</li>
+                            <li>Best for: power user workflows</li>
+                        </ul>
+                    </div>
+                    <div class="comparison-card">
+                        <div class="comparison-title">The Key Insight</div>
+                        <ul class="comparison-list">
+                            <li>iPhone landscape layout IS the core</li>
+                            <li>macOS scales it up with more space</li>
+                            <li>Not a separate design for macOS</li>
+                            <li>Same three-zone system, bigger screen</li>
+                            <li>macOS adds capabilities, not new layouts</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: What macOS Unlocks -->
+    <div id="macos-unlocks" class="tab-content">
+        <div class="container">
+            <div class="section">
+                <h2 class="section-title">What macOS Unlocks</h2>
+                <p class="section-subtitle">The extra screen real estate and OS capabilities that transform FLO from a mobile app to a desktop power tool.</p>
+
+                <div class="card-grid">
+                    <!-- Card 1: Persistent Three-Zone -->
+                    <div class="card">
+                        <div class="card-title">Persistent Three-Zone Layout</div>
+                        <div class="card-content">
+                            <p><span class="highlight">iOS Landscape:</span> Sidebar collapses when detail opens to preserve space.</p>
+                            <p style="margin-top: 8px;"><span class="highlight">macOS:</span> ALL THREE zones visible simultaneously. Browse transactions in the middle while viewing details on the right AND navigating categories via the sidebar.</p>
+                            <p style="margin-top: 12px; font-size: 11px; color: rgba(255, 255, 255, 0.5);">This is the game-changing difference. On mobile, you're trading screen real estate. On macOS, you have enough for true multi-pane workflows.</p>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: Keyboard Navigation -->
+                    <div class="card">
+                        <div class="card-title">Keyboard-First Navigation</div>
+                        <div class="card-content">
+                            <p style="margin-bottom: 12px;">Power users expect keyboard shortcuts on desktop:</p>
+                            <div class="shortcut-grid">
+                                <div class="shortcut-item">
+                                    <span>Switch Dashboard</span>
+                                    <span class="shortcut-key">⌘1</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span>Switch Transactions</span>
+                                    <span class="shortcut-key">⌘2</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span>Switch Budgets</span>
+                                    <span class="shortcut-key">⌘3</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span>Navigate Up</span>
+                                    <span class="shortcut-key">↑</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span>Navigate Down</span>
+                                    <span class="shortcut-key">↓</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span>Open Detail / Enter</span>
+                                    <span class="shortcut-key">→</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span>Close Detail / Back</span>
+                                    <span class="shortcut-key">←</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span>Universal Search</span>
+                                    <span class="shortcut-key">⌘K</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span>New Transaction</span>
+                                    <span class="shortcut-key">⌘N</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <span>Cycle Zones</span>
+                                    <span class="shortcut-key">⇥</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Multi-Window -->
+                    <div class="card">
+                        <div class="card-title">Multi-Window Support</div>
+                        <div class="card-content">
+                            <p>Open invoice details in separate windows. Compare two months side-by-side. Use macOS Stage Manager for organized workflows.</p>
+                            <ul style="margin-top: 12px; padding-left: 20px; font-size: 12px; color: rgba(255, 255, 255, 0.7); line-height: 1.8;">
+                                <li>Detach detail panels into floating windows</li>
+                                <li>Side-by-side budget comparison</li>
+                                <li>Receipt viewing while categorizing</li>
+                                <li>Reports in one window, transactions in another</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Data Tables -->
+                    <div class="card">
+                        <div class="card-title">Enhanced Data Tables</div>
+                        <div class="card-content">
+                            <p>On iOS, transactions are cards. On macOS, reveal the full power of tabular data:</p>
+                            <ul style="margin-top: 12px; padding-left: 20px; font-size: 12px; color: rgba(255, 255, 255, 0.7); line-height: 1.8;">
+                                <li>Sortable columns (date, payee, amount, category)</li>
+                                <li>Column resizing and reordering</li>
+                                <li>Inline editing for quick fixes</li>
+                                <li>Multi-select for bulk operations</li>
+                            </ul>
+                            <p style="margin-top: 12px; font-size: 11px; color: rgba(255, 255, 255, 0.5);">No finance app on mobile can do this. Spreadsheet-level control, FLO design.</p>
+                        </div>
+                    </div>
+
+                    <!-- Card 5: Drag & Drop -->
+                    <div class="card">
+                        <div class="card-title">Drag & Drop</div>
+                        <div class="card-content">
+                            <p>Native drag & drop workflows unlock power:</p>
+                            <ul style="margin-top: 12px; padding-left: 20px; font-size: 12px; color: rgba(255, 255, 255, 0.7); line-height: 1.8;">
+                                <li>Drag receipts from Finder to auto-import</li>
+                                <li>Drag transactions between categories</li>
+                                <li>Drag CSV files for bulk import</li>
+                                <li>Drag invoices to email drafts</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Card 6: Menu Bar & Widgets -->
+                    <div class="card">
+                        <div class="card-title">Menu Bar & System Integration</div>
+                        <div class="card-content">
+                            <p>Deep macOS integration:</p>
+                            <ul style="margin-top: 12px; padding-left: 20px; font-size: 12px; color: rgba(255, 255, 255, 0.7); line-height: 1.8;">
+                                <li>Menu bar icon (balance, budget status)</li>
+                                <li>Quick transaction entry from menu bar</li>
+                                <li>Notification Center widget</li>
+                                <li>Spotlight indexing for instant search</li>
+                                <li>Share extensions for receipts</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Card 7: Report Generation -->
+                    <div class="card">
+                        <div class="card-title">Report Generation Workspace</div>
+                        <div class="card-content">
+                            <p>Purpose-built report authoring:</p>
+                            <ul style="margin-top: 12px; padding-left: 20px; font-size: 12px; color: rgba(255, 255, 255, 0.7); line-height: 1.8;">
+                                <li>Full-screen report builder</li>
+                                <li>Live PDF preview side-by-side</li>
+                                <li>Export to Numbers, Excel, PDF</li>
+                                <li>Print dialog with page layout control</li>
+                                <li>Email reports directly</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Card 8: Native macOS Feel -->
+                    <div class="card">
+                        <div class="card-title">Native macOS Aesthetics</div>
+                        <div class="card-content">
+                            <p>Respect the platform:</p>
+                            <ul style="margin-top: 12px; padding-left: 20px; font-size: 12px; color: rgba(255, 255, 255, 0.7); line-height: 1.8;">
+                                <li>Translucent sidebar (NSVisualEffectView)</li>
+                                <li>Traffic light window controls</li>
+                                <li>Native context menus</li>
+                                <li>Toolbar with customizable buttons</li>
+                                <li>Full Screen + menu bar auto-hide</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- macOS Data Table Example -->
+                <div class="section">
+                    <h3 style="font-size: 18px; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 16px; margin-top: 40px;">Example: Transactions Table on macOS</h3>
+                    <p class="section-subtitle" style="margin-bottom: 20px;">Full spreadsheet-level control. Sort by date, amount, category. Inline editing. No mobile app can compete with this.</p>
+
+                    <div class="table-mockup">
+                        <div class="table-header">
+                            <div>Date</div>
+                            <div>Payee</div>
+                            <div>Category</div>
+                            <div>Amount</div>
+                            <div>Account</div>
+                            <div>Status</div>
+                        </div>
+                        <div class="table-row">
+                            <div>Mar 21</div>
+                            <div>Whole Foods</div>
+                            <div><span class="tag-pill tag-groceries">Groceries</span></div>
+                            <div style="color: #f87171;">-$67.23</div>
+                            <div style="font-size: 11px;">Checking</div>
+                            <div style="color: #34d399;">✓</div>
+                        </div>
+                        <div class="table-row">
+                            <div>Mar 21</div>
+                            <div>Starbucks</div>
+                            <div><span class="tag-pill tag-dining">Dining</span></div>
+                            <div style="color: #f87171;">-$5.40</div>
+                            <div style="font-size: 11px;">Credit</div>
+                            <div style="color: #34d399;">✓</div>
+                        </div>
+                        <div class="table-row">
+                            <div>Mar 20</div>
+                            <div>Salary Deposit</div>
+                            <div><span class="tag-pill tag-utilities" style="background: rgba(52, 211, 153, 0.2); color: #34d399;">Income</span></div>
+                            <div style="color: #34d399;">+$4,200</div>
+                            <div style="font-size: 11px;">Checking</div>
+                            <div style="color: #34d399;">✓</div>
+                        </div>
+                        <div class="table-row">
+                            <div>Mar 19</div>
+                            <div>Electric Bill</div>
+                            <div><span class="tag-pill tag-utilities">Utilities</span></div>
+                            <div style="color: #f87171;">-$142.50</div>
+                            <div style="font-size: 11px;">Checking</div>
+                            <div style="color: #fbbf24;">⧗</div>
+                        </div>
+                    </div>
+
+                    <div class="callout" style="margin-top: 20px;">Sortable columns. Click to sort ascending/descending. Double-click cells to edit inline. Right-click for context menu (recategorize, split, delete, etc.). Multi-select for bulk operations.</div>
+                </div>
+
+                <!-- Multi-Window Layout Diagram -->
+                <div class="section">
+                    <h3 style="font-size: 18px; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 16px; margin-top: 40px;">Multi-Window Workflow Example</h3>
+                    <p class="section-subtitle" style="margin-bottom: 20px;">Unlike iOS, macOS lets you open multiple FLO windows to compare or work across contexts.</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 20px;">
+                            <div style="font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 12px;">Window 1: Transaction List</div>
+                            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: rgba(255, 255, 255, 0.5);">
+                                [Transactions list + filter/search]<br/>
+                                March 2026 transactions
+                            </div>
+                        </div>
+
+                        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 20px;">
+                            <div style="font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 12px;">Window 2: Receipt Viewer</div>
+                            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: rgba(255, 255, 255, 0.5);">
+                                [Receipt image + OCR data]<br/>
+                                Whole Foods $67.23
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="callout" style="margin-top: 20px;">Drag receipt to transaction to auto-link. Enter category details in one window while reviewing image in another. Stage Manager groups related windows.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: Adaptive Layout System -->
+    <div id="layout-system" class="tab-content">
+        <div class="container">
+            <div class="section">
+                <h2 class="section-title">Adaptive Layout System</h2>
+                <p class="section-subtitle">How the same SwiftUI code adapts across all platforms using a unified layout engine and adaptive rules.</p>
+
+                <!-- Layout Architecture Diagram -->
+                <div style="margin-bottom: 60px;">
+                    <h3 style="font-size: 16px; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 20px;">Layout Engine Architecture</h3>
+
+                    <div class="diagram">┌────────────────────────────────────────────────────────────────┐
+│                   FLO Adaptive Layout Engine                    │
+│                                                                  │
+│  @Environment(\.horizontalSizeClass) var h_size                │
+│  @Environment(\.verticalSizeClass) var v_size                  │
+│  @State var detailPresented: Bool                              │
+│                                                                  │
+├────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Layout Rules (computed from size classes):                     │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Zone 1: Sidebar / Navigation                            │   │
+│  │ ┌──────────────────────────────────────────────────┐    │   │
+│  │ │ iPhone Portrait:  Hidden (use TabBar instead)   │    │   │
+│  │ │ iPhone Landscape: Icon-only (50px, left)        │    │   │
+│  │ │ iPad:             Label + icon (180px, left)    │    │   │
+│  │ │ macOS:            Label + icon (200px, left)    │    │   │
+│  │ └──────────────────────────────────────────────────┘    │   │
+│  │                                                          │   │
+│  │ Zone 2: Content List                                     │   │
+│  │ ┌──────────────────────────────────────────────────┐    │   │
+│  │ │ iPhone Portrait:  Full width, card view         │    │   │
+│  │ │ iPhone Landscape: Flex (sidebar visible)        │    │   │
+│  │ │ iPad:             Fixed width or flex           │    │   │
+│  │ │ macOS:            250px column (always)         │    │   │
+│  │ └──────────────────────────────────────────────────┘    │   │
+│  │                                                          │   │
+│  │ Zone 3: Detail Panel                                     │   │
+│  │ ┌──────────────────────────────────────────────────┐    │   │
+│  │ │ iPhone Portrait:  Modal sheet (over Zone 2)     │    │   │
+│  │ │ iPhone Landscape: Sidebar collapses, panel       │    │   │
+│  │ │                   appears (80% width)           │    │   │
+│  │ │ iPad:             Sidebar stays, panel slide-in │    │   │
+│  │ │ macOS:            Sidebar stays, detail always  │    │   │
+│  │ │                   visible (flex)                │    │   │
+│  │ └──────────────────────────────────────────────────┘    │   │
+│  │                                                          │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+└────────────────────────────────────────────────────────────────┘</div>
+
+                    <h3 style="font-size: 16px; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 20px; margin-top: 40px;">Platform-Specific Adaptations</h3>
+
+                    <div class="card-grid">
+                        <div class="card">
+                            <div class="card-title">iPhone Portrait (Compact/Regular)</div>
+                            <div class="card-content">
+                                <div class="content-example">
+                                    <div class="content-label">Navigation</div>
+                                    <div class="content-text">TabBar at bottom with 5 icons. Full width.</div>
+                                </div>
+                                <div class="content-example">
+                                    <div class="content-label">Content</div>
+                                    <div class="content-text">Vertical list of cards. Compact layout for small screen.</div>
+                                </div>
+                                <div class="content-example">
+                                    <div class="content-label">Detail</div>
+                                    <div class="content-text">Modal sheet from bottom. Full screen. Gesture to dismiss.</div>
+                                </div>
+                                <div class="content-example">
+                                    <div class="content-label">Strategy</div>
+                                    <div class="content-text">One thing at a time. Maximize space per view.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-title">iPhone Landscape (Compact/Compact)</div>
+                            <div class="card-content">
+                                <div class="content-example">
+                                    <div class="content-label">Navigation</div>
+                                    <div class="content-text">Icon sidebar (50px). Horizontal space is precious.</div>
+                                </div>
+                                <div class="content-example">
+                                    <div class="content-label">Content</div>
+                                    <div class="content-text">Horizontal layout. Cards or list view with more details visible.</div>
+                                </div>
+                                <div class="content-example">
+                                    <div class="content-label">Detail</div>
+                                    <div class="content-text">Sidebar collapses. Detail panel slides in from right (80%). Gesture or ← closes.</div>
+                                </div>
+                                <div class="content-example">
+                                    <div class="content-label">Strategy</div>
+                                    <div class="content-text">Use width, trade sidebar space. Three zones visible when detail closed.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-title">iPad (Regular/Regular)</div>
+                            <div class="card-content">
+                                <div class="content-example">
+                                    <div class="content-label">Navigation</div>
+                                    <div class="content-text">Full sidebar (180px) with text labels. Always visible.</div>
+                                </div>
+                                <div class="content-example">
+                                    <div class="content-label">Content</div>
+                                    <div class="content-text">Flexible middle column. Grid or list depending on screen orientation.</div>
+                                </div>
+                                <div class="content-example">
+                                    <div class="content-label">Detail</div>
+                                    <div class="content-text">Slide-in from right or replace content column depending on width.</div>
+                                </div>
+                                <div class="content-example">
+                                    <div class="content-label">Strategy</div>
+                                    <div class="content-text">Sidebar stays. Detail panel can be permanent or overlay.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-title">macOS (Regular/Regular)</div>
+                            <div class="card-content">
+                                <div class="content-example">
+                                    <div class="content-label">Navigation</div>
+                                    <div class="content-text">Full sidebar (180-200px) with text. ALWAYS visible. No collapse.</div>
+                                </div>
+                                <div class="content-example">
+                                    <div class="content-label">Content</div>
+                                    <div class="content-text">Fixed-width list column (240px) or grid. Scrollable.</div>
+                                </div>
+                                <div class="content-example">
+                                    <div class="content-label">Detail</div>
+                                    <div class="content-text">Flexible detail pane on right. Always visible. Can detach to window.</div>
+                                </div>
+                                <div class="content-example">
+                                    <div class="content-label">Strategy</div>
+                                    <div class="content-text">All three zones visible. Keyboard shortcuts. Right-click menus.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Screen-Specific Examples -->
+                <div class="section">
+                    <h3 style="font-size: 18px; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 16px; margin-top: 40px;">Dashboard Screen at Different Sizes</h3>
+                    <p class="section-subtitle" style="margin-bottom: 30px;">The same dashboard view layout adapts automatically based on available space.</p>
+
+                    <div class="card-grid">
+                        <div class="card">
+                            <div class="card-title">iPhone Portrait</div>
+                            <div class="card-content">
+                                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                                    <div style="font-size: 10px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; margin-bottom: 6px;">Hero metric</div>
+                                    <div style="font-size: 20px; font-weight: 700; color: #34d399;">$12,481</div>
+                                </div>
+                                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                                    <div style="font-size: 10px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; margin-bottom: 6px;">Trend (tall)</div>
+                                    <div style="height: 60px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: rgba(255, 255, 255, 0.4); font-size: 11px;">[Chart stacks vertically]</div>
+                                </div>
+                                <div style="font-size: 10px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; margin-bottom: 6px;">Budgets (scrolling)</div>
+                                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 8px; margin-bottom: 6px; font-size: 11px;">
+                                    <div style="width: 40px; height: 40px; background: rgba(255, 255, 255, 0.1); border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; color: rgba(255, 255, 255, 0.6);">🍕</div>
+                                    <div style="text-align: center; margin-top: 6px;">Dining</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-title">iPhone Landscape</div>
+                            <div class="card-content">
+                                <div style="display: flex; gap: 12px;">
+                                    <div style="flex: 1;">
+                                        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                                            <div style="font-size: 9px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase;">Balance</div>
+                                            <div style="font-size: 16px; font-weight: 700; color: #34d399;">$12,481</div>
+                                        </div>
+                                        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px;">
+                                            <div style="font-size: 9px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; margin-bottom: 6px;">Trend</div>
+                                            <div style="height: 40px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: rgba(255, 255, 255, 0.3); font-size: 9px;">[Horizontal chart]</div>
+                                        </div>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-size: 9px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; margin-bottom: 6px;">Budgets (row)</div>
+                                        <div style="display: flex; gap: 6px;">
+                                            <div style="width: 45px; height: 45px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">🍕</div>
+                                            <div style="width: 45px; height: 45px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">🛒</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-title">macOS (Wide)</div>
+                            <div class="card-content">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                                    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px;">
+                                        <div style="font-size: 9px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; margin-bottom: 4px;">Balance</div>
+                                        <div style="font-size: 18px; font-weight: 700; color: #34d399;">$12,481</div>
+                                        <div style="font-size: 9px; color: rgba(255, 255, 255, 0.6); margin-top: 4px;">↓ -$245 this week</div>
+                                    </div>
+                                    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px;">
+                                        <div style="font-size: 9px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; margin-bottom: 6px;">Trend</div>
+                                        <div style="height: 50px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: rgba(255, 255, 255, 0.3); font-size: 9px;">[Full chart]</div>
+                                    </div>
+                                    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px;">
+                                        <div style="font-size: 9px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; margin-bottom: 6px;">Budgets</div>
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                                            <div style="width: 50px; height: 50px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">🍕</div>
+                                            <div style="width: 50px; height: 50px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">🛒</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transactions Screen Example -->
+                <div class="section">
+                    <h3 style="font-size: 18px; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 16px; margin-top: 40px;">Transactions Screen at Different Sizes</h3>
+                    <p class="section-subtitle" style="margin-bottom: 30px;">Portrait = cards. Landscape = cards with more details. macOS = full sortable table.</p>
+
+                    <div class="comparison-grid" style="grid-template-columns: 1fr;">
+                        <div class="comparison-card">
+                            <div class="comparison-title">iPhone Portrait: Card Stack</div>
+                            <ul class="comparison-list">
+                                <li>Vertical card list</li>
+                                <li>Payee + amount + category tag</li>
+                                <li>Tap to open detail modal</li>
+                                <li>Minimal metadata visible</li>
+                                <li>Swipe to delete or archive</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="comparison-grid" style="grid-template-columns: 1fr;">
+                        <div class="comparison-card">
+                            <div class="comparison-title">iPhone Landscape: Enhanced Cards</div>
+                            <ul class="comparison-list">
+                                <li>Horizontal card layout or list view</li>
+                                <li>Payee + date + category + amount all visible</li>
+                                <li>Multiple cards per row if there's space</li>
+                                <li>Tap to open detail panel (Zone 3)</li>
+                                <li>Quick actions via right-click or swipe</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="comparison-grid" style="grid-template-columns: 1fr;">
+                        <div class="comparison-card">
+                            <div class="comparison-title">macOS: Full Data Table</div>
+                            <ul class="comparison-list">
+                                <li>Spreadsheet-style table with columns</li>
+                                <li>Date | Payee | Category | Amount | Account | Status</li>
+                                <li>Click to sort ascending/descending</li>
+                                <li>Drag columns to resize</li>
+                                <li>Double-click cell to edit inline</li>
+                                <li>Multi-select for bulk operations</li>
+                                <li>Right-click context menu for actions</li>
+                                <li>No card frames — full table control</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Layout Code Concept -->
+                <div class="section">
+                    <h3 style="font-size: 18px; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 16px; margin-top: 40px;">Shared Layout Code Strategy</h3>
+                    <p class="section-subtitle" style="margin-bottom: 20px;">One SwiftUI layout engine, multiple platform-specific implementations.</p>
+
+                    <div class="diagram">// Pseudocode structure (actual SwiftUI)
+
+struct ContentView: View {
+    @Environment(\.horizontalSizeClass) var hSizeClass
+    @Environment(\.verticalSizeClass) var vSizeClass
+    @State var selection: String?
+    @State var showDetail = false
+
+    var layoutMode: LayoutMode {
+        switch (hSizeClass, vSizeClass) {
+        case (.compact, .regular):
+            return .iphonePortrait
+        case (.compact, .compact):
+            return .iphoneLandscape
+        case (.regular, .regular):
+            #if os(macOS)
+            return .macOS
+            #else
+            return .ipad
+            #endif
+        default:
+            return .ipad
+        }
+    }
+
+    var body: some View {
+        Group {
+            switch layoutMode {
+            case .iphonePortrait:
+                TabBarNavigation { content }
+            case .iphoneLandscape:
+                HStack {
+                    IconSidebar()
+                    content
+                }
+            case .ipad, .macOS:
+                HStack {
+                    Sidebar()
+                    ContentList()
+                    if showDetail {
+                        DetailPanel()
+                    }
+                }
+            }
+        }
+    }
+}</div>
+
+                    <div class="callout" style="margin-top: 20px;">Same View hierarchy, different layout branching. All three zones use the same models and logic. Layout is purely presentation.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: Design Cohesion Rules -->
+    <div id="design-rules" class="tab-content">
+        <div class="container">
+            <div class="section">
+                <h2 class="section-title">Design Cohesion Rules</h2>
+                <p class="section-subtitle">The 10 rules that keep FLO feeling like ONE app across all platforms. No "iOS blue" vs "macOS blue." One FLO.</p>
+
+                <div class="rules-grid">
+                    <!-- Rule 1 -->
+                    <div class="rule-card">
+                        <div class="rule-number">1</div>
+                        <div class="rule-title">Same Color System</div>
+                        <div class="rule-description">
+                            Identical hex values across all platforms. No translations, no platform-specific overrides.
+                        </div>
+                        <div style="margin-top: 12px;">
+                            <div class="color-swatch">
+                                <div class="swatch swatch-teal"></div>
+                                <div class="swatch-label">#14b8a6</div>
+                            </div>
+                            <div class="color-swatch">
+                                <div class="swatch swatch-green"></div>
+                                <div class="swatch-label">#34d399</div>
+                            </div>
+                            <div class="color-swatch">
+                                <div class="swatch swatch-red"></div>
+                                <div class="swatch-label">#f87171</div>
+                            </div>
+                            <div class="color-swatch">
+                                <div class="swatch swatch-yellow"></div>
+                                <div class="swatch-label">#fbbf24</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rule 2 -->
+                    <div class="rule-card">
+                        <div class="rule-number">2</div>
+                        <div class="rule-title">Same Typography Scale</div>
+                        <div class="rule-description">
+                            Inter font (Google Fonts) with identical size ratios. Hero numbers largest. Labels tiny uppercase.
+                        </div>
+                        <div style="margin-top: 12px;">
+                            <div style="font-size: 20px; font-weight: 700; color: #34d399; margin-bottom: 8px;">$12,481</div>
+                            <div style="font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 4px;">Transaction</div>
+                            <div style="font-size: 10px; text-transform: uppercase; color: rgba(255, 255, 255, 0.5);">Category</div>
+                        </div>
+                    </div>
+
+                    <!-- Rule 3 -->
+                    <div class="rule-card">
+                        <div class="rule-number">3</div>
+                        <div class="rule-title">Same Category Tags</div>
+                        <div class="rule-description">
+                            Bold colored pills. Visual signature. Identical appearance on every platform.
+                        </div>
+                        <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+                            <span class="tag-pill tag-dining">DINING</span>
+                            <span class="tag-pill tag-groceries">GROCERIES</span>
+                            <span class="tag-pill tag-utilities">UTILITIES</span>
+                        </div>
+                    </div>
+
+                    <!-- Rule 4 -->
+                    <div class="rule-card">
+                        <div class="rule-number">4</div>
+                        <div class="rule-title">Same Budget Circles</div>
+                        <div class="rule-description">
+                            Emoji + circular progress indicator. Identical design on iPhone, iPad, Mac.
+                        </div>
+                        <div style="margin-top: 12px; display: flex; gap: 12px; justify-content: center;">
+                            <div style="text-align: center;">
+                                <div style="width: 50px; height: 50px; background: rgba(255, 255, 255, 0.02); border: 2px solid rgba(248, 113, 113, 0.5); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; margin: 0 auto; margin-bottom: 6px;">🍕</div>
+                                <div style="font-size: 10px; color: rgba(255, 255, 255, 0.6);">$420</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="width: 50px; height: 50px; background: rgba(255, 255, 255, 0.02); border: 2px solid rgba(52, 211, 153, 0.5); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; margin: 0 auto; margin-bottom: 6px;">🛒</div>
+                                <div style="font-size: 10px; color: rgba(255, 255, 255, 0.6);">$600</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rule 5 -->
+                    <div class="rule-card">
+                        <div class="rule-number">5</div>
+                        <div class="rule-title">Same Spending Line</div>
+                        <div class="rule-description">
+                            Trend chart with under/over badge. Same visual language on all screens. Adapts in width but not style.
+                        </div>
+                        <div style="margin-top: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <span style="color: #f87171; font-weight: 700;">↓</span>
+                                <span style="font-size: 12px; color: rgba(255, 255, 255, 0.8);">-$245 this week</span>
+                            </div>
+                            <div style="height: 40px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: rgba(255, 255, 255, 0.3); font-size: 11px;">[Trend visualization]</div>
+                        </div>
+                    </div>
+
+                    <!-- Rule 6 -->
+                    <div class="rule-card">
+                        <div class="rule-number">6</div>
+                        <div class="rule-title">Same Card Style</div>
+                        <div class="rule-description">
+                            Glass morphism cards with identical border radius, blur, and hover. On macOS, subtle lift on hover.
+                        </div>
+                        <div style="margin-top: 12px;">
+                            <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px; font-size: 11px;">
+                                <div style="color: rgba(255, 255, 255, 0.8); font-weight: 600; margin-bottom: 4px;">Whole Foods</div>
+                                <div style="color: #f87171; font-weight: 600;">-$67.23</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rule 7 -->
+                    <div class="rule-card">
+                        <div class="rule-number">7</div>
+                        <div class="rule-title">Same Glass Material</div>
+                        <div class="rule-description">
+                            Translucent sidebar. iOS uses .ultraThinMaterial. macOS uses NSVisualEffectView. Same visual result.
+                        </div>
+                        <div style="margin-top: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 12px; font-size: 10px; color: rgba(255, 255, 255, 0.6);">
+                            Frosted glass effect. Platform-native implementation. Visually identical.
+                        </div>
+                    </div>
+
+                    <!-- Rule 8 -->
+                    <div class="rule-card">
+                        <div class="rule-number">8</div>
+                        <div class="rule-title">Platform-Appropriate Interactions</div>
+                        <div class="rule-description">
+                            iOS: tap, swipe, long-press. macOS: click, hover, right-click, keyboard. Same animations everywhere.
+                        </div>
+                        <div style="margin-top: 12px; font-size: 11px; line-height: 1.6; color: rgba(255, 255, 255, 0.7);">
+                            <strong>iOS:</strong> Tap to select, swipe to delete<br/>
+                            <strong>macOS:</strong> Click to select, ⌘K to search<br/>
+                            <strong>Both:</strong> Same spring curves, same transition timing
+                        </div>
+                    </div>
+
+                    <!-- Rule 9 -->
+                    <div class="rule-card">
+                        <div class="rule-number">9</div>
+                        <div class="rule-title">Content Parity</div>
+                        <div class="rule-description">
+                            Every feature available on iOS is available on macOS. No "macOS-only" or "iOS-only" features (except hardware-dependent ones like camera).
+                        </div>
+                        <div style="margin-top: 12px; font-size: 11px; line-height: 1.6; color: rgba(255, 255, 255, 0.7);">
+                            Camera receipts: iOS only<br/>
+                            Everything else: Both<br/>
+                            macOS extras: Tables, multi-window, reports
+                        </div>
+                    </div>
+
+                    <!-- Rule 10 -->
+                    <div class="rule-card">
+                        <div class="rule-number">10</div>
+                        <div class="rule-title">Shared Design Tokens Package</div>
+                        <div class="rule-description">
+                            FLODesignSystem Swift package. Colors, fonts, spacing, animation curves, card styles defined once, imported everywhere.
+                        </div>
+                        <div style="margin-top: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px; font-family: 'Courier New', monospace; font-size: 10px; color: #34d399;">
+                            import FLODesignSystem<br/><br/>
+                            Color.accent.teal<br/>
+                            Typography.heroLarge<br/>
+                            Spacing.mediumGap<br/>
+                            Animation.spring
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Design Tokens Example -->
+                <div class="section">
+                    <h3 style="font-size: 18px; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 16px; margin-top: 40px;">Design Tokens in Practice</h3>
+                    <p class="section-subtitle" style="margin-bottom: 20px;">How shared tokens ensure consistency across platforms.</p>
+
+                    <div class="diagram">// FLODesignSystem Package Structure
+
+Sources/
+├── Colors/
+│   ├── Colors.swift
+│   └── Assets/
+├── Typography/
+│   └── Typography.swift
+├── Spacing/
+│   └── Spacing.swift
+├── Components/
+│   ├── GlassCard.swift
+│   ├── CategoryTag.swift
+│   ├── BudgetCircle.swift
+│   └── TransactionCell.swift
+└── Animations/
+    └── Animations.swift
+
+// Usage across all platforms:
+// iOS (SwiftUI)
+// macOS (SwiftUI)
+// Both import from the same package
+
+Text("Total Balance")
+    .font(Typography.label)
+    .foregroundColor(Color.secondary)
+
+HStack {
+    VStack { ... }
+}
+.padding(Spacing.medium)
+.background(Color.background.surface)
+.cornerRadius(Spacing.cornerRadius)
+.overlay(
+    RoundedRectangle(cornerRadius: Spacing.cornerRadius)
+        .stroke(Color.border, lineWidth: 1)
+)</div>
+                </div>
+
+                <!-- Visual Consistency Showcase -->
+                <div class="section">
+                    <h3 style="font-size: 18px; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 16px; margin-top: 40px;">Visual Consistency Across Platforms</h3>
+                    <p class="section-subtitle" style="margin-bottom: 20px;">Same elements, same look, different screen sizes.</p>
+
+                    <div class="card-grid">
+                        <div class="card">
+                            <div class="card-title">Hero Metric</div>
+                            <div style="margin-top: 12px; text-align: center;">
+                                <div style="font-size: 11px; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; margin-bottom: 8px;">Total Balance</div>
+                                <div style="font-size: 32px; font-weight: 700; color: #34d399;">$12,481</div>
+                                <div style="font-size: 11px; color: rgba(255, 255, 255, 0.6); margin-top: 12px;">Same on all platforms. Largest visual element on screen.</div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-title">Transaction Card</div>
+                            <div style="margin-top: 12px;">
+                                <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <span style="font-weight: 600; color: rgba(255, 255, 255, 0.9);">Whole Foods</span>
+                                        <span style="color: #f87171; font-weight: 600;">-$67.23</span>
+                                    </div>
+                                    <span style="background: rgba(52, 211, 153, 0.2); color: #34d399; padding: 2px 6px; border-radius: 3px; font-size: 10px;">GROCERIES</span>
+                                </div>
+                                <div style="font-size: 11px; color: rgba(255, 255, 255, 0.6);">Identical on iPhone, iPad, and macOS.</div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-title">Category Tags</div>
+                            <div style="margin-top: 12px;">
+                                <div style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
+                                    <span class="tag-pill tag-dining">DINING</span>
+                                    <span class="tag-pill tag-groceries">GROCERIES</span>
+                                    <span class="tag-pill tag-utilities">UTILITIES</span>
+                                </div>
+                                <div style="font-size: 11px; color: rgba(255, 255, 255, 0.6);">Colored pills. FLO's visual signature.</div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-title">Glass Card Border</div>
+                            <div style="margin-top: 12px;">
+                                <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 12px;">
+                                    <div style="color: rgba(255, 255, 255, 0.6); font-size: 11px;">Glass card<br/>with border</div>
+                                </div>
+                                <div style="font-size: 11px; color: rgba(255, 255, 255, 0.6);">rgba(255,255,255,0.04) bg, rgba(255,255,255,0.08) border. Consistent everywhere.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Implementation Strategy -->
+                <div class="section">
+                    <h3 style="font-size: 18px; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 16px; margin-top: 40px;">Implementation Strategy</h3>
+                    <p class="section-subtitle" style="margin-bottom: 20px;">How to build FLO as a truly unified cross-platform app.</p>
+
+                    <div class="comparison-grid">
+                        <div class="comparison-card">
+                            <div class="comparison-title">Step 1: Define Design System</div>
+                            <ul class="comparison-list">
+                                <li>Create FLODesignSystem Swift package</li>
+                                <li>Define all colors, fonts, spacing</li>
+                                <li>Build reusable components</li>
+                                <li>Version control the tokens</li>
+                            </ul>
+                        </div>
+
+                        <div class="comparison-card">
+                            <div class="comparison-title">Step 2: Build Views with Tokens</div>
+                            <ul class="comparison-list">
+                                <li>All UI uses FLODesignSystem</li>
+                                <li>No hardcoded colors or sizes</li>
+                                <li>SwiftUI for iOS and macOS</li>
+                                <li>Shared view hierarchy</li>
+                            </ul>
+                        </div>
+
+                        <div class="comparison-card">
+                            <div class="comparison-title">Step 3: Platform-Specific Layout</div>
+                            <ul class="comparison-list">
+                                <li>Use @Environment size classes</li>
+                                <li>#if os(macOS) for platform code</li>
+                                <li>Same views, different arrangement</li>
+                                <li>Layout logic, not styling logic</li>
+                            </ul>
+                        </div>
+
+                        <div class="comparison-card">
+                            <div class="comparison-title">Step 4: Platform-Specific Interactions</div>
+                            <ul class="comparison-list">
+                                <li>macOS gets keyboard shortcuts</li>
+                                <li>macOS gets right-click menus</li>
+                                <li>iOS gets swipe gestures</li>
+                                <li>Share core data models</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Principle -->
+                <div style="background: rgba(20, 184, 166, 0.1); border: 2px solid rgba(20, 184, 166, 0.3); border-radius: 12px; padding: 32px; margin-top: 40px;">
+                    <h3 style="font-size: 16px; font-weight: 700; color: #14b8a6; margin-bottom: 12px;">The Key Principle: Layout vs. Style</h3>
+                    <p style="font-size: 13px; color: rgba(255, 255, 255, 0.8); line-height: 1.8;">
+                        <span class="highlight">Layout</span> changes based on screen size and platform (iPhone portrait vs. landscape vs. macOS). <span class="highlight">Style</span> is constant. Colors are always the same. Typography scales are always the same. Components look the same. Only the arrangement of zones and the presence/absence of certain UI elements changes. This is why the same design system works everywhere.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>FLO Cross-Platform Design Strategy • v1.0 • Financial Ledger Optimizer</p>
+        <p style="margin-top: 8px; color: rgba(255, 255, 255, 0.3);">Built with dark theme design system. All colors and spacing derived from unified tokens.</p>
+    </footer>
+
+    <script>
+        // Tab switching
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.getAttribute('data-tab');
+
+                // Remove active class from all buttons and contents
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+
+                // Add active class to clicked button and corresponding content
+                button.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // Smooth scroll for any anchor links
+        document.addEventListener('click', (e) => {
+            if (e.target.tagName === 'A' && e.target.getAttribute('href').startsWith('#')) {
+                e.preventDefault();
+                const id = e.target.getAttribute('href').slice(1);
+                const element = document.getElementById(id);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

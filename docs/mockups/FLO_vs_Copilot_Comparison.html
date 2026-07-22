@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLO vs Copilot Money — Honest Comparison</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #050508;
+    --surface: #0d0d14;
+    --card: rgba(255,255,255,0.04);
+    --card-hover: rgba(255,255,255,0.07);
+    --glass: rgba(255,255,255,0.06);
+    --glass-strong: rgba(255,255,255,0.10);
+    --border: rgba(255,255,255,0.06);
+    --border-glass: rgba(255,255,255,0.12);
+    --text: #f5f5f7;
+    --text2: rgba(245,245,247,0.6);
+    --text3: rgba(245,245,247,0.35);
+    --teal: #14b8a6;
+    --teal-glow: rgba(20,184,166,0.12);
+    --green: #34d399;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --orange: #fb923c;
+    --pink: #f472b6;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+
+  /* Navigation */
+  .top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px 20px;
+    background: rgba(5,5,8,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--glass);
+    color: var(--text2);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+
+  .nav-btn:hover, .nav-btn.active {
+    background: var(--teal-glow);
+    border-color: rgba(20,184,166,0.3);
+    color: var(--teal);
+  }
+
+  /* Sections */
+  .section {
+    display: none;
+    padding: 40px 20px 60px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .section.active { display: block; }
+
+  .section-header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .section-tag {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--teal);
+    margin-bottom: 12px;
+  }
+
+  .section-title {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    margin-bottom: 12px;
+  }
+
+  .section-subtitle {
+    font-size: 16px;
+    color: var(--text2);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  /* Comparison Grid */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 80px 1fr;
+    gap: 0;
+    margin-bottom: 48px;
+    align-items: start;
+  }
+
+  .compare-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-top: 20px;
+  }
+
+  .vs-badge {
+    background: var(--glass-strong);
+    border: 1px solid var(--border-glass);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text3);
+  }
+
+  .app-label {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  .app-label-name {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .app-label-sub {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  /* Phone mockups */
+  .phone {
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto;
+    border-radius: 28px;
+    border: 2px solid #1a1a25;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+
+  .phone-bar {
+    height: 16px;
+    background: rgba(0,0,0,0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 8px;
+    color: var(--text3);
+  }
+
+  .phone-body {
+    padding: 12px;
+    min-height: 500px;
+  }
+
+  /* ===== COPILOT STYLE PHONE ===== */
+  .copilot-phone .phone-body {
+    background: #0b1120;
+  }
+
+  /* Copilot sidebar */
+  .cp-sidebar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    font-size: 10px;
+    overflow: hidden;
+  }
+
+  .cp-sidebar-item {
+    padding: 5px 10px;
+    border-radius: 6px;
+    color: var(--text3);
+    white-space: nowrap;
+  }
+
+  .cp-sidebar-item.active {
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+  }
+
+  /* Copilot spending line */
+  .cp-spending-hero {
+    text-align: center;
+    padding: 12px 0;
+  }
+
+  .cp-amount-big {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+
+  .cp-amount-sub {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  .cp-badge-green {
+    display: inline-block;
+    background: rgba(52,211,153,0.15);
+    color: var(--green);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    margin-top: 4px;
+  }
+
+  .cp-chart {
+    height: 80px;
+    margin: 8px 0 16px;
+    position: relative;
+  }
+
+  /* Copilot category tags — THE killer feature */
+  .cp-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  .cp-tag.restaurants { background: #dc2626; color: white; }
+  .cp-tag.groceries { background: #059669; color: white; }
+  .cp-tag.subscriptions { background: #6366f1; color: white; }
+  .cp-tag.transportation { background: #d97706; color: white; }
+  .cp-tag.entertainment { background: #db2777; color: white; }
+  .cp-tag.coffee { background: #92400e; color: #fbbf24; }
+  .cp-tag.shops { background: #7c3aed; color: white; }
+  .cp-tag.insurance { background: #0d9488; color: white; }
+
+  /* Copilot transaction list */
+  .cp-txn-section {
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+
+  .cp-txn-section-title {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+  }
+
+  .cp-txn-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+
+  .cp-txn-row:last-child { border-bottom: none; }
+
+  .cp-txn-name {
+    flex: 1;
+    font-weight: 500;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 8px;
+  }
+
+  .cp-txn-amount {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin-left: 8px;
+    flex-shrink: 0;
+  }
+
+  /* Copilot budget circles */
+  .cp-budgets {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin-top: 8px;
+    scrollbar-width: none;
+  }
+
+  .cp-budgets::-webkit-scrollbar { display: none; }
+
+  .cp-budget-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 52px;
+  }
+
+  .cp-budget-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    position: relative;
+    margin-bottom: 4px;
+  }
+
+  .cp-budget-circle svg {
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    transform: rotate(-90deg);
+  }
+
+  .cp-budget-label {
+    font-size: 8px;
+    color: var(--text3);
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .cp-budget-amt {
+    font-size: 9px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Copilot "mark as reviewed" button */
+  .cp-review-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 8px;
+  }
+
+  /* Copilot top categories */
+  .cp-categories {
+    margin-top: 12px;
+  }
+
+  .cp-cat-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    font-size: 11px;
+  }
+
+  .cp-cat-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .cp-cat-name { flex: 1; color: var(--text2); }
+  .cp-cat-amt { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* ===== FLO CURRENT PHONE ===== */
+  .flo-current .phone-body {
+    background: #0a0a0f;
+  }
+
+  .flo-hero {
+    text-align: center;
+    padding: 12px 0;
+  }
+
+  .flo-hero-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text3);
+  }
+
+  .flo-hero-amt {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    margin: 2px 0;
+  }
+
+  .flo-hero-change {
+    font-size: 10px;
+    color: var(--green);
+  }
+
+  .flo-metrics {
+    display: flex;
+    gap: 6px;
+    margin: 8px 0;
+  }
+
+  .flo-metric {
+    flex: 1;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    text-align: center;
+  }
+
+  .flo-metric-label {
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text3);
+  }
+
+  .flo-metric-val {
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .flo-card {
+    background: var(--glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+
+  .flo-card-title {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text3);
+    margin-bottom: 6px;
+  }
+
+  .flo-txn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+  }
+
+  .flo-txn:last-child { border-bottom: none; }
+
+  .flo-txn-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .flo-txn-info { flex: 1; min-width: 0; }
+  .flo-txn-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .flo-txn-meta { font-size: 9px; color: var(--text3); }
+  .flo-txn-amt { font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+  .flo-tabs {
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0 4px;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+
+  .flo-tab {
+    font-size: 8px;
+    color: var(--text3);
+    text-align: center;
+  }
+
+  .flo-tab.active { color: var(--teal); }
+  .flo-tab-icon { font-size: 14px; display: block; margin-bottom: 1px; }
+
+  /* ===== FLO REDESIGNED PHONE ===== */
+  .flo-new .phone-body {
+    background: #07070d;
+    padding: 0;
+  }
+
+  .fn-layout {
+    display: flex;
+    height: 500px;
+  }
+
+  .fn-sidebar {
+    width: 52px;
+    background: rgba(255,255,255,0.02);
+    border-right: 1px solid var(--border);
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .fn-sidebar::-webkit-scrollbar { display: none; }
+
+  .fn-logo {
+    font-size: 10px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--teal), #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 6px;
+  }
+
+  .fn-nav-item {
+    width: 40px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .fn-nav-item:hover { background: var(--card-hover); }
+
+  .fn-nav-item.active {
+    background: var(--teal-glow);
+  }
+
+  .fn-nav-label {
+    font-size: 6px;
+    color: var(--text3);
+    margin-top: 1px;
+  }
+
+  .fn-nav-item.active .fn-nav-label { color: var(--teal); }
+
+  .fn-content {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .fn-content::-webkit-scrollbar { display: none; }
+
+  /* Copilot-inspired spending line in FLO */
+  .fn-spending-hero {
+    text-align: center;
+    padding: 8px 0;
+    position: relative;
+  }
+
+  .fn-spending-amount {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    background: linear-gradient(180deg, var(--text), rgba(245,245,247,0.75));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .fn-spending-sub {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 1px;
+  }
+
+  .fn-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+
+  .fn-badge.under { background: rgba(52,211,153,0.12); color: var(--green); }
+  .fn-badge.over { background: rgba(248,113,113,0.12); color: var(--red); }
+
+  /* Copilot-inspired spending chart */
+  .fn-chart {
+    margin: 6px 0 12px;
+    height: 70px;
+    position: relative;
+  }
+
+  /* Copilot-inspired category tags in FLO */
+  .fn-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 8px;
+    border-radius: 16px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  /* Rich category colors like Copilot */
+  .fn-tag.restaurants { background: rgba(220,38,38,0.8); color: white; }
+  .fn-tag.groceries { background: rgba(5,150,105,0.8); color: white; }
+  .fn-tag.software { background: rgba(99,102,241,0.8); color: white; }
+  .fn-tag.transport { background: rgba(217,119,6,0.8); color: white; }
+  .fn-tag.coffee { background: rgba(146,64,14,0.8); color: #fbbf24; }
+  .fn-tag.client { background: rgba(20,184,166,0.8); color: white; }
+  .fn-tag.business { background: rgba(20,184,166,0.15); color: var(--teal); }
+  .fn-tag.deductible { background: rgba(52,211,153,0.15); color: var(--green); }
+
+  /* Copilot-inspired txn section */
+  .fn-txn-section {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+
+  .fn-txn-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .fn-txn-title {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text2);
+  }
+
+  .fn-txn-link {
+    font-size: 9px;
+    color: var(--teal);
+  }
+
+  .fn-txn-date {
+    font-size: 9px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+
+  .fn-txn-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-size: 11px;
+  }
+
+  .fn-txn-row:last-child { border-bottom: none; }
+  .fn-txn-name { flex: 1; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fn-txn-amt { font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+  /* Copilot-inspired budget circles in FLO */
+  .fn-budgets {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px 0;
+    scrollbar-width: none;
+  }
+
+  .fn-budgets::-webkit-scrollbar { display: none; }
+
+  .fn-budget-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 50px;
+  }
+
+  .fn-budget-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    position: relative;
+    background: rgba(255,255,255,0.04);
+    margin-bottom: 3px;
+  }
+
+  .fn-budget-circle svg {
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    transform: rotate(-90deg);
+  }
+
+  .fn-budget-amt {
+    font-size: 8px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .fn-budget-label {
+    font-size: 7px;
+    color: var(--text3);
+  }
+
+  /* FLO-specific deduction callout */
+  .fn-deduction {
+    background: linear-gradient(135deg, rgba(20,184,166,0.08), rgba(52,211,153,0.05));
+    border: 1px solid rgba(20,184,166,0.15);
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .fn-deduction-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .fn-deduction-text {
+    font-size: 11px;
+    color: var(--text2);
+  }
+
+  .fn-deduction-text strong {
+    color: var(--green);
+  }
+
+  /* Mark as reviewed */
+  .fn-review-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 7px;
+    background: rgba(20,184,166,0.08);
+    border: 1px solid rgba(20,184,166,0.15);
+    border-radius: 8px;
+    font-size: 10px;
+    color: var(--teal);
+    margin-top: 6px;
+  }
+
+  /* ===== ANALYSIS CARDS ===== */
+  .analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+
+  .analysis-card {
+    background: var(--glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+    padding: 20px;
+  }
+
+  .analysis-card.full { grid-column: 1 / -1; }
+
+  .analysis-card.winner-copilot {
+    border-color: rgba(96,165,250,0.2);
+    background: rgba(96,165,250,0.03);
+  }
+
+  .analysis-card.winner-flo {
+    border-color: rgba(20,184,166,0.2);
+    background: rgba(20,184,166,0.03);
+  }
+
+  .analysis-card.winner-tie {
+    border-color: rgba(167,139,250,0.2);
+    background: rgba(167,139,250,0.03);
+  }
+
+  .analysis-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .analysis-card-icon {
+    font-size: 20px;
+  }
+
+  .analysis-card-title {
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .analysis-winner {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .analysis-winner.copilot { background: rgba(96,165,250,0.15); color: var(--blue); }
+  .analysis-winner.flo { background: rgba(20,184,166,0.15); color: var(--teal); }
+  .analysis-winner.tie { background: rgba(167,139,250,0.15); color: var(--purple); }
+
+  .analysis-card-body {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+
+  .analysis-card-body strong {
+    color: var(--text);
+  }
+
+  /* Verdict section */
+  .verdict-box {
+    background: linear-gradient(135deg, rgba(20,184,166,0.06), rgba(96,165,250,0.04));
+    border: 1px solid rgba(20,184,166,0.15);
+    border-radius: 20px;
+    padding: 32px;
+    text-align: center;
+    margin: 40px 0;
+  }
+
+  .verdict-title {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+  }
+
+  .verdict-text {
+    font-size: 15px;
+    color: var(--text2);
+    line-height: 1.7;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  /* Action items */
+  .steal-list {
+    list-style: none;
+    max-width: 700px;
+    margin: 24px auto 0;
+    text-align: left;
+  }
+
+  .steal-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .steal-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--teal-glow);
+    color: var(--teal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .steal-text {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.5;
+  }
+
+  .steal-text strong { color: var(--text); }
+
+  ::-webkit-scrollbar { width: 0; }
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="top-nav">
+  <button class="nav-btn active" onclick="showSection('gap')">Gap Analysis</button>
+  <button class="nav-btn" onclick="showSection('compare')">Side-by-Side</button>
+  <button class="nav-btn" onclick="showSection('redesign')">FLO Redesigned</button>
+  <button class="nav-btn" onclick="showSection('verdict')">Verdict & Next Steps</button>
+</nav>
+
+<!-- SECTION 1: Gap Analysis -->
+<div class="section active" id="gap">
+  <div class="section-header">
+    <div class="section-tag">Honest Assessment</div>
+    <div class="section-title">Where Copilot Beats FLO</div>
+    <div class="section-subtitle">A brutally honest breakdown of what Copilot does better and why it feels like a premium product.</div>
+  </div>
+
+  <div class="analysis-grid">
+    <div class="analysis-card winner-copilot">
+      <div class="analysis-card-header">
+        <span class="analysis-card-icon">🏷️</span>
+        <span class="analysis-card-title">Category Tags</span>
+        <span class="analysis-winner copilot">Copilot Wins</span>
+      </div>
+      <div class="analysis-card-body">
+        This is Copilot's <strong>single biggest design advantage</strong>. Every transaction has a bold, colorful pill tag — <span style="background:#dc2626;color:white;padding:1px 6px;border-radius:10px;font-size:11px;font-weight:600;">RESTAURANTS</span> <span style="background:#059669;color:white;padding:1px 6px;border-radius:10px;font-size:11px;font-weight:600;">GROCERIES</span> <span style="background:#6366f1;color:white;padding:1px 6px;border-radius:10px;font-size:11px;font-weight:600;">SUBSCRIPTIONS</span>. These are instantly scannable. FLO uses plain text category labels that disappear into the UI. The emotional impact is night and day.
+      </div>
+    </div>
+
+    <div class="analysis-card winner-copilot">
+      <div class="analysis-card-header">
+        <span class="analysis-card-icon">📊</span>
+        <span class="analysis-card-title">The Spending Line</span>
+        <span class="analysis-winner copilot">Copilot Wins</span>
+      </div>
+      <div class="analysis-card-body">
+        Copilot's dashboard hero is a <strong>dynamic spending trend line</strong> with a floating badge showing "$125 under" or "$50 over." It answers the most important question instantly: am I on track? FLO shows net cash flow which is useful but less emotionally engaging. Copilot makes you <strong>feel</strong> your financial progress.
+      </div>
+    </div>
+
+    <div class="analysis-card winner-copilot">
+      <div class="analysis-card-header">
+        <span class="analysis-card-icon">🎯</span>
+        <span class="analysis-card-title">Budget Circles</span>
+        <span class="analysis-winner copilot">Copilot Wins</span>
+      </div>
+      <div class="analysis-card-body">
+        Copilot uses <strong>circular progress indicators with emoji icons</strong> — a ring of color around a food emoji, a car emoji, etc. They're horizontal, scrollable, and instantly communicate budget health. FLO uses horizontal bars, which are functional but lack personality. The circular rings with emojis are playful, glanceable, and feel modern.
+      </div>
+    </div>
+
+    <div class="analysis-card winner-copilot">
+      <div class="analysis-card-header">
+        <span class="analysis-card-icon">✅</span>
+        <span class="analysis-card-title">Transaction Review Flow</span>
+        <span class="analysis-winner copilot">Copilot Wins</span>
+      </div>
+      <div class="analysis-card-body">
+        Copilot's "Transactions to review" card with a "Mark 6 as reviewed" button is brilliant UX. It gives users a <strong>specific action</strong> every time they open the app. FLO shows recent transactions but doesn't prompt engagement. This one feature drives daily app opens.
+      </div>
+    </div>
+
+    <div class="analysis-card winner-copilot">
+      <div class="analysis-card-header">
+        <span class="analysis-card-icon">🧊</span>
+        <span class="analysis-card-title">Information Density</span>
+        <span class="analysis-winner copilot">Copilot Wins</span>
+      </div>
+      <div class="analysis-card-body">
+        Copilot's dashboard shows <strong>spending line + transactions + budgets + categories all on one screen</strong> without feeling cramped. FLO's dashboard has 10+ card types requiring endless scrolling. Copilot achieved higher density with better hierarchy — they prioritized ruthlessly.
+      </div>
+    </div>
+
+    <div class="analysis-card winner-copilot">
+      <div class="analysis-card-header">
+        <span class="analysis-card-icon">🎨</span>
+        <span class="analysis-card-title">Color as Information</span>
+        <span class="analysis-winner copilot">Copilot Wins</span>
+      </div>
+      <div class="analysis-card-body">
+        Copilot uses <strong>color semantically everywhere</strong> — green line = under budget, red bar = over, each category has its own vibrant color. FLO's color system exists (6 schemes) but applies to chrome, not data. The data itself is relatively monochrome. Color should tell the financial story.
+      </div>
+    </div>
+
+    <div class="analysis-card winner-flo">
+      <div class="analysis-card-header">
+        <span class="analysis-card-icon">🧮</span>
+        <span class="analysis-card-title">Feature Depth</span>
+        <span class="analysis-winner flo">FLO Wins</span>
+      </div>
+      <div class="analysis-card-body">
+        FLO has <strong>invoicing, mileage tracking, receipt OCR, tax optimization, Apple Watch, widgets</strong> — features Copilot doesn't touch. FLO is built for freelancers and small businesses. Copilot is personal finance only. FLO's problem isn't capability — it's that the visual layer doesn't communicate this depth.
+      </div>
+    </div>
+
+    <div class="analysis-card winner-flo">
+      <div class="analysis-card-header">
+        <span class="analysis-card-icon">📱</span>
+        <span class="analysis-card-title">Landscape Opportunity</span>
+        <span class="analysis-winner flo">FLO Can Win</span>
+      </div>
+      <div class="analysis-card-body">
+        <strong>Copilot has zero landscape support.</strong> No sidebar, no split-view, no multi-column anything. The Xcode-style zone system you proposed would instantly leapfrog Copilot for data-heavy tasks. This is the biggest gap in Copilot's design that FLO can exploit.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 2: Side by Side -->
+<div class="section" id="compare">
+  <div class="section-header">
+    <div class="section-tag">Visual Comparison</div>
+    <div class="section-title">FLO Today vs. Copilot</div>
+    <div class="section-subtitle">Same task: checking your dashboard. Look at the difference in visual energy.</div>
+  </div>
+
+  <div class="compare-grid">
+    <div>
+      <div class="app-label">
+        <div class="app-label-name">FLO (Current)</div>
+        <div class="app-label-sub">v3.12 · Portrait</div>
+      </div>
+      <div class="phone flo-current">
+        <div class="phone-bar"><span>9:41</span><span>100%</span></div>
+        <div class="phone-body">
+          <div class="flo-hero">
+            <div class="flo-hero-label">Net Cash Flow — March</div>
+            <div class="flo-hero-amt">$8,247.63</div>
+            <div class="flo-hero-change">↑ 12.3% vs February</div>
+          </div>
+
+          <div class="flo-metrics">
+            <div class="flo-metric"><div class="flo-metric-label">Income</div><div class="flo-metric-val" style="color:var(--green);">$14,830</div></div>
+            <div class="flo-metric"><div class="flo-metric-label">Expenses</div><div class="flo-metric-val" style="color:var(--red);">$6,582</div></div>
+            <div class="flo-metric"><div class="flo-metric-label">Savings</div><div class="flo-metric-val" style="color:var(--teal);">55.6%</div></div>
+          </div>
+
+          <div class="flo-card">
+            <div class="flo-card-title">Cash Flow Trend</div>
+            <svg viewBox="0 0 300 50" style="width:100%;height:40px;">
+              <polyline points="10,30 60,25 110,35 160,18 210,15 270,8" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+
+          <div class="flo-card">
+            <div class="flo-card-title">Recent Transactions</div>
+            <div class="flo-txn">
+              <div class="flo-txn-icon">☕</div>
+              <div class="flo-txn-info"><div class="flo-txn-name">Starbucks Coffee</div><div class="flo-txn-meta">Today · Coffee & Tea</div></div>
+              <div class="flo-txn-amt" style="color:var(--red);">-$6.45</div>
+            </div>
+            <div class="flo-txn">
+              <div class="flo-txn-icon">💰</div>
+              <div class="flo-txn-info"><div class="flo-txn-name">Acme Corp</div><div class="flo-txn-meta">Yesterday · Client Payment</div></div>
+              <div class="flo-txn-amt" style="color:var(--green);">+$3,500</div>
+            </div>
+            <div class="flo-txn">
+              <div class="flo-txn-icon">🎨</div>
+              <div class="flo-txn-info"><div class="flo-txn-name">Adobe Creative Cloud</div><div class="flo-txn-meta">Mar 14 · Software</div></div>
+              <div class="flo-txn-amt" style="color:var(--red);">-$54.99</div>
+            </div>
+            <div class="flo-txn">
+              <div class="flo-txn-icon">🛒</div>
+              <div class="flo-txn-info"><div class="flo-txn-name">Whole Foods</div><div class="flo-txn-meta">Mar 16 · Groceries</div></div>
+              <div class="flo-txn-amt" style="color:var(--red);">-$87.32</div>
+            </div>
+          </div>
+
+          <div class="flo-card">
+            <div class="flo-card-title">Budget Overview</div>
+            <div style="font-size:10px;color:var(--text2);padding:4px 0;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>🏠 Housing</span><span>$1,850 / $1,850</span></div>
+              <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;margin-bottom:6px;"><div style="height:100%;width:100%;background:var(--red);border-radius:3px;"></div></div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>🛒 Groceries</span><span>$487 / $600</span></div>
+              <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;margin-bottom:6px;"><div style="height:100%;width:81%;background:var(--yellow);border-radius:3px;"></div></div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>🍽️ Dining</span><span>$312 / $300</span></div>
+              <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;"><div style="height:100%;width:100%;background:var(--red);border-radius:3px;"></div></div>
+            </div>
+          </div>
+
+          <div class="flo-tabs">
+            <div class="flo-tab active"><span class="flo-tab-icon">📊</span>Dashboard</div>
+            <div class="flo-tab"><span class="flo-tab-icon">💳</span>Transactions</div>
+            <div class="flo-tab"><span class="flo-tab-icon">📋</span>Budgets</div>
+            <div class="flo-tab"><span class="flo-tab-icon">📄</span>Invoices</div>
+            <div class="flo-tab"><span class="flo-tab-icon">•••</span>More</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare-label">
+      <div class="vs-badge">vs</div>
+    </div>
+
+    <div>
+      <div class="app-label">
+        <div class="app-label-name">Copilot Money</div>
+        <div class="app-label-sub">Apple Design Award Finalist</div>
+      </div>
+      <div class="phone copilot-phone">
+        <div class="phone-bar"><span>9:41</span><span>100%</span></div>
+        <div class="phone-body">
+          <div class="cp-sidebar">
+            <div class="cp-sidebar-item active">Dashboard</div>
+            <div class="cp-sidebar-item">Investments</div>
+            <div class="cp-sidebar-item">Transactions</div>
+            <div class="cp-sidebar-item">Budgets</div>
+          </div>
+
+          <div class="cp-spending-hero">
+            <div class="cp-amount-big">$2,272</div>
+            <div class="cp-amount-sub">left out of $5,400 budgeted</div>
+            <div class="cp-badge-green">$268 under</div>
+          </div>
+
+          <div class="cp-chart">
+            <svg viewBox="0 0 300 70" style="width:100%;height:100%;">
+              <defs>
+                <linearGradient id="cpLine" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="#f87171"/>
+                  <stop offset="40%" stop-color="#fbbf24"/>
+                  <stop offset="100%" stop-color="#34d399"/>
+                </linearGradient>
+              </defs>
+              <line x1="0" y1="35" x2="300" y2="35" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="3,3"/>
+              <polyline points="15,50 45,52 75,40 105,35 135,38 165,30 195,28 225,22 255,20 280,15" fill="none" stroke="url(#cpLine)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="280" cy="15" r="4" fill="#34d399"/>
+              <rect x="256" y="2" rx="4" ry="4" width="48" height="16" fill="rgba(52,211,153,0.15)"/>
+              <text x="280" y="13" fill="#34d399" font-size="8" font-weight="600" text-anchor="middle">$268 under</text>
+            </svg>
+          </div>
+
+          <div class="cp-txn-section">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <div class="cp-txn-section-title">To Review</div>
+              <span style="font-size:9px;color:var(--teal);">View all ›</span>
+            </div>
+            <div style="font-size:9px;color:var(--text3);margin-bottom:6px;">So far today</div>
+            <div class="cp-txn-row">
+              <span class="cp-txn-name">Starbucks</span>
+              <span class="cp-tag coffee">☕ COFFEE</span>
+              <span class="cp-txn-amount">$6.45</span>
+            </div>
+            <div class="cp-txn-row">
+              <span class="cp-txn-name">Impasto</span>
+              <span class="cp-tag restaurants">🍕 RESTAURANTS</span>
+              <span class="cp-txn-amount">$17.55</span>
+            </div>
+            <div class="cp-txn-row">
+              <span class="cp-txn-name">Velvette Brew</span>
+              <span class="cp-tag groceries">🥬 GROCERIES</span>
+              <span class="cp-txn-amount">$15.51</span>
+            </div>
+            <div class="cp-review-btn">✓ Mark 3 as reviewed</div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px;">
+            <span style="font-size:10px;font-weight:600;color:var(--text2);">BUDGETS</span>
+            <span style="font-size:9px;color:var(--teal);">Categories ›</span>
+          </div>
+
+          <div class="cp-budgets">
+            <div class="cp-budget-item">
+              <div class="cp-budget-circle">
+                <svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/><circle cx="24" cy="24" r="20" stroke="#f87171" stroke-width="3" fill="none" stroke-dasharray="126" stroke-dashoffset="0" stroke-linecap="round"/></svg>
+                🍔
+              </div>
+              <div class="cp-budget-amt" style="color:var(--red);">$206</div>
+              <div class="cp-budget-label">over</div>
+            </div>
+            <div class="cp-budget-item">
+              <div class="cp-budget-circle">
+                <svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/><circle cx="24" cy="24" r="20" stroke="#f87171" stroke-width="3" fill="none" stroke-dasharray="126" stroke-dashoffset="0" stroke-linecap="round"/></svg>
+                📺
+              </div>
+              <div class="cp-budget-amt" style="color:var(--red);">$15.51</div>
+              <div class="cp-budget-label">over</div>
+            </div>
+            <div class="cp-budget-item">
+              <div class="cp-budget-circle">
+                <svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/><circle cx="24" cy="24" r="20" stroke="#34d399" stroke-width="3" fill="none" stroke-dasharray="126" stroke-dashoffset="46" stroke-linecap="round"/></svg>
+                🥬
+              </div>
+              <div class="cp-budget-amt" style="color:var(--green);">$63.25</div>
+              <div class="cp-budget-label">left</div>
+            </div>
+            <div class="cp-budget-item">
+              <div class="cp-budget-circle">
+                <svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/><circle cx="24" cy="24" r="20" stroke="#34d399" stroke-width="3" fill="none" stroke-dasharray="126" stroke-dashoffset="82" stroke-linecap="round"/></svg>
+                🚗
+              </div>
+              <div class="cp-budget-amt" style="color:var(--green);">$41.89</div>
+              <div class="cp-budget-label">left</div>
+            </div>
+            <div class="cp-budget-item">
+              <div class="cp-budget-circle">
+                <svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/><circle cx="24" cy="24" r="20" stroke="#34d399" stroke-width="3" fill="none" stroke-dasharray="126" stroke-dashoffset="88" stroke-linecap="round"/></svg>
+                🍼
+              </div>
+              <div class="cp-budget-amt" style="color:var(--green);">$183</div>
+              <div class="cp-budget-label">left</div>
+            </div>
+          </div>
+
+          <div class="cp-categories" style="margin-top:12px;">
+            <div class="cp-txn-section-title">Top Categories</div>
+            <div class="cp-cat-row"><div class="cp-cat-dot" style="background:var(--orange);"></div><span class="cp-cat-name">Food & Drink</span><span class="cp-cat-amt">$368</span></div>
+            <div class="cp-cat-row"><div class="cp-cat-dot" style="background:var(--red);"></div><span class="cp-cat-name">Restaurants</span><span class="cp-cat-amt">$84</span></div>
+            <div class="cp-cat-row"><div class="cp-cat-dot" style="background:var(--green);"></div><span class="cp-cat-name">Groceries</span><span class="cp-cat-amt">$263</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3: FLO Redesigned -->
+<div class="section" id="redesign">
+  <div class="section-header">
+    <div class="section-tag">The Fix</div>
+    <div class="section-title">FLO Redesigned — Stealing from the Best</div>
+    <div class="section-subtitle">Same FLO features, but adopting Copilot's visual wins: category tags, spending line, budget circles, review flow — plus FLO's unique landscape advantage.</div>
+  </div>
+
+  <div class="compare-grid">
+    <div>
+      <div class="app-label">
+        <div class="app-label-name" style="color:var(--text3);">Copilot (Reference)</div>
+        <div class="app-label-sub">What we're benchmarking against</div>
+      </div>
+      <div class="phone copilot-phone">
+        <div class="phone-bar"><span>9:41</span><span>100%</span></div>
+        <div class="phone-body">
+          <div class="cp-sidebar">
+            <div class="cp-sidebar-item active">Dashboard</div>
+            <div class="cp-sidebar-item">Investments</div>
+            <div class="cp-sidebar-item">Transactions</div>
+          </div>
+
+          <div class="cp-spending-hero">
+            <div class="cp-amount-big">$2,272</div>
+            <div class="cp-amount-sub">left out of $5,400 budgeted</div>
+            <div class="cp-badge-green">$268 under</div>
+          </div>
+
+          <div class="cp-chart">
+            <svg viewBox="0 0 300 70" style="width:100%;height:100%;">
+              <line x1="0" y1="35" x2="300" y2="35" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="3,3"/>
+              <polyline points="15,50 45,52 75,40 105,35 135,38 165,30 195,28 225,22 255,20 280,15" fill="none" stroke="url(#cpLine)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="280" cy="15" r="4" fill="#34d399"/>
+            </svg>
+          </div>
+
+          <div class="cp-txn-section">
+            <div class="cp-txn-section-title">To Review</div>
+            <div class="cp-txn-row">
+              <span class="cp-txn-name">Starbucks</span>
+              <span class="cp-tag coffee">☕ COFFEE</span>
+              <span class="cp-txn-amount">$6.45</span>
+            </div>
+            <div class="cp-txn-row">
+              <span class="cp-txn-name">Impasto</span>
+              <span class="cp-tag restaurants">🍕 RESTAURANTS</span>
+              <span class="cp-txn-amount">$17.55</span>
+            </div>
+            <div class="cp-review-btn">✓ Mark as reviewed</div>
+          </div>
+
+          <div class="cp-budgets" style="margin-top:12px;">
+            <div class="cp-budget-item">
+              <div class="cp-budget-circle">
+                <svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/><circle cx="24" cy="24" r="20" stroke="#f87171" stroke-width="3" fill="none" stroke-dasharray="126" stroke-dashoffset="0" stroke-linecap="round"/></svg>
+                🍔
+              </div>
+              <div class="cp-budget-amt" style="color:var(--red);">$206 over</div>
+            </div>
+            <div class="cp-budget-item">
+              <div class="cp-budget-circle">
+                <svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/><circle cx="24" cy="24" r="20" stroke="#34d399" stroke-width="3" fill="none" stroke-dasharray="126" stroke-dashoffset="46" stroke-linecap="round"/></svg>
+                🥬
+              </div>
+              <div class="cp-budget-amt" style="color:var(--green);">$63 left</div>
+            </div>
+            <div class="cp-budget-item">
+              <div class="cp-budget-circle">
+                <svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/><circle cx="24" cy="24" r="20" stroke="#34d399" stroke-width="3" fill="none" stroke-dasharray="126" stroke-dashoffset="82" stroke-linecap="round"/></svg>
+                🚗
+              </div>
+              <div class="cp-budget-amt" style="color:var(--green);">$42 left</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare-label">
+      <div class="vs-badge">→</div>
+    </div>
+
+    <div>
+      <div class="app-label">
+        <div class="app-label-name" style="background:linear-gradient(135deg,var(--teal),#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">FLO Redesigned</div>
+        <div class="app-label-sub">Copilot's polish + FLO's power + Landscape</div>
+      </div>
+      <div class="phone flo-new">
+        <div class="phone-bar"><span>9:41</span><span>FLO</span><span>100%</span></div>
+        <div class="phone-body">
+          <div class="fn-layout">
+            <div class="fn-sidebar">
+              <div class="fn-logo">FLO</div>
+              <div class="fn-nav-item active"><span>📊</span><div class="fn-nav-label">Home</div></div>
+              <div class="fn-nav-item"><span>💳</span><div class="fn-nav-label">Txns</div></div>
+              <div class="fn-nav-item"><span>📋</span><div class="fn-nav-label">Budget</div></div>
+              <div class="fn-nav-item"><span>📄</span><div class="fn-nav-label">Invoice</div></div>
+              <div class="fn-nav-item"><span>🏦</span><div class="fn-nav-label">Accts</div></div>
+              <div class="fn-nav-item"><span>👥</span><div class="fn-nav-label">Clients</div></div>
+              <div class="fn-nav-item"><span>🚗</span><div class="fn-nav-label">Miles</div></div>
+              <div class="fn-nav-item"><span>🧾</span><div class="fn-nav-label">Rcpts</div></div>
+              <div class="fn-nav-item"><span>📈</span><div class="fn-nav-label">Reports</div></div>
+              <div class="fn-nav-item"><span>🏛️</span><div class="fn-nav-label">Tax</div></div>
+              <div class="fn-nav-item"><span>⚙️</span><div class="fn-nav-label">Settings</div></div>
+            </div>
+            <div class="fn-content">
+              <!-- Copilot-inspired spending hero -->
+              <div class="fn-spending-hero">
+                <div class="fn-spending-amount">$2,618</div>
+                <div class="fn-spending-sub">remaining of $5,200 budget</div>
+                <div class="fn-badge under">$125 under pace</div>
+              </div>
+
+              <!-- Copilot-inspired spending line -->
+              <div class="fn-chart">
+                <svg viewBox="0 0 260 65" style="width:100%;height:100%;">
+                  <defs>
+                    <linearGradient id="fnLine" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#f87171"/>
+                      <stop offset="35%" stop-color="#fbbf24"/>
+                      <stop offset="100%" stop-color="#34d399"/>
+                    </linearGradient>
+                    <linearGradient id="fnFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#34d399" stop-opacity="0.1"/>
+                      <stop offset="100%" stop-color="#34d399" stop-opacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <line x1="5" y1="32" x2="255" y2="32" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
+                  <text x="255" y="30" fill="rgba(255,255,255,0.15)" font-size="7" text-anchor="end">budget line</text>
+                  <path d="M10,48 40,45 70,38 100,34 130,36 160,28 190,24 220,18 245,12 245,60 10,60Z" fill="url(#fnFill)"/>
+                  <polyline points="10,48 40,45 70,38 100,34 130,36 160,28 190,24 220,18 245,12" fill="none" stroke="url(#fnLine)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="245" cy="12" r="3.5" fill="#34d399"/>
+                </svg>
+              </div>
+
+              <!-- Copilot-inspired review section + FLO category tags -->
+              <div class="fn-txn-section">
+                <div class="fn-txn-header">
+                  <span class="fn-txn-title">To Review</span>
+                  <span class="fn-txn-link">View all ›</span>
+                </div>
+                <div class="fn-txn-date">Today</div>
+                <div class="fn-txn-row">
+                  <span class="fn-txn-name">Starbucks</span>
+                  <span class="fn-tag coffee">☕ COFFEE</span>
+                  <span class="fn-txn-amt">$6.45</span>
+                </div>
+                <div class="fn-txn-row">
+                  <span class="fn-txn-name">Uber Trip</span>
+                  <span class="fn-tag transport">🚕 TRANSPORT</span>
+                  <span style="font-size:8px;padding:2px 5px;border-radius:4px;background:rgba(20,184,166,0.1);color:var(--teal);margin-left:2px;">BIZ</span>
+                  <span class="fn-txn-amt">$24.80</span>
+                </div>
+                <div class="fn-txn-row">
+                  <span class="fn-txn-name">Whole Foods</span>
+                  <span class="fn-tag groceries">🥬 GROCERIES</span>
+                  <span class="fn-txn-amt">$87.32</span>
+                </div>
+                <div class="fn-review-btn">✓ Mark 3 as reviewed</div>
+              </div>
+
+              <!-- Copilot-inspired budget circles -->
+              <div style="display:flex;justify-content:space-between;align-items:center;margin:6px 0 4px;">
+                <span style="font-size:9px;font-weight:600;color:var(--text2);">BUDGETS</span>
+                <span style="font-size:8px;color:var(--teal);">All ›</span>
+              </div>
+              <div class="fn-budgets">
+                <div class="fn-budget-item">
+                  <div class="fn-budget-circle">
+                    <svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/><circle cx="22" cy="22" r="18" stroke="#f87171" stroke-width="3" fill="none" stroke-dasharray="113" stroke-dashoffset="0" stroke-linecap="round"/></svg>
+                    🍽️
+                  </div>
+                  <div class="fn-budget-amt" style="color:var(--red);">$12 over</div>
+                </div>
+                <div class="fn-budget-item">
+                  <div class="fn-budget-circle">
+                    <svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/><circle cx="22" cy="22" r="18" stroke="#fbbf24" stroke-width="3" fill="none" stroke-dasharray="113" stroke-dashoffset="22" stroke-linecap="round"/></svg>
+                    🛒
+                  </div>
+                  <div class="fn-budget-amt" style="color:var(--yellow);">$113 left</div>
+                </div>
+                <div class="fn-budget-item">
+                  <div class="fn-budget-circle">
+                    <svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/><circle cx="22" cy="22" r="18" stroke="#34d399" stroke-width="3" fill="none" stroke-dasharray="113" stroke-dashoffset="56" stroke-linecap="round"/></svg>
+                    🚗
+                  </div>
+                  <div class="fn-budget-amt" style="color:var(--green);">$190 left</div>
+                </div>
+                <div class="fn-budget-item">
+                  <div class="fn-budget-circle">
+                    <svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/><circle cx="22" cy="22" r="18" stroke="#34d399" stroke-width="3" fill="none" stroke-dasharray="113" stroke-dashoffset="68" stroke-linecap="round"/></svg>
+                    💻
+                  </div>
+                  <div class="fn-budget-amt" style="color:var(--green);">$152 left</div>
+                </div>
+                <div class="fn-budget-item">
+                  <div class="fn-budget-circle">
+                    <svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="none"/><circle cx="22" cy="22" r="18" stroke="#34d399" stroke-width="3" fill="none" stroke-dasharray="113" stroke-dashoffset="88" stroke-linecap="round"/></svg>
+                    🏥
+                  </div>
+                  <div class="fn-budget-amt" style="color:var(--green);">$200 left</div>
+                </div>
+              </div>
+
+              <!-- FLO EXCLUSIVE: Deduction callout — Copilot can't do this -->
+              <div class="fn-deduction" style="margin-top:10px;">
+                <div class="fn-deduction-icon">💡</div>
+                <div class="fn-deduction-text"><strong>$2,340</strong> in potential deductions found this quarter. <span style="color:var(--teal);font-size:10px;">Review →</span></div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 4: Verdict -->
+<div class="section" id="verdict">
+  <div class="section-header">
+    <div class="section-tag">The Plan</div>
+    <div class="section-title">What to Steal, What to Keep, What to Own</div>
+  </div>
+
+  <div class="verdict-box">
+    <div class="verdict-title">Copilot wins on visual polish. FLO wins on capability.</div>
+    <div class="verdict-text">The good news: every visual advantage Copilot has is adoptable. The spending line, category tags, budget circles, and review flow are design patterns, not patents. FLO can adopt all of them while keeping its unique strengths — invoicing, mileage, tax, receipts — and adding landscape mode, which Copilot doesn't have at all.</div>
+
+    <ul class="steal-list">
+      <li class="steal-item">
+        <div class="steal-num">1</div>
+        <div class="steal-text"><strong>Steal: Category tags.</strong> Replace plain-text category labels with bold, colored pill tags. This is the single highest-impact visual change. Every transaction should have a vibrant, scannable category identity. Use FLO's existing category system — just make it visible.</div>
+      </li>
+      <li class="steal-item">
+        <div class="steal-num">2</div>
+        <div class="steal-text"><strong>Steal: The spending line.</strong> Replace the "Net Cash Flow" hero with a spending trend line that shows budget pace. Add the "$X under" / "$X over" floating badge. This answers the user's first question before they even scroll.</div>
+      </li>
+      <li class="steal-item">
+        <div class="steal-num">3</div>
+        <div class="steal-text"><strong>Steal: Budget circles.</strong> Replace horizontal progress bars with circular indicators + emoji. These are more compact, more playful, and more glanceable. Keep FLO's detailed budget breakdown as a drill-down.</div>
+      </li>
+      <li class="steal-item">
+        <div class="steal-num">4</div>
+        <div class="steal-text"><strong>Steal: Transaction review flow.</strong> Add "Transactions to review" with a "Mark N as reviewed" button. This creates a daily engagement loop that FLO currently lacks. It also helps with FLO's smart categorization feature — reviewed = confirmed categorization.</div>
+      </li>
+      <li class="steal-item">
+        <div class="steal-num">5</div>
+        <div class="steal-text"><strong>Keep: FLO's feature depth.</strong> Invoicing, mileage, receipt OCR, tax optimization, Apple Watch — these are advantages Copilot can't match. Make them visible in the sidebar, not buried under "More."</div>
+      </li>
+      <li class="steal-item">
+        <div class="steal-num">6</div>
+        <div class="steal-text"><strong>Keep: Business/Personal toggle.</strong> Copilot is personal-only. FLO's ability to separate business and personal finances is a real differentiator for freelancers. Make the toggle more prominent — maybe a segmented control at the top of the sidebar.</div>
+      </li>
+      <li class="steal-item">
+        <div class="steal-num">7</div>
+        <div class="steal-text"><strong>Own: Landscape mode.</strong> Copilot doesn't have it. No major budgeting app does it well. The Xcode-style three-zone layout with sidebar-collapse is a genuine innovation for mobile finance. This is FLO's blue ocean.</div>
+      </li>
+      <li class="steal-item">
+        <div class="steal-num">8</div>
+        <div class="steal-text"><strong>Own: Tax intelligence in the dashboard.</strong> The deduction opportunity card is something only FLO can do. Copilot has no tax features. Make this card visually prominent — it's the reason a freelancer chooses FLO over Copilot.</div>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    event.target.classList.add('active');
+    window.scrollTo(0, 0);
+  }
+</script>
+
+</body>
+</html>

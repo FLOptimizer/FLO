@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLO Landscape — Three-Zone Navigation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-deep: #0a0a0f;
+    --bg-surface: #111118;
+    --bg-card: rgba(255,255,255,0.04);
+    --bg-card-hover: rgba(255,255,255,0.07);
+    --bg-glass: rgba(255,255,255,0.06);
+    --bg-glass-strong: rgba(255,255,255,0.10);
+    --border-subtle: rgba(255,255,255,0.06);
+    --border-glass: rgba(255,255,255,0.12);
+    --text-primary: #f5f5f7;
+    --text-secondary: rgba(245,245,247,0.6);
+    --text-tertiary: rgba(245,245,247,0.35);
+    --accent: #14b8a6;
+    --accent-glow: rgba(20,184,166,0.15);
+    --accent-dim: rgba(20,184,166,0.4);
+    --income: #34d399;
+    --expense: #f87171;
+    --warning: #fbbf24;
+    --sidebar-width: 220px;
+    --zone2-width: 340px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* Phone frame */
+  .phone-frame {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Status bar */
+  .status-bar {
+    height: 20px;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+
+  /* Main layout */
+  .landscape-layout {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Zone 1: Sidebar */
+  .sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 10;
+    overflow: hidden;
+  }
+
+  .sidebar.collapsed {
+    width: 0;
+    min-width: 0;
+    border-right: none;
+    opacity: 0;
+  }
+
+  .sidebar-header {
+    padding: 16px 16px 8px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-logo {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--accent), #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+  }
+
+  .sidebar-search {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .sidebar-search:focus {
+    border-color: var(--accent-dim);
+    background: var(--bg-glass-strong);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .sidebar-search::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+
+  .nav-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-tertiary);
+    padding: 12px 8px 4px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    position: relative;
+  }
+
+  .nav-item:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+  }
+
+  .nav-item.active {
+    background: var(--accent-glow);
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 20px;
+    background: var(--accent);
+    border-radius: 0 2px 2px 0;
+  }
+
+  .nav-icon {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .nav-badge {
+    margin-left: auto;
+    background: var(--accent);
+    color: #000;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  /* Zone 2: Content */
+  .content-zone {
+    flex: 1;
+    min-width: 0;
+    background: var(--bg-deep);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+  }
+
+  .content-zone.has-detail {
+    max-width: var(--zone2-width);
+    min-width: var(--zone2-width);
+    border-right: 1px solid var(--border-subtle);
+  }
+
+  .content-header {
+    padding: 16px 20px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .content-title {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+
+  .content-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .action-btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-glass);
+    background: var(--bg-glass);
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(10px);
+  }
+
+  .action-btn:hover {
+    background: var(--bg-glass-strong);
+    color: var(--text-primary);
+  }
+
+  .action-btn.primary {
+    background: var(--accent);
+    color: #000;
+    border-color: transparent;
+    font-weight: 500;
+  }
+
+  .content-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+
+  /* Zone 3: Detail */
+  .detail-zone {
+    flex: 1;
+    min-width: 0;
+    background: var(--bg-deep);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    max-width: 0;
+  }
+
+  .detail-zone.visible {
+    opacity: 1;
+    max-width: 100%;
+  }
+
+  .detail-header {
+    padding: 16px 20px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--accent);
+    font-size: 13px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+    transition: opacity 0.2s;
+  }
+
+  .back-btn:hover { opacity: 0.7; }
+
+  .detail-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+
+  /* Glass cards */
+  .glass-card {
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  }
+
+  .glass-card:hover {
+    background: var(--bg-card-hover);
+    border-color: rgba(255,255,255,0.15);
+    transform: translateY(-1px);
+  }
+
+  .glass-card.accent-glow {
+    box-shadow: 0 0 30px -10px var(--accent-glow);
+  }
+
+  /* Dashboard specific */
+  .hero-metric {
+    text-align: center;
+    padding: 24px 16px;
+    margin-bottom: 16px;
+  }
+
+  .hero-label {
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-tertiary);
+    margin-bottom: 4px;
+  }
+
+  .hero-amount {
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -1.5px;
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(180deg, var(--text-primary), rgba(245,245,247,0.7));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero-change {
+    font-size: 13px;
+    color: var(--income);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  .metric-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .metric-card {
+    flex: 1;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    padding: 14px;
+    backdrop-filter: blur(20px);
+  }
+
+  .metric-card-label {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  .metric-card-value {
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.5px;
+  }
+
+  .metric-card-value.income { color: var(--income); }
+  .metric-card-value.expense { color: var(--expense); }
+  .metric-card-value.accent { color: var(--accent); }
+
+  /* Chart placeholder */
+  .chart-area {
+    width: 100%;
+    height: 160px;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+
+  .chart-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Transaction list */
+  .txn-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .txn-item:hover {
+    padding-left: 4px;
+  }
+
+  .txn-item:last-child { border-bottom: none; }
+
+  .txn-icon-wrap {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .txn-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .txn-name {
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .txn-meta {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+  }
+
+  .txn-amount {
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .txn-amount.income { color: var(--income); }
+  .txn-amount.expense { color: var(--expense); }
+
+  /* Detail view items */
+  .detail-section {
+    margin-bottom: 20px;
+  }
+
+  .detail-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-tertiary);
+    margin-bottom: 8px;
+  }
+
+  .detail-field {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 14px;
+  }
+
+  .detail-field-label { color: var(--text-secondary); }
+  .detail-field-value { font-weight: 500; }
+
+  .detail-amount-large {
+    font-size: 32px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -1px;
+    margin: 8px 0 16px;
+  }
+
+  /* Budget bars */
+  .budget-item {
+    margin-bottom: 16px;
+    cursor: pointer;
+  }
+
+  .budget-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+
+  .budget-name { font-weight: 500; }
+  .budget-amounts { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+  .budget-bar {
+    height: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .budget-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Invoice items */
+  .invoice-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+  }
+
+  .invoice-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .invoice-status.paid { background: var(--income); }
+  .invoice-status.pending { background: var(--warning); }
+  .invoice-status.overdue { background: var(--expense); }
+
+  .invoice-info { flex: 1; }
+  .invoice-number { font-size: 14px; font-weight: 500; }
+  .invoice-client { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+
+  .invoice-amount {
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  /* Mode indicator */
+  .mode-indicator {
+    position: fixed;
+    top: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-glass-strong);
+    border: 1px solid var(--border-glass);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent);
+    backdrop-filter: blur(20px);
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+
+  .mode-indicator.show {
+    opacity: 1;
+  }
+
+  /* Instruction overlay */
+  .instructions {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-glass-strong);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    backdrop-filter: blur(20px);
+    z-index: 100;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .instructions kbd {
+    background: rgba(255,255,255,0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    border: 1px solid var(--border-subtle);
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+  /* Tag styles */
+  .tag {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .tag.business { background: rgba(20,184,166,0.15); color: var(--accent); }
+  .tag.personal { background: rgba(139,92,246,0.15); color: #a78bfa; }
+  .tag.deductible { background: rgba(52,211,153,0.15); color: var(--income); }
+
+  /* Receipt image placeholder */
+  .receipt-preview {
+    width: 100%;
+    height: 200px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    font-size: 40px;
+    margin-bottom: 16px;
+  }
+
+  /* Sparkline */
+  .sparkline-wrap {
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+  <div class="status-bar">
+    <span>9:41 AM</span>
+    <span>FLO — Landscape Mode</span>
+    <span>100% ⚡</span>
+  </div>
+
+  <div class="landscape-layout">
+    <!-- ZONE 1: Sidebar -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">FLO</div>
+        <input type="text" class="sidebar-search" placeholder="Search everything..." id="searchInput">
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav">
+        <div class="nav-section-label">Overview</div>
+        <div class="nav-item active" data-tab="dashboard" onclick="switchTab(this)">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </div>
+
+        <div class="nav-section-label">Money</div>
+        <div class="nav-item" data-tab="transactions" onclick="switchTab(this)">
+          <span class="nav-icon">💳</span>
+          <span>Transactions</span>
+          <span class="nav-badge">12</span>
+        </div>
+        <div class="nav-item" data-tab="budgets" onclick="switchTab(this)">
+          <span class="nav-icon">📋</span>
+          <span>Budgets</span>
+        </div>
+        <div class="nav-item" data-tab="invoices" onclick="switchTab(this)">
+          <span class="nav-icon">📄</span>
+          <span>Invoices</span>
+          <span class="nav-badge">3</span>
+        </div>
+
+        <div class="nav-section-label">Tracking</div>
+        <div class="nav-item" data-tab="accounts" onclick="switchTab(this)">
+          <span class="nav-icon">🏦</span>
+          <span>Accounts</span>
+        </div>
+        <div class="nav-item" data-tab="clients" onclick="switchTab(this)">
+          <span class="nav-icon">👥</span>
+          <span>Clients</span>
+        </div>
+        <div class="nav-item" data-tab="mileage" onclick="switchTab(this)">
+          <span class="nav-icon">🚗</span>
+          <span>Mileage</span>
+        </div>
+        <div class="nav-item" data-tab="receipts" onclick="switchTab(this)">
+          <span class="nav-icon">🧾</span>
+          <span>Receipts</span>
+        </div>
+
+        <div class="nav-section-label">Planning</div>
+        <div class="nav-item" data-tab="reports" onclick="switchTab(this)">
+          <span class="nav-icon">📈</span>
+          <span>Reports</span>
+        </div>
+        <div class="nav-item" data-tab="tax" onclick="switchTab(this)">
+          <span class="nav-icon">🏛️</span>
+          <span>Tax</span>
+        </div>
+
+        <div class="nav-section-label">App</div>
+        <div class="nav-item" data-tab="settings" onclick="switchTab(this)">
+          <span class="nav-icon">⚙️</span>
+          <span>Settings</span>
+        </div>
+      </nav>
+    </div>
+
+    <!-- ZONE 2: Content -->
+    <div class="content-zone" id="contentZone">
+      <div id="contentArea"></div>
+    </div>
+
+    <!-- ZONE 3: Detail -->
+    <div class="detail-zone" id="detailZone">
+      <div id="detailArea"></div>
+    </div>
+  </div>
+</div>
+
+<div class="mode-indicator" id="modeIndicator">Three-Zone Mode Active</div>
+
+<div class="instructions">
+  Click sidebar items to load content · Click list items to open detail view (Zone 3) · <kbd>←</kbd> back button collapses detail
+</div>
+
+<script>
+  // ====== Content Templates ======
+
+  const dashboardContent = `
+    <div class="content-header">
+      <div class="content-title">Dashboard</div>
+      <div class="content-actions">
+        <button class="action-btn">This Week</button>
+        <button class="action-btn">All Accounts</button>
+      </div>
+    </div>
+    <div class="content-body">
+      <div class="hero-metric">
+        <div class="hero-label">Net Cash Flow — March</div>
+        <div class="hero-amount">$8,247.63</div>
+        <div class="hero-change">↑ 12.3% vs February</div>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric-card">
+          <div class="metric-card-label">Income</div>
+          <div class="metric-card-value income">$14,830</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-card-label">Expenses</div>
+          <div class="metric-card-value expense">$6,582</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-card-label">Savings Rate</div>
+          <div class="metric-card-value accent">55.6%</div>
+        </div>
+      </div>
+
+      <div class="glass-card accent-glow">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Cash Flow — 6 Month Trend</div>
+        <div class="chart-area">
+          <svg class="chart-svg" viewBox="0 0 600 160">
+            <defs>
+              <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#34d399" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="#34d399" stop-opacity="0"/>
+              </linearGradient>
+              <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#f87171" stop-opacity="0.15"/>
+                <stop offset="100%" stop-color="#f87171" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <!-- Grid lines -->
+            <line x1="50" y1="20" x2="580" y2="20" stroke="rgba(255,255,255,0.04)" />
+            <line x1="50" y1="50" x2="580" y2="50" stroke="rgba(255,255,255,0.04)" />
+            <line x1="50" y1="80" x2="580" y2="80" stroke="rgba(255,255,255,0.04)" />
+            <line x1="50" y1="110" x2="580" y2="110" stroke="rgba(255,255,255,0.04)" />
+            <line x1="50" y1="140" x2="580" y2="140" stroke="rgba(255,255,255,0.04)" />
+            <!-- Month labels -->
+            <text x="95" y="155" fill="rgba(255,255,255,0.25)" font-size="10" text-anchor="middle">Oct</text>
+            <text x="195" y="155" fill="rgba(255,255,255,0.25)" font-size="10" text-anchor="middle">Nov</text>
+            <text x="295" y="155" fill="rgba(255,255,255,0.25)" font-size="10" text-anchor="middle">Dec</text>
+            <text x="395" y="155" fill="rgba(255,255,255,0.25)" font-size="10" text-anchor="middle">Jan</text>
+            <text x="495" y="155" fill="rgba(255,255,255,0.25)" font-size="10" text-anchor="middle">Feb</text>
+            <text x="565" y="155" fill="rgba(255,255,255,0.35)" font-size="10" text-anchor="middle" font-weight="500">Mar</text>
+            <!-- Income area -->
+            <path d="M95,65 L195,55 L295,70 L395,45 L495,40 L565,25 L565,140 L95,140 Z" fill="url(#incomeGrad)" />
+            <polyline points="95,65 195,55 295,70 395,45 495,40 565,25" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            <!-- Expense area -->
+            <path d="M95,95 L195,100 L295,90 L395,85 L495,88 L565,80 L565,140 L95,140 Z" fill="url(#expenseGrad)" />
+            <polyline points="95,95 195,100 295,90 395,85 495,88 565,80" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4,3" />
+            <!-- Data points -->
+            <circle cx="565" cy="25" r="4" fill="#34d399" />
+            <circle cx="565" cy="80" r="3.5" fill="#f87171" />
+            <!-- Legend -->
+            <circle cx="60" cy="12" r="4" fill="#34d399" />
+            <text x="70" y="15" fill="rgba(255,255,255,0.5)" font-size="10">Income</text>
+            <circle cx="130" cy="12" r="4" fill="#f87171" />
+            <text x="140" y="15" fill="rgba(255,255,255,0.5)" font-size="10">Expenses</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Recent Transactions</div>
+        <div class="txn-item" onclick="showTransactionDetail('starbucks')">
+          <div class="txn-icon-wrap" style="background:rgba(248,113,113,0.12);">☕</div>
+          <div class="txn-info">
+            <div class="txn-name">Starbucks Coffee</div>
+            <div class="txn-meta">Today · Coffee & Tea</div>
+          </div>
+          <div class="txn-amount expense">-$6.45</div>
+        </div>
+        <div class="txn-item" onclick="showTransactionDetail('client-payment')">
+          <div class="txn-icon-wrap" style="background:rgba(52,211,153,0.12);">💰</div>
+          <div class="txn-info">
+            <div class="txn-name">Acme Corp — Invoice #1042</div>
+            <div class="txn-meta">Yesterday · Client Payment</div>
+          </div>
+          <div class="txn-amount income">+$3,500.00</div>
+        </div>
+        <div class="txn-item" onclick="showTransactionDetail('adobe')">
+          <div class="txn-icon-wrap" style="background:rgba(248,113,113,0.12);">🎨</div>
+          <div class="txn-info">
+            <div class="txn-name">Adobe Creative Cloud</div>
+            <div class="txn-meta">Mar 14 · Software</div>
+          </div>
+          <div class="txn-amount expense">-$54.99</div>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">💡 Deduction Opportunity</div>
+        <div style="font-size:14px;">You have <strong style="color:var(--income)">$2,340</strong> in potential uncategorized business deductions this quarter.</div>
+      </div>
+    </div>
+  `;
+
+  const transactionsContent = `
+    <div class="content-header">
+      <div class="content-title">Transactions</div>
+      <div class="content-actions">
+        <button class="action-btn">Filter</button>
+        <button class="action-btn">Sort</button>
+        <button class="action-btn primary">+ Add</button>
+      </div>
+    </div>
+    <div class="content-body">
+      <div style="margin-bottom:16px;">
+        <input type="text" class="sidebar-search" placeholder="Search transactions..." style="width:100%;">
+      </div>
+
+      <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Today — March 17</div>
+      <div class="txn-item" onclick="showTransactionDetail('starbucks')">
+        <div class="txn-icon-wrap" style="background:rgba(248,113,113,0.12);">☕</div>
+        <div class="txn-info">
+          <div class="txn-name">Starbucks Coffee</div>
+          <div class="txn-meta">Checking ···4521 · Coffee & Tea</div>
+        </div>
+        <div class="txn-amount expense">-$6.45</div>
+      </div>
+      <div class="txn-item" onclick="showTransactionDetail('uber')">
+        <div class="txn-icon-wrap" style="background:rgba(248,113,113,0.12);">🚕</div>
+        <div class="txn-info">
+          <div class="txn-name">Uber Trip</div>
+          <div class="txn-meta">Checking ···4521 · Transportation <span class="tag business" style="margin-left:4px;">Business</span></div>
+        </div>
+        <div class="txn-amount expense">-$24.80</div>
+      </div>
+
+      <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px;">Yesterday — March 16</div>
+      <div class="txn-item" onclick="showTransactionDetail('client-payment')">
+        <div class="txn-icon-wrap" style="background:rgba(52,211,153,0.12);">💰</div>
+        <div class="txn-info">
+          <div class="txn-name">Acme Corp — Invoice #1042</div>
+          <div class="txn-meta">Business Checking ···8832 · Client Payment</div>
+        </div>
+        <div class="txn-amount income">+$3,500.00</div>
+      </div>
+      <div class="txn-item" onclick="showTransactionDetail('wholefds')">
+        <div class="txn-icon-wrap" style="background:rgba(248,113,113,0.12);">🛒</div>
+        <div class="txn-info">
+          <div class="txn-name">Whole Foods Market</div>
+          <div class="txn-meta">Checking ···4521 · Groceries <span class="tag personal" style="margin-left:4px;">Personal</span></div>
+        </div>
+        <div class="txn-amount expense">-$87.32</div>
+      </div>
+      <div class="txn-item" onclick="showTransactionDetail('aws')">
+        <div class="txn-icon-wrap" style="background:rgba(248,113,113,0.12);">☁️</div>
+        <div class="txn-info">
+          <div class="txn-name">AWS Services</div>
+          <div class="txn-meta">Business CC ···9901 · Cloud Hosting <span class="tag deductible" style="margin-left:4px;">Deductible</span></div>
+        </div>
+        <div class="txn-amount expense">-$142.67</div>
+      </div>
+
+      <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px;">March 14</div>
+      <div class="txn-item" onclick="showTransactionDetail('adobe')">
+        <div class="txn-icon-wrap" style="background:rgba(248,113,113,0.12);">🎨</div>
+        <div class="txn-info">
+          <div class="txn-name">Adobe Creative Cloud</div>
+          <div class="txn-meta">Business CC ···9901 · Software <span class="tag deductible" style="margin-left:4px;">Deductible</span></div>
+        </div>
+        <div class="txn-amount expense">-$54.99</div>
+      </div>
+      <div class="txn-item" onclick="showTransactionDetail('transfer')">
+        <div class="txn-icon-wrap" style="background:rgba(20,184,166,0.12);">↔️</div>
+        <div class="txn-info">
+          <div class="txn-name">Transfer to Savings</div>
+          <div class="txn-meta">Checking ···4521 → Savings ···7744</div>
+        </div>
+        <div class="txn-amount" style="color:var(--text-secondary);">$500.00</div>
+      </div>
+      <div class="txn-item" onclick="showTransactionDetail('freelance2')">
+        <div class="txn-icon-wrap" style="background:rgba(52,211,153,0.12);">💰</div>
+        <div class="txn-info">
+          <div class="txn-name">Globex Inc — Retainer</div>
+          <div class="txn-meta">Business Checking ···8832 · Client Payment</div>
+        </div>
+        <div class="txn-amount income">+$2,000.00</div>
+      </div>
+    </div>
+  `;
+
+  const budgetsContent = `
+    <div class="content-header">
+      <div class="content-title">Budgets</div>
+      <div class="content-actions">
+        <button class="action-btn">March 2026</button>
+        <button class="action-btn primary">+ New Budget</button>
+      </div>
+    </div>
+    <div class="content-body">
+      <div class="metric-row">
+        <div class="metric-card">
+          <div class="metric-card-label">Total Budget</div>
+          <div class="metric-card-value">$5,200</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-card-label">Spent</div>
+          <div class="metric-card-value expense">$3,847</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-card-label">Remaining</div>
+          <div class="metric-card-value income">$1,353</div>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="budget-item" onclick="showBudgetDetail('housing')">
+          <div class="budget-header">
+            <span class="budget-name">🏠 Housing</span>
+            <span class="budget-amounts">$1,850 / $1,850</span>
+          </div>
+          <div class="budget-bar"><div class="budget-fill" style="width:100%;background:var(--expense);"></div></div>
+        </div>
+        <div class="budget-item" onclick="showBudgetDetail('groceries')">
+          <div class="budget-header">
+            <span class="budget-name">🛒 Groceries</span>
+            <span class="budget-amounts">$487 / $600</span>
+          </div>
+          <div class="budget-bar"><div class="budget-fill" style="width:81%;background:var(--warning);"></div></div>
+        </div>
+        <div class="budget-item" onclick="showBudgetDetail('transport')">
+          <div class="budget-header">
+            <span class="budget-name">🚗 Transportation</span>
+            <span class="budget-amounts">$210 / $400</span>
+          </div>
+          <div class="budget-bar"><div class="budget-fill" style="width:52%;background:var(--accent);"></div></div>
+        </div>
+        <div class="budget-item" onclick="showBudgetDetail('software')">
+          <div class="budget-header">
+            <span class="budget-name">💻 Software & Tools</span>
+            <span class="budget-amounts">$198 / $350</span>
+          </div>
+          <div class="budget-bar"><div class="budget-fill" style="width:56%;background:var(--accent);"></div></div>
+        </div>
+        <div class="budget-item" onclick="showBudgetDetail('dining')">
+          <div class="budget-header">
+            <span class="budget-name">🍽️ Dining Out</span>
+            <span class="budget-amounts">$312 / $300</span>
+          </div>
+          <div class="budget-bar"><div class="budget-fill" style="width:104%;background:var(--expense);"></div></div>
+        </div>
+        <div class="budget-item" onclick="showBudgetDetail('entertainment')">
+          <div class="budget-header">
+            <span class="budget-name">🎬 Entertainment</span>
+            <span class="budget-amounts">$45 / $200</span>
+          </div>
+          <div class="budget-bar"><div class="budget-fill" style="width:22%;background:var(--income);"></div></div>
+        </div>
+        <div class="budget-item" onclick="showBudgetDetail('office')">
+          <div class="budget-header">
+            <span class="budget-name">📦 Office Supplies</span>
+            <span class="budget-amounts">$95 / $150</span>
+          </div>
+          <div class="budget-bar"><div class="budget-fill" style="width:63%;background:var(--accent);"></div></div>
+        </div>
+        <div class="budget-item" onclick="showBudgetDetail('health')">
+          <div class="budget-header">
+            <span class="budget-name">🏥 Health & Wellness</span>
+            <span class="budget-amounts">$150 / $350</span>
+          </div>
+          <div class="budget-bar"><div class="budget-fill" style="width:42%;background:var(--income);"></div></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const invoicesContent = `
+    <div class="content-header">
+      <div class="content-title">Invoices</div>
+      <div class="content-actions">
+        <button class="action-btn">All</button>
+        <button class="action-btn primary">+ New Invoice</button>
+      </div>
+    </div>
+    <div class="content-body">
+      <div class="metric-row">
+        <div class="metric-card">
+          <div class="metric-card-label">Outstanding</div>
+          <div class="metric-card-value" style="color:var(--warning);">$7,250</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-card-label">Paid (Mar)</div>
+          <div class="metric-card-value income">$11,500</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-card-label">Overdue</div>
+          <div class="metric-card-value expense">$1,200</div>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Pending</div>
+        <div class="invoice-item" onclick="showInvoiceDetail('1045')">
+          <div class="invoice-status pending"></div>
+          <div class="invoice-info">
+            <div class="invoice-number">INV-1045</div>
+            <div class="invoice-client">Acme Corp · Due Mar 25</div>
+          </div>
+          <div class="invoice-amount">$4,500.00</div>
+        </div>
+        <div class="invoice-item" onclick="showInvoiceDetail('1044')">
+          <div class="invoice-status pending"></div>
+          <div class="invoice-info">
+            <div class="invoice-number">INV-1044</div>
+            <div class="invoice-client">Globex Inc · Due Mar 30</div>
+          </div>
+          <div class="invoice-amount">$2,750.00</div>
+        </div>
+        <div class="invoice-item" onclick="showInvoiceDetail('1040')">
+          <div class="invoice-status overdue"></div>
+          <div class="invoice-info">
+            <div class="invoice-number">INV-1040</div>
+            <div class="invoice-client">Initech · Overdue 5 days</div>
+          </div>
+          <div class="invoice-amount" style="color:var(--expense);">$1,200.00</div>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Recently Paid</div>
+        <div class="invoice-item" onclick="showInvoiceDetail('1042')">
+          <div class="invoice-status paid"></div>
+          <div class="invoice-info">
+            <div class="invoice-number">INV-1042</div>
+            <div class="invoice-client">Acme Corp · Paid Mar 16</div>
+          </div>
+          <div class="invoice-amount" style="color:var(--income);">$3,500.00</div>
+        </div>
+        <div class="invoice-item" onclick="showInvoiceDetail('1041')">
+          <div class="invoice-status paid"></div>
+          <div class="invoice-info">
+            <div class="invoice-number">INV-1041</div>
+            <div class="invoice-client">Wayne Enterprises · Paid Mar 12</div>
+          </div>
+          <div class="invoice-amount" style="color:var(--income);">$8,000.00</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ====== Detail Templates ======
+
+  const transactionDetails = {
+    'starbucks': `
+      <div class="detail-header">
+        <button class="back-btn" onclick="hideDetail()">← Back</button>
+        <div class="content-actions">
+          <button class="action-btn">Edit</button>
+          <button class="action-btn" style="color:var(--expense);">Delete</button>
+        </div>
+      </div>
+      <div class="detail-body">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:36px;margin-bottom:8px;">☕</div>
+          <div style="font-size:16px;font-weight:600;">Starbucks Coffee</div>
+          <div class="detail-amount-large" style="color:var(--expense);">-$6.45</div>
+          <span class="tag personal">Personal</span>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Details</div>
+          <div class="detail-field"><span class="detail-field-label">Date</span><span class="detail-field-value">Mar 17, 2026</span></div>
+          <div class="detail-field"><span class="detail-field-label">Category</span><span class="detail-field-value">Coffee & Tea</span></div>
+          <div class="detail-field"><span class="detail-field-label">Account</span><span class="detail-field-value">Checking ···4521</span></div>
+          <div class="detail-field"><span class="detail-field-label">Type</span><span class="detail-field-value">Expense</span></div>
+          <div class="detail-field"><span class="detail-field-label">Merchant</span><span class="detail-field-value">Starbucks #12847</span></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Receipt</div>
+          <div class="receipt-preview">📷</div>
+          <button class="action-btn" style="width:100%;text-align:center;">Attach Receipt</button>
+        </div>
+      </div>
+    `,
+    'client-payment': `
+      <div class="detail-header">
+        <button class="back-btn" onclick="hideDetail()">← Back</button>
+        <div class="content-actions">
+          <button class="action-btn">Edit</button>
+        </div>
+      </div>
+      <div class="detail-body">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:36px;margin-bottom:8px;">💰</div>
+          <div style="font-size:16px;font-weight:600;">Acme Corp</div>
+          <div class="detail-amount-large" style="color:var(--income);">+$3,500.00</div>
+          <span class="tag business">Business</span>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Details</div>
+          <div class="detail-field"><span class="detail-field-label">Date</span><span class="detail-field-value">Mar 16, 2026</span></div>
+          <div class="detail-field"><span class="detail-field-label">Category</span><span class="detail-field-value">Client Payment</span></div>
+          <div class="detail-field"><span class="detail-field-label">Account</span><span class="detail-field-value">Business Checking ···8832</span></div>
+          <div class="detail-field"><span class="detail-field-label">Invoice</span><span class="detail-field-value" style="color:var(--accent);">INV-1042</span></div>
+          <div class="detail-field"><span class="detail-field-label">Client</span><span class="detail-field-value">Acme Corp</span></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Linked Invoice</div>
+          <div class="glass-card" style="cursor:pointer;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:14px;font-weight:500;">INV-1042</div>
+                <div style="font-size:12px;color:var(--text-tertiary);margin-top:2px;">Web Development — Feb 2026</div>
+              </div>
+              <span class="tag" style="background:rgba(52,211,153,0.15);color:var(--income);">Paid</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+    'adobe': `
+      <div class="detail-header">
+        <button class="back-btn" onclick="hideDetail()">← Back</button>
+        <div class="content-actions"><button class="action-btn">Edit</button></div>
+      </div>
+      <div class="detail-body">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:36px;margin-bottom:8px;">🎨</div>
+          <div style="font-size:16px;font-weight:600;">Adobe Creative Cloud</div>
+          <div class="detail-amount-large" style="color:var(--expense);">-$54.99</div>
+          <span class="tag business">Business</span> <span class="tag deductible">Deductible</span>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Details</div>
+          <div class="detail-field"><span class="detail-field-label">Date</span><span class="detail-field-value">Mar 14, 2026</span></div>
+          <div class="detail-field"><span class="detail-field-label">Category</span><span class="detail-field-value">Software Subscriptions</span></div>
+          <div class="detail-field"><span class="detail-field-label">Account</span><span class="detail-field-value">Business CC ···9901</span></div>
+          <div class="detail-field"><span class="detail-field-label">Recurring</span><span class="detail-field-value" style="color:var(--accent);">Monthly</span></div>
+          <div class="detail-field"><span class="detail-field-label">Tax Deductible</span><span class="detail-field-value" style="color:var(--income);">Yes — 100%</span></div>
+          <div class="detail-field"><span class="detail-field-label">YTD Total</span><span class="detail-field-value">$164.97</span></div>
+        </div>
+      </div>
+    `,
+    'uber': `
+      <div class="detail-header">
+        <button class="back-btn" onclick="hideDetail()">← Back</button>
+        <div class="content-actions"><button class="action-btn">Edit</button></div>
+      </div>
+      <div class="detail-body">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:36px;margin-bottom:8px;">🚕</div>
+          <div style="font-size:16px;font-weight:600;">Uber Trip</div>
+          <div class="detail-amount-large" style="color:var(--expense);">-$24.80</div>
+          <span class="tag business">Business</span> <span class="tag deductible">Deductible</span>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Details</div>
+          <div class="detail-field"><span class="detail-field-label">Date</span><span class="detail-field-value">Mar 17, 2026</span></div>
+          <div class="detail-field"><span class="detail-field-label">Category</span><span class="detail-field-value">Transportation</span></div>
+          <div class="detail-field"><span class="detail-field-label">Account</span><span class="detail-field-value">Checking ···4521</span></div>
+          <div class="detail-field"><span class="detail-field-label">Deductible</span><span class="detail-field-value" style="color:var(--income);">Yes — Business Travel</span></div>
+        </div>
+      </div>
+    `
+  };
+
+  // Fallback detail for items without specific content
+  function genericTransactionDetail(name, emoji) {
+    return `
+      <div class="detail-header">
+        <button class="back-btn" onclick="hideDetail()">← Back</button>
+        <div class="content-actions"><button class="action-btn">Edit</button></div>
+      </div>
+      <div class="detail-body">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:36px;margin-bottom:8px;">${emoji || '📝'}</div>
+          <div style="font-size:16px;font-weight:600;">${name || 'Transaction'}</div>
+          <div class="detail-amount-large">—</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Details</div>
+          <div style="color:var(--text-secondary);font-size:14px;padding:20px 0;text-align:center;">Tap a specific transaction to see its details here.</div>
+        </div>
+      </div>
+    `;
+  }
+
+  const budgetDetails = {
+    'groceries': `
+      <div class="detail-header">
+        <button class="back-btn" onclick="hideDetail()">← Back</button>
+        <div class="content-actions"><button class="action-btn">Edit Budget</button></div>
+      </div>
+      <div class="detail-body">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:36px;margin-bottom:8px;">🛒</div>
+          <div style="font-size:16px;font-weight:600;">Groceries</div>
+          <div class="detail-amount-large"><span style="color:var(--warning);">$487</span> <span style="font-size:18px;color:var(--text-tertiary);">/ $600</span></div>
+          <div style="font-size:13px;color:var(--income);">$113 remaining · 14 days left</div>
+        </div>
+        <div class="glass-card" style="margin-bottom:16px;">
+          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Spending Pace</div>
+          <div style="font-size:14px;">You're spending at <strong style="color:var(--warning);">$28.65/day</strong>. To stay on budget, aim for <strong style="color:var(--income);">$8.07/day</strong> for the rest of the month.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Recent in Category</div>
+          <div class="txn-item">
+            <div class="txn-info"><div class="txn-name">Whole Foods Market</div><div class="txn-meta">Mar 16</div></div>
+            <div class="txn-amount expense">-$87.32</div>
+          </div>
+          <div class="txn-item">
+            <div class="txn-info"><div class="txn-name">Trader Joe's</div><div class="txn-meta">Mar 13</div></div>
+            <div class="txn-amount expense">-$62.15</div>
+          </div>
+          <div class="txn-item">
+            <div class="txn-info"><div class="txn-name">Costco</div><div class="txn-meta">Mar 9</div></div>
+            <div class="txn-amount expense">-$156.40</div>
+          </div>
+        </div>
+      </div>
+    `,
+    'dining': `
+      <div class="detail-header">
+        <button class="back-btn" onclick="hideDetail()">← Back</button>
+        <div class="content-actions"><button class="action-btn">Edit Budget</button></div>
+      </div>
+      <div class="detail-body">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:36px;margin-bottom:8px;">🍽️</div>
+          <div style="font-size:16px;font-weight:600;">Dining Out</div>
+          <div class="detail-amount-large"><span style="color:var(--expense);">$312</span> <span style="font-size:18px;color:var(--text-tertiary);">/ $300</span></div>
+          <div style="font-size:13px;color:var(--expense);">$12 over budget</div>
+        </div>
+        <div class="glass-card" style="border-color:rgba(248,113,113,0.2);margin-bottom:16px;">
+          <div style="font-size:13px;color:var(--expense);margin-bottom:4px;">⚠️ Over Budget</div>
+          <div style="font-size:14px;color:var(--text-secondary);">You've exceeded this month's dining budget by $12. Consider reducing dining expenses for the remaining 14 days.</div>
+        </div>
+      </div>
+    `
+  };
+
+  function genericBudgetDetail(name, emoji) {
+    return `
+      <div class="detail-header">
+        <button class="back-btn" onclick="hideDetail()">← Back</button>
+        <div class="content-actions"><button class="action-btn">Edit Budget</button></div>
+      </div>
+      <div class="detail-body">
+        <div style="text-align:center;padding:40px 0;">
+          <div style="font-size:36px;margin-bottom:12px;">${emoji || '📋'}</div>
+          <div style="font-size:16px;font-weight:600;">${name}</div>
+          <div style="color:var(--text-secondary);font-size:14px;margin-top:12px;">Select a budget category to view spending details and trends.</div>
+        </div>
+      </div>
+    `;
+  }
+
+  const invoiceDetails = {
+    '1045': `
+      <div class="detail-header">
+        <button class="back-btn" onclick="hideDetail()">← Back</button>
+        <div class="content-actions">
+          <button class="action-btn">Edit</button>
+          <button class="action-btn primary">Send Reminder</button>
+        </div>
+      </div>
+      <div class="detail-body">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:14px;color:var(--text-tertiary);">INV-1045</div>
+          <div class="detail-amount-large">$4,500.00</div>
+          <span class="tag" style="background:rgba(251,191,36,0.15);color:var(--warning);">Pending</span>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Invoice Details</div>
+          <div class="detail-field"><span class="detail-field-label">Client</span><span class="detail-field-value">Acme Corp</span></div>
+          <div class="detail-field"><span class="detail-field-label">Issue Date</span><span class="detail-field-value">Mar 10, 2026</span></div>
+          <div class="detail-field"><span class="detail-field-label">Due Date</span><span class="detail-field-value">Mar 25, 2026</span></div>
+          <div class="detail-field"><span class="detail-field-label">Terms</span><span class="detail-field-value">Net 15</span></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Line Items</div>
+          <div class="glass-card">
+            <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;">
+              <span>Web Development — March</span><span style="font-weight:600;">$3,500.00</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;border-top:1px solid var(--border-subtle);">
+              <span>UI Design Review (5 hrs × $200)</span><span style="font-weight:600;">$1,000.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+    '1042': `
+      <div class="detail-header">
+        <button class="back-btn" onclick="hideDetail()">← Back</button>
+        <div class="content-actions"><button class="action-btn">View PDF</button></div>
+      </div>
+      <div class="detail-body">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:14px;color:var(--text-tertiary);">INV-1042</div>
+          <div class="detail-amount-large" style="color:var(--income);">$3,500.00</div>
+          <span class="tag" style="background:rgba(52,211,153,0.15);color:var(--income);">Paid</span>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Invoice Details</div>
+          <div class="detail-field"><span class="detail-field-label">Client</span><span class="detail-field-value">Acme Corp</span></div>
+          <div class="detail-field"><span class="detail-field-label">Issue Date</span><span class="detail-field-value">Mar 1, 2026</span></div>
+          <div class="detail-field"><span class="detail-field-label">Paid Date</span><span class="detail-field-value" style="color:var(--income);">Mar 16, 2026</span></div>
+        </div>
+      </div>
+    `
+  };
+
+  function genericInvoiceDetail(id) {
+    return `
+      <div class="detail-header">
+        <button class="back-btn" onclick="hideDetail()">← Back</button>
+      </div>
+      <div class="detail-body">
+        <div style="text-align:center;padding:40px 0;">
+          <div style="font-size:36px;margin-bottom:12px;">📄</div>
+          <div style="font-size:16px;font-weight:600;">INV-${id}</div>
+          <div style="color:var(--text-secondary);font-size:14px;margin-top:8px;">Invoice detail view</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Simple content for other tabs
+  function simpleTabContent(title, emoji, description, items) {
+    let itemsHtml = items.map(i => `
+      <div class="txn-item" style="cursor:default;">
+        <div class="txn-icon-wrap" style="background:rgba(20,184,166,0.1);">${i.icon}</div>
+        <div class="txn-info">
+          <div class="txn-name">${i.name}</div>
+          <div class="txn-meta">${i.meta}</div>
+        </div>
+        ${i.value ? `<div style="font-size:14px;font-weight:600;color:var(--text-secondary);">${i.value}</div>` : ''}
+      </div>
+    `).join('');
+
+    return `
+      <div class="content-header">
+        <div class="content-title">${title}</div>
+        <div class="content-actions"><button class="action-btn primary">+ Add</button></div>
+      </div>
+      <div class="content-body">
+        <div style="text-align:center;padding:16px 0 20px;">
+          <div style="font-size:32px;margin-bottom:8px;">${emoji}</div>
+          <div style="font-size:13px;color:var(--text-secondary);">${description}</div>
+        </div>
+        <div class="glass-card">${itemsHtml}</div>
+      </div>
+    `;
+  }
+
+  const otherTabContents = {
+    accounts: simpleTabContent('Accounts', '🏦', '4 connected accounts · Last synced 2 min ago', [
+      { icon: '🏦', name: 'Business Checking', meta: 'Chase ···8832', value: '$12,450.22' },
+      { icon: '🏦', name: 'Personal Checking', meta: 'Chase ···4521', value: '$4,832.10' },
+      { icon: '💳', name: 'Business Credit Card', meta: 'Amex ···9901', value: '-$1,247.66' },
+      { icon: '🏦', name: 'Savings', meta: 'Marcus ···7744', value: '$28,500.00' },
+    ]),
+    clients: simpleTabContent('Clients', '👥', '5 active clients', [
+      { icon: '🏢', name: 'Acme Corp', meta: '4 invoices · $14,000 YTD', value: '' },
+      { icon: '🏢', name: 'Globex Inc', meta: '3 invoices · $6,000 YTD', value: '' },
+      { icon: '🏢', name: 'Wayne Enterprises', meta: '2 invoices · $16,000 YTD', value: '' },
+      { icon: '🏢', name: 'Initech', meta: '1 invoice · $1,200 outstanding', value: '' },
+      { icon: '👤', name: 'Sarah Miller', meta: '1 invoice · $800 YTD', value: '' },
+    ]),
+    mileage: simpleTabContent('Mileage', '🚗', '247.3 miles tracked this month · $163.22 deduction', [
+      { icon: '📍', name: 'Client Meeting — Acme Corp', meta: 'Mar 15 · 34.2 mi · Business', value: '$22.59' },
+      { icon: '📍', name: 'Office Supply Run', meta: 'Mar 12 · 12.8 mi · Business', value: '$8.45' },
+      { icon: '📍', name: 'Client Meeting — Globex', meta: 'Mar 10 · 48.6 mi · Business', value: '$32.12' },
+    ]),
+    receipts: simpleTabContent('Receipts', '🧾', '12 receipts this month · 3 unmatched', [
+      { icon: '🧾', name: 'Office Depot — Printer Ink', meta: 'Mar 15 · Matched to transaction', value: '$42.99' },
+      { icon: '🧾', name: 'Best Buy — Monitor Stand', meta: 'Mar 11 · Matched', value: '$89.99' },
+      { icon: '⚠️', name: 'Unknown Receipt', meta: 'Mar 8 · Unmatched — needs review', value: '$67.50' },
+    ]),
+    reports: simpleTabContent('Reports', '📈', 'Generate financial reports and export data', [
+      { icon: '📊', name: 'Profit & Loss Statement', meta: 'Last generated: Mar 1', value: '' },
+      { icon: '💰', name: 'Cash Flow Report', meta: 'Last generated: Feb 28', value: '' },
+      { icon: '🏛️', name: 'Tax Summary (Q1 2026)', meta: 'Not yet generated', value: '' },
+      { icon: '📋', name: 'Expense Report', meta: 'Last generated: Mar 10', value: '' },
+    ]),
+    tax: simpleTabContent('Tax', '🏛️', 'Estimated Q1 liability: $3,240 · Due Apr 15', [
+      { icon: '✅', name: 'Q4 2025 — Paid', meta: 'Paid Jan 15 · $2,890', value: '' },
+      { icon: '⏳', name: 'Q1 2026 — Estimated', meta: 'Due Apr 15 · $3,240 estimated', value: '' },
+      { icon: '💡', name: 'Deduction Opportunities', meta: '8 potential deductions found · $2,340', value: '' },
+    ]),
+    settings: simpleTabContent('Settings', '⚙️', 'Customize your FLO experience', [
+      { icon: '🎨', name: 'Appearance', meta: 'Color scheme: Ocean Teal · Dark mode', value: '' },
+      { icon: '🔒', name: 'Security', meta: 'Face ID enabled · Auto-lock on', value: '' },
+      { icon: '🏢', name: 'Business Profile', meta: "Travis Anderson · Freelance", value: '' },
+      { icon: '☁️', name: 'Cloud Sync', meta: 'iCloud enabled · Last sync: 2 min ago', value: '' },
+      { icon: '🔔', name: 'Notifications', meta: 'Budget alerts: On · Tax reminders: On', value: '' },
+    ]),
+  };
+
+  // ====== State & Navigation ======
+
+  let currentTab = 'dashboard';
+  let detailVisible = false;
+
+  function switchTab(el) {
+    // Remove active from all items
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    el.classList.add('active');
+
+    const tab = el.dataset.tab;
+    currentTab = tab;
+
+    // Hide detail zone first
+    hideDetail();
+
+    // Load content
+    const contentArea = document.getElementById('contentArea');
+    switch(tab) {
+      case 'dashboard': contentArea.innerHTML = dashboardContent; break;
+      case 'transactions': contentArea.innerHTML = transactionsContent; break;
+      case 'budgets': contentArea.innerHTML = budgetsContent; break;
+      case 'invoices': contentArea.innerHTML = invoicesContent; break;
+      default:
+        contentArea.innerHTML = otherTabContents[tab] || simpleTabContent(tab, '📁', '', []);
+    }
+  }
+
+  function showDetail(html) {
+    const sidebar = document.getElementById('sidebar');
+    const contentZone = document.getElementById('contentZone');
+    const detailZone = document.getElementById('detailZone');
+    const detailArea = document.getElementById('detailArea');
+    const modeIndicator = document.getElementById('modeIndicator');
+
+    detailArea.innerHTML = html;
+
+    // Collapse sidebar, constrain content, show detail
+    sidebar.classList.add('collapsed');
+    contentZone.classList.add('has-detail');
+    detailZone.classList.add('visible');
+    detailVisible = true;
+
+    // Flash mode indicator
+    modeIndicator.classList.add('show');
+    setTimeout(() => modeIndicator.classList.remove('show'), 2000);
+  }
+
+  function hideDetail() {
+    const sidebar = document.getElementById('sidebar');
+    const contentZone = document.getElementById('contentZone');
+    const detailZone = document.getElementById('detailZone');
+
+    sidebar.classList.remove('collapsed');
+    contentZone.classList.remove('has-detail');
+    detailZone.classList.remove('visible');
+    detailVisible = false;
+  }
+
+  function showTransactionDetail(id) {
+    const html = transactionDetails[id] || genericTransactionDetail(id, '📝');
+    showDetail(html);
+  }
+
+  function showBudgetDetail(id) {
+    const html = budgetDetails[id] || genericBudgetDetail(id, '📋');
+    showDetail(html);
+  }
+
+  function showInvoiceDetail(id) {
+    const html = invoiceDetails[id] || genericInvoiceDetail(id);
+    showDetail(html);
+  }
+
+  // Search filtering
+  document.getElementById('searchInput').addEventListener('input', function(e) {
+    const query = e.target.value.toLowerCase();
+    document.querySelectorAll('.nav-item').forEach(item => {
+      const text = item.textContent.toLowerCase();
+      item.style.display = text.includes(query) ? 'flex' : 'none';
+    });
+  });
+
+  // Initialize
+  document.getElementById('contentArea').innerHTML = dashboardContent;
+</script>
+
+</body>
+</html>
