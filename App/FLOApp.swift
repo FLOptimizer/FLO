@@ -249,7 +249,29 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             )
             return true
         }
-        
+
+        // Handle invoice universal links: https://floptimizer.github.io/FLO/invoice/<uuid>
+        // (same paths the AASA declares for the App Clip; in the full app they
+        // open the invoice directly)
+        let components = url.pathComponents
+        if let invoiceIndex = components.firstIndex(of: "invoice"),
+           components.indices.contains(invoiceIndex + 1),
+           let invoiceId = UUID(uuidString: components[invoiceIndex + 1]) {
+            Task { @MainActor in
+                NavigationService.shared.openInvoice(id: invoiceId)
+            }
+            return true
+        }
+
+        // Unrecognized link (e.g. an invoice URL without a valid id): open the
+        // Invoices tab rather than bouncing the user back to Safari
+        if components.contains("invoice") {
+            Task { @MainActor in
+                NavigationService.shared.navigateTo(.invoices)
+            }
+            return true
+        }
+
         return false
     }
     
