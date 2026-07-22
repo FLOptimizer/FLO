@@ -540,21 +540,11 @@ struct AddTransactionView: View {
                     .minimumScaleFactor(0.7)
                     .foregroundStyle(.secondary)
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(filteredAccounts, id: \.id) { account in
-                            AccountChipView(
-                                account: account,
-                                isSelected: selectedAccount?.id == account.id,
-                                showBalance: true
-                            ) {
-                                HapticService.play(.light)
-                                selectedAccount = account
-                            }
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
+                AccountMenuPicker(
+                    title: "Account",
+                    accounts: filteredAccounts,
+                    selection: $selectedAccount
+                )
             }
         } header: {
             Text("Account")
@@ -1152,55 +1142,6 @@ struct AddTransactionView: View {
                 }
             }
         }
-    }
-}
-
-// MARK: - Account Chip View
-
-struct AccountChipView: View {
-    let account: Account
-    let isSelected: Bool
-    let showBalance: Bool
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Image(systemName: account.icon)
-                        .font(.caption)
-                    Text(account.name)
-                        .font(.subheadline)
-                        .lineLimit(1)
-                }
-                
-                if showBalance {
-                    Text(account.currentBalance.formatted(.currency(code: "USD")))
-                        .font(.caption2)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.brandPrimary.opacity(0.15) : Color.floSecondarySystemBackground)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isSelected ? Color.brandPrimary : Color.clear, lineWidth: 1.5)
-            )
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(isSelected ? Color.brandPrimary : .primary)
-        // v3.0: VoiceOver label for account chip
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(account.name)\(showBalance ? ", balance \(AccessibilityFormatters.spokenCurrency(account.currentBalance))" : "")")
-        .accessibilityValue(isSelected ? "Selected" : "Not selected")
-        .accessibilityHint("Double tap to \(isSelected ? "deselect" : "select") this account")
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }
 

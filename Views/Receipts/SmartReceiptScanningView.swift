@@ -1447,49 +1447,12 @@ struct EditableReceiptReviewViewWithAccount: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Account")
-                        .font(.caption)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .foregroundStyle(.secondary)
-
-                    Spacer()
-
-                    if selectedAccount != nil {
-                        Button("Clear") {
-                            withAnimation(FLOAnimation.quick) {
-                                selectedAccount = nil
-                            }
-                            HapticService.play(.light)
-                        }
-                        .font(.caption)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .foregroundStyle(Color.brandPrimary)
-                    }
-                }
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(sortedAccounts) { account in
-                            ReceiptAccountChip(
-                                account: account,
-                                isSelected: selectedAccount?.id == account.id,
-                                showBalance: subscriptionTier.hasBalanceTracking
-                            ) {
-                                withAnimation(FLOAnimation.quick) {
-                                    if selectedAccount?.id == account.id {
-                                        selectedAccount = nil
-                                    } else {
-                                        selectedAccount = account
-                                    }
-                                }
-                                HapticService.play(.medium)
-                            }
-                        }
-                    }
-                }
+                AccountMenuPicker(
+                    title: "Account",
+                    accounts: sortedAccounts,
+                    selection: $selectedAccount,
+                    includeNone: true
+                )
 
                 if let account = selectedAccount, account.financeType != editedFinanceType {
                     Label("Account type differs from classification", systemImage: "exclamationmark.triangle")
@@ -1798,40 +1761,13 @@ struct EditableBillReviewView: View {
                     // Pay From (account)
                     if !accounts.isEmpty {
                         Divider()
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text("Pay From")
-                                    .font(.caption)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                if selectedAccount != nil {
-                                    Button("Clear") {
-                                        withAnimation(FLOAnimation.quick) { selectedAccount = nil }
-                                        HapticService.play(.light)
-                                    }
-                                    .font(.caption)
-                                    .foregroundStyle(Color.brandPrimary)
-                                }
-                            }
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(sortedAccounts) { account in
-                                        ReceiptAccountChip(
-                                            account: account,
-                                            isSelected: selectedAccount?.id == account.id,
-                                            showBalance: false
-                                        ) {
-                                            withAnimation(FLOAnimation.quick) {
-                                                selectedAccount = (selectedAccount?.id == account.id) ? nil : account
-                                            }
-                                            HapticService.play(.medium)
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        AccountMenuPicker(
+                            title: "Pay From",
+                            accounts: sortedAccounts,
+                            selection: $selectedAccount,
+                            includeNone: true,
+                            showBalance: false
+                        )
                     }
                 }
                 .padding()
@@ -1863,59 +1799,6 @@ struct EditableBillReviewView: View {
             }
         }
         .onTapGesture { vendorFocused = false }
-    }
-}
-
-// MARK: - Receipt Account Chip
-
-struct ReceiptAccountChip: View {
-    let account: Account
-    let isSelected: Bool
-    let showBalance: Bool
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 6) {
-                ZStack {
-                    Circle()
-                        .fill(Color(hex: account.color).opacity(isSelected ? 0.3 : 0.15))
-                        .frame(width: 28, height: 28)
-                    
-                    Image(systemName: account.icon)
-                        .font(.caption)
-                        .foregroundStyle(Color(hex: account.color))
-                }
-                
-                Text(account.name)
-                    .font(.caption)
-                    .fontWeight(isSelected ? .semibold : .regular)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .foregroundStyle(isSelected ? Color.primary : Color.secondary)
-                
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.subheadline)
-                         .foregroundStyle(Color.brandPrimary)
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(isSelected ? Color.brandPrimary.opacity(0.1) : Color.secondary.opacity(0.12))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(isSelected ? Color.brandPrimary : Color.clear, lineWidth: 1.5)
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-        .scaleEffect(isSelected ? 1.02 : 1.0)
-        .animation(FLOAnimation.quick, value: isSelected)
-        .accessibilityLabel("\(account.name)\(isSelected ? ", selected" : "")")
-        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }
 

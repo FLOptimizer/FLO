@@ -461,55 +461,18 @@ struct EditTransactionView: View {
         // All tiers can pick among their accounts
         if !accounts.isEmpty {
             Section {
-                accountChipsView
+                AccountMenuPicker(
+                    title: "Account",
+                    accounts: sortedAccounts,
+                    selection: $selectedAccount,
+                    includeNone: true
+                )
             } header: {
-                HStack {
-                    Text("Account")
-                    Spacer()
-                    if selectedAccount != nil {
-                        Button("Clear") {
-                            withAnimation(FLOAnimation.quick) {
-                                selectedAccount = nil
-                            }
-                            HapticService.play(.light)
-                        }
-                        .font(.caption)
-                        .foregroundStyle(Color.brandPrimary)
-                        // v2.8: VoiceOver label
-                        .accessibilityLabel("Clear account selection")
-                        .accessibilityHint("Double tap to remove account assignment")
-                    }
-                }
+                Text("Account")
             } footer: {
                 accountFooterText
             }
         }
-    }
-    
-    @ViewBuilder
-    private var accountChipsView: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(sortedAccounts) { account in
-                    AccountChipView(
-                        account: account,
-                        isSelected: selectedAccount?.id == account.id,
-                        showBalance: subscriptionManager.currentTier.hasBalanceTracking
-                    ) {
-                        withAnimation(FLOAnimation.quick) {
-                            if selectedAccount?.id == account.id {
-                                selectedAccount = nil
-                            } else {
-                                selectedAccount = account
-                            }
-                        }
-                        HapticService.play(.medium)
-                    }
-                }
-            }
-            .padding(.vertical, 4)
-        }
-        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
     }
     
     @ViewBuilder

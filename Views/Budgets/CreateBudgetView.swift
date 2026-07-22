@@ -259,23 +259,15 @@ struct CreateBudgetView: View {
         // All tiers can scope budgets to an account they own
         if !accounts.isEmpty {
             Section {
-                accountChipsView
+                AccountMenuPicker(
+                    title: "Account",
+                    accounts: sortedAccounts,
+                    selection: $selectedAccount,
+                    includeNone: true,
+                    noneLabel: "All Accounts"
+                )
             } header: {
-                HStack {
-                    Text("Account (Optional)")
-                    Spacer()
-                    if selectedAccount != nil {
-                        Button("All Accounts") {
-                            withAnimation(FLOAnimation.quick) {
-                                selectedAccount = nil
-                            }
-                            HapticService.play(.light)
-                        }
-                        .font(.caption)
-                         .foregroundStyle(Color.brandPrimary)
-                        .accessibilityHint("Clears account filter, applies budget to all accounts")
-                    }
-                }
+                Text("Account (Optional)")
             } footer: {
                 if selectedAccount == nil {
                     Text("Budget will apply across all \(financeType.displayName) accounts")
@@ -291,38 +283,6 @@ struct CreateBudgetView: View {
     }
     
     @ViewBuilder
-    private var accountChipsView: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                // "All Accounts" chip
-                AllAccountsChip(
-                    isSelected: selectedAccount == nil,
-                    financeType: financeType
-                ) {
-                    withAnimation(FLOAnimation.quick) {
-                        selectedAccount = nil
-                    }
-                    HapticService.play(.medium)
-                }
-                
-                ForEach(sortedAccounts) { account in
-                    BudgetAccountChip(
-                        account: account,
-                        isSelected: selectedAccount?.id == account.id,
-                        showBalance: subscriptionManager.currentTier.hasBalanceTracking
-                    ) {
-                        withAnimation(FLOAnimation.quick) {
-                            selectedAccount = account
-                        }
-                        HapticService.play(.medium)
-                    }
-                }
-            }
-            .padding(.vertical, 4)
-        }
-        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
-    }
-    
     private var amountSection: some View {
         Section {
             CurrencyInputField(
@@ -503,131 +463,6 @@ struct CreateBudgetView: View {
             print("❌ Failed to save budget: \(error)")
             HapticService.play(.error)
         }
-    }
-}
-
-// MARK: - All Accounts Chip
-
-struct AllAccountsChip: View {
-    let isSelected: Bool
-    let financeType: Transaction.FinanceType
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(Color.brandPrimary.opacity(isSelected ? 0.3 : 0.15))
-                        .frame(width: 32, height: 32)
-                    
-                    Image(systemName: "building.columns")
-                        .font(.subheadline)
-                         .foregroundStyle(Color.brandPrimary)
-                }
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("All Accounts")
-                        .font(.subheadline)
-                        .fontWeight(isSelected ? .semibold : .regular)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(isSelected ? Color.primary : Color.secondary)
-                    
-                    Text(financeType.displayName)
-                        .font(.caption2)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(.tertiary)
-                }
-                
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.subheadline)
-                         .foregroundStyle(Color.brandPrimary)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? Color.brandPrimary.opacity(0.1) : Color.floSecondarySystemGroupedBackground)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(isSelected ? Color.brandPrimary : Color.clear, lineWidth: 1.5)
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-        .scaleEffect(isSelected ? 1.02 : 1.0)
-        .animation(FLOAnimation.quick, value: isSelected)
-    }
-}
-
-// MARK: - Budget Account Chip
-
-struct BudgetAccountChip: View {
-    let account: Account
-    let isSelected: Bool
-    let showBalance: Bool
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(Color(hex: account.color).opacity(isSelected ? 0.3 : 0.15))
-                        .frame(width: 32, height: 32)
-                    
-                    Image(systemName: account.icon)
-                        .font(.subheadline)
-                        .foregroundStyle(Color(hex: account.color))
-                }
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(account.name)
-                        .font(.subheadline)
-                        .fontWeight(isSelected ? .semibold : .regular)
-                        .foregroundStyle(isSelected ? Color.primary : Color.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    
-                    if let digits = account.lastFourDigits, !digits.isEmpty {
-                        Text("•••• \(digits)")
-                            .font(.caption2)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(.tertiary)
-                    } else {
-                        Text(account.financeType.displayName)
-                            .font(.caption2)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.subheadline)
-                         .foregroundStyle(Color.brandPrimary)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? Color.brandPrimary.opacity(0.1) : Color.floSecondarySystemGroupedBackground)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(isSelected ? Color.brandPrimary : Color.clear, lineWidth: 1.5)
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-        .scaleEffect(isSelected ? 1.02 : 1.0)
-        .animation(FLOAnimation.quick, value: isSelected)
     }
 }
 
