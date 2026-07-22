@@ -76,8 +76,8 @@ final class AssistantService {
         - Format currency amounts clearly with dollar signs.
         - Be concise and direct in your answers.
         - When discussing tax data, clarify this is based on the data in FLO, not official tax calculations.
-        - The current tax year being prepared is 2025.
-        - The IRS mileage rate for 2025 is $0.70/mile.
+        - The current tax year is \(Calendar.current.component(.year, from: Date())).
+        - The IRS business mileage rate is $0.70/mile for 2025 and $0.725/mile for 2026.
         - Self-employment tax rate is 15.3% on 92.35% of net self-employment income.
 
         You have access to the user's financial data through FLO. Use it to answer questions \
@@ -97,8 +97,8 @@ final class AssistantService {
                 dataType: .income,
                 keywords: [("income", 2), ("category", 3), ("source", 3), ("break", 2), ("breakdown", 3), ("by", 1)],
                 responseBuilder: { dp, fmt in
-                    let categories = dp.getIncomeByCategory(year: 2025)
-                    let total = dp.getTaxSnapshot(year: 2025).totalIncome
+                    let categories = dp.getIncomeByCategory(year: Calendar.current.component(.year, from: Date()))
+                    let total = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date())).totalIncome
                     if categories.isEmpty { return "No categorized income found for 2025." }
                     var r = "Your 2025 income by category (**\(fmt.string(from: NSNumber(value: total)) ?? "$0")** total):\n\n"
                     for cat in categories {
@@ -108,7 +108,7 @@ final class AssistantService {
                     return r
                 },
                 contextUpdater: { ctx, dp in
-                    let categories = dp.getIncomeByCategory(year: 2025)
+                    let categories = dp.getIncomeByCategory(year: Calendar.current.component(.year, from: Date()))
                     ctx.showCategories(items: categories, isIncome: true)
                 }
             ),
@@ -118,8 +118,8 @@ final class AssistantService {
                 dataType: .income,
                 keywords: [("income", 3), ("earn", 2), ("revenue", 2), ("summarize", 1), ("total", 1)],
                 responseBuilder: { dp, fmt in
-                    let tax = dp.getTaxSnapshot(year: 2025)
-                    let categories = dp.getIncomeByCategory(year: 2025)
+                    let tax = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))
+                    let categories = dp.getIncomeByCategory(year: Calendar.current.component(.year, from: Date()))
                     var r = "Your total income for 2025 is **\(fmt.string(from: NSNumber(value: tax.totalIncome)) ?? "$0")**.\n\n"
                     if !categories.isEmpty {
                         r += "Broken down by source:\n\n"
@@ -130,8 +130,8 @@ final class AssistantService {
                     return r
                 },
                 contextUpdater: { ctx, dp in
-                    let tax = dp.getTaxSnapshot(year: 2025)
-                    let categories = dp.getIncomeByCategory(year: 2025)
+                    let tax = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))
+                    let categories = dp.getIncomeByCategory(year: Calendar.current.component(.year, from: Date()))
                     ctx.showIncome(total: tax.totalIncome, byCategory: categories)
                 }
             ),
@@ -141,8 +141,8 @@ final class AssistantService {
                 dataType: .expenses,
                 keywords: [("business", 3), ("expense", 2), ("spending", 2), ("cost", 1)],
                 responseBuilder: { dp, fmt in
-                    let tax = dp.getTaxSnapshot(year: 2025)
-                    let categories = dp.getCategoryBreakdown(year: 2025).filter { $0.isBusiness }
+                    let tax = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))
+                    let categories = dp.getCategoryBreakdown(year: Calendar.current.component(.year, from: Date())).filter { $0.isBusiness }
                     var r = "Your total business expenses for 2025 are **\(fmt.string(from: NSNumber(value: tax.totalBusinessExpenses)) ?? "$0")**.\n\n"
                     if !categories.isEmpty {
                         r += "By category:\n\n"
@@ -155,8 +155,8 @@ final class AssistantService {
                     return r
                 },
                 contextUpdater: { ctx, dp in
-                    let tax = dp.getTaxSnapshot(year: 2025)
-                    let categories = dp.getCategoryBreakdown(year: 2025).filter { $0.isBusiness }
+                    let tax = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))
+                    let categories = dp.getCategoryBreakdown(year: Calendar.current.component(.year, from: Date())).filter { $0.isBusiness }
                     ctx.showExpenses(total: tax.totalBusinessExpenses, business: tax.totalBusinessExpenses, personal: 0, byCategory: categories)
                 }
             ),
@@ -166,7 +166,7 @@ final class AssistantService {
                 dataType: .tax,
                 keywords: [("self-employment", 4), ("se tax", 4), ("self employment", 4), ("tax", 2), ("owe", 2), ("liability", 2)],
                 responseBuilder: { dp, fmt in
-                    let tax = dp.getTaxSnapshot(year: 2025)
+                    let tax = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))
                     return "Based on your 2025 data:\n\n" +
                     "- **Total Income:** \(fmt.string(from: NSNumber(value: tax.totalIncome)) ?? "$0")\n" +
                     "- **Business Expenses:** \(fmt.string(from: NSNumber(value: tax.totalBusinessExpenses)) ?? "$0")\n" +
@@ -175,7 +175,7 @@ final class AssistantService {
                     "SE tax = 15.3% on 92.35% of net self-employment income.\n\n" +
                     "*This is an estimate. Consult a CPA for your actual tax liability.*"
                 },
-                contextUpdater: { ctx, dp in ctx.showTax(snapshot: dp.getTaxSnapshot(year: 2025)) }
+                contextUpdater: { ctx, dp in ctx.showTax(snapshot: dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))) }
             ),
 
             // Deductions
@@ -183,9 +183,9 @@ final class AssistantService {
                 dataType: .tax,
                 keywords: [("deduction", 4), ("deductible", 3), ("write off", 3), ("write-off", 3), ("eligible", 2)],
                 responseBuilder: { dp, fmt in
-                    let tax = dp.getTaxSnapshot(year: 2025)
-                    let mileage = dp.getMileageSummary(year: 2025)
-                    let categories = dp.getCategoryBreakdown(year: 2025).filter { $0.isTaxDeductible }
+                    let tax = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))
+                    let mileage = dp.getMileageSummary(year: Calendar.current.component(.year, from: Date()))
+                    let categories = dp.getCategoryBreakdown(year: Calendar.current.component(.year, from: Date())).filter { $0.isTaxDeductible }
                     var r = "Your estimated 2025 deductions:\n\n" +
                     "- **Total Deductions:** \(fmt.string(from: NSNumber(value: tax.totalDeductions)) ?? "$0")\n" +
                     "- **Mileage Deduction:** \(fmt.string(from: NSNumber(value: tax.mileageDeduction)) ?? "$0")\n\n"
@@ -198,7 +198,7 @@ final class AssistantService {
                     r += "\n*Verify all deductions with a tax professional.*"
                     return r
                 },
-                contextUpdater: { ctx, dp in ctx.showTax(snapshot: dp.getTaxSnapshot(year: 2025)) }
+                contextUpdater: { ctx, dp in ctx.showTax(snapshot: dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))) }
             ),
 
             // Mileage
@@ -206,7 +206,7 @@ final class AssistantService {
                 dataType: .mileage,
                 keywords: [("mileage", 4), ("mile", 3), ("trip", 2), ("drive", 2), ("car", 2), ("vehicle", 2)],
                 responseBuilder: { dp, fmt in
-                    let m = dp.getMileageSummary(year: 2025)
+                    let m = dp.getMileageSummary(year: Calendar.current.component(.year, from: Date()))
                     return "Your 2025 mileage summary:\n\n" +
                     "- **Total Miles:** \(String(format: "%.1f", m.totalMiles))\n" +
                     "- **Total Trips:** \(m.totalTrips)\n" +
@@ -214,7 +214,7 @@ final class AssistantService {
                     "- **Deduction:** \(fmt.string(from: NSNumber(value: m.deductionAmount)) ?? "$0")\n\n" +
                     "This deduction goes on Schedule C, Line 9 (Car and truck expenses)."
                 },
-                contextUpdater: { ctx, dp in ctx.showMileage(summary: dp.getMileageSummary(year: 2025)) }
+                contextUpdater: { ctx, dp in ctx.showMileage(summary: dp.getMileageSummary(year: Calendar.current.component(.year, from: Date()))) }
             ),
 
             // Schedule C
@@ -222,8 +222,8 @@ final class AssistantService {
                 dataType: .schedule_c,
                 keywords: [("schedule c", 5), ("schedule-c", 5), ("profit", 2), ("loss", 2), ("net profit", 3)],
                 responseBuilder: { dp, fmt in
-                    let tax = dp.getTaxSnapshot(year: 2025)
-                    let m = dp.getMileageSummary(year: 2025)
+                    let tax = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))
+                    let m = dp.getMileageSummary(year: Calendar.current.component(.year, from: Date()))
                     return "Schedule C Overview (2025):\n\n" +
                     "- **Line 1 (Gross Income):** \(fmt.string(from: NSNumber(value: tax.totalIncome)) ?? "$0")\n" +
                     "- **Line 9 (Car/Truck Expenses):** \(fmt.string(from: NSNumber(value: m.deductionAmount)) ?? "$0")\n" +
@@ -233,7 +233,7 @@ final class AssistantService {
                     "*These are estimates. Verify with a CPA.*"
                 },
                 contextUpdater: { ctx, dp in
-                    ctx.showScheduleC(snapshot: dp.getTaxSnapshot(year: 2025), mileage: dp.getMileageSummary(year: 2025))
+                    ctx.showScheduleC(snapshot: dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date())), mileage: dp.getMileageSummary(year: Calendar.current.component(.year, from: Date())))
                 }
             ),
 
@@ -242,14 +242,14 @@ final class AssistantService {
                 dataType: .tax,
                 keywords: [("quarterly", 4), ("estimated payment", 4), ("estimated tax", 3), ("payment", 2)],
                 responseBuilder: { dp, fmt in
-                    let tax = dp.getTaxSnapshot(year: 2025)
+                    let tax = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))
                     let q = tax.estimatedSETax / 4
                     return "Based on your 2025 SE tax estimate, each quarterly payment would be approximately **\(fmt.string(from: NSNumber(value: q)) ?? "$0")**.\n\n" +
                     "2025 quarterly due dates:\n" +
                     "- Q1: April 15, 2025\n- Q2: June 16, 2025\n- Q3: September 15, 2025\n- Q4: January 15, 2026\n\n" +
                     "*Consult a tax professional for exact amounts.*"
                 },
-                contextUpdater: { ctx, dp in ctx.showTax(snapshot: dp.getTaxSnapshot(year: 2025)) }
+                contextUpdater: { ctx, dp in ctx.showTax(snapshot: dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))) }
             ),
 
             // Expense category breakdown
@@ -257,7 +257,7 @@ final class AssistantService {
                 dataType: .categories,
                 keywords: [("category", 3), ("categories", 3), ("spending", 2), ("breakdown", 3), ("break down", 3), ("break it down", 3), ("expense", 1)],
                 responseBuilder: { dp, fmt in
-                    let categories = dp.getCategoryBreakdown(year: 2025)
+                    let categories = dp.getCategoryBreakdown(year: Calendar.current.component(.year, from: Date()))
                     if categories.isEmpty { return "No categorized expenses found for 2025." }
                     var r = "Your 2025 expenses by category:\n\n"
                     for cat in categories.prefix(15) {
@@ -269,7 +269,7 @@ final class AssistantService {
                     return r
                 },
                 contextUpdater: { ctx, dp in
-                    ctx.showCategories(items: dp.getCategoryBreakdown(year: 2025), isIncome: false)
+                    ctx.showCategories(items: dp.getCategoryBreakdown(year: Calendar.current.component(.year, from: Date())), isIncome: false)
                 }
             ),
 
@@ -278,7 +278,7 @@ final class AssistantService {
                 dataType: .categories,
                 keywords: [("spend on", 4), ("spent on", 4), ("spending on", 4), ("how much on", 3), ("how much for", 3), ("cost of", 3), ("cost for", 3)],
                 responseBuilder: { dp, fmt in
-                    let categories = dp.getCategoryBreakdown(year: 2025)
+                    let categories = dp.getCategoryBreakdown(year: Calendar.current.component(.year, from: Date()))
                     if categories.isEmpty { return "No categorized expenses found for 2025." }
                     var r = "Here's your 2025 spending by category — find your specific one below:\n\n"
                     for cat in categories.prefix(20) {
@@ -291,7 +291,7 @@ final class AssistantService {
                     return r
                 },
                 contextUpdater: { ctx, dp in
-                    ctx.showCategories(items: dp.getCategoryBreakdown(year: 2025), isIncome: false)
+                    ctx.showCategories(items: dp.getCategoryBreakdown(year: Calendar.current.component(.year, from: Date())), isIncome: false)
                 }
             ),
 
@@ -318,7 +318,7 @@ final class AssistantService {
                 dataType: .expenses,
                 keywords: [("expense", 3), ("spent", 2), ("spending", 2), ("spend", 2), ("cost", 1), ("personal", 2), ("how much", 1), ("total", 1)],
                 responseBuilder: { dp, fmt in
-                    let tax = dp.getTaxSnapshot(year: 2025)
+                    let tax = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))
                     let total = tax.totalBusinessExpenses + tax.totalPersonalExpenses
                     return "Your 2025 expense summary:\n\n" +
                     "- **Total Expenses:** \(fmt.string(from: NSNumber(value: total)) ?? "$0")\n" +
@@ -327,8 +327,8 @@ final class AssistantService {
                     "Ask \"break down by category\" for detailed spending by category."
                 },
                 contextUpdater: { ctx, dp in
-                    let tax = dp.getTaxSnapshot(year: 2025)
-                    let cats = dp.getCategoryBreakdown(year: 2025)
+                    let tax = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))
+                    let cats = dp.getCategoryBreakdown(year: Calendar.current.component(.year, from: Date()))
                     ctx.showExpenses(total: tax.totalBusinessExpenses + tax.totalPersonalExpenses, business: tax.totalBusinessExpenses, personal: tax.totalPersonalExpenses, byCategory: cats)
                 }
             ),
@@ -339,7 +339,7 @@ final class AssistantService {
                 dataType: .monthly,
                 keywords: [("month", 3), ("monthly", 3), ("trend", 3), ("compare", 2), ("average", 2), ("last month", 4), ("this month", 3), ("over time", 3)],
                 responseBuilder: { dp, fmt in
-                    let summaries = dp.getMonthlySummaries(year: 2025)
+                    let summaries = dp.getMonthlySummaries(year: Calendar.current.component(.year, from: Date()))
                     if summaries.isEmpty { return "No monthly data available for 2025." }
                     var r = "Your 2025 monthly breakdown:\n\n"
                     for s in summaries {
@@ -351,7 +351,7 @@ final class AssistantService {
                     r += "\n**Averages:** Income \(fmt.string(from: NSNumber(value: avgInc)) ?? "$0")/mo | Expenses \(fmt.string(from: NSNumber(value: avgExp)) ?? "$0")/mo"
                     return r
                 },
-                contextUpdater: { ctx, dp in ctx.showMonthly(summaries: dp.getMonthlySummaries(year: 2025)) }
+                contextUpdater: { ctx, dp in ctx.showMonthly(summaries: dp.getMonthlySummaries(year: Calendar.current.component(.year, from: Date()))) }
             ),
 
             // MARK: — Batch 2: Transaction Queries
@@ -360,7 +360,7 @@ final class AssistantService {
                 dataType: .transactions,
                 keywords: [("biggest", 4), ("largest", 4), ("top", 3), ("most expensive", 4), ("highest", 3)],
                 responseBuilder: { dp, fmt in
-                    let top = dp.getTopExpenses(year: 2025, limit: 10)
+                    let top = dp.getTopExpenses(year: Calendar.current.component(.year, from: Date()), limit: 10)
                     if top.isEmpty { return "No expenses found for 2025." }
                     var r = "Your 10 biggest expenses in 2025:\n\n"
                     for (i, t) in top.enumerated() {
@@ -368,7 +368,7 @@ final class AssistantService {
                     }
                     return r
                 },
-                contextUpdater: { ctx, dp in ctx.showTransactions(items: dp.getTopExpenses(year: 2025, limit: 10), title: "Biggest Expenses (2025)") }
+                contextUpdater: { ctx, dp in ctx.showTransactions(items: dp.getTopExpenses(year: Calendar.current.component(.year, from: Date()), limit: 10), title: "Biggest Expenses (2025)") }
             ),
 
             TemplatePattern(
@@ -410,7 +410,7 @@ final class AssistantService {
                 dataType: .transactions,
                 keywords: [("merchant", 3), ("store", 2), ("where", 2), ("shop", 2), ("amazon", 3), ("walmart", 3), ("vendor", 3)],
                 responseBuilder: { dp, fmt in
-                    let merchants = dp.getMerchantSpending(year: 2025)
+                    let merchants = dp.getMerchantSpending(year: Calendar.current.component(.year, from: Date()))
                     if merchants.isEmpty { return "No merchant spending data for 2025." }
                     var r = "Your top merchants by spending (2025):\n\n"
                     for (i, m) in merchants.prefix(15).enumerated() {
@@ -419,7 +419,7 @@ final class AssistantService {
                     return r
                 },
                 contextUpdater: { ctx, dp in
-                    let merchants = dp.getMerchantSpending(year: 2025)
+                    let merchants = dp.getMerchantSpending(year: Calendar.current.component(.year, from: Date()))
                     ctx.dataType = .transactions
                     ctx.heroAmount = merchants.reduce(0) { $0 + $1.total }
                     ctx.heroLabel = "Spending by Merchant (2025)"
@@ -458,7 +458,7 @@ final class AssistantService {
                 dataType: .tax,
                 keywords: [("effective", 3), ("tax rate", 3), ("rate", 2), ("set aside", 4), ("save for tax", 4)],
                 responseBuilder: { dp, fmt in
-                    let tax = dp.getTaxSnapshot(year: 2025)
+                    let tax = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))
                     let effectiveRate = tax.totalIncome > 0 ? (tax.estimatedSETax / tax.totalIncome) * 100 : 0
                     let monthlySetAside = tax.estimatedSETax / 12
                     return "Tax rate analysis (2025):\n\n" +
@@ -468,7 +468,7 @@ final class AssistantService {
                     "- **Total Tax Estimate:** \(fmt.string(from: NSNumber(value: tax.estimatedSETax)) ?? "$0")\n\n" +
                     "*This only includes SE tax. Federal income tax, state tax, and credits are not included. Consult a CPA.*"
                 },
-                contextUpdater: { ctx, dp in ctx.showTax(snapshot: dp.getTaxSnapshot(year: 2025)) }
+                contextUpdater: { ctx, dp in ctx.showTax(snapshot: dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))) }
             ),
 
             // MARK: — Batch 5: Cash Flow & Savings
@@ -676,7 +676,7 @@ final class AssistantService {
                         // Estimate minimum payment as 2% of balance or $25, whichever is higher
                         total + max(d.balance * 0.02, min(25, d.balance))
                     }
-                    let tax = dp.getTaxSnapshot(year: 2025)
+                    let tax = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))
                     let monthlyTaxBurden = tax.estimatedSETax / 12
 
                     // Tier 1: Break-even (cover expenses only)
@@ -728,7 +728,7 @@ final class AssistantService {
                     let monthlyDebtPayments = debts.reduce(0) { total, d in
                         total + max(d.balance * 0.02, min(25, d.balance))
                     }
-                    let tax = dp.getTaxSnapshot(year: 2025)
+                    let tax = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))
                     let monthlyTax = tax.estimatedSETax / 12
                     let comfortable = avg.expenses + monthlyTax + monthlyDebtPayments
                     let thriving = comfortable / 0.80
@@ -754,13 +754,13 @@ final class AssistantService {
                 dataType: .categories,
                 keywords: [("cut", 3), ("reduce", 3), ("save more", 4), ("where can i", 3), ("unnecessary", 3), ("discretionary", 3), ("trim", 3), ("lower my", 3)],
                 responseBuilder: { dp, fmt in
-                    let categories = dp.getCategoryBreakdown(year: 2025)
+                    let categories = dp.getCategoryBreakdown(year: Calendar.current.component(.year, from: Date()))
                     let avg = dp.getMonthlyAverages(months: 3)
                     if categories.isEmpty { return "No expense data found to analyze." }
                     var r = "**Expense Reduction Opportunities:**\n\n"
                     r += "Your monthly expenses average **\(fmt.string(from: NSNumber(value: avg.expenses)) ?? "$0")**. Here are your top spending categories:\n\n"
                     for (i, cat) in categories.prefix(10).enumerated() {
-                        let monthly = cat.amount / max(1, Double(dp.getMonthlySummaries(year: 2025).count))
+                        let monthly = cat.amount / max(1, Double(dp.getMonthlySummaries(year: Calendar.current.component(.year, from: Date())).count))
                         r += "\(i+1). **\(cat.categoryName):** \(fmt.string(from: NSNumber(value: cat.amount)) ?? "$0") total (\(fmt.string(from: NSNumber(value: monthly)) ?? "$0")/mo avg)\n"
                     }
                     r += "\n**Tips:**\n"
@@ -770,7 +770,7 @@ final class AssistantService {
                     return r
                 },
                 contextUpdater: { ctx, dp in
-                    ctx.showCategories(items: dp.getCategoryBreakdown(year: 2025), isIncome: false)
+                    ctx.showCategories(items: dp.getCategoryBreakdown(year: Calendar.current.component(.year, from: Date())), isIncome: false)
                 }
             ),
 
@@ -779,7 +779,7 @@ final class AssistantService {
                 dataType: .tax,
                 keywords: [("tax summary", 5), ("tax pdf", 5), ("export tax", 5), ("tax report", 4), ("generate report", 3), ("cpa report", 4), ("print tax", 4)],
                 responseBuilder: { dp, fmt in
-                    let tax = dp.getTaxSnapshot(year: 2025)
+                    let tax = dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))
                     return "Your 2025 tax summary is ready to export!\n\n" +
                     "**Quick Overview:**\n" +
                     "- Total Income: \(fmt.string(from: NSNumber(value: tax.totalIncome)) ?? "$0")\n" +
@@ -791,7 +791,7 @@ final class AssistantService {
                     "3. Tap **\"Export 2025 Tax Summary\"**\n\n" +
                     "The PDF includes your annual summary, Schedule C breakdown, quarterly estimates, deduction details, and effective tax rates — everything your CPA needs."
                 },
-                contextUpdater: { ctx, dp in ctx.showTax(snapshot: dp.getTaxSnapshot(year: 2025)) }
+                contextUpdater: { ctx, dp in ctx.showTax(snapshot: dp.getTaxSnapshot(year: Calendar.current.component(.year, from: Date()))) }
             ),
         ]
     }
@@ -809,7 +809,7 @@ final class AssistantService {
         isGenerating = true
         defer { isGenerating = false }
 
-        let financialContext = dataProvider.getFinancialContext(year: 2025)
+        let financialContext = dataProvider.getFinancialContext(year: Calendar.current.component(.year, from: Date()))
 
         #if canImport(FoundationModels)
         if #available(macOS 26.0, iOS 26.0, *) {

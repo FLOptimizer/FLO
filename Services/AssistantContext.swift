@@ -122,7 +122,7 @@ final class AssistantContext {
     func showIncome(total: Double, byCategory: [AssistantDataProvider.CategorySpending]) {
         dataType = .income
         heroAmount = total
-        heroLabel = "Total Income (2025)"
+        heroLabel = "Total Income (\(Calendar.current.component(.year, from: Date())))"
         dataItems = byCategory.map {
             AssistantDataItem(label: $0.categoryName, amount: $0.amount, isBusiness: $0.isBusiness)
         }
@@ -133,7 +133,7 @@ final class AssistantContext {
     func showExpenses(total: Double, business: Double, personal: Double, byCategory: [AssistantDataProvider.CategorySpending]) {
         dataType = .expenses
         heroAmount = total
-        heroLabel = "Total Expenses (2025)"
+        heroLabel = "Total Expenses (\(Calendar.current.component(.year, from: Date())))"
         dataItems = byCategory.map {
             AssistantDataItem(label: $0.categoryName, amount: $0.amount, isBusiness: $0.isBusiness, isTaxDeductible: $0.isTaxDeductible)
         }
@@ -148,7 +148,7 @@ final class AssistantContext {
     func showTax(snapshot: AssistantDataProvider.TaxSnapshot) {
         dataType = .tax
         heroAmount = snapshot.estimatedSETax
-        heroLabel = "Estimated SE Tax (2025)"
+        heroLabel = "Estimated SE Tax (\(Calendar.current.component(.year, from: Date())))"
         dataItems = []
         let fmt = NumberFormatter.appCurrency
         secondaryMetrics = [
@@ -165,7 +165,7 @@ final class AssistantContext {
     func showMileage(summary: AssistantDataProvider.MileageSummary) {
         dataType = .mileage
         heroAmount = summary.deductionAmount
-        heroLabel = "Mileage Deduction (2025)"
+        heroLabel = "Mileage Deduction (\(Calendar.current.component(.year, from: Date())))"
         dataItems = []
         secondaryMetrics = [
             ("Total Miles", String(format: "%.1f", summary.totalMiles)),
@@ -178,7 +178,7 @@ final class AssistantContext {
     func showCategories(items: [AssistantDataProvider.CategorySpending], isIncome: Bool) {
         dataType = .categories
         heroAmount = items.reduce(0) { $0 + $1.amount }
-        heroLabel = isIncome ? "Income by Category (2025)" : "Expenses by Category (2025)"
+        heroLabel = isIncome ? "Income by Category (\(Calendar.current.component(.year, from: Date())))" : "Expenses by Category (\(Calendar.current.component(.year, from: Date())))"
         dataItems = items.map {
             AssistantDataItem(label: $0.categoryName, amount: $0.amount, isBusiness: $0.isBusiness, isTaxDeductible: $0.isTaxDeductible)
         }
@@ -200,7 +200,7 @@ final class AssistantContext {
     func showScheduleC(snapshot: AssistantDataProvider.TaxSnapshot, mileage: AssistantDataProvider.MileageSummary) {
         dataType = .schedule_c
         heroAmount = snapshot.totalIncome - snapshot.totalBusinessExpenses
-        heroLabel = "Net Profit/Loss (2025)"
+        heroLabel = "Net Profit/Loss (\(Calendar.current.component(.year, from: Date())))"
         dataItems = []
         let fmt = NumberFormatter.appCurrency
         secondaryMetrics = [
@@ -226,7 +226,7 @@ final class AssistantContext {
     func showMonthly(summaries: [AssistantDataProvider.MonthlySummary]) {
         dataType = .monthly
         heroAmount = summaries.last?.netCashFlow ?? 0
-        heroLabel = "Monthly Trend (2025)"
+        heroLabel = "Monthly Trend (\(Calendar.current.component(.year, from: Date())))"
         dataItems = summaries.map {
             AssistantDataItem(label: $0.month, amount: $0.netCashFlow, subtitle: "\($0.transactionCount) transactions")
         }

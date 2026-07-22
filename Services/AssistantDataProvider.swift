@@ -157,7 +157,8 @@ final class AssistantDataProvider {
         )
         let trips = (try? modelContext.fetch(tripDescriptor)) ?? []
         let totalMiles = trips.reduce(0) { $0 + $1.distanceMiles }
-        let mileageDeduction = totalMiles * 0.70 // 2025 IRS rate
+        let mileageRate: Double = year >= 2026 ? 0.725 : 0.70 // IRS standard rate by year
+        let mileageDeduction = totalMiles * mileageRate
 
         // Tax settings
         let settingsDescriptor = FetchDescriptor<TaxSettings>()
@@ -485,7 +486,7 @@ final class AssistantDataProvider {
 
     // MARK: - Financial Snapshot (Combined)
 
-    func getFinancialContext(year: Int = 2025) -> String {
+    func getFinancialContext(year: Int = Calendar.current.component(.year, from: Date())) -> String {
         let tax = getTaxSnapshot(year: year)
         let mileage = getMileageSummary(year: year)
         let categories = getCategoryBreakdown(year: year)
