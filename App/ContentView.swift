@@ -108,6 +108,7 @@ struct ContentView: View {
         .reviewRequestPrompting()
         .task {
             await scheduleTaxDeadlineRemindersIfNeeded()
+            await AssistantService.scheduleWeeklyDigestNotification()
         }
         .onChange(of: scenePhase) { _, newValue in
             handleScenePhaseChange(newValue)

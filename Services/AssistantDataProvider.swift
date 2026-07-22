@@ -736,4 +736,76 @@ final class AssistantDataProvider {
             return "Failed to save: \(error.localizedDescription)"
         }
     }
+
+    // MARK: - Weekly Digest Facts (Tier 3 proactive layer)
+
+    struct WeeklyDigestFacts {
+        let weekSpent: Double
+        let weekIncome: Double
+        let priorWeekSpent: Double
+        let topCategoryName: String?
+        let topCategoryAmount: Double
+        let biggestExpenseMerchant: String?
+        let biggestExpenseAmount: Double
+        let atRiskBudgets: [BudgetStatus]
+        let daysToNextDeadline: Int?
+        let activeEventName: String?
+        let activeEventTotal: Double
+        let weekTransactionCount: Int
+    }
+
+    /// Everything the weekly digest needs, computed fresh from live data
+    func getWeeklyDigestFacts() -> WeeklyDigestFacts {
+        let calendar = Calendar.current
+        let now = Date()
+        let weekStart = calendar.date(byAdding: .day, value: -7, to: now) ?? now
+        let priorWeekStart = calendar.date(byAdding: .day, value: -14, to: now) ?? now
+
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.date >= priorWeekStart && $0.date <= now }
+        )
+        let transactions = ((try? modelContext.fetch(descriptor)) ?? []).filter { !$0.isTransfer }
+
+        let week = transactions.filter { $0.date >= weekStart }
+        let priorWeek = transactions.filter { $0.date < weekStart }
+
+        let weekExpenses = week.filter { !$0.isIncome }
+        let weekSpent = weekExpenses.reduce(0) { $0 + $1.amount }
+        let weekIncome = week.filter(\.isIncome).reduce(0) { $0 + $1.amount }
+        let priorWeekSpent = priorWeek.filter { !$0.isIncome }.reduce(0) { $0 + $1.amount }
+
+        let byCategory = Dictionary(grouping: weekExpenses) { $0.category?.name ?? "Uncategorized" }
+            .mapValues { $0.reduce(0) { $0 + $1.amount } }
+        let topCategory = byCategory.max { $0.value < $1.value }
+
+        let biggest = weekExpenses.max { $0.amount < $1.amount }
+
+        let atRisk = getBudgetStatus().filter { $0.percentUsed >= 90 }
+
+        var daysToDeadline: Int?
+        if let deadline = TaxSettings.nextQuarterlyDeadline(from: now) {
+            let days = calendar.dateComponents([.day], from: now, to: deadline).day ?? 0
+            if days <= 30 { daysToDeadline = days }
+        }
+
+        let eventDescriptor = FetchDescriptor<SpendingEvent>(
+            sortBy: [SortDescriptor(\.startDate, order: .reverse)]
+        )
+        let activeEvent = ((try? modelContext.fetch(eventDescriptor)) ?? []).first { $0.isActive }
+
+        return WeeklyDigestFacts(
+            weekSpent: weekSpent,
+            weekIncome: weekIncome,
+            priorWeekSpent: priorWeekSpent,
+            topCategoryName: topCategory?.key,
+            topCategoryAmount: topCategory?.value ?? 0,
+            biggestExpenseMerchant: biggest.map { $0.merchantName.isEmpty ? $0.note : $0.merchantName },
+            biggestExpenseAmount: biggest?.amount ?? 0,
+            atRiskBudgets: atRisk,
+            daysToNextDeadline: daysToDeadline,
+            activeEventName: activeEvent?.name,
+            activeEventTotal: activeEvent?.totalSpent ?? 0,
+            weekTransactionCount: week.count
+        )
+    }
 }

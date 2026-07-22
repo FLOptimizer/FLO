@@ -8,6 +8,7 @@
 
 import Foundation
 import SwiftData
+import UserNotifications
 
 #if canImport(FoundationModels)
 import FoundationModels
@@ -104,6 +105,82 @@ final class AssistantService {
 
     func cancelPendingAction() {
         pendingAction = nil
+    }
+
+    // MARK: - Weekly Digest (Tier 3 proactive layer)
+
+    /// A fresh look at the user's week, computed from live data whenever the
+    /// assistant is opened. Returns nil when there's nothing meaningful to say.
+    func weeklyDigest() -> String? {
+        guard let dataProvider else { return nil }
+        let facts = dataProvider.getWeeklyDigestFacts()
+        guard facts.weekTransactionCount > 0 else { return nil }
+
+        let fmt = NumberFormatter.appCurrency
+        func money(_ value: Double) -> String {
+            fmt.string(from: NSNumber(value: value)) ?? "$0"
+        }
+
+        var lines: [String] = []
+        lines.append("💸 Spent \(money(facts.weekSpent)) across \(facts.weekTransactionCount) transactions this week")
+
+        if facts.priorWeekSpent > 0 {
+            let change = ((facts.weekSpent - facts.priorWeekSpent) / facts.priorWeekSpent) * 100
+            if abs(change) >= 10 {
+                let direction = change > 0 ? "up" : "down"
+                lines.append("\(change > 0 ? "📈" : "📉") That's \(direction) \(abs(Int(change)))% from last week")
+            }
+        }
+
+        if let category = facts.topCategoryName, facts.topCategoryAmount > 0 {
+            lines.append("🏷️ Top category: \(category) (\(money(facts.topCategoryAmount)))")
+        }
+
+        if let merchant = facts.biggestExpenseMerchant, facts.biggestExpenseAmount > 0 {
+            lines.append("🧾 Biggest expense: \(merchant) (\(money(facts.biggestExpenseAmount)))")
+        }
+
+        for budget in facts.atRiskBudgets.prefix(2) {
+            let state = budget.percentUsed >= 100 ? "over budget" : "at \(Int(budget.percentUsed))%"
+            lines.append("⚠️ \(budget.categoryName) budget is \(state)")
+        }
+
+        if let event = facts.activeEventName {
+            lines.append("✈️ \(event) so far: \(money(facts.activeEventTotal))")
+        }
+
+        if let days = facts.daysToNextDeadline {
+            lines.append("🏛️ Estimated taxes due in \(days) day\(days == 1 ? "" : "s")")
+        }
+
+        return lines.joined(separator: "\n")
+    }
+
+    /// Schedules the recurring weekly digest notification (Monday 9 AM).
+    /// The notification is deliberately generic — the digest content is
+    /// computed fresh when the user opens the assistant, never stale.
+    /// No-ops without notification permission; never prompts. Idempotent.
+    static func scheduleWeeklyDigestNotification() async {
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        guard settings.authorizationStatus == .authorized else { return }
+
+        let identifier = "assistant_weekly_digest"
+        let pending = await center.pendingNotificationRequests()
+        guard !pending.contains(where: { $0.identifier == identifier }) else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Your week in review is ready"
+        content.body = "See what you spent, where it went, and what's coming up — ask My Assistant anything about it."
+        content.sound = .default
+        content.categoryIdentifier = "WEEKLY_DIGEST"
+
+        var components = DateComponents()
+        components.weekday = 2 // Monday
+        components.hour = 9
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+        try? await center.add(request)
     }
 
     #if canImport(FoundationModels)

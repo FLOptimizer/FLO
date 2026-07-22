@@ -115,7 +115,7 @@ struct AssistantView: View {
     private var emptyState: some View {
         VStack(spacing: 24) {
             Spacer()
-                .frame(height: 40)
+                .frame(height: 16)
 
             Image(systemName: "bubble.left.and.text.bubble.right.fill")
                 .font(.system(size: 48))
@@ -127,6 +127,32 @@ struct AssistantView: View {
                 Text("Ask questions about your financial data")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+            }
+
+            // Tier 3: proactive weekly digest, computed fresh from live data
+            if let digest = assistantService.weeklyDigest() {
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("Your Week", systemImage: "calendar.badge.clock")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.brandPrimary)
+                    Text(digest)
+                        .font(.subheadline)
+                        .lineSpacing(4)
+                    Button {
+                        sendMessage("Walk me through my spending this week — anything I should know?")
+                    } label: {
+                        Text("Discuss my week")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.brandPrimary)
+                    }
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(Color.floSystemGroupedSectionBackground)
+                )
+                .accessibilityElement(children: .combine)
             }
 
             AssistantSuggestedQuestions { question in

@@ -436,6 +436,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         case "DEBT_PAYMENT_REMINDER":
             NavigationService.shared.navigateTo(.debtAccelerator)
 
+        case "WEEKLY_DIGEST":
+            // Digest content is computed fresh when the assistant opens
+            NavigationService.shared.navigateTo(.assistant)
+
         default:
             // Tax reminders and other notifications
             TaxNotificationService.shared.handleNotificationAction(
