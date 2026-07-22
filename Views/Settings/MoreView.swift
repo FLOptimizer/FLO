@@ -463,6 +463,18 @@ struct MoreView: View {
                 )
             }
             .listRowAnimation(delay: 0.15, appeared: viewAppeared)
+
+            // Events — trip/occasion expense grouping (all tiers)
+            NavigationLink(destination: EventsListView()) {
+                MenuRow(
+                    icon: "airplane",
+                    iconColor: .orange,
+                    title: "Events",
+                    subtitle: "Group spending by trip or occasion",
+                    accessibilityLabel: "Events, group spending by trip or occasion"
+                )
+            }
+            .listRowAnimation(delay: 0.16, appeared: viewAppeared)
             
             // Debt Payoff Calculator - LOCKED for Free tier (Premium+)
             if hasDebtCalculator {

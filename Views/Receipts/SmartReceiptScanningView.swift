@@ -178,6 +178,7 @@ struct SmartReceiptScanningView: View {
     @State private var editedCategoryName: String = ""
     @State private var editedFinanceType: Transaction.FinanceType = .business
     @State private var selectedAccount: Account?
+    @State private var selectedEvent: SpendingEvent?
     @State private var editedNote: String = ""
     @State private var selectedBusinessProfile: BusinessProfile?
 
@@ -233,6 +234,7 @@ struct SmartReceiptScanningView: View {
                             editedCategoryName: $editedCategoryName,
                             editedFinanceType: $editedFinanceType,
                             selectedAccount: $selectedAccount,
+                            selectedEvent: $selectedEvent,
                             editedNote: $editedNote,
                             selectedBusinessProfile: $selectedBusinessProfile,
                             categories: categories,
@@ -839,6 +841,9 @@ struct SmartReceiptScanningView: View {
                         )
                         personalTx.receiptImagePath = imagePath
 
+                        bizTx.event = selectedEvent
+                        personalTx.event = selectedEvent
+
                         modelContext.insert(bizTx)
                         modelContext.insert(personalTx)
 
@@ -880,6 +885,7 @@ struct SmartReceiptScanningView: View {
                             tipAmount: resolvedTip
                         )
                         transaction.receiptImagePath = imagePath
+                        transaction.event = selectedEvent
 
                         modelContext.insert(transaction)
 
@@ -1020,6 +1026,7 @@ struct EditableReceiptReviewViewWithAccount: View {
     @Binding var editedCategoryName: String
     @Binding var editedFinanceType: Transaction.FinanceType
     @Binding var selectedAccount: Account?
+    @Binding var selectedEvent: SpendingEvent?
     @Binding var editedNote: String
     @Binding var selectedBusinessProfile: BusinessProfile?
     let categories: [Category]
@@ -1461,6 +1468,8 @@ struct EditableReceiptReviewViewWithAccount: View {
                         .minimumScaleFactor(0.7)
                         .foregroundStyle(.orange)
                 }
+
+                EventMenuPicker(selection: $selectedEvent, autoSelectActive: true)
             }
         }
     }

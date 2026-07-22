@@ -123,6 +123,7 @@ extension ModelContainer {
                 DebtAcceleratorPlan.self,  // ✅ Added in v5.7 for Debt Accelerator
                 ScheduledPayment.self,     // ✅ Added in v5.7 for Debt Accelerator
                 LinkedCard.self,           // ✅ Added in v5.8 for card-to-account linking
+                SpendingEvent.self,        // ✅ Added for trip/event expense grouping
                 configurations: config
             )
         } catch {
@@ -186,6 +187,7 @@ extension ModelContainer {
                 DebtAcceleratorPlan.self,  // ✅ Added in v5.7 for Debt Accelerator
                 ScheduledPayment.self,     // ✅ Added in v5.7 for Debt Accelerator
                 LinkedCard.self,           // ✅ Added in v5.8 for card-to-account linking
+                SpendingEvent.self,        // ✅ Added for trip/event expense grouping
                 configurations: config
             )
         }
@@ -233,6 +235,7 @@ extension ModelContainer {
                 DebtAcceleratorPlan.self,  // ✅ Added in v5.7 for Debt Accelerator
                 ScheduledPayment.self,     // ✅ Added in v5.7 for Debt Accelerator
                 LinkedCard.self,           // ✅ Added in v5.8 for card-to-account linking
+                SpendingEvent.self,        // ✅ Added for trip/event expense grouping
                 configurations: config
             )
         } catch {

@@ -112,6 +112,7 @@ struct AddTransactionView: View {
     @State private var isIncome = false
     @State private var selectedCategory: Category?
     @State private var selectedAccount: Account?
+    @State private var selectedEvent: SpendingEvent?
     @State private var date = Date()
     @State private var merchantName = ""
     @State private var suggestedCategory: Category?
@@ -185,6 +186,7 @@ struct AddTransactionView: View {
                 financeTypeSection
                 categorySection
                 accountSection
+                EventPickerSection(selection: $selectedEvent, autoSelectActive: true)
                 dateSection
                 detailsSection
                 
@@ -863,6 +865,7 @@ struct AddTransactionView: View {
             hasReceipt: receiptImagePath != nil,
             tipAmount: resolvedTip
         )
+        transaction.event = selectedEvent
 
         context.insert(transaction)
 
@@ -972,6 +975,9 @@ struct AddTransactionView: View {
             tipAmount: personalTip,
             splitGroupId: groupId
         )
+
+        bizTx.event = selectedEvent
+        personalTx.event = selectedEvent
 
         context.insert(bizTx)
         context.insert(personalTx)

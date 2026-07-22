@@ -98,6 +98,7 @@ struct EditTransactionView: View {
     @State private var isIncome: Bool
     @State private var selectedCategory: Category?
     @State private var selectedAccount: Account?
+    @State private var selectedEvent: SpendingEvent?
     @State private var date: Date
     @State private var merchantName: String
     @State private var financeType: Transaction.FinanceType
@@ -133,6 +134,7 @@ struct EditTransactionView: View {
         _isIncome = State(initialValue: transaction.isIncome)
         _selectedCategory = State(initialValue: transaction.category)
         _selectedAccount = State(initialValue: transaction.account)
+        _selectedEvent = State(initialValue: transaction.event)
         _date = State(initialValue: transaction.date)
         _merchantName = State(initialValue: transaction.merchantName)
         _financeType = State(initialValue: transaction.financeType)
@@ -168,6 +170,7 @@ struct EditTransactionView: View {
                     .offset(y: formAppeared ? 0 : 10)
                 
                 accountSection
+                EventPickerSection(selection: $selectedEvent)
                     .opacity(formAppeared ? 1 : 0.001)
                     .offset(y: formAppeared ? 0 : 10)
                 
@@ -823,6 +826,7 @@ struct EditTransactionView: View {
         transaction.isIncome = isIncome
         transaction.category = selectedCategory
         transaction.account = selectedAccount
+        transaction.event = selectedEvent
         transaction.date = date
         transaction.merchantName = merchantName
         transaction.financeType = financeType

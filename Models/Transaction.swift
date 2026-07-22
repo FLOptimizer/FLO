@@ -159,6 +159,18 @@ final class Transaction {
         }
     }
 
+    /// Spending event this transaction belongs to (e.g. a trip) — a second
+    /// dimension of categorization alongside `category`.
+    /// Inverse defined on SpendingEvent.transactions
+    @Relationship(deleteRule: .nullify)
+    var event: SpendingEvent? {
+        didSet {
+            if event?.id != oldValue?.id {
+                updatedAt = Date()
+            }
+        }
+    }
+
     /// Invoice payment linked to this transaction (inverse of InvoicePayment.linkedTransaction)
     @Relationship(deleteRule: .nullify, inverse: \InvoicePayment.linkedTransaction)
     var linkedPayment: InvoicePayment?
