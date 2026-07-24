@@ -174,6 +174,7 @@
 		43C4F4852F4E15E9005B3810 /* FLOWatchComplicationsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FLOWatchComplicationsExtension.entitlements; sourceTree = "<group>"; };
 		43C4F4872F4E1654005B3810 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
 		43C71AD52EF641D7005A8198 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43CC3B5D301208DF0088FE9D /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43D3D1192EF9E59D00B48C19 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43E3C9582EF6297400CC479E /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43E3CA1F2EF62AF800CC479E /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
@@ -750,6 +751,11 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		43CC3B65301208DF0088FE9D /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
 		43D3D1202EF9E59D00B48C19 /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
@@ -1230,6 +1236,10 @@
 				{
 					ProductGroup = 43AACEC62F8405EB0026F795 /* Products */;
 					ProjectRef = 43AACEBF2F8405EB0026F795 /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 43CC3B65301208DF0088FE9D /* Products */;
+					ProjectRef = 43CC3B5D301208DF0088FE9D /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 43FACC292F187ADF006A54B9 /* Products */;
@@ -1847,6 +1857,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchpoppy.floTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FLO.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FLO";
@@ -1866,6 +1877,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchpoppy.floTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FLO.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FLO";

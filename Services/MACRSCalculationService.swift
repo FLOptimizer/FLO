@@ -87,13 +87,15 @@ final class MACRSCalculationService {
         let base = asset.depreciableBase
 
         guard base > 0 else {
-            // Section 179 fully expensed — one entry for year 1
-            if let s179 = asset.section179Amount, s179 > 0 {
+            // Fully expensed via §179 and/or 100% bonus — one entry for year 1.
+            // firstYearBonus already includes both the §179 amount and bonus depreciation.
+            let firstYear = asset.firstYearBonus
+            if firstYear > 0 {
                 return [YearlyDepreciation(
                     year: startYear,
-                    amount: s179 + asset.firstYearBonus,
-                    accumulatedDepreciation: asset.cost,
-                    remainingBasis: 0
+                    amount: roundToNearest(firstYear),
+                    accumulatedDepreciation: roundToNearest(firstYear),
+                    remainingBasis: max(0, roundToNearest(asset.cost - firstYear))
                 )]
             }
             return []
@@ -108,12 +110,12 @@ final class MACRSCalculationService {
             // Add bonus/179 to first year
             let totalAmount = (index == 0) ? yearAmount + asset.firstYearBonus : yearAmount
             accumulated += yearAmount
-            let remaining = asset.cost - accumulated - asset.firstYearBonus
+            let remaining = asset.cost - accumulated
 
             schedule.append(YearlyDepreciation(
                 year: startYear + index,
                 amount: roundToNearest(totalAmount),
-                accumulatedDepreciation: roundToNearest(accumulated + asset.firstYearBonus),
+                accumulatedDepreciation: roundToNearest(accumulated),
                 remainingBasis: max(0, roundToNearest(remaining))
             ))
         }
@@ -184,7 +186,11 @@ final class MACRSCalculationService {
         let rate = asset.propertyClass == .residential
             ? Self.residentialMonthlyRate
             : Self.nonresidentialMonthlyRate
-        let totalYears = asset.propertyClass.depreciationYears
+
+        // Total recovery is exactly 27.5 or 39 years = 330 or 468 months.
+        // Emitting full 12-month years until the remainder runs out handles the
+        // fractional 27.5-year period (which spills into a final partial year).
+        let totalMonths = asset.propertyClass.years * 12.0
 
         var percentages: [Double] = []
 
@@ -192,15 +198,11 @@ final class MACRSCalculationService {
         let firstYearMonths = Double(12 - monthPlaced) + 0.5
         percentages.append(rate * firstYearMonths / 12.0)
 
-        // Full years
-        for _ in 1..<(totalYears - 1) {
-            percentages.append(rate)
-        }
-
-        // Last year: remaining
-        let lastYearMonths = 12.0 - firstYearMonths
-        if lastYearMonths > 0 {
-            percentages.append(rate * lastYearMonths / 12.0)
+        var monthsRemaining = totalMonths - firstYearMonths
+        while monthsRemaining > 0.001 {
+            let monthsThisYear = min(12.0, monthsRemaining)
+            percentages.append(rate * monthsThisYear / 12.0)
+            monthsRemaining -= monthsThisYear
         }
 
         return percentages
