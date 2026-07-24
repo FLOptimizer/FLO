@@ -1221,7 +1221,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				43E4776B2F3F8F6900769F6C /* XCRemoteSwiftPackageReference "plaid-link-ios" */,
-				43F10D5A2F5A000000000001 /* XCLocalSwiftPackageReference "../FLODesignSystem" */,
+				43F10D5A2F5A000000000001 /* XCLocalSwiftPackageReference "FLODesignSystem" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 433FDBCE2EB992B00008DA09 /* Products */;
@@ -2551,9 +2551,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		43F10D5A2F5A000000000001 /* XCLocalSwiftPackageReference "../FLODesignSystem" */ = {
+		43F10D5A2F5A000000000001 /* XCLocalSwiftPackageReference "FLODesignSystem" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../FLODesignSystem;
+			relativePath = FLODesignSystem;
 		};
 /* End XCLocalSwiftPackageReference section */
 
