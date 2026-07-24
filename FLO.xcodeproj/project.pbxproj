@@ -149,7 +149,7 @@
 		436A0AA12EC02F920011973D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		436A0AA32EC02F920011973D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		43712E082EFE360A00873FEF /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
-		43712E8E2EFF2FD600873FEF /* FLOTests */ = {isa = PBXFileReference; lastKnownFileType = folder; name = FLOTests; path = ../FLOTests; sourceTree = "<group>"; };
+		43712E8E2EFF2FD600873FEF /* FLOTests */ = {isa = PBXFileReference; lastKnownFileType = folder; name = FLOTests; path = FLOTests; sourceTree = "<group>"; };
 		438124382EF63A19002EA8A5 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		4381250B2EF63AA0002EA8A5 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		438125DF2EF63DB9002EA8A5 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
@@ -175,6 +175,7 @@
 		43C4F4872F4E1654005B3810 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
 		43C71AD52EF641D7005A8198 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43CC3B5D301208DF0088FE9D /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43CC3F87301276E10088FE9D /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43D3D1192EF9E59D00B48C19 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43E3C9582EF6297400CC479E /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43E3CA1F2EF62AF800CC479E /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
@@ -218,6 +219,50 @@
 		435AF7922EF6393C00B42ECE /* Exceptions for "FLO" folder in "FLO" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				FLOTests/Analytics/FLOCategorySpendingTests.swift,
+				FLOTests/Analytics/FLOInsightsTests.swift,
+				FLOTests/Analytics/FLOMLInsightsTests.swift,
+				"FLOTests/Build 8 Services/FLOCashFlowForecastTests.swift",
+				"FLOTests/Build 8 Services/FLOHouseholdTests.swift",
+				"FLOTests/Build 8 Services/FLORecurringDetectionTests.swift",
+				"FLOTests/Business Features/FLOBillTests.swift",
+				"FLOTests/Business Features/FLOClientTests.swift",
+				"FLOTests/Business Features/FLODeductionTests.swift",
+				"FLOTests/Business Features/FLOInvoiceCalculationTests.swift",
+				"FLOTests/Business Features/FLOMerchantMappingTests.swift",
+				"FLOTests/Business Features/FLOMileageControlTests.swift",
+				"FLOTests/Business Features/FLOMileageGPSTests.swift",
+				"FLOTests/Core Financial/FLOAccountTests.swift",
+				"FLOTests/Core Financial/FLOCreditCardTests.swift",
+				"FLOTests/Core Financial/FLODebtServiceTests.swift",
+				"FLOTests/Core Financial/FLOFinancialTests.swift",
+				"FLOTests/Core Financial/FLOTaxCalculationTests.swift",
+				FLOTests/Infrastructure/FLOAuthTests.swift,
+				FLOTests/Infrastructure/FLOMojibakeTests.swift,
+				FLOTests/Infrastructure/FLOSubscriptionTests.swift,
+				FLOTests/Infrastructure/FLOTaxCacheTests.swift,
+				FLOTests/Infrastructure/FLOWidgetTests.swift,
+				"FLOTests/Receipts & Export/FLOCSVImportTests.swift",
+				"FLOTests/Receipts & Export/FLOExportTests.swift",
+				"FLOTests/Receipts & Export/FLOReceiptParserTests.swift",
+				"FLOTests/Receipts & Export/FLOReceiptStorageTests.swift",
+				FLOTests/Regression/FLOGoldenDataTests.swift,
+				FLOTests/Regression/FLOPropertyBasedTests.swift,
+				FLOTests/Regression/FLORecurringDateTests.swift,
+				"FLOTests/Tax Engine/FLOCarryforwardAndPartnerTests.swift",
+				"FLOTests/Tax Engine/FLOMACRSDepreciationTests.swift",
+				"FLOTests/Tax Engine/FLOTaxLineAggregationTests.swift",
+				"FLOTests/Tax Engine/FLOYearEndClosingTests.swift",
+				"FLOTests/Transactions & Budgets/FLOBudgetTypeTests.swift",
+				"FLOTests/Transactions & Budgets/FLOTransferTests.swift",
+				FLOUITests/FLOAccessibilityTests.swift,
+				FLOUITests/FLODemoTests.swift,
+				FLOUITests/FLOMileageUITests.swift,
+				FLOUITests/FLOScreenshotTests.swift,
+				FLOUITests/FLOUITestPlan.xctestplan,
+				FLOUITests/FLOUITests.swift,
+				FLOUITests/FLOUITestsLaunchTests.swift,
+				FLOUITests/SnapshotHelper.swift,
 				FLOInvoiceClip/Assets.xcassets,
 				FLOInvoiceClip/ContentView.swift,
 				FLOInvoiceClip/FLOInvoiceClipApp.swift,
@@ -374,13 +419,13 @@
 		433FDBDF2EB992B10008DA09 /* FLOTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			name = FLOTests;
-			path = ../FLOTests;
+			path = FLOTests;
 			sourceTree = "<group>";
 		};
 		433FDBE92EB992B10008DA09 /* FLOUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			name = FLOUITests;
-			path = ../FLOUITests;
+			path = FLOUITests;
 			sourceTree = "<group>";
 		};
 		43C4F42A2F4E0FD5005B3810 /* FLOWatch Watch App */ = {
@@ -752,6 +797,11 @@
 			sourceTree = "<group>";
 		};
 		43CC3B65301208DF0088FE9D /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		43CC3F8F301276E10088FE9D /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
@@ -1292,6 +1342,10 @@
 				{
 					ProductGroup = 43E609B6301145550088E628 /* Products */;
 					ProjectRef = 43E609AE301145550088E628 /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 43CC3F8F301276E10088FE9D /* Products */;
+					ProjectRef = 43CC3F87301276E10088FE9D /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 4364D5042F4CA34000AD1C84 /* Products */;
@@ -1856,8 +1910,8 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchpoppy.floTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FLO.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FLO";
@@ -1876,8 +1930,8 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.finchpoppy.floTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FLO.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FLO";

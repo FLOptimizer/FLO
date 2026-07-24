@@ -17,10 +17,10 @@
             reference = "container:FLOTests.xctestplan">
          </TestPlanReference>
          <TestPlanReference
-            reference = "container:../FLOUITests.xctestplan">
+            reference = "container:FLOUITests.xctestplan">
          </TestPlanReference>
          <TestPlanReference
-            reference = "container:../FLOUITests/FLOUITestPlan.xctestplan"
+            reference = "container:FLOUITests/FLOUITestPlan.xctestplan"
             default = "YES">
          </TestPlanReference>
       </TestPlans>

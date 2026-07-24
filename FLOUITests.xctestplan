@@ -1,0 +1,30 @@
+{
+  "configurations" : [
+    {
+      "id" : "77EFC1EC-D5E6-4F3F-B55E-57063CC2F9CB",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:FLO.xcodeproj",
+      "identifier" : "433FDBCC2EB992B00008DA09",
+      "name" : "FLO"
+    }
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:FLO.xcodeproj",
+        "identifier" : "433FDBE52EB992B10008DA09",
+        "name" : "FLOUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

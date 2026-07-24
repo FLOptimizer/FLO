@@ -18,7 +18,7 @@
             default = "YES">
          </TestPlanReference>
          <TestPlanReference
-            reference = "container:../FLOUITests/FLOUITestPlan.xctestplan">
+            reference = "container:FLOUITests/FLOUITestPlan.xctestplan">
          </TestPlanReference>
       </TestPlans>
       <Testables>

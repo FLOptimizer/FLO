@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "F43ED5EA-E439-4BFA-84CB-2904E0DC8ED9",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:FLO.xcodeproj",
+        "identifier" : "433FDBE52EB992B10008DA09",
+        "name" : "FLOUITests"
+      }
+    }
+  ],
+  "version" : 1
+}
