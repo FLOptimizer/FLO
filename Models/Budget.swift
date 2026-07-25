@@ -100,6 +100,17 @@ final class Budget {
     /// One-time wrap-up override for this specific month (nil = use persistent setting)
     var monthlyCarryOverSkip: Bool?
 
+    // MARK: - Need/Want/Savings Classification (NEW in v2.6)
+
+    /// Raw backing for the 50/30/20 purpose classification. Nil = unclassified,
+    /// which keeps existing synced budgets valid (additive CloudKit change).
+    var purposeRaw: String?
+
+    /// For savings-classified budgets: the Category ID of the envelope this
+    /// budget contributes to. Category-based (not Budget-based) so the link
+    /// stays stable across monthly budget instances.
+    var savingsEnvelopeCategoryID: UUID?
+
     // MARK: - Metadata
 
     /// When budget was created
@@ -118,7 +129,9 @@ final class Budget {
         account: Account? = nil,
         businessProfile: BusinessProfile? = nil,
         budgetType: BudgetType = .envelope,
-        financeType: Transaction.FinanceType = .personal
+        financeType: Transaction.FinanceType = .personal,
+        purpose: BudgetPurpose? = nil,
+        savingsEnvelopeCategoryID: UUID? = nil
     ) {
         self.id = UUID()
         self.month = {
@@ -133,6 +146,8 @@ final class Budget {
         self.businessProfile = businessProfile
         self.budgetType = budgetType
         self.financeType = financeType
+        self.purposeRaw = purpose?.rawValue
+        self.savingsEnvelopeCategoryID = savingsEnvelopeCategoryID
         self.createdAt = Date()
         self.updatedAt = Date()
     }
@@ -171,6 +186,15 @@ final class Budget {
     /// Convenience flag – very common in SwiftUI views.
     var isEnvelope: Bool {
         budgetType == .envelope
+    }
+
+    /// Typed accessor for the 50/30/20 purpose classification (v2.6).
+    var purpose: BudgetPurpose? {
+        get {
+            guard let raw = purposeRaw else { return nil }
+            return BudgetPurpose(rawValue: raw)
+        }
+        set { purposeRaw = newValue?.rawValue }
     }
     
     // MARK: - Account Properties (NEW in v2.3)
@@ -382,6 +406,57 @@ enum BudgetType: String, Codable, CaseIterable {
             return "Assign every dollar a job. Income minus all allocations should equal zero."
         case .percentage:
             return "50% needs, 30% wants, 20% savings. Classic budgeting rule."
+        }
+    }
+}
+
+// MARK: - Budget Purpose (v2.6)
+
+/// 50/30/20 classification for a budget: is this spending a need, a want,
+/// or savings? Powers the color-coded 50/30/20 bar on the budget list.
+enum BudgetPurpose: String, Codable, CaseIterable, Identifiable {
+    case need    = "need"
+    case want    = "want"
+    case savings = "savings"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .need:    return "Need"
+        case .want:    return "Want"
+        case .savings: return "Savings"
+        }
+    }
+
+    var systemImageName: String {
+        switch self {
+        case .need:    return "house.fill"
+        case .want:    return "sparkles"
+        case .savings: return "banknote.fill"
+        }
+    }
+
+    /// Target share of monthly income under the 50/30/20 rule.
+    var targetShare: Double {
+        switch self {
+        case .need:    return 0.50
+        case .want:    return 0.30
+        case .savings: return 0.20
+        }
+    }
+
+    /// Whether exceeding the target is desirable (true only for savings —
+    /// saving more than 20% is good; spending more than 50/30 is not).
+    var higherIsBetter: Bool {
+        self == .savings
+    }
+
+    var footerDescription: String {
+        switch self {
+        case .need:    return "Essentials: housing, groceries, utilities, insurance, minimum debt payments."
+        case .want:    return "Nice-to-haves: dining out, entertainment, hobbies, subscriptions."
+        case .savings: return "Money set aside: emergency fund, investments, extra debt payments."
         }
     }
 }

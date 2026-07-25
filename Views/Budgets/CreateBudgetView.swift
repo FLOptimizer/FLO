@@ -56,6 +56,7 @@ struct CreateBudgetView: View {
     @Query(sort: \Account.name) private var accounts: [Account]
     @Query(sort: \Transaction.date, order: .reverse) private var allTransactions: [Transaction]
     @Query private var allRecurring: [RecurringTransaction]
+    @Query private var allBudgets: [Budget]
     @Query(
         filter: #Predicate<BusinessProfile> { $0.isActive },
         sort: \BusinessProfile.sortOrder
@@ -70,6 +71,10 @@ struct CreateBudgetView: View {
     @State private var amount: Double = 0
     @State private var financeType: Transaction.FinanceType = .personal
 
+    // v2.6: Need/Want/Savings classification
+    @State private var purpose: BudgetPurpose?
+    @State private var savingsEnvelopeCategory: Category?
+
     // v1.5: Predictive budgeting
     @State private var prediction: PredictedBudget?
     @State private var didApplyPrediction = false
@@ -81,6 +86,7 @@ struct CreateBudgetView: View {
                 financeTypeSection
                 businessProfileSection
                 categorySection
+                purposeSection
                 accountSection
                 amountSection
             }
@@ -252,8 +258,63 @@ struct CreateBudgetView: View {
         }
     }
 
+    // MARK: - Purpose Section (v2.6)
+
+    /// Need/Want/Savings classification for the 50/30/20 check. Personal only —
+    /// the rule doesn't apply to business budgets.
+    @ViewBuilder
+    private var purposeSection: some View {
+        if financeType == .personal {
+            Section {
+                Picker("Purpose", selection: $purpose) {
+                    Text("None").tag(BudgetPurpose?.none)
+                    ForEach(BudgetPurpose.allCases) { p in
+                        Label(p.displayName, systemImage: p.systemImageName)
+                            .tag(Optional(p))
+                    }
+                }
+                .pickerStyle(.menu)
+                .onChange(of: purpose) { _, newValue in
+                    HapticService.play(.light)
+                    if newValue != .savings {
+                        savingsEnvelopeCategory = nil
+                    }
+                }
+
+                if purpose == .savings && !envelopeCategories.isEmpty {
+                    Picker("Savings envelope", selection: $savingsEnvelopeCategory) {
+                        Text("None").tag(Category?.none)
+                        ForEach(envelopeCategories) { cat in
+                            Label(cat.name, systemImage: cat.icon)
+                                .tag(Optional(cat))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+            } header: {
+                Text("50/30/20 (Optional)")
+            } footer: {
+                if let purpose {
+                    if purpose == .savings, let envelope = savingsEnvelopeCategory {
+                        Text("Counts toward your 20% savings target and contributes to the \(envelope.name) envelope.")
+                            .lineLimit(3)
+                            .minimumScaleFactor(0.7)
+                    } else {
+                        Text(purpose.footerDescription)
+                            .lineLimit(3)
+                            .minimumScaleFactor(0.7)
+                    }
+                } else {
+                    Text("Classify this budget as a need, want, or savings to see it in the 50/30/20 check on your budget list.")
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.7)
+                }
+            }
+        }
+    }
+
     // MARK: - Account Section
-    
+
     @ViewBuilder
     private var accountSection: some View {
         // All tiers can scope budgets to an account they own
@@ -368,6 +429,17 @@ struct CreateBudgetView: View {
         categories.filter { !$0.isIncome }
     }
 
+    /// Categories backing at least one personal envelope-type budget — the
+    /// candidate "savings envelopes" a savings budget can contribute to (v2.6).
+    private var envelopeCategories: [Category] {
+        var seen = Set<UUID>()
+        return allBudgets
+            .filter { $0.budgetType == .envelope && $0.financeType == .personal }
+            .compactMap { $0.category }
+            .filter { seen.insert($0.id).inserted }
+            .sorted { $0.name < $1.name }
+    }
+
     private var organizedBusinessCategories: [Category] {
         categories.filter { !$0.isIncome && $0.isBusiness }.sorted { $0.name < $1.name }
     }
@@ -444,7 +516,11 @@ struct CreateBudgetView: View {
             category: category,
             account: selectedAccount,
             businessProfile: financeType == .business ? selectedBusinessProfile : nil,
-            financeType: financeType
+            financeType: financeType,
+            purpose: financeType == .personal ? purpose : nil,
+            savingsEnvelopeCategoryID: (financeType == .personal && purpose == .savings)
+                ? savingsEnvelopeCategory?.id
+                : nil
         )
 
         // v1.5: Store prediction metadata

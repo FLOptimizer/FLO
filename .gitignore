@@ -12,3 +12,6 @@ Pods/
 # Swift Package Manager
 .build/
 .swiftpm/
+
+# Fastlane build artifacts
+fastlane/builds/

@@ -80,6 +80,11 @@ struct EditBudgetView: View {
     @State private var showingDeleteConfirmation = false
     @State private var allowCarryOver: Bool
 
+    // v2.6: Need/Want/Savings classification
+    @State private var purpose: BudgetPurpose?
+    @State private var savingsEnvelopeCategory: Category?
+    @Query private var allBudgets: [Budget]
+
     /// Expense categories only (exclude income categories)
     private var filteredCategories: [Category] {
         categories.filter { !$0.isIncome }
@@ -111,6 +116,17 @@ struct EditBudgetView: View {
         _selectedCategory = State(initialValue: budget.category)
         _selectedMonth = State(initialValue: budget.month)
         _allowCarryOver = State(initialValue: budget.allowCarryOverOverride ?? (budget.budgetType == .envelope))
+        _purpose = State(initialValue: budget.purpose)
+    }
+
+    /// Categories backing at least one personal envelope-type budget (v2.6).
+    private var envelopeCategories: [Category] {
+        var seen = Set<UUID>()
+        return allBudgets
+            .filter { $0.budgetType == .envelope && $0.financeType == .personal }
+            .compactMap { $0.category }
+            .filter { seen.insert($0.id).inserted }
+            .sorted { $0.name < $1.name }
     }
      
     var body: some View {
@@ -124,6 +140,11 @@ struct EditBudgetView: View {
                 .opacity(viewAppeared ? 1 : 0.001)
                 .offset(y: viewAppeared ? 0 : 10)
                 .animation(FLOAnimation.standard.delay(0.1), value: viewAppeared)
+
+            purposeSection
+                .opacity(viewAppeared ? 1 : 0.001)
+                .offset(y: viewAppeared ? 0 : 10)
+                .animation(FLOAnimation.standard.delay(0.12), value: viewAppeared)
 
             amountSection
                 .opacity(viewAppeared ? 1 : 0.001)
@@ -189,6 +210,10 @@ struct EditBudgetView: View {
             withAnimation(FLOAnimation.standard) {
                 viewAppeared = true
             }
+            // v2.6: Resolve the stored savings-envelope category ID
+            if let envelopeID = budget.savingsEnvelopeCategoryID {
+                savingsEnvelopeCategory = categories.first { $0.id == envelopeID }
+            }
             // v2.4: Announce screen
             let categoryName = budget.category?.name ?? "Unknown"
             AccessibilityAnnouncement.screenChanged("Edit Budget: \(categoryName)")
@@ -239,6 +264,54 @@ struct EditBudgetView: View {
                 accessibilityLabelText: "Budget amount",
                 showDoneButton: false  // v2.8: Single Done button at Form level
             )
+        }
+    }
+
+    // MARK: - Purpose Section (v2.6)
+
+    /// Need/Want/Savings classification for the 50/30/20 check. Personal only.
+    @ViewBuilder
+    private var purposeSection: some View {
+        if budget.financeType == .personal {
+            Section {
+                Picker("Purpose", selection: $purpose) {
+                    Text("None").tag(BudgetPurpose?.none)
+                    ForEach(BudgetPurpose.allCases) { p in
+                        Label(p.displayName, systemImage: p.systemImageName)
+                            .tag(Optional(p))
+                    }
+                }
+                .pickerStyle(.menu)
+                .onChange(of: purpose) { _, newValue in
+                    HapticService.play(.light)
+                    if newValue != .savings {
+                        savingsEnvelopeCategory = nil
+                    }
+                }
+                .accessibilityLabel("Budget purpose")
+                .accessibilityHint("Classify as need, want, or savings for the 50/30/20 check")
+
+                if purpose == .savings && !envelopeCategories.isEmpty {
+                    Picker("Savings envelope", selection: $savingsEnvelopeCategory) {
+                        Text("None").tag(Category?.none)
+                        ForEach(envelopeCategories) { cat in
+                            Label(cat.name, systemImage: cat.icon)
+                                .tag(Optional(cat))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .accessibilityLabel("Savings envelope")
+                    .accessibilityHint("Choose which envelope this savings budget contributes to")
+                }
+            } header: {
+                Text("50/30/20 (Optional)")
+            } footer: {
+                if let purpose {
+                    Text(purpose.footerDescription)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.7)
+                }
+            }
         }
     }
 
@@ -353,6 +426,13 @@ struct EditBudgetView: View {
         budget.category = category      // v2.8
         budget.month = selectedMonth     // v2.8
         budget.allowCarryOverOverride = allowCarryOver  // v2.9
+
+        // v2.6: Need/Want/Savings classification (personal budgets only)
+        if budget.financeType == .personal {
+            budget.purpose = purpose
+            budget.savingsEnvelopeCategoryID = purpose == .savings ? savingsEnvelopeCategory?.id : nil
+        }
+        budget.updatedAt = Date()
 
         do {
             try context.save()

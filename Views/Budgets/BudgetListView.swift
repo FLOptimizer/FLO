@@ -285,6 +285,37 @@ struct BudgetListView: View {
         BudgetStatus.from(spent: monthlySpentTotal, budget: monthlyBudgetTotal).color
     }
 
+    // MARK: - 50/30/20 Check (v2.6)
+
+    /// (purpose, spent) pairs for current-month personal budgets that carry a
+    /// need/want/savings classification. Business budgets are excluded — the
+    /// 50/30/20 rule is a personal-finance guideline.
+    private var classifiedBudgetSpending: [(purpose: BudgetPurpose, spent: Double)] {
+        currentMonthBudgets.compactMap { budget in
+            guard budget.financeType == .personal, let purpose = budget.purpose else { return nil }
+            return (purpose: purpose, spent: calculateSpent(for: budget, in: currentMonthStart))
+        }
+    }
+
+    /// Actual personal income for the month, falling back to last month
+    /// before the first paycheck lands.
+    private var fiftyThirtyTwentyIncomeBasis: MonthlyIncomeBasis {
+        FiftyThirtyTwentyService.incomeBasis(for: currentMonthStart, transactions: allTransactions)
+    }
+
+    private var fiftyThirtyTwentySummaries: [PurposeBucketSummary] {
+        FiftyThirtyTwentyService.summaries(
+            classifiedSpending: classifiedBudgetSpending,
+            income: fiftyThirtyTwentyIncomeBasis.amount
+        )
+    }
+
+    /// Show the bar only when at least one personal budget is classified and
+    /// the view isn't filtered to business-only.
+    private var shouldShowFiftyThirtyTwentyBar: Bool {
+        financeMode != .business && !classifiedBudgetSpending.isEmpty
+    }
+
     /// Build 10: Budget items paired with spent amounts for circle grid, alphabetically sorted
     private var budgetCircleItems: [(budget: Budget, spent: Double)] {
         currentMonthBudgets
@@ -611,6 +642,18 @@ struct BudgetListView: View {
                         .opacity(viewAppeared ? 1 : 0.001)
                         .offset(y: viewAppeared ? 0 : 15)
                         .animation(FLOAnimation.standard.delay(0.17), value: viewAppeared)
+                }
+
+                // v2.6: 50/30/20 need/want/savings check
+                if shouldShowFiftyThirtyTwentyBar {
+                    FiftyThirtyTwentyBar(
+                        summaries: fiftyThirtyTwentySummaries,
+                        incomeBasis: fiftyThirtyTwentyIncomeBasis
+                    )
+                    .padding(.horizontal)
+                    .opacity(viewAppeared ? 1 : 0.001)
+                    .offset(y: viewAppeared ? 0 : 15)
+                    .animation(FLOAnimation.standard.delay(0.19), value: viewAppeared)
                 }
 
                 // Build 10: Budget Circles Grid (replaces individual card list)

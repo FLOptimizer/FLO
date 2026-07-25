@@ -2,10 +2,11 @@
 
 ## App Store "What's New" (draft)
 
-**Meet the FLO Assistant, plus Events**
+**Meet the FLO Assistant, plus Events and the 50/30/20 Check**
 
 - **FLO Assistant** — Ask about your money in plain English. The assistant can pull up your real numbers, categorize transactions, jump you to the right screen, and send a proactive weekly digest of your finances.
 - **Events** — Group expenses by trip, holiday, or occasion. See what the beach week or the holidays actually cost, across every category and account.
+- **50/30/20 Check** — Tag budgets as a Need, Want, or Savings, and a color-coded card on your budget list shows how each bucket tracks against the classic 50/30/20 rule. Savings budgets can point at a savings envelope so your goals accumulate where you want them.
 - **Invoice links open in the app** — Tapping an invoice link now lands clients directly in FLO when it's installed.
 - **Smoother account picking** — Choosing an account on transactions, budgets, and receipts now uses a clean menu picker everywhere.
 - **Fixes** — Depreciation schedules now match IRS Pub 946 exactly (Section 179, bonus depreciation, and 27.5-year rental property). Bank connections are no longer flagged as broken during temporary provider hiccups.
@@ -21,6 +22,7 @@
 | Accounts | Menu picker replaces horizontal account chips across all forms | c454c47 |
 | Plaid | Transient backend failures no longer flag banks as broken | 3384363 |
 | Tax engine | Fixed §179 double-count, empty 100%-bonus schedule, bonus double-count in accumulated/remaining, missing half-year on 27.5-yr residential | 77d91ea |
+| Budgets | Need/Want/Savings classification on create/edit, savings-envelope link, 50/30/20 color-coded card on budget list (personal income actuals, previous-month fallback) | (this release) |
 | Infrastructure | Test suite (992 tests) + FLODesignSystem brought into the repo; FLOTests runnable via xcodebuild | 0a299e7, 7591972 |
 
 ## Version notes
