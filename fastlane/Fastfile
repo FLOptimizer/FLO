@@ -106,10 +106,12 @@ platform :ios do
   
   desc "Push a new beta build to TestFlight"
   lane :beta do
-    increment_build_number(
-      xcodeproj: "FLO.xcodeproj"
-    )
-    
+    # NOTE: no increment_build_number here — it shells out to agvtool, which
+    # picks an arbitrary base among this project's mixed target versions and
+    # stamps LITERAL numbers into every Info.plist, breaking the
+    # $(CURRENT_PROJECT_VERSION) convention (it rewrote 12 → 2 on 2026-07-24).
+    # Build numbers are managed in the project; bump with:
+    #   fastlane bump_build number:13
     build_app(
       project: "FLO.xcodeproj",
       scheme: "FLO",
@@ -158,11 +160,41 @@ platform :ios do
     )
   end
   
-  desc "Increment build number"
-  lane :bump_build do
-    increment_build_number(
-      xcodeproj: "FLO.xcodeproj"
-    )
+  desc "Set the build number on the shipping targets (app, widget, clip)"
+  desc "Usage: fastlane bump_build number:13"
+  lane :bump_build do |options|
+    number = options[:number] || UI.user_error!("Usage: fastlane bump_build number:13")
+
+    # Deliberately NOT increment_build_number/agvtool: it stamps literal
+    # values into every Info.plist and clobbers the other targets'
+    # independent versions (it rewrote 12 → 2 everywhere on 2026-07-24).
+    # Also deliberately not Xcodeproj#save, which reserializes the whole
+    # project file with unrelated churn. This edits exactly the six
+    # CURRENT_PROJECT_VERSION lines of the shipping targets' build configs,
+    # preserving the $(CURRENT_PROJECT_VERSION) plist convention.
+    #
+    # Build-config IDs (stable unless a target is deleted and recreated):
+    #   FLO                Debug/Release: 433FDBF1…, 433FDBF2…
+    #   FLOWidgetExtension Debug/Release: 436A0AB5…, 436A0AB6…
+    #   FLOInvoiceClip     Debug/Release: 43F478C1…, 43F478C2…
+    config_ids = %w[
+      433FDBF12EB992B10008DA09 433FDBF22EB992B10008DA09
+      436A0AB52EC02F930011973D 436A0AB62EC02F930011973D
+      43F478C12F5CE2920098DC37 43F478C22F5CE2920098DC37
+    ]
+
+    path = File.expand_path("../FLO.xcodeproj/project.pbxproj", __dir__)
+    content = File.read(path)
+    updated = 0
+    config_ids.each do |cid|
+      updated += 1 if content.sub!(
+        /(#{cid} \/\* (?:Debug|Release) \*\/ = \{[^\}]*?CURRENT_PROJECT_VERSION = )[^;]+(;)/m,
+        "\\1#{number}\\2"
+      )
+    end
+    UI.user_error!("Expected to update 6 configs, matched #{updated} — project structure changed?") unless updated == 6
+    File.write(path, content)
+    UI.success("CURRENT_PROJECT_VERSION = #{number} on FLO, FLOWidgetExtension, FLOInvoiceClip")
   end
   
   desc "Sync certificates and provisioning profiles"

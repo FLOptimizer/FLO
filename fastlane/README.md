@@ -85,7 +85,9 @@ Increment version number
 [bundle exec] fastlane ios bump_build
 ```
 
-Increment build number
+Set the build number on the shipping targets (app, widget, clip)
+
+Usage: fastlane bump_build number:13
 
 ### ios sync_certs
 
