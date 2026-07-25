@@ -30,7 +30,7 @@ platform :ios do
         "iPhone 16e",
       ],
       languages: ["en-US"],
-      output_directory: "./fastlane/screenshots",
+      output_directory: "../fastlane-output/screenshots",
       clear_previous_screenshots: true,
       override_status_bar: true,
       localize_simulator: true,
@@ -55,7 +55,7 @@ platform :ios do
         "iPad Air 13-inch (M3)",
       ],
       languages: ["en-US"],
-      output_directory: "./fastlane/screenshots",
+      output_directory: "../fastlane-output/screenshots",
       clear_previous_screenshots: true,
       override_status_bar: true
     )
@@ -68,7 +68,7 @@ platform :ios do
       scheme: "FLO",
       devices: ["iPhone 16 Pro"],
       languages: ["en-US"],
-      output_directory: "./fastlane/screenshots/quick",
+      output_directory: "../fastlane-output/screenshots/quick",
       clear_previous_screenshots: true
     )
   end
@@ -84,7 +84,7 @@ platform :ios do
       scheme: "FLO",
       devices: ["iPhone 16 Pro"],
       code_coverage: true,
-      output_directory: "./fastlane/test_results",
+      output_directory: "../fastlane-output/test_results",
       output_types: "html,junit"
     )
   end
@@ -96,7 +96,7 @@ platform :ios do
       scheme: "FLO",
       devices: ["iPhone 16 Pro"],
       only_testing: ["FLOUITests"],
-      output_directory: "./fastlane/test_results"
+      output_directory: "../fastlane-output/test_results"
     )
   end
   
@@ -116,7 +116,7 @@ platform :ios do
       project: "FLO.xcodeproj",
       scheme: "FLO",
       export_method: "app-store",
-      output_directory: "./fastlane/builds",
+      output_directory: "../fastlane-output/builds",
       output_name: "FLO.ipa"
     )
     

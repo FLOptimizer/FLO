@@ -177,6 +177,7 @@
 		43CC3B5D301208DF0088FE9D /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43CC3F87301276E10088FE9D /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43CC5205301400A40088FE9D /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
+		43CC6DD930154D7C0088FE9D /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43D3D1192EF9E59D00B48C19 /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43E3C9582EF6297400CC479E /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
 		43E3CA1F2EF62AF800CC479E /* FLO.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FLO.xcodeproj; sourceTree = "<group>"; };
@@ -220,6 +221,15 @@
 		435AF7922EF6393C00B42ECE /* Exceptions for "FLO" folder in "FLO" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				FLODesignSystem,
+				docs,
+				fastlane,
+				FUTURE_FEATURES.md,
+				FLOTests.xctestplan,
+				FLOBillTestsOnly.xctestplan,
+				FLOUITests.xctestplan,
+				Views/Settings/CELEBRATION_INTEGRATION_SUMMARY.md,
+				Views/Components/INCOME_CELEBRATION_INTEGRATION_SUMMARY.md,
 				FLOInvoiceClip/Assets.xcassets,
 				FLOInvoiceClip/ContentView.swift,
 				FLOInvoiceClip/FLOInvoiceClipApp.swift,
@@ -261,8 +271,8 @@
 				"FLOTests/Tax Engine/FLOMACRSDepreciationTests.swift",
 				"FLOTests/Tax Engine/FLOTaxLineAggregationTests.swift",
 				"FLOTests/Tax Engine/FLOYearEndClosingTests.swift",
-				"FLOTests/Transactions & Budgets/FLOFiftyThirtyTwentyTests.swift",
 				"FLOTests/Transactions & Budgets/FLOBudgetTypeTests.swift",
+				"FLOTests/Transactions & Budgets/FLOFiftyThirtyTwentyTests.swift",
 				"FLOTests/Transactions & Budgets/FLOTransferTests.swift",
 				FLOUITests/FLOAccessibilityTests.swift,
 				FLOUITests/FLODemoTests.swift,
@@ -811,6 +821,11 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		43CC6DE330154D7C0088FE9D /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
 		43D3D1202EF9E59D00B48C19 /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
@@ -1299,6 +1314,10 @@
 				{
 					ProductGroup = 43CC3B65301208DF0088FE9D /* Products */;
 					ProjectRef = 43CC3B5D301208DF0088FE9D /* FLO.xcodeproj */;
+				},
+				{
+					ProductGroup = 43CC6DE330154D7C0088FE9D /* Products */;
+					ProjectRef = 43CC6DD930154D7C0088FE9D /* FLO.xcodeproj */;
 				},
 				{
 					ProductGroup = 43FACC292F187ADF006A54B9 /* Products */;
